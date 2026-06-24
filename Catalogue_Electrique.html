@@ -284,7 +284,7 @@
     margin-right:6px;
   }
   .price-jump-badge{
-    font-size: 9.5px;
+    font-size: 14px;
     display:inline-block; margin-left:6px;
     color:#fff; background:var(--warn);
     padding:1px 6px; border-radius:10px; vertical-align:middle;
@@ -799,6 +799,7 @@
     .card .price{ font-size:11.5px; font-weight:700; }
     .price-original{ font-size:10px; }
     .discount-badge{ font-size:9.5px; padding:1px 4px; }
+    .price-jump-badge{ font-size:9.5px; padding:1px 4px; }
     .card .tag{ font-size:9px; padding:1px 3px; }
 
     /* ── Fiche produit : bottom sheet ── */
@@ -1805,7 +1806,7 @@
     // Prix + badge hausse + prix d'origine barré + remise
     var jumpPct = getLastPriceJumpPct(p);
     var badge = jumpPct!==null && jumpPct>=PRICE_ALERT_THRESHOLD
-      ? ' <span class="price-jump-badge">'+jumpPct.toFixed(0)+'%</span>' : '';
+      ? ' <span class="price-jump-badge">⚠ +'+jumpPct.toFixed(0)+'%</span>' : '';
     var orig = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
     var discBadgeVm = discPct !== null && discPct < 0
@@ -1928,7 +1929,7 @@
     }
     var jumpPct = getLastPriceJumpPct(p);
     var priceJumpBadge = jumpPct !== null && jumpPct >= PRICE_ALERT_THRESHOLD
-      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix">'+jumpPct.toFixed(0)+'%</span>'
+      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix">⚠ +'+jumpPct.toFixed(0)+'%</span>'
       : '';
     var origPrice = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
