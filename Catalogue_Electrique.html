@@ -1035,6 +1035,102 @@
     .vm-desc-toggle{ display:inline; }
     .vm-desc-toggle:hover{ text-decoration:underline; }
   }
+
+  /* ─────────────────────────────────────────────
+     MODALE "QUOI DE NEUF"
+     S'affiche automatiquement à la première visite.
+     Fermée via le bouton ou la touche Échap.
+     La clé localStorage "catalogue_whats_new_v3" mémorise
+     si l'utilisateur a déjà vu cette version.
+  ───────────────────────────────────────────── */
+  #whatsNewOverlay{
+    position:fixed; inset:0;
+    background:rgba(28,26,23,.55);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; z-index:300;
+    animation:fadeBg .25s ease forwards;
+  }
+  #whatsNewOverlay.open{ display:flex; }
+  #whatsNewModal{
+    background:var(--paper-card);
+    border-radius:14px;
+    width:100%; max-width:560px;
+    max-height:90vh;
+    display:flex; flex-direction:column;
+    box-shadow:0 24px 80px rgba(0,0,0,.28);
+    overflow:hidden;
+    animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards;
+  }
+  #whatsNewHead{
+    padding:22px 24px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:flex-start; justify-content:space-between;
+    flex-shrink:0;
+  }
+  #whatsNewHead .wn-title{
+    font-size:20px; font-weight:700; color:var(--ink);
+    margin:0 0 3px;
+  }
+  #whatsNewHead .wn-subtitle{
+    font-size:13px; color:var(--ink-soft);
+  }
+  #whatsNewHead .wn-badge{
+    font-size:11px; font-weight:700; color:#fff;
+    background:var(--copper); border-radius:20px;
+    padding:3px 10px; white-space:nowrap; flex-shrink:0;
+    margin-top:2px; margin-left:12px;
+  }
+  #whatsNewBody{
+    overflow-y:auto; flex:1;
+    padding:16px 24px 20px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .wn-section{
+    margin-bottom:18px;
+  }
+  .wn-section-title{
+    font-size:11px; font-weight:700; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+  .wn-item{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:8px 10px; border-radius:8px;
+    margin-bottom:4px;
+    background:var(--paper);
+    border:1px solid var(--line);
+  }
+  .wn-item .wn-icon{
+    width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; flex-shrink:0;
+  }
+  .wn-icon.blue{ background:#eef2fc; color:#194093; }
+  .wn-icon.green{ background:#eef4e8; color:#3b6d11; }
+  .wn-icon.orange{ background:#fff7ed; color:#c2410c; }
+  .wn-icon.purple{ background:#f3f0ff; color:#6d28d9; }
+  .wn-item .wn-texts{ display:flex; flex-direction:column; gap:1px; }
+  .wn-item .wn-name{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .wn-item .wn-desc{ font-size:12px; color:var(--ink-soft); line-height:1.4; }
+  #whatsNewFoot{
+    padding:14px 24px 18px;
+    border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-shrink:0;
+  }
+  #whatsNewFoot .wn-hint{
+    font-size:12px; color:var(--ink-soft);
+  }
+  #btnWhatsNewClose{
+    padding:9px 20px;
+  }
+  @media (max-width:640px){
+    #whatsNewModal{ max-height:92vh; border-radius:16px 16px 0 0; }
+    #whatsNewOverlay{ padding:0; align-items:flex-end; }
+    #whatsNewHead{ padding:16px 16px 12px; }
+    #whatsNewBody{ padding:12px 16px 16px; }
+    #whatsNewFoot{ padding:12px 16px 20px; }
+  }
 </style>
 </head>
 <body>
@@ -1323,6 +1419,30 @@
       <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>
       <button class="secondary" onclick="document.getElementById('xlsxImportOverlay').style.display='none'">Annuler</button>
       <button class="copper" id="btnConfirmXlsxImport">✓ Confirmer l'import</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     MODALE "QUOI DE NEUF" — squelette vide
+     Le contenu est généré automatiquement par JS
+     depuis le tableau WHATS_NEW_VERSIONS ci-dessous.
+     Pour ajouter une nouveauté : éditer WHATS_NEW_VERSIONS dans le JS.
+═══════════════════════════════════════════ -->
+<div id="whatsNewOverlay">
+  <div id="whatsNewModal">
+    <div id="whatsNewHead">
+      <div>
+        <div class="wn-title">Quoi de neuf ?</div>
+        <div class="wn-subtitle">Catalogue Électrique — SPI Engineering</div>
+      </div>
+      <span class="wn-badge" id="wnBadge"></span>
+    </div>
+    <div id="whatsNewBody"></div>
+    <div id="whatsNewFoot">
+      <span class="wn-hint"><i class="ti ti-keyboard" aria-hidden="true"></i> Échap pour fermer</span>
+      <button class="copper" id="btnWhatsNewClose">C'est parti !</button>
     </div>
   </div>
 </div>
@@ -2955,6 +3075,116 @@
     document.getElementById('xlsxImportOverlay').style.display = 'none';
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
     xlsxPendingData = [];
+  });
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MODALE "QUOI DE NEUF" — SYSTÈME AUTOMATIQUE
+  //
+  //  ► POUR AJOUTER DES NOUVEAUTÉS :
+  //    1. Ajoutez un objet dans WHATS_NEW_VERSIONS ci-dessous
+  //    2. Incrémentez "version" (ex: "v3" → "v4")
+  //    3. Sauvegardez — la modale s'affichera à tous les utilisateurs
+  //
+  //  Couleurs : "blue" | "green" | "orange" | "purple"
+  //  Icônes   : ti-layout-grid, ti-device-mobile, ti-file-spreadsheet,
+  //             ti-tag, ti-history, ti-rocket, ti-code, ti-eye, ti-bug,
+  //             ti-refresh, ti-shield, ti-bolt, ti-star, ti-adjustments
+  // ═══════════════════════════════════════════════════════════════
+
+  var WHATS_NEW_VERSIONS = [
+    {
+      version: 'v1.0',
+      sections: [
+        {
+          title: 'Interface',
+          items: [
+            { icon: 'ti-layout-grid',   color: 'blue',   name: 'Nouvelle grille de produits',   desc: 'Affichage en grille avec photo carrée, ref, nom, prix et tags.' },
+            { icon: 'ti-device-mobile', color: 'blue',   name: 'Responsive mobile complet',     desc: '3 colonnes sur téléphone, fiche produit en bottom sheet.' },
+            { icon: 'ti-topology-star', color: 'blue',   name: 'Nouveau header variante F',     desc: 'Logo SVG, séparateur, compteur de produits en temps réel.' },
+            { icon: 'ti-menu-2',        color: 'blue',   name: 'Menu ⋮ repensé',                desc: 'Icônes colorées, sous-titres explicatifs, séparateurs.' },
+          ]
+        },
+        {
+          title: 'Gestion des prix',
+          items: [
+            { icon: 'ti-file-spreadsheet', color: 'green', name: 'Export / Import Excel',          desc: 'Envoyez un fichier au fabricant, il remplit les prix, vous le réimportez.' },
+            { icon: 'ti-tag',              color: 'green', name: 'Prix catalogue vs prix de vente', desc: 'Deux champs distincts avec historique séparé.' },
+            { icon: 'ti-history',          color: 'green', name: 'Historique des prix amélioré',   desc: "Chaque entrée est labellisée pour mieux suivre l'évolution." },
+          ]
+        },
+        {
+          title: 'Fiche produit',
+          items: [
+            { icon: 'ti-layout-columns', color: 'orange', name: 'Fiche en 2 colonnes',     desc: 'Photo à gauche, informations à droite scrollables.' },
+            { icon: 'ti-eye',            color: 'orange', name: '"Voir plus" sur mobile',  desc: 'Longues descriptions tronquées avec lien cliquable.' },
+          ]
+        },
+        {
+          title: 'Performance & qualité',
+          items: [
+            { icon: 'ti-rocket', color: 'purple', name: 'Optimisations render()',  desc: 'Cache des filtres, garde anti-doublon — plus réactif avec 300+ références.' },
+            { icon: 'ti-code',   color: 'purple', name: 'Code commenté',          desc: 'Fonctions, CSS et HTML documentés pour faciliter les modifications.' },
+          ]
+        }
+      ]
+    }
+  ];
+
+  // Dernière version = dernier élément du tableau
+  var latestWN = WHATS_NEW_VERSIONS[WHATS_NEW_VERSIONS.length - 1];
+  var WN_KEY   = 'catalogue_whats_new_' + latestWN.version;
+
+  // Génère le contenu HTML depuis les données
+  function buildWhatsNewContent(){
+    var badge = document.getElementById('wnBadge');
+    var body  = document.getElementById('whatsNewBody');
+    if(!badge || !body) return;
+    badge.textContent = latestWN.version;
+    var html = '';
+    latestWN.sections.forEach(function(section){
+      html += '<div class="wn-section"><div class="wn-section-title">'+escapeHtml(section.title)+'</div>';
+      section.items.forEach(function(item){
+        html += '<div class="wn-item">'
+          +'<span class="wn-icon '+item.color+'"><i class="ti '+item.icon+'" aria-hidden="true"></i></span>'
+          +'<div class="wn-texts">'
+          +'<span class="wn-name">'+escapeHtml(item.name)+'</span>'
+          +'<span class="wn-desc">'+escapeHtml(item.desc)+'</span>'
+          +'</div></div>';
+      });
+      html += '</div>';
+    });
+    body.innerHTML = html;
+  }
+
+  var whatsNewOverlay = document.getElementById('whatsNewOverlay');
+
+  function closeWhatsNew(){
+    if(whatsNewOverlay) whatsNewOverlay.classList.remove('open');
+    try{ localStorage.setItem(WN_KEY, '1'); }catch(e){}
+  }
+
+  // Afficher si cette version n'a pas encore été vue
+  try{
+    if(!localStorage.getItem(WN_KEY) && whatsNewOverlay){
+      buildWhatsNewContent();
+      whatsNewOverlay.classList.add('open');
+    }
+  }catch(e){}
+
+  var btnWNClose = document.getElementById('btnWhatsNewClose');
+  if(btnWNClose) btnWNClose.addEventListener('click', closeWhatsNew);
+
+  if(whatsNewOverlay){
+    whatsNewOverlay.addEventListener('click', function(e){
+      if(e.target === whatsNewOverlay) closeWhatsNew();
+    });
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && whatsNewOverlay && whatsNewOverlay.classList.contains('open')){
+      closeWhatsNew();
+    }
   });
 
   // ---------- Loupe mobile ----------
