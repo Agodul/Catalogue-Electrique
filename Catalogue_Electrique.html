@@ -602,6 +602,32 @@
     font-size:15px; color:#fca5a5;
   }
 
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:22px;
+    transform:translateX(-50%) translateY(24px);
+    background:rgba(17,24,39,.95);
+    color:#fff;
+    padding:12px 16px;
+    border-radius:999px;
+    box-shadow:0 14px 32px rgba(0,0,0,.18);
+    font-size:13px;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .18s ease, transform .18s ease, visibility .18s;
+    z-index:220;
+    pointer-events:none;
+  }
+  .toast.visible{
+    opacity:1;
+    visibility:visible;
+    transform:translateX(-50%) translateY(0);
+  }
+  .toast.ok{ background:#166534; }
+  .toast.err{ background:#991b1b; }
+  .toast.info{ background:#111827; }
+
   /* Infobulle filebar */
   .filebar-tooltip-wrap{
     position:relative; display:inline-flex; align-items:center;
@@ -1125,11 +1151,52 @@
     padding:9px 20px;
   }
   @media (max-width:640px){
-    #whatsNewModal{ max-height:92vh; border-radius:16px 16px 0 0; }
-    #whatsNewOverlay{ padding:0; align-items:flex-end; }
-    #whatsNewHead{ padding:16px 16px 12px; }
-    #whatsNewBody{ padding:12px 16px 16px; }
-    #whatsNewFoot{ padding:12px 16px 20px; }
+    /* Bottom sheet sur mobile */
+    #whatsNewOverlay{
+      padding:0;
+      align-items:flex-end;
+      justify-content:center;
+    }
+    #whatsNewModal{
+      border-radius:20px 20px 0 0;
+      max-height:88vh;
+      width:100%;
+      max-width:100%;
+      animation:none;
+    }
+    #whatsNewHead{
+      padding:14px 16px 12px;
+    }
+    #whatsNewHead .wn-title{ font-size:17px; }
+    #whatsNewHead .wn-subtitle{ font-size:12px; }
+    #whatsNewBody{
+      padding:10px 14px 14px;
+    }
+    .wn-section{ margin-bottom:14px; }
+    .wn-section-title{ font-size:10px; }
+    .wn-item{
+      padding:7px 9px;
+      gap:8px;
+    }
+    .wn-item .wn-icon{
+      width:26px; height:26px;
+      font-size:14px; border-radius:7px;
+    }
+    .wn-item .wn-name{ font-size:12.5px; }
+    .wn-item .wn-desc{ font-size:11px; }
+    #whatsNewFoot{
+      padding:10px 16px 22px;
+    }
+    #whatsNewFoot .wn-hint{ font-size:11px; }
+    #btnWhatsNewClose{ padding:8px 18px; font-size:13px; }
+  }
+  @media (max-width:380px){
+    #whatsNewHead .wn-title{ font-size:15px; }
+    #whatsNewBody{ padding:8px 12px 12px; }
+    .wn-item{ padding:6px 8px; gap:7px; }
+    .wn-item .wn-icon{ width:24px; height:24px; font-size:13px; }
+    .wn-item .wn-name{ font-size:12px; }
+    .wn-item .wn-desc{ font-size:10.5px; }
   }
 </style>
 </head>
@@ -1520,6 +1587,19 @@
       btnConnectFile.textContent = 'Choisir un fichier sur mon PC';
       btnDisconnectFile.style.display = 'none';
     }
+  }
+
+  function showToast(message, type, duration){
+    duration = typeof duration === 'number' ? duration : 3000;
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + (type || 'info');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(function(){ toast.classList.add('visible'); });
+    setTimeout(function(){
+      toast.classList.remove('visible');
+      setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); }, 250);
+    }, duration);
   }
 
   var tooltipBox = document.getElementById('filebarTooltipBox');
@@ -3080,16 +3160,6 @@
 
   // ═══════════════════════════════════════════════════════════════
   //  MODALE "QUOI DE NEUF" — SYSTÈME AUTOMATIQUE
-  //
-  //  ► POUR AJOUTER DES NOUVEAUTÉS :
-  //    1. Ajoutez un objet dans WHATS_NEW_VERSIONS ci-dessous
-  //    2. Incrémentez "version" (ex: "v3" → "v4")
-  //    3. Sauvegardez — la modale s'affichera à tous les utilisateurs
-  //
-  //  Couleurs : "blue" | "green" | "orange" | "purple"
-  //  Icônes   : ti-layout-grid, ti-device-mobile, ti-file-spreadsheet,
-  //             ti-tag, ti-history, ti-rocket, ti-code, ti-eye, ti-bug,
-  //             ti-refresh, ti-shield, ti-bolt, ti-star, ti-adjustments
   // ═══════════════════════════════════════════════════════════════
 
   var WHATS_NEW_VERSIONS = [
