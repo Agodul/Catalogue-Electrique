@@ -1805,7 +1805,7 @@
     // Prix + badge hausse + prix d'origine barré + remise
     var jumpPct = getLastPriceJumpPct(p);
     var badge = jumpPct!==null && jumpPct>=PRICE_ALERT_THRESHOLD
-      ? ' <span class="price-jump-badge">⚠ +'+jumpPct.toFixed(0)+'%</span>' : '';
+      ? ' <span class="price-jump-badge">'+jumpPct.toFixed(0)+'%</span>' : '';
     var orig = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
     var discBadgeVm = discPct !== null && discPct < 0
@@ -1928,7 +1928,7 @@
     }
     var jumpPct = getLastPriceJumpPct(p);
     var priceJumpBadge = jumpPct !== null && jumpPct >= PRICE_ALERT_THRESHOLD
-      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix">⚠ +'+jumpPct.toFixed(0)+'%</span>'
+      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix">'+jumpPct.toFixed(0)+'%</span>'
       : '';
     var origPrice = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
