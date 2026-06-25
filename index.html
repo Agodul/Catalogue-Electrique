@@ -2747,7 +2747,7 @@
   }
 
   function extractFromHtml(htmlStr, pageUrl){
-    var result = {photo:null, name:null, desc:null, price:null};
+    var result = {photo:null, name:null, desc:null, price:null, brand:null, ref:null, supplier:null};
     var doc;
     try{
       var parser = new DOMParser();
@@ -2767,7 +2767,82 @@
       return null;
     }
 
-    // Try JSON-LD product schema first (most reliable when present)
+    function txt(selectors){
+      for(var i=0;i<selectors.length;i++){
+        var el = doc.querySelector(selectors[i]);
+        if(el){
+          var v = el.textContent || el.getAttribute('data-value') || el.getAttribute('value') || '';
+          if(v.trim()) return v.trim();
+        }
+      }
+      return null;
+    }
+
+    // ── Détection du fournisseur depuis l'URL ──────────────────────────
+    var hostname = '';
+    try{ hostname = new URL(pageUrl).hostname.replace('www.',''); }catch(e){}
+
+    var supplierMap = {
+      'balluff.com'           : 'Balluff',
+      'balluff.fr'            : 'Balluff',
+      'phoenixcontact.com'    : 'Phoenix Contact',
+      'phoenixcontact.fr'     : 'Phoenix Contact',
+      'sick.com'              : 'SICK',
+      'sick.fr'               : 'SICK',
+      'se.com'                : 'Schneider Electric',
+      'schneider-electric.com': 'Schneider Electric',
+      'schneider-electric.fr' : 'Schneider Electric',
+      'ifm.com'               : 'IFM',
+      'pepperl-fuchs.com'     : 'Pepperl+Fuchs',
+      'pepperl-fuchs.fr'      : 'Pepperl+Fuchs',
+      'turck.com'             : 'Turck',
+      'turck.fr'              : 'Turck',
+      'omron.com'             : 'Omron',
+      'omron.fr'              : 'Omron',
+      'festo.com'             : 'Festo',
+      'festo.fr'              : 'Festo',
+      'smc.eu'                : 'SMC',
+      'smc.fr'                : 'SMC',
+      'rs-online.com'         : 'RS Components',
+      'rs-components.fr'      : 'RS Components',
+      'distrelec.fr'          : 'Distrelec',
+      'conrad.fr'             : 'Conrad',
+      'mouser.fr'             : 'Mouser',
+      'digikey.fr'            : 'DigiKey',
+      'farnell.com'           : 'Farnell',
+      'element14.com'         : 'Farnell',
+      'automation24.fr'       : 'Automation24',
+      'weidmuller.com'        : 'Weidmüller',
+      'weidmuller.fr'         : 'Weidmüller',
+      'wago.com'              : 'WAGO',
+      'wago.fr'               : 'WAGO',
+      'legrand.fr'            : 'Legrand',
+      'legrand.com'           : 'Legrand',
+      'hager.fr'              : 'Hager',
+      'hager.com'             : 'Hager',
+      'siemens.com'           : 'Siemens',
+      'siemens.fr'            : 'Siemens',
+      'abb.com'               : 'ABB',
+      'abb.fr'                : 'ABB',
+      'rockwellautomation.com': 'Rockwell Automation',
+      'keyence.fr'            : 'Keyence',
+      'keyence.com'           : 'Keyence',
+      'banner-france.fr'      : 'Banner',
+      'bannerengineering.com' : 'Banner',
+      'contrinex.com'         : 'Contrinex',
+      'baumer.com'            : 'Baumer',
+      'leuze.com'             : 'Leuze',
+      'leuze.fr'              : 'Leuze',
+      'carlo-gavazzi.com'     : 'Carlo Gavazzi',
+    };
+    for(var domain in supplierMap){
+      if(hostname === domain || hostname.endsWith('.' + domain)){
+        result.supplier = supplierMap[domain];
+        break;
+      }
+    }
+
+    // ── JSON-LD (source la plus fiable) ───────────────────────────────
     var ldNodes = doc.querySelectorAll('script[type="application/ld+json"]');
     for(var i=0;i<ldNodes.length;i++){
       try{
@@ -2780,8 +2855,15 @@
           var type = node['@type'];
           var typeStr = Array.isArray(type) ? type.join(',') : (type||'');
           if(typeStr.toLowerCase().indexOf('product') !== -1){
-            if(!result.name && node.name) result.name = node.name;
-            if(!result.desc && node.description) result.desc = node.description;
+            if(!result.name  && node.name)        result.name  = node.name;
+            if(!result.desc  && node.description) result.desc  = node.description;
+            if(!result.ref   && node.sku)         result.ref   = node.sku;
+            if(!result.ref   && node.mpn)         result.ref   = node.mpn;
+            if(!result.ref   && node.productID)   result.ref   = node.productID;
+            if(!result.brand && node.brand){
+              var b = node.brand;
+              result.brand = (typeof b === 'object') ? (b.name || '') : String(b);
+            }
             if(!result.photo){
               var img = node.image;
               if(Array.isArray(img)) img = img[0];
@@ -2802,18 +2884,87 @@
       }catch(e){ /* ignore malformed JSON-LD */ }
     }
 
-    // Open Graph fallback
+    // ── Open Graph / meta fallbacks ────────────────────────────────────
     if(!result.name) result.name = meta(['meta[property="og:title"]','meta[name="og:title"]','title']);
     if(!result.desc) result.desc = meta(['meta[property="og:description"]','meta[name="description"]']);
     if(!result.photo) result.photo = meta(['meta[property="og:image"]','meta[name="twitter:image"]']);
     if(!result.price) result.price = meta(['meta[property="product:price:amount"]','meta[property="og:price:amount"]']);
+    if(!result.brand) result.brand = meta(['meta[property="product:brand"]','meta[name="brand"]','meta[itemprop="brand"]']);
+    if(!result.ref)   result.ref   = meta(['meta[property="product:sku"]','meta[name="sku"]','meta[itemprop="sku"]',
+                                           'meta[property="product:mpn"]','meta[name="mpn"]']);
 
-    // Generic price regex fallback (looks for currency patterns near common price classes)
+    // ── Sélecteurs DOM génériques (itemprop, data-attributes) ─────────
+    if(!result.ref){
+      result.ref = txt([
+        '[itemprop="sku"]','[itemprop="mpn"]','[itemprop="productID"]',
+        '[data-sku]','[data-ref]','[data-product-ref]','[data-product-id]',
+        '[class*="product-ref"]','[class*="product-sku"]','[class*="sku"]',
+        '[class*="ref-produit"]','[class*="reference"]'
+      ]);
+    }
+    if(!result.brand){
+      result.brand = txt([
+        '[itemprop="brand"]','[data-brand]','[class*="brand-name"]',
+        '[class*="product-brand"]','[class*="manufacturer"]',
+        '[itemprop="manufacturer"]'
+      ]);
+    }
+
+    // ── Règles spécifiques par site fournisseur ────────────────────────
+    if(hostname.includes('balluff')){
+      if(!result.ref)   result.ref   = txt(['.product-ordernumber','.order-number','[class*="ordernumber"]','[class*="article-number"]']);
+      if(!result.brand) result.brand = 'Balluff';
+    }
+    if(hostname.includes('phoenixcontact')){
+      if(!result.ref)   result.ref   = txt(['.product-order-number','.order-nr','[class*="article"]','[data-article-number]']);
+      if(!result.brand) result.brand = 'Phoenix Contact';
+    }
+    if(hostname.includes('sick')){
+      if(!result.ref)   result.ref   = txt(['.part-number','.product-id','[class*="partNumber"]','[data-part-number]']);
+      if(!result.brand) result.brand = 'SICK';
+    }
+    if(hostname.includes('ifm')){
+      if(!result.ref)   result.ref   = txt(['[class*="article-number"]','.article-no','[data-article]']);
+      if(!result.brand) result.brand = 'IFM';
+    }
+    if(hostname.includes('schneider') || hostname.includes('se.com')){
+      if(!result.ref)   result.ref   = txt(['.product-reference','.ref','[class*="reference"]','[data-reference]']);
+      if(!result.brand) result.brand = 'Schneider Electric';
+    }
+    if(hostname.includes('wago')){
+      if(!result.ref)   result.ref   = txt(['.article-number','[class*="article"]','[data-article-number]']);
+      if(!result.brand) result.brand = 'WAGO';
+    }
+    if(hostname.includes('siemens')){
+      if(!result.ref)   result.ref   = txt(['.mlfb','[class*="mlfb"]','[class*="article-number"]','[data-mlfb]']);
+      if(!result.brand) result.brand = 'Siemens';
+    }
+    if(hostname.includes('rs-online') || hostname.includes('rs-components')){
+      if(!result.ref)   result.ref   = txt(['.keyAttribute','[class*="stock-no"]','[class*="part-number"]']);
+      if(!result.supplier && !result.brand) result.supplier = 'RS Components';
+    }
+
+    // ── Nettoyage de la référence ──────────────────────────────────────
+    if(result.ref){
+      // Garder seulement la partie alphanumérique principale (supprimer labels "Réf :", "SKU :" etc.)
+      result.ref = result.ref
+        .replace(/^(ref\.?|réf\.?|sku|mpn|art\.?|n°|no\.?|référence|reference|article)\s*[:=\-]?\s*/i, '')
+        .replace(/\s+/g,' ')
+        .trim()
+        .slice(0, 60);
+    }
+
+    // ── Nettoyage marque ───────────────────────────────────────────────
+    if(result.brand){
+      result.brand = stripHtml(result.brand).replace(/\s+/g,' ').trim().slice(0, 50);
+    }
+
+    // ── Prix fallback DOM ──────────────────────────────────────────────
     if(!result.price){
       var priceEl = doc.querySelector('[class*="price"], [itemprop="price"], [data-price]');
       if(priceEl){
-        var txt = priceEl.getAttribute('content') || priceEl.textContent;
-        if(txt) result.price = txt.trim().replace(/\s+/g,' ').slice(0,40);
+        var ptxt = priceEl.getAttribute('content') || priceEl.textContent;
+        if(ptxt) result.price = ptxt.trim().replace(/\s+/g,' ').slice(0,40);
       }
     }
     if(!result.price){
@@ -2822,13 +2973,14 @@
       if(m) result.price = m[0].trim();
     }
 
-    // Resolve relative photo URL against the provided page URL if any
+    // ── Résolution URL photo relative ──────────────────────────────────
     if(result.photo && pageUrl){
       try{ result.photo = new URL(result.photo, pageUrl).href; }catch(e){}
     }
 
-    if(result.name) result.name = stripHtml(result.name).replace(/\s+/g,' ').trim();
-    if(result.desc) result.desc = stripHtml(result.desc).replace(/\s+/g,' ').trim();
+    // ── Nettoyage final ────────────────────────────────────────────────
+    if(result.name)  result.name  = stripHtml(result.name).replace(/\s+/g,' ').trim();
+    if(result.desc)  result.desc  = stripHtml(result.desc).replace(/\s+/g,' ').trim();
     if(result.price) result.price = decodeEntities(result.price).replace(/\s+/g,' ').trim();
 
     return result;
@@ -2843,10 +2995,13 @@
     }
     var data = extractFromHtml(html, fUrl.value.trim());
     var found = [];
-    if(data.name){ fName.value = data.name; found.push('nom'); }
-    if(data.desc){ fDesc.value = stripHtml(data.desc); found.push('description'); }
-    if(data.price){ fPrice.value = data.price; found.push('prix'); }
-    if(data.photo){ fPhoto.value = data.photo; updatePhotoPreview(); found.push('photo'); }
+    if(data.name)     { fName.value     = data.name;              found.push('nom'); }
+    if(data.desc)     { fDesc.value     = stripHtml(data.desc);   found.push('description'); }
+    if(data.price)    { fPrice.value    = data.price;             found.push('prix'); }
+    if(data.photo)    { fPhoto.value    = data.photo; updatePhotoPreview(); found.push('photo'); }
+    if(data.brand)    { fBrand.value    = data.brand;             found.push('marque'); }
+    if(data.ref)      { fRef.value      = data.ref;               found.push('référence'); }
+    if(data.supplier) { fSupplier.value = data.supplier;          found.push('fournisseur'); }
 
     if(found.length){
       extractStatus.className = 'extract-status ok show';
