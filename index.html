@@ -3563,44 +3563,52 @@
   tryReconnectOnLoad();
 
   // ═══════════════════════════════════════════════════════════════
-  //  EXTENSION CHROME — Lecture des paramètres URL
-  //  Quand l'extension envoie des données via l'URL, cette fonction
-  //  ouvre la modale et pré-remplit les champs automatiquement.
+  //  EXTENSION CHROME — Injection via localStorage
+  //  Le content script de l'extension écrit le HTML complet de la
+  //  page fournisseur dans localStorage, puis déclenche cet événement.
+  //  L'app reprend exactement le même pipeline que "Coller le code source".
   // ═══════════════════════════════════════════════════════════════
-  (function readExtensionParams(){
-    var params = new URLSearchParams(window.location.search);
-    var title       = params.get('og_title');
-    var description = params.get('og_description');
-    var image       = params.get('og_image');
-    var price       = params.get('og_price');
-    var url         = params.get('og_url');
+  function triggerExtensionExtraction(){
+    var html = '';
+    var url  = '';
+    try{
+      html = localStorage.getItem('spi_pending_html') || '';
+      url  = localStorage.getItem('spi_pending_url')  || '';
+      var ts = parseInt(localStorage.getItem('spi_pending_ts') || '0', 10);
+      // Ignorer si données trop vieilles (> 5 min)
+      if(!html || (Date.now() - ts) > 5 * 60 * 1000) return;
+      // Nettoyer immédiatement pour éviter un double-déclenchement
+      localStorage.removeItem('spi_pending_html');
+      localStorage.removeItem('spi_pending_url');
+      localStorage.removeItem('spi_pending_ts');
+    }catch(e){ return; }
 
-    // Si pas de données envoyées par l'extension, on ne fait rien
-    if(!title) return;
-
-    // Nettoyer l'URL pour éviter que F5 re-déclenche la modale
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    function prefill(){
-      // Remplissage des champs avec les IDs réels du formulaire
-      if(title)       { fName.value  = title;       fName.dispatchEvent(new Event('input',{bubbles:true})); }
-      if(description) { fDesc.value  = description; fDesc.dispatchEvent(new Event('input',{bubbles:true})); }
-      if(image)       { fPhoto.value = image;        fPhoto.dispatchEvent(new Event('input',{bubbles:true})); updatePhotoPreview(); }
-      if(price)       { fPrice.value = price;        fPrice.dispatchEvent(new Event('input',{bubbles:true})); }
-      if(url)         { fUrl.value   = url;          fUrl.dispatchEvent(new Event('input',{bubbles:true})); }
-
-      // Basculer sur l'onglet saisie manuelle (les données sont déjà extraites)
-      switchTab('manual');
-
-      showToast('Fiche pré-remplie depuis l\'extension Chrome ✓', 'ok', 3500);
+    // Nettoyer le flag bridge dans l'URL
+    if(window.location.search.includes('spi_bridge=1')){
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // Ouvrir la modale puis remplir après l'animation
+    // Ouvrir la modale, injecter le HTML dans le textarea, déclencher l'extraction
     setTimeout(function(){
       openModal(null);
-      setTimeout(prefill, 250);
-    }, 600);
-  })();
+      setTimeout(function(){
+        fHtml.value = html;
+        fUrl.value  = url;
+        // Déclencher le même bouton que le copier-coller manuel
+        document.getElementById('btnExtract').click();
+        showToast('Extraction depuis l\'extension Chrome ✓', 'ok', 3500);
+      }, 300);
+    }, 700);
+  }
+
+  // Cas 1 : catalogue déjà ouvert → le content script envoie un CustomEvent
+  window.addEventListener('spi_extension_ready', function(){
+    triggerExtensionExtraction();
+  });
+
+  // Cas 2 : catalogue vient d'être ouvert avec ?spi_bridge=1
+  // Le content script écrit dans localStorage puis dispatch spi_extension_ready
+  // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
 
 })();
 </script>
