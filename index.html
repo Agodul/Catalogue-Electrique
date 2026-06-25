@@ -264,7 +264,7 @@
     flex-shrink:0;
   }
   .card .body-bottom .price-row{ display:flex; align-items:center; gap:5px; flex-shrink:0; }
-  .card .tags{ display:flex; gap:4px; flex-wrap:wrap; overflow:visible; }
+  .card .tags{ display:flex; gap:4px; flex-wrap:wrap; overflow:visible; flex-direction: column-reverse; align-items: baseline; }
   .card .tag{
     font-size:11px; letter-spacing:.02em;
     padding:2px 8px; border-radius:20px; white-space:nowrap;
@@ -292,7 +292,7 @@
     font-size: 14px;
     display:inline-block; margin-left:6px;
     color:#fff; background:var(--warn);
-    padding:1px 6px; border-radius:10px; vertical-align:middle;
+    padding: 2px 5px 0px 5px; border-radius:10px; vertical-align:middle;
   }
   .discount-badge{
     font-size: 14px;
@@ -793,6 +793,7 @@
     select#familyFilter, select#seriesFilter{
       flex:1 1 calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px;
     }
+    .sort-price-btn{ font-size:11px; padding:5px 8px; }
 
     /* ── Groupement ── */
     .group-toggle{
@@ -827,11 +828,11 @@
       -webkit-box-orient:vertical; overflow:hidden;
     }
     .card .body-bottom{ padding-top:5px; gap:2px; margin-top:auto; }
-    .card .price{ font-size:11.5px; font-weight:700; }
-    .price-original{ font-size:10px; }
+    .card .price{ font-size:10.5px; font-weight:700; }
+    .price-original{ font-size:9px; }
     .discount-badge{ font-size:9.5px; padding:1px 4px; }
-    .price-jump-badge{ font-size:9.5px; padding:1px 4px; }
-    .card .tag{ font-size:9px; padding:1px 3px; }
+    .price-jump-badge{ font-size:9.5px; padding: 2px 6px 0px 5px; }
+    .card .tag{ font-size:8px; padding:1px 3px; }
 
     /* ── Fiche produit : bottom sheet ── */
     #viewOverlay{ padding:30px 0px 0px 0px; align-items:center; justify-content:center; }
@@ -855,6 +856,7 @@
     .vm-close-btn{ display:flex; top:8px; left:8px; width:26px; height:26px; }
     .vm-info-btn{ top:8px; right:8px; width:26px; height:26px; font-size:12px; }
     .vm-meta{ grid-template-columns:1fr 1fr; gap:5px 8px; padding:8px 12px; }
+    .vm-meta-item a{ font-size:11px ; }
     .vm-meta-item label{ font-size:9px; }
     .vm-meta-item span{ font-size:11px; font-weight:600; }
     .vm-body{ padding:8px 12px 20px; }
@@ -1156,53 +1158,53 @@
     padding:9px 20px;
   }
   @media (max-width:640px){
-    /* Bottom sheet sur mobile */
-    #whatsNewOverlay{
-      padding:0;
-      align-items:flex-end;
-      justify-content:center;
-    }
+    #whatsNewOverlay{ padding:0; align-items:flex-end; justify-content:center; }
     #whatsNewModal{
-      border-radius:20px 20px 0 0;
-      max-height:88vh;
-      width:100%;
-      max-width:100%;
+      border-radius:16px 16px 0 0;
+      max-height:75vh;
+      width:100%; max-width:100%;
       animation:none;
     }
-    #whatsNewHead{
-      padding:14px 16px 12px;
-    }
-    #whatsNewHead .wn-title{ font-size:17px; }
-    #whatsNewHead .wn-subtitle{ font-size:12px; }
-    #whatsNewBody{
-      padding:10px 14px 14px;
-    }
-    .wn-section{ margin-bottom:14px; }
-    .wn-section-title{ font-size:10px; }
-    .wn-item{
-      padding:7px 9px;
-      gap:8px;
-    }
-    .wn-item .wn-icon{
-      width:26px; height:26px;
-      font-size:14px; border-radius:7px;
-    }
-    .wn-item .wn-name{ font-size:12.5px; }
-    .wn-item .wn-desc{ font-size:11px; }
-    #whatsNewFoot{
-      padding:10px 16px 22px;
-    }
-    #whatsNewFoot .wn-hint{ font-size:11px; }
-    #btnWhatsNewClose{ padding:8px 18px; font-size:13px; }
+    #whatsNewHead{ padding:10px 14px 8px; }
+    #whatsNewHead .wn-title{ font-size:15px; margin-bottom:1px; }
+    #whatsNewHead .wn-subtitle{ font-size:11px; }
+    #whatsNewHead .wn-badge{ font-size:10px; padding:2px 8px; }
+    #whatsNewBody{ padding:8px 12px 10px; }
+    .wn-section{ margin-bottom:10px; }
+    .wn-section-title{ font-size:9.5px; margin-bottom:5px; }
+    .wn-item{ padding:5px 8px; gap:7px; margin-bottom:3px; border-radius:7px; }
+    .wn-item .wn-icon{ width:24px; height:24px; font-size:13px; border-radius:6px; }
+    .wn-item .wn-name{ font-size:11.5px; }
+    .wn-item .wn-desc{ font-size:10px; line-height:1.3; }
+    #whatsNewFoot{ padding:8px 14px 18px; gap:8px; }
+    #whatsNewFoot .wn-hint{ font-size:10.5px; }
+    #btnWhatsNewClose{ padding:7px 16px; font-size:12px; }
   }
   @media (max-width:380px){
-    #whatsNewHead .wn-title{ font-size:15px; }
-    #whatsNewBody{ padding:8px 12px 12px; }
-    .wn-item{ padding:6px 8px; gap:7px; }
-    .wn-item .wn-icon{ width:24px; height:24px; font-size:13px; }
-    .wn-item .wn-name{ font-size:12px; }
-    .wn-item .wn-desc{ font-size:10.5px; }
+    #whatsNewModal{ max-height:80vh; }
+    #whatsNewHead .wn-title{ font-size:14px; }
+    #whatsNewBody{ padding:6px 10px 8px; }
+    .wn-item{ padding:4px 7px; gap:6px; }
+    .wn-item .wn-icon{ width:22px; height:22px; font-size:12px; }
+    .wn-item .wn-name{ font-size:11px; }
+    .wn-item .wn-desc{ font-size:9.5px; }
   }
+
+
+  /* ── Tri par prix ── */
+  .sort-price-btn{
+    display:flex; align-items:center; gap:5px;
+    padding:7px 12px; flex-shrink:0;
+    border:1px solid var(--line); border-radius:6px;
+    background:var(--paper-card); color:var(--ink-soft);
+    font-size:13px; font-family:'Calibri','Carlito',Arial,sans-serif;
+    cursor:pointer; white-space:nowrap;
+    transition:background .12s, border-color .12s, color .12s;
+  }
+  .sort-price-btn:hover{ border-color:var(--copper); color:var(--copper); }
+  .sort-price-btn.active-asc,
+  .sort-price-btn.active-desc{ background:var(--copper); color:#fff; border-color:var(--copper); }
+  .sort-price-btn .sort-icon{ font-size:14px; transition:transform .2s; }
 </style>
 </head>
 <body>
@@ -1258,7 +1260,7 @@
     </div>
     <input type="file" id="fileImport" accept="application/json" style="display:none;">
     <input type="file" id="fileImportXlsx" accept=".xlsx,.xls" style="display:none;">
-    <button class="copper" id="btnAdd">+ Ajouter un produit</button>
+    <button class="copper" id="btnAdd">Ajouter un produit</button>
   </div>
 </header>
 
@@ -1281,6 +1283,10 @@
     <select id="seriesFilter">
       <option value="">Toutes les séries</option>
     </select>
+    <button class="sort-price-btn" id="sortPriceBtn" title="Trier par prix">
+      <i class="ti ti-arrows-sort sort-icon" aria-hidden="true" id="sortPriceIcon"></i>
+      Prix
+    </button>
   </div>
   <div class="search-expand" id="searchExpand">
     <input type="text" id="searchInputMobile" placeholder="Rechercher…">
@@ -1497,10 +1503,7 @@
 
 
 <!-- ═══════════════════════════════════════════
-     MODALE "QUOI DE NEUF" — squelette vide
-     Le contenu est généré automatiquement par JS
-     depuis le tableau WHATS_NEW_VERSIONS ci-dessous.
-     Pour ajouter une nouveauté : éditer WHATS_NEW_VERSIONS dans le JS.
+     MODALE "QUOI DE NEUF" 
 ═══════════════════════════════════════════ -->
 <div id="whatsNewOverlay">
   <div id="whatsNewModal">
@@ -1799,30 +1802,163 @@
     });
   }
 
-  function getFilteredProducts(){
-    var q = searchInputEl.value.trim().toLowerCase();
-    var brand = brandFilterEl.value;
-    var family = familyFilterEl.value;
-    var series = seriesFilterEl.value;
-    return products.filter(function(p){
-      if(brand && p.brand !== brand) return false;
-      if(family && p.family !== family) return false;
-      if(series && p.series !== series) return false;
-      if(!q) return true;
-      var hay = [p.brand, p.ref, p.name, p.desc, p.family, p.series].join(' ').toLowerCase();
-      return hay.indexOf(q) !== -1;
-    });
+  // Normalise une chaîne pour la recherche : minuscules + sans accents
+  function normalizeSearch(s){
+    return (s||'').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9 -]/g, ' ')
+      .trim();
   }
 
-  function groupByField(list, field, fallbackLabel){
+  // Surligne les termes de recherche dans un texte (retourne HTML)
+  function highlight(text, terms){
+    if(!terms || !terms.length || !text) return escapeHtml(text);
+    // Travailler caractère par caractère sur le texte original
+    // pour éviter les décalages d'index entre normalisé et original
+    var norm = normalizeSearch(text);
+    var lower = text.toLowerCase();
+    // Construire un tableau de positions à surligner
+    var marks = new Array(text.length).fill(false);
+    terms.forEach(function(t){
+      if(!t || t.length < 2) return;
+      var start = 0;
+      while(true){
+        var idx = norm.indexOf(t, start);
+        if(idx === -1) break;
+        // Marquer les positions dans le texte original
+        for(var k = idx; k < Math.min(idx + t.length, text.length); k++) marks[k] = true;
+        start = idx + 1;
+      }
+    });
+    // Construire le HTML avec les balises <mark>
+    var result = '';
+    var inMark = false;
+    for(var i = 0; i < text.length; i++){
+      var ch = escapeHtml(text[i]);
+      if(marks[i] && !inMark){ result += '<mark class="hl">'; inMark = true; }
+      if(!marks[i] && inMark){ result += '</mark>'; inMark = false; }
+      result += ch;
+    }
+    if(inMark) result += '</mark>';
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  RECHERCHE PAR PERTINENCE
+  //  Score attribué à chaque produit selon la qualité de correspondance :
+  //    100 — référence exacte (ex: "BMF00JC" → BMF00JC)
+  //     80 — référence commence par le terme
+  //     70 — nom exact complet
+  //     60 — nom commence par le terme
+  //     50 — marque ou famille exacte
+  //     40 — marque ou famille contient le terme
+  //     30 — série contient le terme
+  //     20 — nom contient le terme (milieu de mot)
+  //     10 — description contient le terme
+  //      0 — fournisseur ou tags contiennent le terme
+  //  Si plusieurs mots : score = somme des scores individuels
+  //  Les produits sont triés par score décroissant
+  // ─────────────────────────────────────────────────────────────
+  function scoreProduct(p, terms){
+    var score = 0;
+    var ref    = normalizeSearch(p.ref);
+    var name   = normalizeSearch(p.name);
+    var brand  = normalizeSearch(p.brand);
+    var family = normalizeSearch(p.family);
+    var series = normalizeSearch(p.series);
+    var desc   = normalizeSearch(p.desc);
+    var supp   = normalizeSearch(p.supplier);
+    var tags   = normalizeSearch((p.tags||[]).join(' '));
+
+    terms.forEach(function(t){
+      if(!t) return;
+      // Référence
+      if(ref === t)               score += 100;
+      else if(ref.indexOf(t) === 0) score += 80;
+      else if(ref.indexOf(t) !== -1) score += 50;
+      // Nom
+      if(name === t)              score += 70;
+      else if(name.indexOf(t) === 0) score += 60;
+      else if(name.indexOf(t) !== -1) score += 20;
+      // Marque & famille
+      if(brand === t || family === t)              score += 50;
+      else if(brand.indexOf(t) !== -1 || family.indexOf(t) !== -1) score += 40;
+      // Série
+      if(series === t)                score += 80;  // série exacte = très pertinent
+      else if(series.indexOf(t) === 0) score += 60; // série commence par
+      else if(series.indexOf(t) !== -1) score += 30;
+      // Description
+      if(desc.indexOf(t) !== -1) score += 10;
+      // Fournisseur & tags
+      if(supp.indexOf(t) !== -1 || tags.indexOf(t) !== -1) score += 5;
+    });
+    return score;
+  }
+
+  function getFilteredProducts(){
+    var raw = normalizeSearch(searchInputEl.value);
+    var brand  = brandFilterEl.value;
+    var family = familyFilterEl.value;
+    var series = seriesFilterEl.value;
+
+    // Filtrage par sélecteurs
+    var filtered = products.filter(function(p){
+      if(brand  && p.brand  !== brand)  return false;
+      if(family && p.family !== family) return false;
+      if(series && p.series !== series) return false;
+      return true;
+    });
+
+    if(!raw){
+      if(window._priceSort === 'asc'){
+        filtered.sort(function(a,b){ return (parsePriceNumber(a.price)||0) - (parsePriceNumber(b.price)||0); });
+      } else if(window._priceSort === 'desc'){
+        filtered.sort(function(a,b){ return (parsePriceNumber(b.price)||0) - (parsePriceNumber(a.price)||0); });
+      }
+      return filtered;
+    }
+
+    // Découpe en mots pour recherche multi-termes
+    var terms = raw.split(/\s+/).filter(Boolean);
+
+    // Filtrer : garder seulement les produits qui contiennent TOUS les termes
+    var matched = filtered.filter(function(p){
+      var hay = normalizeSearch([p.ref, p.name, p.brand, p.family, p.series, p.desc, p.supplier, (p.tags||[]).join(' ')].join(' '));
+      return terms.every(function(t){ return hay.indexOf(t) !== -1; });
+    });
+
+    // Calculer et stocker le score sur chaque produit
+    matched.forEach(function(p){ p._score = scoreProduct(p, terms); });
+
+    // Trier par score décroissant
+    matched.sort(function(a, b){ return b._score - a._score; });
+
+    // Appliquer ensuite le tri prix si actif (écrase le tri pertinence)
+    if(window._priceSort === 'asc'){
+      matched.sort(function(a,b){ return (parsePriceNumber(a.price)||0) - (parsePriceNumber(b.price)||0); });
+    } else if(window._priceSort === 'desc'){
+      matched.sort(function(a,b){ return (parsePriceNumber(b.price)||0) - (parsePriceNumber(a.price)||0); });
+    }
+    return matched;
+  }
+
+  function groupByField(list, field, fallbackLabel, hasSearch){
     var groups = {};
     var order = [];
+    var groupScore = {}; // score max par groupe
     list.forEach(function(p){
       var key = p[field] || fallbackLabel;
-      if(!groups[key]){ groups[key] = []; order.push(key); }
+      if(!groups[key]){ groups[key] = []; order.push(key); groupScore[key] = 0; }
       groups[key].push(p);
+      // Garder le score max du groupe (stocké sur le produit via _score)
+      if(p._score !== undefined && p._score > groupScore[key]) groupScore[key] = p._score;
     });
-    order.sort(function(a,b){ return a.localeCompare(b, 'fr'); });
+    if(hasSearch){
+      // Trier les groupes par score max décroissant
+      order.sort(function(a,b){ return groupScore[b] - groupScore[a]; });
+    } else {
+      order.sort(function(a,b){ return a.localeCompare(b, 'fr'); });
+    }
     return {groups:groups, order:order};
   }
 
@@ -1859,12 +1995,11 @@
     seriesListEl.innerHTML = allSeries.map(function(s){ return '<option value="'+escapeHtml(s)+'">'; }).join('');
 
     var filtered = getFilteredProducts();
-
     var hdrChip = document.getElementById('hdrCountChip');
     if(hdrChip) hdrChip.textContent = filtered.length + (filtered.length > 1 ? ' produits' : ' produit');
 
     if(products.length === 0){
-      contentEl.innerHTML = '<div class="empty-state"><strong>Le catalogue est vide</strong>Ajoutez votre premier produit avec le bouton « + Ajouter un produit ».</div>';
+      contentEl.innerHTML = '<div class="empty-state"><strong>Le catalogue est vide</strong>Ajoutez votre premier produit avec le bouton « Ajouter un produit ».</div>';
       return;
     }
     if(filtered.length === 0){
@@ -1872,20 +2007,31 @@
       return;
     }
 
-    var fieldMap = {brand:'brand', family:'family', series:'series'};
-    var fallbackMap = {brand:'(Sans marque)', family:'(Sans famille)', series:'(Sans série)'};
-    var g = groupByField(filtered, fieldMap[groupBy], fallbackMap[groupBy]);
+    var hasSearch = !!normalizeSearch(searchInputEl.value);
     var html = '';
-    g.order.forEach(function(groupName){
-      var items = g.groups[groupName];
+
+    if(hasSearch){
+      // ── Mode recherche : liste plate triée par score, sans groupement ──
+      // Les produits sont déjà triés par pertinence dans getFilteredProducts()
       html += '<div class="brand-group">';
-      html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
+      html += '<div class="brand-heading"><h2>Résultats</h2><span class="tally sans">'+filtered.length+(filtered.length>1?' références':' référence')+'</span></div>';
       html += '<div class="grid">';
-      items.forEach(function(p){
-        html += renderCard(p);
-      });
+      filtered.forEach(function(p){ html += renderCard(p); });
       html += '</div></div>';
-    });
+    } else {
+      // ── Mode normal : groupement par marque/famille/série ──
+      var fieldMap = {brand:'brand', family:'family', series:'series'};
+      var fallbackMap = {brand:'(Sans marque)', family:'(Sans famille)', series:'(Sans série)'};
+      var g = groupByField(filtered, fieldMap[groupBy], fallbackMap[groupBy], false);
+      g.order.forEach(function(groupName){
+        var items = g.groups[groupName];
+        html += '<div class="brand-group">';
+        html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
+        html += '<div class="grid">';
+        items.forEach(function(p){ html += renderCard(p); });
+        html += '</div></div>';
+      });
+    }
     contentEl.innerHTML = html;
 
     // Appliquer la classe de vue sur chaque grille
@@ -2011,7 +2157,7 @@
     // Prix + badge hausse + prix d'origine barré + remise
     var jumpPct = getLastPriceJumpPct(p);
     var badge = jumpPct!==null && jumpPct>=PRICE_ALERT_THRESHOLD
-      ? ' <span class="price-jump-badge">⚠ +'+jumpPct.toFixed(0)+'%</span>' : '';
+      ? ' <span class="price-jump-badge"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>' : '';
     var orig = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
     var discBadgeVm = discPct !== null && discPct < 0
@@ -2134,7 +2280,7 @@
     }
     var jumpPct = getLastPriceJumpPct(p);
     var priceJumpBadge = jumpPct !== null && jumpPct >= PRICE_ALERT_THRESHOLD
-      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix">⚠ +'+jumpPct.toFixed(0)+'%</span>'
+      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>'
       : '';
     var origPrice = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
@@ -2168,7 +2314,7 @@
       '<div class="body">'+
         '<div class="body-top">'+
           '<div class="ref">'+escapeHtml(p.ref||'—')+'</div>'+
-          (displayName ? '<div class="name">'+displayName+'</div>' : '')+
+          (displayName ? '<div class="name">'+escapeHtml(p.name||'')+'</div>' : '')+
           (shortDesc ? '<div class="desc">'+escapeHtml(shortDesc)+'</div>' : '')+
         '</div>'+
         '<div class="body-bottom">'+
@@ -2727,6 +2873,49 @@
   familyFilterEl.addEventListener('change', render);
   seriesFilterEl.addEventListener('change', render);
 
+  // ── Tri par prix ──────────────────────────────────────────────
+  window._priceSort = null; // null | 'asc' | 'desc'
+  var sortPriceBtn  = document.getElementById('sortPriceBtn');
+  var sortPriceIcon = document.getElementById('sortPriceIcon');
+  if(sortPriceBtn){
+    sortPriceBtn.addEventListener('click', function(){
+      if(window._priceSort === null){
+        window._priceSort = 'asc';
+        sortPriceBtn.classList.add('active-asc');
+        sortPriceBtn.classList.remove('active-desc');
+        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-ascending sort-icon';
+      } else if(window._priceSort === 'asc'){
+        window._priceSort = 'desc';
+        sortPriceBtn.classList.remove('active-asc');
+        sortPriceBtn.classList.add('active-desc');
+        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-descending sort-icon';
+      } else {
+        window._priceSort = null;
+        sortPriceBtn.classList.remove('active-asc','active-desc');
+        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-arrows-sort sort-icon';
+      }
+      _lastRenderKey = ''; render();
+    });
+  }
+
+  // Utilitaire debounce pour le filtre prix
+  function debounce(fn, delay){
+    var t;
+    return function(){ clearTimeout(t); t = setTimeout(fn, delay); };
+  }
+
+  // ── Filtre par prix ──────────────────────────────────────────
+  var priceMinInput = document.getElementById('priceMin');
+  var priceMaxInput = document.getElementById('priceMax');
+  var priceResetBtn = document.getElementById('priceFilterReset');
+  if(priceMinInput) priceMinInput.addEventListener('input', debounce(function(){ _lastRenderKey=''; render(); }, 300));
+  if(priceMaxInput) priceMaxInput.addEventListener('input', debounce(function(){ _lastRenderKey=''; render(); }, 300));
+  if(priceResetBtn) priceResetBtn.addEventListener('click', function(){
+    if(priceMinInput) priceMinInput.value = '';
+    if(priceMaxInput) priceMaxInput.value = '';
+    _lastRenderKey = ''; render();
+  });
+
   document.querySelectorAll('.grp-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       groupBy = btn.getAttribute('data-group');
@@ -3164,42 +3353,35 @@
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  MODALE "QUOI DE NEUF"
+  //  MODALE "QUOI DE NEUF" — SYSTÈME AUTOMATIQUE
+  //
+  //  ► POUR AJOUTER DES NOUVEAUTÉS :
+  //    1. Ajoutez un objet dans WHATS_NEW_VERSIONS ci-dessous
+  //    2. Incrémentez "version" (ex: "v3" → "v4")
+  //    3. Sauvegardez — la modale s'affichera à tous les utilisateurs
+  //
+  //  Couleurs : "blue" | "green" | "orange" | "purple"
+  //  Icônes   : ti-layout-grid, ti-device-mobile, ti-file-spreadsheet,
+  //             ti-tag, ti-history, ti-rocket, ti-code, ti-eye, ti-bug,
+  //             ti-refresh, ti-shield, ti-bolt, ti-star, ti-adjustments
   // ═══════════════════════════════════════════════════════════════
 
   var WHATS_NEW_VERSIONS = [
     {
-      version: 'v1.0',
+      version: "v1.2",
       sections: [
         {
-          title: 'Interface',
+          title: "Amélioration",
           items: [
-            { icon: 'ti-layout-grid',   color: 'blue',   name: 'Nouvelle grille de produits',   desc: 'Affichage en grille avec photo carrée, ref, nom, prix et tags.' },
-            { icon: 'ti-device-mobile', color: 'blue',   name: 'Responsive mobile complet',     desc: '3 colonnes sur téléphone, fiche produit en bottom sheet.' },
-            { icon: 'ti-topology-star', color: 'blue',   name: 'Nouveau header variante F',     desc: 'Logo SVG, séparateur, compteur de produits en temps réel.' },
-            { icon: 'ti-menu-2',        color: 'blue',   name: 'Menu ⋮ repensé',                desc: 'Icônes colorées, sous-titres explicatifs, séparateurs.' },
+          { icon: "ti-search", color: "purple", name: "Recherche", desc: "La recherche de produit devient plus précise." },
+          { icon: "ti-apps", color: "purple", name: "Application", desc: "Vous pouvez des sa présent exporter en tant que application" }
           ]
         },
         {
-          title: 'Gestion des prix',
+          title: "Bug Interface",
           items: [
-            { icon: 'ti-file-spreadsheet', color: 'green', name: 'Export / Import Excel',          desc: 'Envoyez un fichier au fabricant, il remplit les prix, vous le réimportez.' },
-            { icon: 'ti-tag',              color: 'green', name: 'Prix catalogue vs prix de vente', desc: 'Deux champs distincts avec historique séparé.' },
-            { icon: 'ti-history',          color: 'green', name: 'Historique des prix amélioré',   desc: "Chaque entrée est labellisée pour mieux suivre l'évolution." },
-          ]
-        },
-        {
-          title: 'Fiche produit',
-          items: [
-            { icon: 'ti-layout-columns', color: 'orange', name: 'Fiche en 2 colonnes',     desc: 'Photo à gauche, informations à droite scrollables.' },
-            { icon: 'ti-eye',            color: 'orange', name: '"Voir plus" sur mobile',  desc: 'Longues descriptions tronquées avec lien cliquable.' },
-          ]
-        },
-        {
-          title: 'Performance & qualité',
-          items: [
-            { icon: 'ti-rocket', color: 'purple', name: 'Optimisations render()',  desc: 'Cache des filtres, garde anti-doublon — plus réactif avec 300+ références.' },
-            { icon: 'ti-code',   color: 'purple', name: 'Code commenté',          desc: 'Fonctions, CSS et HTML documentés pour faciliter les modifications.' },
+          { icon: "ti-device-mobile", color: "blue", name: "Tags", desc: "Correctif des tags pour l'interface mobile." },
+          { icon: "ti-device-desktop", color: "blue", name: "tags", desc: "Correctif des tags pour l'interface desktop." }
           ]
         }
       ]
