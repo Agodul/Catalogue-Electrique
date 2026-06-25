@@ -1510,6 +1510,11 @@
             <input type="text" id="fPhoto" placeholder="https://...">
           </div>
         </div>
+        <!-- Galerie de sélection — visible uniquement si plusieurs photos extraites -->
+        <div class="photo-gallery" id="photoGallery">
+          <div class="photo-gallery-label">Choisir une photo parmi les images trouvées sur la page</div>
+          <div class="photo-gallery-grid" id="photoGalleryGrid"></div>
+        </div>
         <div class="field" style="margin-top:14px;">
           <label for="fName">Nom du produit</label>
           <input type="text" id="fName" placeholder="ex. Sac à dos Voyager 24L">
@@ -2423,6 +2428,36 @@
   var fPrice = document.getElementById('fPrice');
   var fPhoto = document.getElementById('fPhoto');
   var photoPreview = document.getElementById('photoPreview');
+  var photoGallery     = document.getElementById('photoGallery');
+  var photoGalleryGrid = document.getElementById('photoGalleryGrid');
+  // Photos candidates en mémoire — jamais stockées, vidées à la fermeture de la modale
+  var pendingPhotos = [];
+
+  function showPhotoGallery(photos){
+    pendingPhotos = photos || [];
+    photoGalleryGrid.innerHTML = '';
+    if(pendingPhotos.length <= 1){ photoGallery.classList.remove('show'); return; }
+    pendingPhotos.forEach(function(url, idx){
+      var thumb = document.createElement('div');
+      thumb.className = 'photo-gallery-thumb' + (idx === 0 ? ' selected' : '');
+      thumb.innerHTML = '<img src="'+escapeHtml(url)+'" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+                      + '<span class="thumb-check">✓</span>';
+      thumb.addEventListener('click', function(){
+        photoGalleryGrid.querySelectorAll('.photo-gallery-thumb').forEach(function(t){ t.classList.remove('selected'); });
+        thumb.classList.add('selected');
+        fPhoto.value = url;
+        updatePhotoPreview();
+      });
+      photoGalleryGrid.appendChild(thumb);
+    });
+    photoGallery.classList.add('show');
+  }
+
+  function clearPhotoGallery(){
+    pendingPhotos = [];
+    photoGalleryGrid.innerHTML = '';
+    photoGallery.classList.remove('show');
+  }
   var extractStatus = document.getElementById('extractStatus');
   var modalLeftFoot = document.getElementById('modalLeftFoot');
 
@@ -2538,6 +2573,7 @@
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
+    clearPhotoGallery();
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
     priceHistoryBlockEl.innerHTML = '';
     refCheckMsgEl.className = 'ref-check-msg'; refCheckMsgEl.textContent = '';
@@ -2720,6 +2756,7 @@
       photoPreview.innerHTML = '<img src="'+escapeHtml(fPhoto.value.trim())+'" onerror="this.parentElement.innerHTML=\'<span class=&quot;hint sans&quot; style=&quot;padding:6px;text-align:center;&quot;>image introuvable</span>\'">';
     }else{
       photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
+    clearPhotoGallery();
     }
   }
 
@@ -2747,7 +2784,7 @@
   }
 
   function extractFromHtml(htmlStr, pageUrl){
-    var result = {photo:null, name:null, desc:null, price:null, brand:null, ref:null, supplier:null};
+    var result = {photo:null, photos:[], name:null, desc:null, price:null, brand:null, ref:null, supplier:null};
     var doc;
     try{
       var parser = new DOMParser();
@@ -2978,6 +3015,62 @@
       try{ result.photo = new URL(result.photo, pageUrl).href; }catch(e){}
     }
 
+    // ── Collecte de toutes les images de la page ──────────────────────
+    var seenUrls = {};
+    function addPhoto(url){
+      if(!url) return;
+      try{
+        var abs = pageUrl ? new URL(url, pageUrl).href : url;
+        // Exclure icônes, pixels tracking, SVG inline, data URI trop courts
+        if(abs.startsWith('data:') && abs.length < 500) return;
+        if(seenUrls[abs]) return;
+        // Filtrer les URLs qui ressemblent à des icônes/logos de nav
+        var lower = abs.toLowerCase();
+        if(/\/(icon|logo|favicon|sprite|pixel|tracking|banner|badge|flag|avatar|placeholder)/.test(lower)) return;
+        if(/\.(svg)(\?|$)/.test(lower)) return;
+        seenUrls[abs] = true;
+        result.photos.push(abs);
+      }catch(e){}
+    }
+
+    // Photo principale en premier
+    if(result.photo) addPhoto(result.photo);
+
+    // Toutes les images JSON-LD déjà parsées
+    var ldNodes2 = doc.querySelectorAll('script[type="application/ld+json"]');
+    for(var li=0; li<ldNodes2.length; li++){
+      try{
+        var ld2 = JSON.parse(ldNodes2[li].textContent);
+        var cands2 = Array.isArray(ld2) ? ld2 : [ld2];
+        if(ld2['@graph']) cands2 = cands2.concat(ld2['@graph']);
+        cands2.forEach(function(n){
+          if(!n) return;
+          var imgs = n.image;
+          if(!imgs) return;
+          if(!Array.isArray(imgs)) imgs = [imgs];
+          imgs.forEach(function(im){
+            if(typeof im === 'object') im = im.url;
+            addPhoto(im);
+          });
+        });
+      }catch(e){}
+    }
+
+    // Toutes les balises <img> avec src
+    var imgEls = doc.querySelectorAll('img[src]');
+    for(var ii=0; ii<imgEls.length; ii++){
+      var src = imgEls[ii].getAttribute('src');
+      var dataSrc = imgEls[ii].getAttribute('data-src') || imgEls[ii].getAttribute('data-lazy-src') || imgEls[ii].getAttribute('data-original');
+      addPhoto(dataSrc || src);
+      // Srcset
+      var srcset = imgEls[ii].getAttribute('srcset');
+      if(srcset){
+        srcset.split(',').forEach(function(s){
+          addPhoto(s.trim().split(' ')[0]);
+        });
+      }
+    }
+
     // ── Nettoyage final ────────────────────────────────────────────────
     if(result.name)  result.name  = stripHtml(result.name).replace(/\s+/g,' ').trim();
     if(result.desc)  result.desc  = stripHtml(result.desc).replace(/\s+/g,' ').trim();
@@ -2999,6 +3092,9 @@
     if(data.desc)     { fDesc.value     = stripHtml(data.desc);   found.push('description'); }
     if(data.price)    { fPrice.value    = data.price;             found.push('prix'); }
     if(data.photo)    { fPhoto.value    = data.photo; updatePhotoPreview(); found.push('photo'); }
+    // Afficher la galerie si plusieurs photos trouvées
+    if(data.photos && data.photos.length > 1){ showPhotoGallery(data.photos); }
+    else { clearPhotoGallery(); }
     if(data.brand)    { fBrand.value    = data.brand;             found.push('marque'); }
     if(data.ref)      { fRef.value      = data.ref;               found.push('référence'); }
     if(data.supplier) { fSupplier.value = data.supplier;          found.push('fournisseur'); }
