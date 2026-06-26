@@ -170,6 +170,10 @@
     background:var(--paper-card);
     color:var(--ink);
     display:none;
+    width:180px;
+    min-width:180px;
+    max-width:180px;
+    box-sizing:border-box;
   }
   select#brandFilter, select#seriesFilter{ display:block; }
   .filters-visible select#brandFilter,
@@ -951,9 +955,9 @@
     .search-field{ display:none; }
     .search-toggle-btn{ display:flex; }
     .search-expand.open{ display:flex; }
-    select#brandFilter{ flex:1 1 100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
+    select#brandFilter{ flex:1 1 100%; width:100%; max-width:100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
     select#familyFilter, select#seriesFilter{
-      flex:1 1 calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
+      flex:1 1 calc(50% - 3px); width:calc(50% - 3px); max-width:calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
     }
     .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
     select#brandFilter, select#seriesFilter{ display:flex; }
@@ -1951,6 +1955,9 @@
     <select id="seriesFilter">
       <option value="">Toutes les séries</option>
     </select>
+    <button id="btnResetFilters" title="Réinitialiser les filtres" style="display:flex;align-items:center;justify-content:center;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink-soft);cursor:pointer;font-size:15px;transition:border-color .12s,color .12s;flex-shrink:0;" onmouseover="this.style.borderColor='var(--copper)';this.style.color='var(--copper)';" onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--ink-soft)';">
+      <i class="ti ti-filter-off"></i>
+    </button>
     <button class="sort-price-btn" id="sortPriceBtn" title="Trier par prix">
       <i class="ti ti-arrows-sort sort-icon" aria-hidden="true" id="sortPriceIcon"></i>
       Prix
@@ -2700,19 +2707,31 @@
     brandFilterEl.value = brandsForFilter.indexOf(currentBrandFilter) !== -1 ? currentBrandFilter : '';
 
     var currentFamilyFilter = familyFilterEl.value;
-    familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + allFamilies.map(function(f){
+    // Filtrer les familles selon la marque active
+    var activeBrandForFamily = brandFilterEl.value;
+    var familiesForFilter = allFamilies;
+    if(activeBrandForFamily){
+      var familiesInScope = {};
+      products.forEach(function(p){
+        if((p.brand||'') === activeBrandForFamily && p.family) familiesInScope[p.family] = true;
+      });
+      familiesForFilter = allFamilies.filter(function(f){ return familiesInScope[f]; });
+    }
+    familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + familiesForFilter.map(function(f){
       return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
     }).join('');
-    familyFilterEl.value = allFamilies.indexOf(currentFamilyFilter) !== -1 ? currentFamilyFilter : '';
+    familyFilterEl.value = familiesForFilter.indexOf(currentFamilyFilter) !== -1 ? currentFamilyFilter : '';
 
     var currentSeriesFilter = seriesFilterEl.value;
+    // Lire la marque APRÈS rebuild du select (peut avoir changé)
+    var activeBrandFilter = brandFilterEl.value;
     // Ne proposer que les séries présentes dans le contexte famille/marque actif
     var seriesForFilter = allSeries;
-    if(activeFamilyFilter || currentBrandFilter){
+    if(activeFamilyFilter || activeBrandFilter){
       var seriesInScope = {};
       products.forEach(function(p){
         var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
-        var matchBrand  = !currentBrandFilter  || (p.brand||'')  === currentBrandFilter;
+        var matchBrand  = !activeBrandFilter  || (p.brand||'')  === activeBrandFilter;
         if(matchFamily && matchBrand && p.series) seriesInScope[p.series] = true;
       });
       seriesForFilter = allSeries.filter(function(s){ return seriesInScope[s]; });
@@ -4451,6 +4470,18 @@
     compareResult.style.display = 'none';
   });
   compareClose.addEventListener('click', function(){ compareOverlay.classList.remove('show'); });
+
+  document.getElementById('btnResetFilters').addEventListener('click', function(){
+    brandFilterEl.value  = '';
+    familyFilterEl.value = '';
+    seriesFilterEl.value = '';
+    // Réinitialiser aussi le tri prix
+    window._priceSort = null;
+    if(sortPriceBtn) sortPriceBtn.classList.remove('active-asc','active-desc');
+    if(sortPriceIcon) sortPriceIcon.className = 'ti ti-arrows-sort sort-icon';
+    _lastRenderKey = '';
+    render();
+  });
 
   loadServerConfig();
 
