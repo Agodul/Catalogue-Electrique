@@ -3395,10 +3395,10 @@
               fPrice.value.trim() || fPhoto.value.trim());
   }
   function requestCloseModal(){
-    if(hasUnsavedInput() && !confirm('Fermer sans enregistrer ? Les informations saisies seront perdues.')){
-      return;
-    }
-    closeModal();
+      if(hasUnsavedInput() && !confirm('Fermer sans enregistrer ? Les informations saisies seront perdues.')){
+        return;
+      }
+      closeModal();
   }
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });
