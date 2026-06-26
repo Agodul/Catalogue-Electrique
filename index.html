@@ -3328,6 +3328,29 @@
   }
   fRef.addEventListener('input', checkDuplicateRef);
   fBrand.addEventListener('input', checkDuplicateRef);
+  fBrand.addEventListener('input', function(){
+    var brand = fBrand.value.trim();
+    if(!brand){
+      // Aucune marque saisie → toutes les séries
+      var allSer = (_filterCache && _filterCache.series) ? _filterCache.series : [];
+      seriesListEl.innerHTML = allSer.map(function(s){
+        return '<option value="'+escapeHtml(s)+'">';
+      }).join('');
+      return;
+    }
+    // Filtrer les séries appartenant à cette marque
+    var seriesForBrand = {};
+    products.forEach(function(p){
+      if((p.brand||'').toLowerCase() === brand.toLowerCase() && p.series){
+        seriesForBrand[p.series] = true;
+      }
+    });
+    var filtered = Object.keys(seriesForBrand).sort();
+    var fallback = (_filterCache && _filterCache.series) ? _filterCache.series : [];
+    seriesListEl.innerHTML = (filtered.length ? filtered : fallback).map(function(s){
+      return '<option value="'+escapeHtml(s)+'">';
+    }).join('');
+  });
   // Tap sur l'icône → toggle du bandeau mobile
   refDupIconEl.addEventListener('click', function(e){
     e.stopPropagation();
