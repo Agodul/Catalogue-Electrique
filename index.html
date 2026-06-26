@@ -3395,10 +3395,41 @@
               fPrice.value.trim() || fPhoto.value.trim());
   }
   function requestCloseModal(){
-      if(hasUnsavedInput() && !confirm('Fermer sans enregistrer ? Les informations saisies seront perdues.')){
-        return;
-      }
+    if(!hasUnsavedInput()){
+     closeModal();
+    return;
+    }
+
+    var popup = document.createElement('div');
+    popup.style.cssText =
+      'position:fixed;inset:0;background:rgba(28,26,23,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
+
+    popup.innerHTML =
+     '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
+
+        '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">Annuler la saisie</div>' +
+
+        '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Les informations saisies seront perdues.</div>' +
+
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+
+         '<button id="_keepEditing" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#1e293b;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Continuer la saisie</strong> — revenir au formulaire</button>' +
+
+          '<button id="_discardChanges" style="padding:10px 14px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Annuler la saisie</strong> — fermer sans enregistrer</button>' +
+
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(popup);
+
+    popup.querySelector('#_keepEditing').addEventListener('click', function(){
+      document.body.removeChild(popup);
+    });
+
+    popup.querySelector('#_discardChanges').addEventListener('click', function(){
+      document.body.removeChild(popup);
       closeModal();
+    });
   }
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });
