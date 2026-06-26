@@ -601,6 +601,19 @@
     pointer-events:none;
     box-shadow:0 4px 12px rgba(0,0,0,.25);
   }
+  /* ── Fix iOS zoom sur focus input ── */
+  @media screen and (-webkit-min-device-pixel-ratio:0) and (max-width:768px){
+    input[type="text"],
+    input[type="search"],
+    input[type="email"],
+    input[type="url"],
+    input[type="number"],
+    textarea,
+    select{
+      font-size:16px !important;
+    }
+  }
+
   @media(max-width:600px){
     /* Sur mobile : masquer le tooltip flottant, afficher le bandeau inline */
     .ref-dup-icon .ref-dup-tooltip{ display:none !important; }
@@ -3458,7 +3471,7 @@
       sellingPriceZoneEl.style.display = 'block';
     }
     overlay.classList.add('open');
-    fBrand.focus();
+    // fBrand.focus() désactivé — évite l'ouverture du clavier sur mobile
   }
   function hasUnsavedInput(){
     return !!(fBrand.value.trim() || fRef.value.trim() || fFamily.value.trim() || fSeries.value.trim() ||
