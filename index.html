@@ -1471,32 +1471,6 @@
     .home-family-name{ font-size:11px; }
   }
 
-  /* ── Suggestions custom (remplace datalist sur iOS) ── */
-  .autocomplete-wrap{ position:relative; }
-  .autocomplete-suggestions{
-    display:none;
-    position:absolute;
-    top:100%; left:0; right:0;
-    background:var(--paper-card);
-    border:1px solid var(--line);
-    border-radius:0 0 8px 8px;
-    box-shadow:0 8px 20px rgba(0,0,0,.12);
-    z-index:500;
-    max-height:180px;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-  }
-  .autocomplete-suggestions.show{ display:block; }
-  .autocomplete-item{
-    padding:10px 14px;
-    font-size:14px;
-    color:var(--ink);
-    cursor:pointer;
-    border-bottom:1px solid var(--line);
-  }
-  .autocomplete-item:last-child{ border-bottom:none; }
-  .autocomplete-item:hover, .autocomplete-item:active{ background:var(--paper); }
-
   /* ── Picker icône famille ── */
   .family-icon-row{
     display:none; align-items:center; gap:8px;
@@ -2080,8 +2054,8 @@
       <div class="field-row">
         <div class="field">
           <label for="fBrand">Marque</label>
-          <div class="autocomplete-wrap"><input type="text" id="fBrand" placeholder="ex. Acme Studio" autocomplete="off">
-          <div class="autocomplete-suggestions" id="brandSuggestions"></div></div>
+          <input type="text" id="fBrand" placeholder="ex. Acme Studio" list="brandList">
+          <datalist id="brandList"></datalist>
         </div>
         <div class="field">
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
@@ -2097,8 +2071,8 @@
       <div class="field-row">
         <div class="field">
           <label for="fFamily">Famille de produit</label>
-          <div class="autocomplete-wrap"><input type="text" id="fFamily" placeholder="ex. Sacs &amp; bagagerie" autocomplete="off">
-          <div class="autocomplete-suggestions" id="familySuggestions"></div></div>
+          <input type="text" id="fFamily" placeholder="ex. Sacs &amp; bagagerie" list="familyList">
+          <datalist id="familyList"></datalist>
           <div class="family-icon-row" id="familyIconRow">
             <div class="family-icon-label">Icône de la famille</div>
             <div class="family-icon-preview" id="familyIconPreview"><i class="ti ti-package" id="familyIconPreviewI"></i></div>
@@ -2109,15 +2083,15 @@
         </div>
         <div class="field">
           <label for="fSeries">Série</label>
-          <div class="autocomplete-wrap"><input type="text" id="fSeries" placeholder="ex. Voyager" autocomplete="off">
-          <div class="autocomplete-suggestions" id="seriesSuggestions"></div></div>
+          <input type="text" id="fSeries" placeholder="ex. Voyager" list="seriesList">
+          <datalist id="seriesList"></datalist>
         </div>
       </div>
 
       <div class="field">
         <label for="fSupplier">Fournisseur</label>
-        <div class="autocomplete-wrap"><input type="text" id="fSupplier" placeholder="ex. Dupont Distribution" autocomplete="off">
-        <div class="autocomplete-suggestions" id="supplierSuggestions"></div></div>
+        <input type="text" id="fSupplier" placeholder="ex. Dupont Distribution" list="supplierList">
+        <datalist id="supplierList"></datalist>
       </div>
       <div class="field field-checkbox">
         <div class="checkbox-row">
@@ -2539,8 +2513,8 @@
   var familyFilterEl = document.getElementById('familyFilter');
   var seriesFilterEl = document.getElementById('seriesFilter');
   var searchInputEl = document.getElementById('searchInput');
-  var brandListEl    = null; // remplacé par autocomplete custom
-  var supplierListEl = null; // remplacé par autocomplete custom
+  var brandListEl    = document.getElementById('brandList');
+  var supplierListEl = document.getElementById('supplierList');
 
   // Cache des listes de filtres — recalculé seulement quand products change
   var _filterCache = { brands:[], families:[], series:[], suppliers:[], version:-1 };
@@ -2767,11 +2741,11 @@
     }).join('');
     seriesFilterEl.value = seriesForFilter.indexOf(currentSeriesFilter) !== -1 ? currentSeriesFilter : '';
 
-    // brandListEl remplacé par autocomplete custom
+    brandListEl.innerHTML = allBrands.map(function(b){ return '<option value="'+escapeHtml(b)+'">'; }).join('');
     // Datalist fournisseurs
-    // supplierListEl remplacé par autocomplete custom
-    // familyListEl remplacé par autocomplete custom
-    // seriesListEl remplacé par autocomplete custom
+    if(supplierListEl) supplierListEl.innerHTML = _filterCache.suppliers.map(function(s){ return '<option value="'+escapeHtml(s)+'">'; }).join('');
+    familyListEl.innerHTML = allFamilies.map(function(f){ return '<option value="'+escapeHtml(f)+'">'; }).join('');
+    seriesListEl.innerHTML = allSeries.map(function(s){ return '<option value="'+escapeHtml(s)+'">'; }).join('');
 
     var filtered = getFilteredProducts();
     var hdrChip = document.getElementById('hdrCountChip');
@@ -3353,58 +3327,15 @@
     }
   }
   fRef.addEventListener('input', checkDuplicateRef);
-  // ── Autocomplete custom (remplace datalist pour iOS) ─────────────
-  function makeAutocomplete(inputEl, suggestionsEl, getItems){
-    function show(items){
-      var val = inputEl.value.trim().toLowerCase();
-      var filtered = items.filter(function(i){
-        return i.toLowerCase().startsWith(val) && i.toLowerCase() !== val;
-      });
-      if(!filtered.length || !val){ suggestionsEl.classList.remove('show'); return; }
-      suggestionsEl.innerHTML = filtered.slice(0,8).map(function(i){
-        return '<div class="autocomplete-item">'+escapeHtml(i)+'</div>';
-      }).join('');
-      suggestionsEl.classList.add('show');
-      suggestionsEl.querySelectorAll('.autocomplete-item').forEach(function(el){
-        el.addEventListener('mousedown', function(e){
-          e.preventDefault();
-          inputEl.value = el.textContent;
-          inputEl.dispatchEvent(new Event('input', {bubbles:true}));
-          suggestionsEl.classList.remove('show');
-        });
-      });
-    }
-    inputEl.addEventListener('input', function(){ show(getItems()); });
-    inputEl.addEventListener('focus', function(){ show(getItems()); });
-    inputEl.addEventListener('blur',  function(){ setTimeout(function(){ suggestionsEl.classList.remove('show'); }, 150); });
-  }
-
-  makeAutocomplete(fBrand, document.getElementById('brandSuggestions'), function(){
-    return (_filterCache && _filterCache.brands) ? _filterCache.brands : [];
-  });
-  makeAutocomplete(fFamily, document.getElementById('familySuggestions'), function(){
-    return (_filterCache && _filterCache.families) ? _filterCache.families : [];
-  });
-  makeAutocomplete(fSeries, document.getElementById('seriesSuggestions'), function(){
-    var brand = fBrand.value.trim();
-    if(!brand) return (_filterCache && _filterCache.series) ? _filterCache.series : [];
-    var s = {};
-    products.forEach(function(p){
-      if((p.brand||'').toLowerCase()===brand.toLowerCase() && p.series) s[p.series]=true;
-    });
-    var filtered = Object.keys(s).sort();
-    return filtered.length ? filtered : ((_filterCache && _filterCache.series) ? _filterCache.series : []);
-  });
-  makeAutocomplete(fSupplier, document.getElementById('supplierSuggestions'), function(){
-    return (_filterCache && _filterCache.suppliers) ? _filterCache.suppliers : [];
-  });
-
   fBrand.addEventListener('input', checkDuplicateRef);
   fBrand.addEventListener('input', function(){
     var brand = fBrand.value.trim();
     if(!brand){
       // Aucune marque saisie → toutes les séries
-      // seriesListEl remplacé par autocomplete custom
+      var allSer = (_filterCache && _filterCache.series) ? _filterCache.series : [];
+      seriesListEl.innerHTML = allSer.map(function(s){
+        return '<option value="'+escapeHtml(s)+'">';
+      }).join('');
       return;
     }
     // Filtrer les séries appartenant à cette marque
@@ -3415,7 +3346,10 @@
       }
     });
     var filtered = Object.keys(seriesForBrand).sort();
-    // seriesListEl remplacé par autocomplete custom
+    var fallback = (_filterCache && _filterCache.series) ? _filterCache.series : [];
+    seriesListEl.innerHTML = (filtered.length ? filtered : fallback).map(function(s){
+      return '<option value="'+escapeHtml(s)+'">';
+    }).join('');
   });
   // Tap sur l'icône → toggle du bandeau mobile
   refDupIconEl.addEventListener('click', function(e){
