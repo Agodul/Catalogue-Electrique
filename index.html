@@ -602,6 +602,11 @@
     box-shadow:0 4px 12px rgba(0,0,0,.25);
   }
   /* ── Fix iOS zoom sur focus input ── */
+  /* Force 16px sur TOUS les inputs de la modale pour éviter le zoom iOS */
+  .modal input, .modal textarea, .modal select{
+    font-size:16px !important;
+    -webkit-text-size-adjust:100%;
+  }
   @media screen and (-webkit-min-device-pixel-ratio:0) and (max-width:768px){
     input[type="text"],
     input[type="search"],
@@ -3393,12 +3398,18 @@
           inputEl.dispatchEvent(new Event('input', {bubbles:true}));
           suggestionsEl.classList.remove('show');
         });
-        el.addEventListener('touchend', function(e){
-          e.preventDefault();
-          inputEl.value = el.textContent;
-          inputEl.dispatchEvent(new Event('input', {bubbles:true}));
-          suggestionsEl.classList.remove('show');
-        });
+        (function(el){
+          var touchStartY = 0;
+          el.addEventListener('touchstart', function(e){ touchStartY = e.touches[0].clientY; }, {passive:true});
+          el.addEventListener('touchend', function(e){
+            var dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+            if(dy > 8) return; // scroll détecté → ignorer
+            e.preventDefault();
+            inputEl.value = el.textContent;
+            inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+            suggestionsEl.classList.remove('show');
+          });
+        })(el);
       });
     }
     inputEl.addEventListener('input', show);
@@ -3471,7 +3482,12 @@
       sellingPriceZoneEl.style.display = 'block';
     }
     overlay.classList.add('open');
-    // fBrand.focus() désactivé — évite l'ouverture du clavier sur mobile
+    // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
+    var inputs = overlay.querySelectorAll('input, textarea, select');
+    inputs.forEach(function(el){ el.setAttribute('readonly', 'readonly'); });
+    setTimeout(function(){
+      inputs.forEach(function(el){ el.removeAttribute('readonly'); });
+    }, 300);
   }
   function hasUnsavedInput(){
     return !!(fBrand.value.trim() || fRef.value.trim() || fFamily.value.trim() || fSeries.value.trim() ||
