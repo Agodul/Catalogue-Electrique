@@ -3487,9 +3487,16 @@
     }else{
       modalTitle.textContent = 'Ajouter un produit';
       modalLeftFoot.textContent = '';
-      // Affiche la zone prix de vente uniquement en mode création
-      sellingPriceZoneEl.style.display = 'block';
+
+      if(window.innerWidth <= 768){
+        switchTab('manual');
+      }else{
+        switchTab('auto');
     }
+
+  // Affiche la zone prix de vente uniquement en mode création
+  sellingPriceZoneEl.style.display = 'block';
+}
     overlay.classList.add('open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
     var inputs = overlay.querySelectorAll('input, textarea, select');
@@ -5514,6 +5521,7 @@
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
   // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
 
+  
 })();
 </script>
 
