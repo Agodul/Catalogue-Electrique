@@ -3061,18 +3061,35 @@
 
     // ── Collecte de toutes les images de la page ──────────────────────
     var seenUrls = {};
+
+    // Normalise une URL pour le dédoublonnage :
+    // supprime les paramètres de taille courants (w=, h=, width=, size=, format=, quality=...)
+    function normalizeForDedup(url){
+      try{
+        var u = new URL(url);
+        var remove = ['w','h','width','height','size','format','quality','dpr','fit','auto','crop','scale','resize','tr','imwidth','imheight','wid','hei'];
+        remove.forEach(function(k){ u.searchParams.delete(k); });
+        // Aussi ignorer les suffixes de taille dans le path ex: image_300x300.jpg → image.jpg
+        var path = u.pathname.replace(/_\d+x\d+(\.\w+)$/, '$1').replace(/-\d+x\d+(\.\w+)$/, '$1');
+        return u.origin + path + u.search;
+      }catch(e){ return url; }
+    }
+
     function addPhoto(url){
       if(!url) return;
       try{
         var abs = pageUrl ? new URL(url, pageUrl).href : url;
-        // Exclure icônes, pixels tracking, SVG inline, data URI trop courts
+        // Exclure data URI trop courts (pixels tracking, placeholders base64)
         if(abs.startsWith('data:') && abs.length < 500) return;
-        if(seenUrls[abs]) return;
         // Filtrer les URLs qui ressemblent à des icônes/logos de nav
         var lower = abs.toLowerCase();
-        if(/\/(icon|logo|favicon|sprite|pixel|tracking|banner|badge|flag|avatar|placeholder)/.test(lower)) return;
+        if(/(\/(icon|logo|favicon|sprite|pixel|tracking|banner|badge|flag|avatar|placeholder)|picto)/.test(lower)) return;
         if(/\.(svg)(\?|$)/.test(lower)) return;
-        seenUrls[abs] = true;
+        // Dédoublonner sur l'URL normalisée (sans params de taille)
+        var key = normalizeForDedup(abs);
+        if(seenUrls[key]) return;
+        seenUrls[key] = true;
+        // Stocker la plus grande version disponible : préférer l'URL originale sans resize
         result.photos.push(abs);
       }catch(e){}
     }
@@ -3101,17 +3118,25 @@
     }
 
     // Toutes les balises <img> avec src
-    var imgEls = doc.querySelectorAll('img[src]');
+    // On priorise data-src (lazy load = grande image) sur src (peut être placeholder)
+    var imgEls = doc.querySelectorAll('img[src], img[data-src]');
     for(var ii=0; ii<imgEls.length; ii++){
-      var src = imgEls[ii].getAttribute('src');
-      var dataSrc = imgEls[ii].getAttribute('data-src') || imgEls[ii].getAttribute('data-lazy-src') || imgEls[ii].getAttribute('data-original');
+      var el = imgEls[ii];
+      var dataSrc = el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
+      var src = el.getAttribute('src');
+      // Ne prendre qu'une seule URL par <img> (la meilleure qualité)
       addPhoto(dataSrc || src);
-      // Srcset
-      var srcset = imgEls[ii].getAttribute('srcset');
+      // Srcset : prendre uniquement la plus grande résolution (dernier élément)
+      var srcset = el.getAttribute('srcset') || el.getAttribute('data-srcset');
       if(srcset){
-        srcset.split(',').forEach(function(s){
-          addPhoto(s.trim().split(' ')[0]);
+        var parts = srcset.split(',').map(function(s){ return s.trim().split(/\s+/); });
+        // Trier par largeur déclarée (ex: "600w") et prendre la plus grande
+        parts.sort(function(a,b){
+          var wa = parseInt(a[1]) || 0;
+          var wb = parseInt(b[1]) || 0;
+          return wb - wa;
         });
+        if(parts[0] && parts[0][0]) addPhoto(parts[0][0]);
       }
     }
 
@@ -3142,6 +3167,8 @@
     if(data.brand)    { fBrand.value    = data.brand;             found.push('marque'); }
     if(data.ref)      { fRef.value      = data.ref;               found.push('référence'); }
     if(data.supplier) { fSupplier.value = data.supplier;          found.push('fournisseur'); }
+    // Déclencher le contrôle doublon dès que ref/brand sont remplis (même via extension)
+    checkDuplicateRef();
 
     if(found.length){
       extractStatus.className = 'extract-status ok show';
