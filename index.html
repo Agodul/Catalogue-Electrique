@@ -561,13 +561,60 @@
     border-color:var(--moss); outline:2px solid var(--moss); outline-offset:2px;
   }
 
-  .ref-check-msg{
-    margin-top:5px; padding:6px 9px; border-radius:3px;
+  /* ── Icône doublon référence ── */
+  .ref-dup-icon{
     display:none;
+    margin-left:6px;
+    color:#EF4444;
+    font-size:14px;
+    cursor:default;
+    vertical-align:middle;
+    position:relative;
   }
-  .ref-check-msg.show{ display:block; }
-  .ref-check-msg.warn{ background:#FEE2E2; color:var(--warn); border:1px solid #FECACA; }
-  .ref-check-msg.ok{ background:#EEF4E8; color:var(--moss); border:1px solid #C0D9A8; }
+  .ref-dup-icon.show{ display:inline-flex; align-items:center; }
+  .ref-dup-icon .ref-dup-tooltip{
+    display:none;
+    position:absolute;
+    left:50%; transform:translateX(-50%);
+    top:calc(100% + 7px);
+    background:#1e293b;
+    color:#fff;
+    font-size:12px;
+    line-height:1.45;
+    padding:7px 10px;
+    border-radius:6px;
+    white-space:normal;
+    width:240px;
+    z-index:9999;
+    pointer-events:none;
+    box-shadow:0 4px 12px rgba(0,0,0,.25);
+  }
+  @media(max-width:600px){
+    /* Sur mobile : masquer le tooltip flottant, afficher le bandeau inline */
+    .ref-dup-icon .ref-dup-tooltip{ display:none !important; }
+  }
+  .ref-dup-banner{
+    display:none;
+    margin-top:6px;
+    padding:6px 9px;
+    background:#1e293b;
+    color:#fff;
+    font-size:12px;
+    line-height:1.45;
+    border-radius:6px;
+  }
+  .ref-dup-banner.open{ display:block; }
+  @media(min-width:601px){ .ref-dup-banner{ display:none !important; } }
+  .ref-dup-icon .ref-dup-tooltip::after{
+    content:'';
+    position:absolute;
+    bottom:100%; left:50%; transform:translateX(-50%);
+    border:5px solid transparent;
+    border-bottom-color:#1e293b;
+  }
+  .ref-dup-icon:hover .ref-dup-tooltip{ display:block; }
+  /* Ancien bloc conservé masqué (rétrocompat) */
+  .ref-check-msg{ display:none !important; }
 
   .price-history{ margin-top:12px; }
   .price-history table{
@@ -1492,9 +1539,13 @@
           <datalist id="brandList"></datalist>
         </div>
         <div class="field">
-          <label for="fRef">Référence</label>
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+            <label for="fRef" style="margin:0;">Référence</label>
+            <span class="ref-dup-icon" id="refDupIcon"><i class="ti ti-info-circle-filled"></i><span class="ref-dup-tooltip" id="refDupTooltip"></span></span>
+          </div>
           <input type="text" id="fRef" placeholder="ex. AS-2291-BLK">
           <div id="refCheckMsg" class="ref-check-msg"></div>
+          <div id="refDupBanner" class="ref-dup-banner"></div>
         </div>
       </div>
 
@@ -2621,6 +2672,10 @@
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
     priceHistoryBlockEl.innerHTML = '';
     refCheckMsgEl.className = 'ref-check-msg'; refCheckMsgEl.textContent = '';
+    refDupIconEl.classList.remove('show'); refDupTooltipEl.textContent = '';
+    refDupBannerEl.textContent = ''; refDupBannerEl.classList.remove('open');
+    var btnSaveReset = document.getElementById('btnSave');
+    btnSaveReset.disabled = false; btnSaveReset.style.opacity = ''; btnSaveReset.style.cursor = '';
     // Reset zone prix de vente
     sellingPriceZoneEl.style.display = 'none';
     fSellingPrice.value = '';
@@ -2633,7 +2688,10 @@
   }
 
   // ---------- Vérification de référence en doublon ----------
-  var refCheckMsgEl = document.getElementById('refCheckMsg');
+  var refCheckMsgEl  = document.getElementById('refCheckMsg');
+  var refDupIconEl    = document.getElementById('refDupIcon');
+  var refDupTooltipEl = document.getElementById('refDupTooltip');
+  var refDupBannerEl  = document.getElementById('refDupBanner');
   function normalizeRef(s){ return (s||'').trim().toLowerCase(); }
 
   function checkDuplicateRef(){
@@ -2641,6 +2699,10 @@
     var ref = fRef.value.trim();
     if(!ref){
       refCheckMsgEl.className = 'ref-check-msg'; refCheckMsgEl.textContent = '';
+    refDupIconEl.classList.remove('show'); refDupTooltipEl.textContent = '';
+    refDupBannerEl.textContent = ''; refDupBannerEl.classList.remove('open');
+    var btnSaveReset = document.getElementById('btnSave');
+    btnSaveReset.disabled = false; btnSaveReset.style.opacity = ''; btnSaveReset.style.cursor = '';
       return;
     }
     var match = products.find(function(p){
@@ -2649,17 +2711,42 @@
       var sameBrand = brand ? normalizeRef(p.brand) === normalizeRef(brand) : true;
       return sameRef && sameBrand;
     });
+    var btnSave = document.getElementById('btnSave');
     if(match){
       refCheckMsgEl.className = 'ref-check-msg warn show';
-      refCheckMsgEl.textContent = '⚠ Cette référence existe déjà pour ' + (match.brand || 'cette marque') +
-        (match.name ? ' (« ' + match.name + ' »)' : '') + '. Enregistrer modifiera un doublon plutôt qu\'un nouveau produit.';
+      refCheckMsgEl.textContent = '';
+      refDupIconEl.classList.add('show');
+      var dupMsg = 'Référence déjà présente pour ' + (match.brand || 'cette marque')
+        + (match.name ? ' — « ' + match.name + ' »' : '') + '.';
+      refDupTooltipEl.textContent = dupMsg;
+      refDupBannerEl.textContent  = dupMsg;
+      // Le bandeau s'affiche uniquement au tap sur l'icône (mobile)
+      btnSave.disabled = true;
+      btnSave.style.opacity = '0.4';
+      btnSave.style.cursor  = 'not-allowed';
     }else{
       refCheckMsgEl.className = 'ref-check-msg';
       refCheckMsgEl.textContent = '';
+      refDupIconEl.classList.remove('show');
+      refDupTooltipEl.textContent = '';
+      refDupBannerEl.textContent  = '';
+      refDupBannerEl.classList.remove('open');
+      btnSave.disabled = false;
+      btnSave.style.opacity = '';
+      btnSave.style.cursor  = '';
     }
   }
   fRef.addEventListener('input', checkDuplicateRef);
   fBrand.addEventListener('input', checkDuplicateRef);
+  // Tap sur l'icône → toggle du bandeau mobile
+  refDupIconEl.addEventListener('click', function(e){
+    e.stopPropagation();
+    refDupBannerEl.classList.toggle('open');
+  });
+  // Tap ailleurs → ferme le bandeau
+  document.addEventListener('click', function(){
+    refDupBannerEl.classList.remove('open');
+  });
 
   function openModal(id){
     editingId = id || null;
@@ -3118,26 +3205,44 @@
     }
 
     // Toutes les balises <img> avec src
-    // On priorise data-src (lazy load = grande image) sur src (peut être placeholder)
+    // Filtres : exclure images trop petites (icônes) et éléments hors zone produit
     var imgEls = doc.querySelectorAll('img[src], img[data-src]');
     for(var ii=0; ii<imgEls.length; ii++){
       var el = imgEls[ii];
+
+      // Exclure si dimensions déclarées trop petites (icônes, pictos)
+      var w = parseInt(el.getAttribute('width')  || el.getAttribute('data-width')  || 0);
+      var h = parseInt(el.getAttribute('height') || el.getAttribute('data-height') || 0);
+      if((w > 0 && w < 80) || (h > 0 && h < 80)) continue;
+
+      // Exclure si l'image est dans un élément de navigation/footer/header
+      var parent = el.parentElement;
+      var inNav = false;
+      while(parent && parent !== doc.body){
+        var tag = parent.tagName ? parent.tagName.toLowerCase() : '';
+        var cls = (parent.className || '').toLowerCase();
+        var pid = (parent.id || '').toLowerCase();
+        if(tag === 'nav' || tag === 'header' || tag === 'footer'
+          || /nav|header|footer|menu|breadcrumb|sidebar|aside|widget|social|share|cookie|banner|overlay/.test(cls)
+          || /nav|header|footer|menu|sidebar/.test(pid)){
+          inNav = true; break;
+        }
+        parent = parent.parentElement;
+      }
+      if(inNav) continue;
+
       var dataSrc = el.getAttribute('data-src') || el.getAttribute('data-lazy-src') || el.getAttribute('data-original');
       var src = el.getAttribute('src');
-      // Ne prendre qu'une seule URL par <img> (la meilleure qualité)
-      addPhoto(dataSrc || src);
-      // Srcset : prendre uniquement la plus grande résolution (dernier élément)
+
+      // Srcset : prendre la plus grande résolution
       var srcset = el.getAttribute('srcset') || el.getAttribute('data-srcset');
       if(srcset){
         var parts = srcset.split(',').map(function(s){ return s.trim().split(/\s+/); });
-        // Trier par largeur déclarée (ex: "600w") et prendre la plus grande
-        parts.sort(function(a,b){
-          var wa = parseInt(a[1]) || 0;
-          var wb = parseInt(b[1]) || 0;
-          return wb - wa;
-        });
-        if(parts[0] && parts[0][0]) addPhoto(parts[0][0]);
+        parts.sort(function(a,b){ return (parseInt(b[1])||0) - (parseInt(a[1])||0); });
+        if(parts[0] && parts[0][0]){ addPhoto(parts[0][0]); continue; }
       }
+
+      addPhoto(dataSrc || src);
     }
 
     // ── Nettoyage final ────────────────────────────────────────────────
