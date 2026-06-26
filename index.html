@@ -169,9 +169,17 @@
     border-radius:6px;
     background:var(--paper-card);
     color:var(--ink);
+    display:none;
   }
+  select#brandFilter, select#seriesFilter{ display:block; }
+  .filters-visible select#brandFilter,
+  .filters-visible select#familyFilter,
+  .filters-visible select#seriesFilter{
+    display:block;
+  }
+  .filters-visible .group-toggle{ display:flex; }
   .group-toggle{
-    display:flex; align-items:center; gap:8px;
+    display:none; align-items:center; gap:8px;
     font-size:14px; color:var(--ink-soft);
     margin-bottom:20px;
   }
@@ -943,11 +951,13 @@
     .search-field{ display:none; }
     .search-toggle-btn{ display:flex; }
     .search-expand.open{ display:flex; }
-    select#brandFilter{ flex:1 1 100%; font-size:13px; padding:8px 10px; }
+    select#brandFilter{ flex:1 1 100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
     select#familyFilter, select#seriesFilter{
-      flex:1 1 calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px;
+      flex:1 1 calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
     }
-    .sort-price-btn{ font-size:11px; padding:5px 8px; }
+    .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
+    select#brandFilter, select#seriesFilter{ display:flex; }
+    .filters-visible select#familyFilter{ display:flex; }
 
     /* ── Groupement ── */
     .group-toggle{
@@ -1350,13 +1360,121 @@
   }
 
 
+  /* ── Page d'accueil familles ── */
+  #homePage{
+    padding:24px 20px 40px;
+    max-width:900px;
+    margin:0 auto;
+  }
+  #homePage.hidden{ display:none; }
+  .home-stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:28px;
+  }
+  .home-stat{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 16px;
+    text-align:center;
+  }
+  .home-stat-val{
+    font-size:26px; font-weight:700;
+    color:var(--copper);
+    line-height:1.1;
+  }
+  .home-stat-lbl{
+    font-size:11px; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.06em;
+    margin-top:4px;
+  }
+  .home-section-title{
+    font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.08em;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  .home-families{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:24px;
+  }
+  .home-family-card{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:18px 14px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, transform .15s, box-shadow .15s;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .home-family-card:hover{
+    border-color:var(--copper);
+    transform:translateY(-2px);
+    box-shadow:0 6px 20px rgba(25,64,147,.10);
+  }
+  .home-family-icon{
+    width:48px; height:48px;
+    background:#EEF4FF;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px; color:var(--copper);
+  }
+  .home-family-name{
+    font-size:13px; font-weight:700;
+    color:var(--ink); line-height:1.2;
+  }
+  .home-family-count{
+    font-size:11px; color:var(--ink-soft);
+  }
+  .home-all-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    padding:12px;
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    cursor:pointer;
+    font-size:14px; font-weight:700;
+    color:var(--copper);
+    font-family:'Calibri','Carlito',Arial,sans-serif;
+    transition:border-color .15s, background .15s;
+  }
+  .home-all-btn:hover{
+    border-color:var(--copper);
+    background:#EEF4FF;
+  }
+  @media(max-width:640px){
+    .home-families{ grid-template-columns:repeat(3,1fr); gap:7px; }
+    .home-stats{ grid-template-columns:repeat(3,1fr); gap:7px; }
+    .home-stat-val{ font-size:20px; }
+    .home-family-card{ padding:12px 8px 10px; }
+    .home-family-icon{ width:40px; height:40px; font-size:20px; border-radius:10px; }
+    .home-family-name{ font-size:12px; }
+    .home-family-count{ font-size:10px; }
+    #homePage{ padding:16px 12px 32px; }
+  }
+  @media(max-width:380px){
+    .home-families{ grid-template-columns:repeat(3,1fr); gap:5px; }
+    .home-stats{ gap:5px; }
+    .home-stat{ padding:10px 6px; }
+    .home-stat-val{ font-size:17px; }
+    .home-family-card{ padding:10px 6px 8px; }
+    .home-family-icon{ width:34px; height:34px; font-size:17px; }
+    .home-family-name{ font-size:11px; }
+  }
+
   /* ── Tri par prix ── */
   .sort-price-btn{
     display:flex; align-items:center; gap:5px;
-    padding:7px 12px; flex-shrink:0;
+    padding:10px 12px; flex-shrink:0;
     border:1px solid var(--line); border-radius:6px;
     background:var(--paper-card); color:var(--ink-soft);
-    font-size:13px; font-family:'Calibri','Carlito',Arial,sans-serif;
+    font-size:15px; font-family:'Calibri','Carlito',Arial,sans-serif;
     cursor:pointer; white-space:nowrap;
     transition:background .12s, border-color .12s, color .12s;
   }
@@ -1369,7 +1487,7 @@
 <body>
 
 <header>
-  <div class="brandmark">
+  <div class="brandmark" id="brandmarkLogo" style="cursor:pointer;" title="Retour à l'accueil">
     <svg class="logo-mark" viewBox="0 0 2169.43 1024" xmlns="http://www.w3.org/2000/svg" aria-label="SPI Engineering" role="img">
       <path fill="#194093" d="M676.11,488.58c.58,11.58-3.89,22.13-11.4,29.63l-64.71,64.03-220.18,217.9c-24.17-11.81-46.6-26.59-66.78-43.86-14.83-12.68-28.45-26.71-40.66-41.89-42.77-53.15-68.32-120.42-68.32-193.57,0-172.03,141.29-311.49,315.57-311.49,27.82,0,54.8,3.55,80.49,10.23l-268.51,265.72-.02.02c-1.84,1.68-3.62,3.43-5.32,5.26-14.95,16.04-24.1,37.58-24.1,61.25,0,13.15,2.83,25.65,7.91,36.91,8.87,19.67,24.61,35.58,44.17,44.65,11.49,5.33,24.29,8.31,37.79,8.31,23.09,0,44.14-8.71,60.06-23.01,2.16-1.95,4.22-3.99,6.19-6.13l87.09-86.18,63.91-63.25.83-.81c7.33-7,17.38-11.17,28.4-10.77,20.1.72,36.59,16.96,37.59,37.05Z"/>
       <path fill="#194093" d="M835.21,520.82c0,172.03-141.29,311.49-315.58,311.49-27.39,0-53.96-3.45-79.3-9.92l253.52-250.89,16.39-16.22c6.24-6.17,11.49-13.29,15.32-21.18,6.28-12.93,9.79-27.44,9.79-42.78,0-12.79-2.44-25-6.89-36.2-9.99-25.19-30.1-45.26-55.3-55.2h0c-11.15-4.4-23.3-6.81-36-6.81-19.45,0-37.57,5.65-52.82,15.4-5.69,3.64-10.91,7.97-15.71,12.73l-4.74,4.69-89.88,88.95-59.79,59.16-2.18,2.16c-5.49,4.93-12.69,7.91-20.57,7.91-17.19,0-31.13-14.21-31.13-31.74,0-8.49,3.28-16.19,8.6-21.89l.04-.04,1.56-1.55s.04-.04.06-.06l59.22-58.59,230.64-228.25c19.45,9.58,37.75,21.09,54.66,34.28,15.41,12.01,29.65,25.42,42.55,40.02,18.82,21.32,34.74,45.19,47.17,71.02,8.35,17.33,15.12,35.54,20.13,54.46,6.69,25.24,10.25,51.74,10.25,79.05Z"/>
@@ -1385,7 +1503,7 @@
   </div>
   <div class="hdr-spacer"></div>
   <div class="header-actions">
-    <span class="hdr-count-chip" id="hdrCountChip">0 produit</span>
+    <span class="hdr-count-chip" id="hdrCountChip" style="display:none;">0 produit</span>
     <span class="filebar-tooltip-wrap" id="filebarTooltipWrap" style="display:none;">
       <span class="filebar-tooltip-icon">i</span>
       <span class="filebar-tooltip-box" id="filebarTooltipBox"></span>
@@ -1423,7 +1541,17 @@
   </div>
 </header>
 
-<div class="wrap">
+<div id="homePage">
+  <div class="home-stats" id="homeStats"></div>
+  <button class="home-all-btn" id="homeAllBtn" style="margin-top:10px; margin-bottom:20px;">
+    <i class="ti ti-layout-grid" aria-hidden="true"></i>
+    Voir tout le catalogue
+  </button>
+  <div class="home-section-title">Familles de produits</div>
+  <div class="home-families" id="homeFamilies"></div>
+</div>
+
+<div class="wrap" id="catalogueWrap">
 
   <div class="toolbar">
     <div class="search-field">
@@ -1446,6 +1574,7 @@
       <i class="ti ti-arrows-sort sort-icon" aria-hidden="true" id="sortPriceIcon"></i>
       Prix
     </button>
+
   </div>
   <div class="search-expand" id="searchExpand">
     <input type="text" id="searchInputMobile" placeholder="Rechercher…">
@@ -1460,6 +1589,8 @@
   </div>
 
   <div id="content"></div>
+
+</div>
 
 </div>
 
@@ -2136,10 +2267,23 @@
     var allFamilies = _filterCache.families;
     var allSeries   = _filterCache.series;
     var currentBrandFilter = brandFilterEl.value;
-    brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + allBrands.map(function(b){
+    // Si un filtre famille/série est actif, ne proposer que les marques présentes dans ces produits
+    var activeFamilyFilter = familyFilterEl.value;
+    var activeSeriesFilter = seriesFilterEl.value;
+    var brandsForFilter = allBrands;
+    if(activeFamilyFilter || activeSeriesFilter){
+      var brandsInScope = {};
+      products.forEach(function(p){
+        var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
+        var matchSeries = !activeSeriesFilter || (p.series||'') === activeSeriesFilter;
+        if(matchFamily && matchSeries && p.brand) brandsInScope[p.brand] = true;
+      });
+      brandsForFilter = allBrands.filter(function(b){ return brandsInScope[b]; });
+    }
+    brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + brandsForFilter.map(function(b){
       return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
     }).join('');
-    brandFilterEl.value = allBrands.indexOf(currentBrandFilter) !== -1 ? currentBrandFilter : '';
+    brandFilterEl.value = brandsForFilter.indexOf(currentBrandFilter) !== -1 ? currentBrandFilter : '';
 
     var currentFamilyFilter = familyFilterEl.value;
     familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + allFamilies.map(function(f){
@@ -2148,10 +2292,21 @@
     familyFilterEl.value = allFamilies.indexOf(currentFamilyFilter) !== -1 ? currentFamilyFilter : '';
 
     var currentSeriesFilter = seriesFilterEl.value;
-    seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + allSeries.map(function(s){
+    // Ne proposer que les séries présentes dans le contexte famille/marque actif
+    var seriesForFilter = allSeries;
+    if(activeFamilyFilter || currentBrandFilter){
+      var seriesInScope = {};
+      products.forEach(function(p){
+        var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
+        var matchBrand  = !currentBrandFilter  || (p.brand||'')  === currentBrandFilter;
+        if(matchFamily && matchBrand && p.series) seriesInScope[p.series] = true;
+      });
+      seriesForFilter = allSeries.filter(function(s){ return seriesInScope[s]; });
+    }
+    seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + seriesForFilter.map(function(s){
       return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>';
     }).join('');
-    seriesFilterEl.value = allSeries.indexOf(currentSeriesFilter) !== -1 ? currentSeriesFilter : '';
+    seriesFilterEl.value = seriesForFilter.indexOf(currentSeriesFilter) !== -1 ? currentSeriesFilter : '';
 
     brandListEl.innerHTML = allBrands.map(function(b){ return '<option value="'+escapeHtml(b)+'">'; }).join('');
     // Datalist fournisseurs
@@ -3984,10 +4139,141 @@
     window.scrollTo({top:0, behavior:'smooth'});
   });
 
+  // ---------- Page d'accueil ----------
+  var homePage       = document.getElementById('homePage');
+  var catalogueWrap  = document.getElementById('catalogueWrap');
+  var homeStats      = document.getElementById('homeStats');
+  var homeFamilies   = document.getElementById('homeFamilies');
+  var homeAllBtn     = document.getElementById('homeAllBtn');
+
+  // Icônes par famille (mots-clés → icône Tabler)
+  var familyIconMap = [
+    { keys:['câble','cable','cordon','liaison'],         icon:'ti-plug-connected' },
+    { keys:['capteur','sensor','detect','proxim'],       icon:'ti-antenna' },
+    { keys:['module','master','bus','réseau','network'], icon:'ti-circuit-switchclosed' },
+    { keys:['aliment','power','psu','transfo'],          icon:'ti-bolt' },
+    { keys:['actionn','valve','moteur','drive'],         icon:'ti-settings-2' },
+    { keys:['connect','bornier','terminal','borne'],     icon:'ti-plug' },
+    { keys:['commut','switch','bouton','button'],        icon:'ti-toggle-right' },
+    { keys:['relay','relai','relais','contacteur'],      icon:'ti-circuit-resistor' },
+    { keys:['affich','display','hmi','écran'],           icon:'ti-device-desktop' },
+    { keys:['automate','plc','controleur'],              icon:'ti-cpu' },
+  ];
+
+  function getFamilyIcon(name){
+    var lower = name.toLowerCase();
+    for(var i=0;i<familyIconMap.length;i++){
+      for(var j=0;j<familyIconMap[i].keys.length;j++){
+        if(lower.indexOf(familyIconMap[i].keys[j]) !== -1) return familyIconMap[i].icon;
+      }
+    }
+    return 'ti-package';
+  }
+
+  function showHome(){
+    homePage.classList.remove('hidden');
+    catalogueWrap.style.display = 'none';
+    document.getElementById('hdrCountChip').style.display = 'none';
+    renderHome();
+  }
+
+  function showCatalogue(brandFilter, familyFilter){
+    homePage.classList.add('hidden');
+    catalogueWrap.style.display = '';
+    document.getElementById('hdrCountChip').style.display = '';
+    if(familyFilter){
+      familyFilterEl.value = familyFilter;
+    }
+    if(brandFilter){
+      brandFilterEl.value = brandFilter;
+    }
+    render();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function showCatalogueAll(){
+    document.querySelector('.toolbar').classList.add('filters-visible');
+    showCatalogue('','');
+  }
+
+  function renderHome(){
+    refreshFilterCache();
+    var total  = products.length;
+    var brands = _filterCache.brands.length;
+
+    // Stats
+    var avgDiscount = 0;
+    var countWithDiscount = 0;
+    products.forEach(function(p){
+      // Prix catalogue = premier élément de priceHistory
+      var origRaw = (Array.isArray(p.priceHistory) && p.priceHistory.length > 0)
+        ? p.priceHistory[0].price : '';
+      var orig = parseFloat((origRaw||'').toString().replace(/[^0-9.,]/g,'').replace(',','.'));
+      var disc = parseFloat((p.price||'').toString().replace(/[^0-9.,]/g,'').replace(',','.'));
+      if(orig > 0 && disc > 0 && orig > disc){
+        avgDiscount += (1 - disc/orig)*100;
+        countWithDiscount++;
+      }
+    });
+    var avgDisp = countWithDiscount > 0 ? '-'+Math.round(avgDiscount/countWithDiscount)+'%' : '--';
+
+    homeStats.innerHTML =
+      '<div class="home-stat"><div class="home-stat-val">'+total+'</div><div class="home-stat-lbl">Produits</div></div>' +
+      '<div class="home-stat"><div class="home-stat-val">'+brands+'</div><div class="home-stat-lbl">Marques</div></div>' +
+      '<div class="home-stat"><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
+
+    // Familles avec compteur
+    var familyCounts = {};
+    products.forEach(function(p){
+      var f = (p.family||'').trim();
+      if(!f) return;
+      familyCounts[f] = (familyCounts[f]||0) + 1;
+    });
+    var families = Object.keys(familyCounts).sort(function(a,b){
+      return familyCounts[b] - familyCounts[a];
+    });
+
+    if(families.length === 0){
+      homeFamilies.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:20px 0;">Aucune famille définie — ajoutez des familles à vos produits pour les voir ici.</div>';
+    } else {
+      homeFamilies.innerHTML = families.map(function(f){
+        var icon = getFamilyIcon(f);
+        var count = familyCounts[f];
+        return '<div class="home-family-card" data-family="'+escapeHtml(f)+'">'
+          + '<div class="home-family-icon"><i class="ti '+icon+'" aria-hidden="true"></i></div>'
+          + '<div class="home-family-name">'+escapeHtml(f)+'</div>'
+          + '<div class="home-family-count">'+count+(count>1?' références':' référence')+'</div>'
+          + '</div>';
+      }).join('');
+
+      homeFamilies.querySelectorAll('.home-family-card').forEach(function(card){
+        card.addEventListener('click', function(){
+          showCatalogue('', card.getAttribute('data-family'));
+        });
+      });
+    }
+  }
+
+  document.getElementById('brandmarkLogo').addEventListener('click', function(){
+    familyFilterEl.value = '';
+    brandFilterEl.value  = '';
+    seriesFilterEl.value = '';
+    document.querySelector('.toolbar').classList.remove('filters-visible');
+    showHome();
+  });
+
+  homeAllBtn.addEventListener('click', function(){
+    showCatalogueAll();
+  });
+
   // ---------- Init ----------
   load();
   render();
   tryReconnectOnLoad();
+  // Démarrer sur la page d'accueil si des produits existent
+  if(products.length > 0){
+    showHome();
+  }
 
   // ═══════════════════════════════════════════════════════════════
   //  EXTENSION CHROME — Injection via localStorage
