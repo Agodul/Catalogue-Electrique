@@ -5468,6 +5468,32 @@
   load();
   render();
   tryReconnectOnLoad();
+
+  // ── Share Target iOS/Android (PWA) ───────────────────────────────
+  (function handleShareTarget(){
+    var params     = new URLSearchParams(window.location.search);
+    var shareUrl   = params.get('share_url');
+    var shareTitle = params.get('share_title');
+    if(!shareUrl) return;
+
+    // Nettoyer l'URL du navigateur
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    setTimeout(function(){
+      // Basculer vers le catalogue si on est sur l'accueil
+      if(homePage && !homePage.classList.contains('hidden')){
+        showCatalogueAll();
+      }
+      // Ouvrir la modale d'ajout
+      openModal(null);
+      setTimeout(function(){
+        if(fUrl)  fUrl.value  = shareUrl;
+        if(shareTitle && fName) fName.value = shareTitle;
+        switchTab('auto');
+        showToast('URL partagée prête — collez le code source pour extraire les infos', 'ok', 5000);
+      }, 350);
+    }, 600);
+  })();
   // Démarrer sur la page d'accueil si des produits existent
   if(products.length > 0){
     showHome();
