@@ -1489,6 +1489,23 @@
     .home-family-name{ font-size:11px; }
   }
 
+  /* ── Modale aperçu image ── */
+  #imgPreviewOverlay{
+    position:fixed; inset:0; z-index:10000;
+    background:rgba(0,0,0,.85);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; cursor:zoom-out;
+  }
+  #imgPreviewOverlay.show{ display:flex; }
+  #imgPreviewOverlay img{
+    max-width:100%; max-height:90vh;
+    border-radius:8px;
+    object-fit:contain;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .photo-preview{ cursor:zoom-in; }
+  .photo-preview img{ cursor:zoom-in; }
+
   /* ── Autocomplete custom (iOS fix) ── */
   .autocomplete-wrap{ position:relative; }
   .autocomplete-suggestions{
@@ -2283,6 +2300,10 @@
       <button class="copper" id="btnWhatsNewClose">C'est parti !</button>
     </div>
   </div>
+</div>
+
+<div id="imgPreviewOverlay">
+  <img id="imgPreviewImg" src="" alt="Aperçu">
 </div>
 
 <input type="file" id="fileImport" accept="application/json" style="display:none;">
@@ -3164,7 +3185,24 @@
   var fDesc = document.getElementById('fDesc');
   var fPrice = document.getElementById('fPrice');
   var fPhoto = document.getElementById('fPhoto');
-  var photoPreview = document.getElementById('photoPreview');
+  var photoPreview     = document.getElementById('photoPreview');
+  var imgPreviewOverlay = document.getElementById('imgPreviewOverlay');
+  var imgPreviewImg     = document.getElementById('imgPreviewImg');
+
+  photoPreview.addEventListener('click', function(){
+    var img = photoPreview.querySelector('img');
+    if(!img) return;
+    imgPreviewImg.src = img.src;
+    imgPreviewOverlay.classList.add('show');
+  });
+  imgPreviewOverlay.addEventListener('click', function(){
+    imgPreviewOverlay.classList.remove('show');
+    imgPreviewImg.src = '';
+  });
+  // Fermer avec Escape
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') imgPreviewOverlay.classList.remove('show');
+  });
   var photoGallery     = document.getElementById('photoGallery');
   var photoGalleryGrid = document.getElementById('photoGalleryGrid');
   // Photos candidates en mémoire — jamais stockées, vidées à la fermeture de la modale
