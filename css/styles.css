@@ -954,9 +954,9 @@
     /* ── Toolbar ── */
     .toolbar{ gap:6px; flex-wrap:wrap; margin-bottom:8px; }
     .search-field{ display:none; }
-    .search-toggle-btn{ display:flex; }
-    .search-expand.open{ display:flex; }
-    select#brandFilter{ flex:1 1 100%; width:100%; max-width:100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
+    .search-toggle-btn{ display:flex; flex-shrink:0; width:38px; height:38px; }
+    .search-expand.open{ display:flex; width:100%; }
+    select#brandFilter{ flex:1 1 0; min-width:0; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
     select#familyFilter, select#seriesFilter{
       flex:1 1 calc(50% - 3px); width:calc(50% - 3px); max-width:calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
     }
@@ -1805,8 +1805,9 @@
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
-    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:92dvh; }
-    .settings-box{ max-height:80dvh; }
+    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    .settings-box{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    #overlay .modal{ max-height:92dvh; }
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
