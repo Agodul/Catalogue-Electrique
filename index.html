@@ -1494,14 +1494,18 @@
     position:fixed; inset:0; z-index:10000;
     background:rgba(0,0,0,.85);
     display:none; align-items:center; justify-content:center;
-    padding:20px; cursor:zoom-out;
+    padding:16px; cursor:zoom-out;
   }
   #imgPreviewOverlay.show{ display:flex; }
   #imgPreviewOverlay img{
-    max-width:100%; max-height:90vh;
+    width:320px; height:320px;
     border-radius:8px;
     object-fit:contain;
+    background:#111;
     box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  @media(max-width:400px){
+    #imgPreviewOverlay img{ width:280px; height:280px; }
   }
   .photo-preview{ cursor:zoom-in; }
   .photo-preview img{ cursor:zoom-in; }
