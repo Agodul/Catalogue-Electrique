@@ -3877,6 +3877,50 @@
       if(!result.ref)   result.ref   = txt(['.keyAttribute','[class*="stock-no"]','[class*="part-number"]']);
       if(!result.supplier && !result.brand) result.supplier = 'RS Components';
     }
+    if(hostname.includes('sonepar')){
+      // Référence fournisseur
+      if(!result.ref){
+        // Chercher "Réf. Fournisseur" puis valeur suivante
+        var refLabel = doc.querySelector('[class*="supplier-ref"],[class*="product-ref"],[data-ref]');
+        if(refLabel) result.ref = refLabel.textContent.trim();
+        // Fallback : meta-keywords contient la ref (ex: "GV2L14,SCH,SCHGV2L14")
+        if(!result.ref){
+          var kw = doc.querySelector('meta[name="meta-keywords"]') || doc.querySelector('meta[name="keywords"]');
+          if(kw){
+            var kwVal = kw.getAttribute('content') || '';
+            // Prendre le premier token qui ressemble à une ref produit
+            var kwParts = kwVal.split(',');
+            for(var ki=0; ki<kwParts.length; ki++){
+              var kp = kwParts[ki].trim();
+              if(kp.length >= 4 && kp.length <= 20 && /[A-Z][A-Z0-9]/.test(kp) && !/^\d+$/.test(kp)){
+                result.ref = kp; break;
+              }
+            }
+          }
+        }
+      }
+      // Nom : meta-title est plus propre que og:title sur Sonepar
+      if(!result.name){
+        var mt = doc.querySelector('meta[name="meta-title"]');
+        if(mt) result.name = mt.getAttribute('content') || '';
+      }
+      // Description : meta-description est remplie sur Sonepar
+      if(!result.desc){
+        var md = doc.querySelector('meta[name="meta-description"]');
+        if(md){
+          var mdVal = (md.getAttribute('content') || '').replace(/<[^>]*>/g,'').replace(/&lt;[^&]*&gt;/g,'').trim();
+          if(mdVal.length > 10) result.desc = mdVal;
+        }
+      }
+      // Marque
+      if(!result.brand) result.brand = 'Schneider Electric'; // défaut Sonepar FR majoritairement SE
+      // Photo : prendre la première image cloudinary PRODUCT/IMAGE
+      if(!result.photo){
+        var imgs = doc.querySelectorAll('img[src*="PRODUCT/IMAGE"]');
+        if(imgs.length > 0) result.photo = imgs[0].getAttribute('src') || '';
+      }
+      if(!result.supplier) result.supplier = 'Sonepar';
+    }
 
     // ── Nettoyage de la référence ──────────────────────────────────────
     if(result.ref){
@@ -4059,10 +4103,16 @@
           try{ var json=JSON.parse(text); if(json.contents) html=json.contents; }catch(e){}
           if(!html || html.length < 100) throw new Error('Contenu vide');
           // Décoder les entités HTML si le proxy les a encodées
-          if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
+          if(html.indexOf('&lt;') !== -1){
+            // Double décodage si nécessaire
             var ta = document.createElement('textarea');
             ta.innerHTML = html;
             html = ta.value;
+            // Si encore encodé
+            if(html.indexOf('&lt;') !== -1){
+              ta.innerHTML = html;
+              html = ta.value;
+            }
           }
           fHtml.value = html;
           document.getElementById('btnExtract').click();
