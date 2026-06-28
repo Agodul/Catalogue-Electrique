@@ -1,4 +1,4 @@
-  :root{
+:root{
     --ink:#111827;
     --ink-soft:#6B7280;
     --paper:#F9F9F9;
@@ -954,13 +954,16 @@
     /* ── Toolbar ── */
     .toolbar{ gap:6px; flex-wrap:wrap; margin-bottom:8px; }
     .search-field{ display:none; }
-    .search-toggle-btn{ display:flex; }
-    .search-expand.open{ display:flex; }
-    select#brandFilter{ flex:1 1 100%; width:100%; max-width:100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
-    select#familyFilter, select#seriesFilter{
-      flex:1 1 calc(50% - 3px); width:calc(50% - 3px); max-width:calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
+    .search-toggle-btn{ display:flex; order:3; flex-shrink:0; width:38px; height:38px; }
+    .search-expand.open{ display:flex; order:10; width:100%; }
+    select#brandFilter{ order:1; flex:1 1 100%; width:100%; max-width:100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
+    select#familyFilter{
+      order:4; flex:1 1 0; min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
     }
-    .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
+    select#seriesFilter{
+      order:2; flex:1 1 100%; width:100%; max-width:100%; min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
+    }
+    .sort-price-btn{ order:5; font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
     select#brandFilter, select#seriesFilter{ display:flex; }
     .filters-visible select#familyFilter{ display:flex; }
 
@@ -1095,9 +1098,12 @@
     /* Contenu */
     .wrap{ padding:8px 8px 90px; }
 
-    /* Filtres pleine largeur */
-    select#brandFilter, select#familyFilter, select#seriesFilter{
+    /* Filtres pleine largeur (sauf familyFilter qui reste à côté de la loupe) */
+    select#brandFilter, select#seriesFilter{
       flex:1 1 100%; font-size:12px; padding:7px 8px;
+    }
+    select#familyFilter{
+      flex:1 1 0; font-size:12px; padding:7px 8px;
     }
 
     /* Grille : 2 colonnes sur très petit écran */
