@@ -4839,9 +4839,11 @@
   var btnOpenWhatsNew = document.getElementById('btnOpenWhatsNew');
   if(btnOpenWhatsNew){
     btnOpenWhatsNew.addEventListener('click', function(){
-      // Fermer les paramètres, ouvrir le quoi de neuf
       settingsOverlay.classList.remove('show');
-      if(whatsNewOverlay){ whatsNewOverlay.classList.add('open'); }
+      if(whatsNewOverlay){
+        buildWhatsNewContent();
+        whatsNewOverlay.classList.add('open');
+      }
     });
     btnOpenWhatsNew.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
     btnOpenWhatsNew.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
