@@ -1510,6 +1510,14 @@
   .photo-preview{ cursor:zoom-in; }
   .photo-preview img{ cursor:zoom-in; }
 
+  /* ── Champ URL adaptatif mobile ── */
+  .url-field-desktop{ display:flex; }
+  .url-field-mobile{ display:none; }
+  @media(max-width:768px){
+    .url-field-desktop{ display:none; }
+    .url-field-mobile{ display:block; }
+  }
+
   /* ── Autocomplete custom (iOS fix) ── */
   .autocomplete-wrap{ position:relative; }
   .autocomplete-suggestions{
@@ -2182,10 +2190,18 @@
       <div class="tab-pane active" id="tab-auto">
         <div class="field">
           <label for="fUrl">URL de la fiche produit</label>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="flex:1;">
-            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;flex-shrink:0;padding:9px 12px;font-size:13px;">
-              ↓ Extraire
+          <!-- Champ URL unique (utilisé par desktop ET mobile) -->
+          <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="width:100%;">
+          <!-- Desktop : bouton extraire inline -->
+          <div class="url-field-desktop" style="gap:8px;align-items:center;margin-top:6px;">
+            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;padding:9px 12px;font-size:13px;">
+              ↓ Extraire depuis l'URL
+            </button>
+          </div>
+          <!-- Mobile : bouton Coller & Extraire -->
+          <div class="url-field-mobile" style="margin-top:6px;">
+            <button type="button" id="btnPasteExtract" class="secondary" style="width:100%;padding:11px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
+              📋 Coller le lien et extraire
             </button>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
@@ -4129,6 +4145,29 @@
   }
 
   // ── Extraire depuis URL via proxy (iOS / mobile) ─────────────────
+  // ── Bouton mobile : Coller & Extraire ───────────────────────────
+  var btnPasteExtract = document.getElementById('btnPasteExtract');
+  if(btnPasteExtract){
+    btnPasteExtract.addEventListener('click', function(){
+      navigator.clipboard.readText().then(function(text){
+        text = text.trim();
+        if(!text || !text.startsWith('http')){
+          showToast('Aucun lien dans le presse-papier', 'warn', 2500);
+          return;
+        }
+        fUrl.value = text;
+        document.getElementById('btnExtractFromUrl').click();
+      }).catch(function(){
+        // Fallback si clipboard non autorisé : demander via prompt
+        var url = prompt('Collez le lien ici :');
+        if(url && url.trim().startsWith('http')){
+          fUrl.value = url.trim();
+          document.getElementById('btnExtractFromUrl').click();
+        }
+      });
+    });
+  }
+
   document.getElementById('btnExtractFromUrl').addEventListener('click', function(){
     var url = fUrl.value.trim();
     var hintEl = document.getElementById('extractUrlHint');
