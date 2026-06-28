@@ -4179,11 +4179,21 @@
               html = ta.value;
             }
           }
+          // Debug visible sur mobile
+          var tmpDoc = new DOMParser().parseFromString(html, 'text/html');
+          var descMeta = tmpDoc.querySelector('meta[name="meta-description"]')
+                      || tmpDoc.querySelector('meta[name="description"]')
+                      || tmpDoc.querySelector('meta[property="og:description"]');
+          var descVal = descMeta ? descMeta.getAttribute('content') : 'NON TROUVÉ';
+          var hasHead = html.indexOf('<head') !== -1;
+          hintEl.innerHTML = '🔍 HTML: '+html.length+' cars | head: '+hasHead+'<br>desc: '+(descVal ? descVal.slice(0,80) : 'NON TROUVÉ');
+          hintEl.style.color = '#64748b';
+          hintEl.style.display = 'block';
+
           fHtml.value = html;
           document.getElementById('btnExtract').click();
           hintEl.style.color  = '#059669';
-          hintEl.textContent  = '✓ Extraction réussie !';
-          setTimeout(function(){ hintEl.style.display = 'none'; }, 3000);
+          setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
         })
         .catch(function(err){
           clearTimeout(timer);
