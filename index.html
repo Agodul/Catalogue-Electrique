@@ -3904,19 +3904,32 @@
         var mt = doc.querySelector('meta[name="meta-title"]');
         if(mt) result.name = mt.getAttribute('content') || '';
       }
-      // Description : meta-description est remplie sur Sonepar
+      // Description Sonepar — chercher dans les metas ET via regex sur HTML brut
       if(!result.desc){
+        // 1. Via DOMParser (fonctionne si le <head> est présent)
         var md = doc.querySelector('meta[name="meta-description"]')
                || doc.querySelector('meta[name="description"]');
         if(md){
           var mdVal = md.getAttribute('content') || '';
-          // Nettoyer les balises HTML encodées ou non
           mdVal = mdVal.replace(/&lt;[^&]+&gt;/g,'').replace(/&amp;/g,'&');
           mdVal = mdVal.replace(/<[^>]+>/g,'');
           mdVal = mdVal.replace(/\s+/g,' ').trim();
           if(mdVal.length > 10) result.desc = mdVal;
         }
-        // Fallback : chercher la description détaillée dans le DOM
+        // 2. Regex sur HTML brut (si le proxy ne retourne pas le <head>)
+        if(!result.desc){
+          var descRegex = /meta[^>]+(?:name=["'](?:meta-)?description["'][^>]+content|content=["']([^"']+)["'][^>]+name=["'](?:meta-)?description)["']\s*([^"']*)/i;
+          var mContent = htmlStr.match(/name=["']meta-description["'][^>]*content=["']([^"']+)["']/i)
+                      || htmlStr.match(/content=["']([^"']+)["'][^>]*name=["']meta-description["']/i)
+                      || htmlStr.match(/name=["']description["'][^>]*content=["']([^"']+)["']/i)
+                      || htmlStr.match(/content=["']([^"']+)["'][^>]*name=["']description["']/i);
+          if(mContent && mContent[1]){
+            var raw = mContent[1];
+            raw = raw.replace(/&lt;[^&]+&gt;/g,'').replace(/&amp;/g,'&').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+            if(raw.length > 10) result.desc = raw;
+          }
+        }
+        // 3. Fallback DOM
         if(!result.desc){
           var descEl = doc.querySelector('[class*="description-detaillee"],[class*="product-description"],[class*="long-desc"],[itemprop="description"]');
           if(descEl) result.desc = descEl.textContent.replace(/\s+/g,' ').trim().slice(0, 500);
