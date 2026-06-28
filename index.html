@@ -2205,6 +2205,18 @@
               📋 Coller le lien et extraire
             </button>
             <div id="fUrlDisplay" style="font-size:11px;color:var(--ink-soft);margin-top:5px;word-break:break-all;display:none;"></div>
+            <!-- Fallback iOS : champ visible si clipboard refusé -->
+            <div id="pasteFallbackZone" style="display:none;margin-top:8px;">
+              <div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px;">📌 iOS a bloqué l'accès au presse-papier — collez votre lien ici :</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="url" id="pasteFallbackInput" placeholder="Faites un appui long → Coller"
+                  style="flex:1;padding:10px;font-size:14px;border:2px solid var(--accent,#1e3a5f);border-radius:6px;background:var(--surface);color:var(--ink);" />
+                <button type="button" id="pasteFallbackBtn" class="copper"
+                  style="padding:10px 14px;font-size:14px;border-radius:6px;white-space:nowrap;">
+                  ↓ Extraire
+                </button>
+              </div>
+            </div>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
         </div>
@@ -4151,45 +4163,51 @@
   var btnPasteExtract = document.getElementById('btnPasteExtract');
   var fUrlDisplay = document.getElementById('fUrlDisplay');
   if(btnPasteExtract){
-    // Champ texte temporaire pour recevoir le collage sur iOS
-    var _pasteInput = document.createElement('input');
-    _pasteInput.type = 'url';
-    _pasteInput.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;width:1px;height:1px;';
-    document.body.appendChild(_pasteInput);
+    var pasteFallbackZone  = document.getElementById('pasteFallbackZone');
+    var pasteFallbackInput = document.getElementById('pasteFallbackInput');
+    var pasteFallbackBtn   = document.getElementById('pasteFallbackBtn');
+
+    function showPasteFallback(){
+      if(pasteFallbackZone){
+        pasteFallbackZone.style.display = 'block';
+        if(pasteFallbackInput){ setTimeout(function(){ pasteFallbackInput.focus(); }, 100); }
+      }
+    }
+
+    function handlePastedUrl(text){
+      text = (text || '').trim();
+      if(text && /^https?:\/\//.test(text)){
+        fUrl.value = text;
+        if(fUrlDisplay){ fUrlDisplay.textContent = text; fUrlDisplay.style.display='block'; }
+        if(pasteFallbackZone){ pasteFallbackZone.style.display = 'none'; }
+        document.getElementById('btnExtractFromUrl').click();
+      } else {
+        showPasteFallback();
+      }
+    }
+
+    if(pasteFallbackBtn){
+      pasteFallbackBtn.addEventListener('click', function(){
+        handlePastedUrl(pasteFallbackInput ? pasteFallbackInput.value : '');
+      });
+    }
+    if(pasteFallbackInput){
+      pasteFallbackInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ handlePastedUrl(pasteFallbackInput.value); }
+      });
+    }
 
     btnPasteExtract.addEventListener('click', function(){
       // 1. Essayer clipboard API
       if(navigator.clipboard && navigator.clipboard.readText){
         navigator.clipboard.readText()
-          .then(function(text){
-            text = (text || '').trim();
-            if(text && /^https?:\/\//.test(text)){
-              fUrl.value = text;
-              if(fUrlDisplay){ fUrlDisplay.textContent = text; fUrlDisplay.style.display='block'; }
-              document.getElementById('btnExtractFromUrl').click();
-            } else {
-              showToast('Aucun lien trouvé dans le presse-papier', 'warn', 2500);
-            }
-          })
+          .then(function(text){ handlePastedUrl(text); })
           .catch(function(){
-            // 2. Fallback : focus sur input caché puis Ctrl+V
-            _pasteInput.value = '';
-            _pasteInput.focus();
-            document.execCommand('paste');
-            setTimeout(function(){
-              var text = _pasteInput.value.trim();
-              _pasteInput.blur();
-              if(text && /^https?:\/\//.test(text)){
-                fUrl.value = text;
-                if(fUrlDisplay){ fUrlDisplay.textContent = text; fUrlDisplay.style.display='block'; }
-                document.getElementById('btnExtractFromUrl').click();
-              } else {
-                showToast('Impossible de lire le presse-papier — collez le lien dans le champ URL', 'warn', 3000);
-              }
-            }, 100);
+            // iOS a refusé l'accès → afficher le champ fallback
+            showPasteFallback();
           });
       } else {
-        showToast('Collez le lien directement dans le champ URL ci-dessus', 'warn', 3000);
+        showPasteFallback();
       }
     });
   }
