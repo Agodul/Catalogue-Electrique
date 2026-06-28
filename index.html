@@ -1271,7 +1271,7 @@
     position:fixed; inset:0;
     background:rgba(28,26,23,.55);
     display:none; align-items:center; justify-content:center;
-    padding:20px; z-index:300;
+    padding:20px; z-index:10000;
     animation:fadeBg .25s ease forwards;
   }
   #whatsNewOverlay.open{ display:flex; }
@@ -1519,6 +1519,11 @@
     /* iOS : masquer le bouton Android, afficher le champ URL */
     body.ios .url-field-mobile{ display:none; }
     body.ios .url-field-desktop{ display:flex; }
+  }
+
+  /* ── Zone code source : desktop seulement ── */
+  @media(max-width:768px){
+    .html-source-zone{ display:none !important; }
   }
 
   /* ── Autocomplete custom (iOS fix) ── */
@@ -1917,6 +1922,16 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
+      <button id="btnOpenWhatsNew" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+        <span style="width:38px;height:38px;border-radius:8px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-sparkles" style="font-size:20px;color:#F59E0B;"></i>
+        </span>
+        <span>
+          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Quoi de neuf ?</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Voir les fonctionnalités disponibles</span>
+        </span>
+        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
+      </button>
       <button id="btnOpenServerSettings" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
         <span style="width:38px;height:38px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-server" style="font-size:20px;color:#059669;"></i>
@@ -2197,7 +2212,7 @@
           <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="width:100%;">
           <!-- Desktop : bouton extraire inline -->
           <div class="url-field-desktop" style="gap:8px;align-items:center;margin-top:6px;">
-            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;padding:9px 12px;font-size:13px;">
+            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;padding:9px 12px;">
               ↓ Extraire depuis l'URL
             </button>
           </div>
@@ -2210,13 +2225,19 @@
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
         </div>
-        <div class="field">
-          <label for="fHtml">Code source de la page produit (alternative)</label>
-          <textarea id="fHtml" rows="6" placeholder="Ouvrez la fiche produit sur le site → clic droit → « Afficher le code source de la page » (ou Ctrl+U) → Ctrl+A, Ctrl+C → collez ici."></textarea>
-          <div class="hint">Le navigateur ne peut pas aller chercher une autre page web tout seul (sécurité). En collant le code source ici, l'outil retrouve automatiquement l'image, le nom, la description et le prix depuis les informations standard de la page (balises Open Graph / données produit).</div>
+        <!-- Desktop uniquement : zone code source -->
+        <div class="field html-source-zone">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="chkShowHtml" style="width:16px;height:16px;">
+            Code source de la page produit (alternative)
+          </label>
+          <div id="htmlSourceContent" style="display:none;margin-top:8px;">
+            <textarea id="fHtml" rows="6" placeholder="Ouvrez la fiche produit sur le site → clic droit → « Afficher le code source de la page » (ou Ctrl+U) → Ctrl+A, Ctrl+C → collez ici."></textarea>
+            <div class="hint">Le navigateur ne peut pas aller chercher une autre page web tout seul (sécurité). En collant le code source ici, l'outil retrouve automatiquement l'image, le nom, la description et le prix depuis les informations standard de la page (balises Open Graph / données produit).</div>
+            <button class="secondary" id="btnExtract" type="button" style="margin-top:8px;">Extraire les informations</button>
+            <div class="extract-status" id="extractStatus"></div>
+          </div>
         </div>
-        <button class="secondary" id="btnExtract" type="button">Extraire les informations</button>
-        <div class="extract-status" id="extractStatus"></div>
       </div>
 
       <div class="tab-pane" id="tab-manual">
@@ -3205,6 +3226,14 @@
   var fSupplier = document.getElementById('fSupplier');
   var fUrl = document.getElementById('fUrl');
   var fHtml = document.getElementById('fHtml');
+  var chkShowHtml = document.getElementById('chkShowHtml');
+  var htmlSourceContent = document.getElementById('htmlSourceContent');
+  if(chkShowHtml){
+    chkShowHtml.addEventListener('change', function(){
+      htmlSourceContent.style.display = chkShowHtml.checked ? 'block' : 'none';
+      if(chkShowHtml.checked){ fHtml.focus(); }
+    });
+  }
   var fName = document.getElementById('fName');
   var fDesc = document.getElementById('fDesc');
   var fPrice = document.getElementById('fPrice');
@@ -3366,7 +3395,7 @@
   }
 
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value='';
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
@@ -4581,6 +4610,17 @@
     updateSyncSlider();
   }
 
+  var btnOpenWhatsNew = document.getElementById('btnOpenWhatsNew');
+  if(btnOpenWhatsNew){
+    btnOpenWhatsNew.addEventListener('click', function(){
+      // Fermer les paramètres, ouvrir le quoi de neuf
+      settingsOverlay.classList.remove('show');
+      if(whatsNewOverlay){ whatsNewOverlay.classList.add('open'); }
+    });
+    btnOpenWhatsNew.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
+    btnOpenWhatsNew.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
+  }
+
   btnOpenFamilyIcons.addEventListener('click', function(){ showSettingsFamilyPage(); });
   btnOpenFamilyIcons.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
   btnOpenFamilyIcons.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
@@ -5342,13 +5382,61 @@
 
   var WHATS_NEW_VERSIONS = [
     {
+      version: "v1.0",
+      sections: [
+        {
+          title: "Gestion des produits",
+          items: [
+            { icon: "ti-package", color: "blue", name: "Ajouter / modifier / supprimer", desc: "Gérez vos fiches produits directement depuis le catalogue." },
+            { icon: "ti-link", color: "blue", name: "Extraction depuis une URL", desc: "Collez le lien d'une fiche fournisseur — nom, image, description et prix sont récupérés automatiquement." },
+            { icon: "ti-photo", color: "blue", name: "Choix de l'image", desc: "Sélectionnez parmi toutes les images extraites celle qui convient le mieux." },
+            { icon: "ti-tag", color: "blue", name: "Tags automatiques", desc: "Des suggestions de mots-clés sont proposées à l'ajout pour faciliter la recherche." },
+            { icon: "ti-clock", color: "blue", name: "Historique des prix", desc: "Chaque modification de prix est tracée pour suivre l'évolution dans le temps." }
+          ]
+        },
+        {
+          title: "Recherche & Navigation",
+          items: [
+            { icon: "ti-search", color: "green", name: "Recherche intelligente", desc: "Les résultats sont triés par pertinence — les meilleures correspondances apparaissent en premier." },
+            { icon: "ti-filter", color: "green", name: "Filtres en cascade", desc: "Filtrez par Marque, puis Famille, puis Série — les listes se mettent à jour automatiquement." },
+            { icon: "ti-sort-ascending", color: "green", name: "Tri par prix", desc: "Affichez les produits du moins cher au plus cher, ou inversement." },
+            { icon: "ti-layout-grid", color: "green", name: "Accueil par familles", desc: "Naviguez par catégorie de produits depuis la page d'accueil." }
+          ]
+        },
+        {
+          title: "Import & Export",
+          items: [
+            { icon: "ti-file-export", color: "orange", name: "Export Excel", desc: "Exportez tout le catalogue en fichier Excel d'un seul clic." },
+            { icon: "ti-file-import", color: "orange", name: "Import Excel", desc: "Importez un catalogue existant depuis un fichier Excel." },
+            { icon: "ti-chart-pie", color: "orange", name: "Comparaison fournisseurs", desc: "Importez plusieurs fichiers Excel fournisseurs et comparez les prix côte à côte — le meilleur prix est mis en évidence." }
+          ]
+        },
+        {
+          title: "Extraction fournisseurs",
+          items: [
+            { icon: "ti-world", color: "purple", name: "Extraction depuis URL", desc: "Fonctionne sur mobile et desktop — compatible avec les principaux fournisseurs (Balluff, Phoenix Contact, SICK, IFM, Schneider…)." },
+            { icon: "ti-puzzle", color: "purple", name: "Extension Chrome", desc: "Clic droit sur n'importe quelle fiche produit fournisseur → Ajouter au Catalogue SPI. Les champs sont pré-remplis automatiquement." },
+            { icon: "ti-share", color: "purple", name: "Partage Android", desc: "Depuis votre navigateur mobile, partagez une fiche produit directement vers l'application." }
+          ]
+        },
+        {
+          title: "Application mobile",
+          items: [
+            { icon: "ti-device-mobile", color: "red", name: "Installable sur l'écran d'accueil", desc: "Ajoutez l'application à votre écran d'accueil Android ou iOS pour un accès rapide sans navigateur." },
+            { icon: "ti-wifi-off", color: "red", name: "Fonctionne hors ligne", desc: "Le catalogue reste accessible même sans connexion internet." },
+            { icon: "ti-layout-sidebar", color: "red", name: "Interface adaptée", desc: "L'application s'adapte automatiquement à votre écran — mobile, tablette ou desktop." }
+          ]
+        }
+      ]
+    },
+    {
       version: "v1.4",
       sections: [
         {
-          title: "Nouvelles fonctionnalites",
+          title: "Nouveautés",
           items: [
-          { icon: "ti-chart-pie", color: "purple", name: "Comparer ", desc: "Vous pouvez maintenant faire de la comparaison de fichiers Excel et voir qui a le meilleur prix. *Faut que le fichier ait été exporté depuis le site" },
-          { icon: "ti-database", color: "purple", name: "Serveur", desc: "Possibilité de connecter le site à un serveur pour du partage de données" }
+            { icon: "ti-chart-pie", color: "purple", name: "Comparaison fournisseurs", desc: "Importez plusieurs fichiers Excel et comparez les prix fournisseurs — le meilleur prix est mis en évidence automatiquement." },
+            { icon: "ti-database", color: "purple", name: "Connexion serveur", desc: "Possibilité de connecter le catalogue à un serveur pour partager les données entre collègues." }
           ]
         }
       ]
@@ -5817,5 +5905,111 @@
 })();
 </script>
 
+
+  <!-- ── Popup installation PWA ────────────────────────────────────── -->
+  <div id="pwaInstallBanner" style="
+    display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    z-index:9999;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
+    border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
+    padding:16px 18px 14px;max-width:340px;width:calc(100% - 32px);
+    flex-direction:column;gap:12px;font-family:inherit;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img src="data:image/png;base64,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" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;" alt="App icon">
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:2px;">Installer l'application</div>
+        <div style="font-size:12px;color:var(--ink-soft,#666);line-height:1.4;">
+          Accès rapide depuis votre écran d'accueil, sans navigateur.
+        </div>
+      </div>
+      <button id="pwaInstallClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft,#999);padding:0 0 0 6px;line-height:1;align-self:flex-start;">✕</button>
+    </div>
+
+    <!-- Android : bouton natif -->
+    <div id="pwaAndroidZone" style="display:none;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button id="pwaInstallLater" style="font-size:13px;padding:8px 14px;border-radius:8px;background:none;border:1px solid var(--line,#ddd);cursor:pointer;color:var(--ink);">
+          Plus tard
+        </button>
+        <button id="pwaInstallBtn" class="copper" style="font-size:13px;padding:8px 16px;border-radius:8px;display:flex;align-items:center;gap:6px;">
+          ⬇︎ Installer
+        </button>
+      </div>
+    </div>
+
+    <!-- iOS : instructions -->
+    <div id="pwaIOSZone" style="display:none;">
+      <div style="font-size:12px;color:var(--ink-soft,#555);line-height:1.6;background:var(--surface,#f5f5f5);border-radius:10px;padding:10px 12px;">
+        <div style="margin-bottom:4px;font-weight:600;color:var(--ink);">Comment installer :</div>
+        <div>1. Appuyez sur <strong>⬆︎ Partager</strong> en bas de Safari</div>
+        <div>2. Faites défiler et choisissez <strong>« Sur l'écran d'accueil »</strong></div>
+        <div>3. Appuyez sur <strong>Ajouter</strong></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button id="pwaIOSClose" style="font-size:13px;padding:8px 14px;border-radius:8px;background:none;border:1px solid var(--line,#ddd);cursor:pointer;color:var(--ink);">
+          Compris
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ── Popup installation PWA ────────────────────────────────────────
+  (function(){
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+    if(isStandalone) return;
+
+    var banner       = document.getElementById('pwaInstallBanner');
+    var androidZone  = document.getElementById('pwaAndroidZone');
+    var iosZone      = document.getElementById('pwaIOSZone');
+    var btnInstall   = document.getElementById('pwaInstallBtn');
+    var btnLater     = document.getElementById('pwaInstallLater');
+    var btnClose     = document.getElementById('pwaInstallClose');
+    var btnIOSClose  = document.getElementById('pwaIOSClose');
+    var deferredPrompt = null;
+
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    function showBanner(){
+      banner.style.display = 'flex';
+      if(isIOS){
+        iosZone.style.display = 'block';
+      } else if(deferredPrompt){
+        androidZone.style.display = 'block';
+      }
+    }
+    function hideBanner(){
+      banner.style.display = 'none';
+    }
+
+    window.addEventListener('beforeinstallprompt', function(e){
+      e.preventDefault();
+      deferredPrompt = e;
+      if(banner.style.display === 'flex'){
+        androidZone.style.display = 'block';
+      }
+    });
+
+    setTimeout(showBanner, 3000);
+
+    btnClose.addEventListener('click', hideBanner);
+    if(btnLater)   btnLater.addEventListener('click', hideBanner);
+    if(btnIOSClose) btnIOSClose.addEventListener('click', hideBanner);
+
+    if(btnInstall){
+      btnInstall.addEventListener('click', function(){
+        hideBanner();
+        if(deferredPrompt){
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
+        }
+      });
+    }
+
+    window.addEventListener('appinstalled', hideBanner);
+  })();
+  </script>
 </body>
 </html>
