@@ -5978,6 +5978,10 @@
         iosZone.style.display = 'block';
       } else if(deferredPrompt){
         androidZone.style.display = 'block';
+      } else {
+        // Android sans prompt encore disponible : afficher quand même
+        // androidZone s'affichera dès que beforeinstallprompt se déclenche
+        androidZone.style.display = 'block';
       }
     }
     function hideBanner(){
