@@ -2198,17 +2198,13 @@
               ↓ Extraire depuis l'URL
             </button>
           </div>
-          <!-- Mobile : zone de collage + bouton -->
+          <!-- Mobile : bouton coller automatique -->
           <div class="url-field-mobile" style="margin-top:6px;">
-            <div style="display:flex;gap:8px;align-items:stretch;">
-              <input type="url" id="fUrlMobile" placeholder="Collez le lien ici…"
-                style="flex:1;padding:11px 12px;font-size:15px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);min-width:0;"
-                inputmode="url" autocomplete="off" autocorrect="off" spellcheck="false">
-              <button type="button" id="btnPasteExtract" class="copper"
-                style="padding:11px 14px;font-size:15px;border-radius:6px;white-space:nowrap;flex-shrink:0;">
-                ↓
-              </button>
-            </div>
+            <button type="button" id="btnPasteExtract" class="copper"
+              style="width:100%;padding:12px;font-size:15px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
+              📋 Coller le lien et extraire
+            </button>
+            <div id="fUrlDisplay" style="font-size:11px;color:var(--ink-soft);margin-top:5px;word-break:break-all;display:none;"></div>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
         </div>
@@ -3368,7 +3364,7 @@
   }
 
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(fUrlMobile) fUrlMobile.value='';
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(fUrlDisplay){ fUrlDisplay.style.display='none'; fUrlDisplay.textContent=''; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
@@ -4153,28 +4149,47 @@
   // ── Extraire depuis URL via proxy (iOS / mobile) ─────────────────
   // ── Bouton mobile : Coller & Extraire ───────────────────────────
   var btnPasteExtract = document.getElementById('btnPasteExtract');
-  var fUrlMobile = document.getElementById('fUrlMobile');
-  if(btnPasteExtract && fUrlMobile){
-    // Synchroniser fUrlMobile → fUrl en temps réel
-    fUrlMobile.addEventListener('input', function(){
-      fUrl.value = fUrlMobile.value.trim();
-    });
-    // Bouton ↓ : lancer l'extraction avec l'URL collée
+  var fUrlDisplay = document.getElementById('fUrlDisplay');
+  if(btnPasteExtract){
     btnPasteExtract.addEventListener('click', function(){
-      var url = fUrlMobile.value.trim();
-      if(!url){
-        showToast('Collez d\'abord un lien dans le champ', 'warn', 2500);
-        return;
+      // navigator.clipboard.readText() fonctionne au tap utilisateur sur iOS et Android
+      if(navigator.clipboard && navigator.clipboard.readText){
+        navigator.clipboard.readText()
+          .then(function(text){
+            text = (text || '').trim();
+            if(!text || !/^https?:\/\//.test(text)){
+              showToast('Aucun lien trouvé dans le presse-papier', 'warn', 2500);
+              return;
+            }
+            fUrl.value = text;
+            if(fUrlDisplay){
+              fUrlDisplay.textContent = text;
+              fUrlDisplay.style.display = 'block';
+            }
+            document.getElementById('btnExtractFromUrl').click();
+          })
+          .catch(function(){
+            // Fallback : champ de saisie inline
+            var inp = document.createElement('input');
+            inp.type = 'url';
+            inp.placeholder = 'Collez le lien ici…';
+            inp.style.cssText = 'width:100%;padding:11px 12px;font-size:15px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);margin-top:8px;box-sizing:border-box;';
+            btnPasteExtract.insertAdjacentElement('afterend', inp);
+            inp.focus();
+            inp.addEventListener('paste', function(){
+              setTimeout(function(){
+                var url = inp.value.trim();
+                if(url && /^https?:\/\//.test(url)){
+                  fUrl.value = url;
+                  inp.remove();
+                  document.getElementById('btnExtractFromUrl').click();
+                }
+              }, 50);
+            });
+          });
+      } else {
+        showToast('Presse-papier non disponible — collez l\'URL dans le champ ci-dessus', 'warn', 3000);
       }
-      fUrl.value = url;
-      document.getElementById('btnExtractFromUrl').click();
-    });
-    // Lancer aussi au "paste" direct
-    fUrlMobile.addEventListener('paste', function(){
-      setTimeout(function(){
-        fUrl.value = fUrlMobile.value.trim();
-        if(fUrl.value) document.getElementById('btnExtractFromUrl').click();
-      }, 100);
     });
   }
 
