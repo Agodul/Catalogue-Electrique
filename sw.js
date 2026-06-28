@@ -7,11 +7,7 @@ const FILES = [
   "./favicon.ico",
   "./apple-touch-icon.png",
   "./icon-192.png",
-  "./icon-512.png",
-  "./css/style.css",
-  "./js/app.js",
-  "./img/img_3dx.png",
-  "./img/icon-512.png"
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
