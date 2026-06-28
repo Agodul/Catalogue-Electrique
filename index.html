@@ -4046,18 +4046,17 @@
       }
       hintEl.textContent = '⏳ Tentative '+(idx+1)+'/'+proxies.length+'…';
       var proxyUrl = proxies[idx](url);
-      fetch(proxyUrl)
+      var controller = new AbortController();
+      var timer = setTimeout(function(){ controller.abort(); }, 5000);
+      fetch(proxyUrl, {signal: controller.signal})
         .then(function(r){
+          clearTimeout(timer);
           if(!r.ok) throw new Error('HTTP '+r.status);
           return r.text();
         })
         .then(function(text){
-          // allorigins renvoie du JSON, les autres renvoient le HTML direct
           var html = text;
-          try{
-            var json = JSON.parse(text);
-            if(json.contents) html = json.contents;
-          }catch(e){}
+          try{ var json=JSON.parse(text); if(json.contents) html=json.contents; }catch(e){}
           if(!html || html.length < 100) throw new Error('Contenu vide');
           fHtml.value = html;
           document.getElementById('btnExtract').click();
@@ -4066,6 +4065,7 @@
           setTimeout(function(){ hintEl.style.display = 'none'; }, 3000);
         })
         .catch(function(err){
+          clearTimeout(timer);
           console.warn('[ExtractURL] Proxy '+(idx+1)+' échoué:', err);
           tryProxy(idx + 1);
         });
@@ -4087,8 +4087,8 @@
     if(data.desc)     { fDesc.value     = stripHtml(data.desc);   found.push('description'); }
     if(data.price)    { fPrice.value    = data.price;             found.push('prix'); }
     if(data.photo)    { fPhoto.value    = data.photo; updatePhotoPreview(); found.push('photo'); }
-    // Afficher la galerie si plusieurs photos trouvées
-    if(data.photos && data.photos.length > 1){ showPhotoGallery(data.photos); }
+    // Afficher la galerie si plusieurs photos trouvées (ou même une seule via proxy)
+    if(data.photos && data.photos.length > 0){ showPhotoGallery(data.photos); }
     else { clearPhotoGallery(); }
     if(data.brand)    { fBrand.value    = data.brand;             found.push('marque'); }
     if(data.ref)      { fRef.value      = data.ref;               found.push('référence'); }
