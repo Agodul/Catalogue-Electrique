@@ -2160,11 +2160,17 @@
 
       <div class="tab-pane active" id="tab-auto">
         <div class="field">
-          <label for="fUrl">URL de la fiche produit (optionnel, pour référence)</label>
-          <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/...">
+          <label for="fUrl">URL de la fiche produit</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="flex:1;">
+            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;flex-shrink:0;padding:9px 12px;font-size:13px;">
+              ↓ Extraire
+            </button>
+          </div>
+          <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
         </div>
         <div class="field">
-          <label for="fHtml">Code source de la page produit</label>
+          <label for="fHtml">Code source de la page produit (alternative)</label>
           <textarea id="fHtml" rows="6" placeholder="Ouvrez la fiche produit sur le site → clic droit → « Afficher le code source de la page » (ou Ctrl+U) → Ctrl+A, Ctrl+C → collez ici."></textarea>
           <div class="hint">Le navigateur ne peut pas aller chercher une autre page web tout seul (sécurité). En collant le code source ici, l'outil retrouve automatiquement l'image, le nom, la description et le prix depuis les informations standard de la page (balises Open Graph / données produit).</div>
         </div>
@@ -4013,6 +4019,61 @@
     return result;
   }
 
+  // ── Extraire depuis URL via proxy (iOS / mobile) ─────────────────
+  document.getElementById('btnExtractFromUrl').addEventListener('click', function(){
+    var url = fUrl.value.trim();
+    var hintEl = document.getElementById('extractUrlHint');
+    if(!url){
+      showToast('Collez d\'abord une URL dans le champ', 'warn', 2500);
+      return;
+    }
+    hintEl.style.display = 'block';
+    hintEl.style.color   = 'var(--ink-soft)';
+    hintEl.textContent   = '⏳ Récupération de la page en cours…';
+
+    // Essayer plusieurs proxies CORS en cascade
+    var proxies = [
+      function(u){ return 'https://api.allorigins.win/get?url=' + encodeURIComponent(u); },
+      function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+      function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
+    ];
+
+    function tryProxy(idx){
+      if(idx >= proxies.length){
+        hintEl.style.color  = '#DC2626';
+        hintEl.textContent  = '✗ Impossible de récupérer la page — collez le code source manuellement.';
+        return;
+      }
+      hintEl.textContent = '⏳ Tentative '+(idx+1)+'/'+proxies.length+'…';
+      var proxyUrl = proxies[idx](url);
+      fetch(proxyUrl)
+        .then(function(r){
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          return r.text();
+        })
+        .then(function(text){
+          // allorigins renvoie du JSON, les autres renvoient le HTML direct
+          var html = text;
+          try{
+            var json = JSON.parse(text);
+            if(json.contents) html = json.contents;
+          }catch(e){}
+          if(!html || html.length < 100) throw new Error('Contenu vide');
+          fHtml.value = html;
+          document.getElementById('btnExtract').click();
+          hintEl.style.color  = '#059669';
+          hintEl.textContent  = '✓ Extraction réussie !';
+          setTimeout(function(){ hintEl.style.display = 'none'; }, 3000);
+        })
+        .catch(function(err){
+          console.warn('[ExtractURL] Proxy '+(idx+1)+' échoué:', err);
+          tryProxy(idx + 1);
+        });
+    }
+
+    tryProxy(0);
+  });
+
   document.getElementById('btnExtract').addEventListener('click', function(){
     var html = fHtml.value;
     if(!html.trim()){
@@ -5486,11 +5547,42 @@
       }
       // Ouvrir la modale d'ajout
       openModal(null);
+
       setTimeout(function(){
-        if(fUrl)  fUrl.value  = shareUrl;
+        if(fUrl) fUrl.value = shareUrl;
         if(shareTitle && fName) fName.value = shareTitle;
         switchTab('auto');
-        showToast('URL partagée prête — collez le code source pour extraire les infos', 'ok', 5000);
+        showToast('Récupération de la page en cours…', 'ok', 3000);
+
+        // ── Extraction automatique via allorigins.win ──────────────
+        // Essayer plusieurs proxies en cascade
+        var shareProxies = [
+          'https://api.allorigins.win/get?url=' + encodeURIComponent(shareUrl),
+          'https://corsproxy.io/?' + encodeURIComponent(shareUrl),
+          'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(shareUrl)
+        ];
+
+        function tryShareProxy(idx){
+          if(idx >= shareProxies.length){
+            showToast('Extraction impossible — collez le code source manuellement', 'warn', 5000);
+            return;
+          }
+          fetch(shareProxies[idx])
+            .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+            .then(function(text){
+              var html = text;
+              try{ var j=JSON.parse(text); if(j.contents) html=j.contents; }catch(e){}
+              if(!html || html.length < 100) throw new Error('Contenu vide');
+              fHtml.value = html;
+              fUrl.value  = shareUrl;
+              document.getElementById('btnExtract').click();
+              showToast('Extraction réussie via partage ✓', 'ok', 3500);
+            })
+            .catch(function(){ tryShareProxy(idx+1); });
+        }
+
+        tryShareProxy(0);
+
       }, 350);
     }, 600);
   })();
