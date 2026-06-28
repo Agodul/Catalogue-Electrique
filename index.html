@@ -5703,12 +5703,19 @@
   }
 
   // Afficher si cette version n'a pas encore été vue
-  try{
-    if(!localStorage.getItem(WN_KEY) && whatsNewOverlay){
-      buildWhatsNewContent();
-      whatsNewOverlay.classList.add('open');
-    }
-  }catch(e){}
+  function tryShowWhatsNew(){
+    try{
+      if(!localStorage.getItem(WN_KEY) && whatsNewOverlay){
+        buildWhatsNewContent();
+        whatsNewOverlay.classList.add('open');
+      }
+    }catch(e){}
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tryShowWhatsNew);
+  } else {
+    tryShowWhatsNew();
+  }
 
   var btnWNClose = document.getElementById('btnWhatsNewClose');
   if(btnWNClose) btnWNClose.addEventListener('click', closeWhatsNew);
