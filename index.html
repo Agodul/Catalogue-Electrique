@@ -4058,6 +4058,12 @@
           var html = text;
           try{ var json=JSON.parse(text); if(json.contents) html=json.contents; }catch(e){}
           if(!html || html.length < 100) throw new Error('Contenu vide');
+          // Décoder les entités HTML si le proxy les a encodées
+          if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
+            var ta = document.createElement('textarea');
+            ta.innerHTML = html;
+            html = ta.value;
+          }
           fHtml.value = html;
           document.getElementById('btnExtract').click();
           hintEl.style.color  = '#059669';
@@ -5573,6 +5579,11 @@
               var html = text;
               try{ var j=JSON.parse(text); if(j.contents) html=j.contents; }catch(e){}
               if(!html || html.length < 100) throw new Error('Contenu vide');
+              if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
+                var ta = document.createElement('textarea');
+                ta.innerHTML = html;
+                html = ta.value;
+              }
               fHtml.value = html;
               fUrl.value  = shareUrl;
               document.getElementById('btnExtract').click();
