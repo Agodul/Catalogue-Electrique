@@ -1969,6 +1969,81 @@
   </div>
 </div>
 
+
+<!-- Modale Gestion des prix -->
+<div id="priceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-weight:700;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:8px;">
+          <i class="ti ti-currency-euro" aria-hidden="true" style="font-size:17px;color:var(--copper);"></i>
+          Gestion des prix
+        </div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;" id="priceModalRef"></div>
+      </div>
+      <button id="priceModalClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <!-- Corps -->
+    <div style="overflow-y:auto;flex:1;padding:0;">
+      <!-- Prix actuel -->
+      <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--paper);">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:3px;">Prix actuel</div>
+          <div style="font-size:22px;font-weight:700;color:var(--ink);" id="priceModalCurrent">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:3px;">Par rapport au premier prix</div>
+          <div style="font-size:15px;font-weight:600;" id="priceModalDelta">—</div>
+        </div>
+      </div>
+      <!-- Tableau historique -->
+      <div style="padding:14px 20px 6px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;font-weight:600;">Historique des prix</div>
+        <table id="priceModalTable" style="width:100%;border-collapse:collapse;font-size:13.5px;">
+          <thead>
+            <tr style="background:var(--paper);">
+              <th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Date</th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Prix</th>
+              <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Évolution</th>
+              <th style="border-bottom:1px solid var(--line);width:32px;"></th>
+            </tr>
+          </thead>
+          <tbody id="priceModalBody"></tbody>
+        </table>
+        <div id="priceModalEmpty" style="display:none;padding:16px 0;font-size:13px;color:var(--ink-soft);font-style:italic;">Aucun historique enregistré.</div>
+      </div>
+      <!-- Formulaire ajout nouveau prix -->
+      <div style="padding:12px 20px 18px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;font-weight:600;">Enregistrer un nouveau prix</div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:2;min-width:130px;">
+            <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Prix catalogue (€)</label>
+            <input type="text" id="priceModalNewCatalogue" placeholder="ex. 18 500,00" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+          </div>
+          <div style="flex:2;min-width:130px;">
+            <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Prix remisé (€) <span style="color:var(--ink-soft);font-style:italic;">optionnel</span></label>
+            <input type="text" id="priceModalNewRemise" placeholder="ex. 14 800,00" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+          </div>
+          <div style="flex:1.5;min-width:110px;">
+            <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Date</label>
+            <input type="date" id="priceModalNewDate" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+          </div>
+          <button id="priceModalAddBtn" class="copper" style="padding:8px 16px;border-radius:6px;font-size:13px;white-space:nowrap;height:38px;">
+            <i class="ti ti-plus" aria-hidden="true"></i> Ajouter
+          </button>
+        </div>
+        <div id="priceModalError" style="display:none;margin-top:6px;font-size:12px;color:var(--warn);"></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;">
+      <button id="priceModalCancel" style="padding:8px 16px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;">Fermer</button>
+      <button id="priceModalSave" class="copper" style="padding:8px 18px;border-radius:6px;font-size:13px;">Appliquer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modale Paramètres -->
 <div id="settingsOverlay">
   <div class="settings-box">
@@ -2332,10 +2407,18 @@
           <div class="hint">Séparez plusieurs tags par des virgules pour mieux retrouver le produit.</div>
         </div>
         <div class="field">
-          <label for="fPrice">Prix remisé (€)</label>
-          <input type="text" id="fPrice" placeholder="ex. 89,90 (le € est ajouté automatiquement)">
-          <div class="hint">Saisissez juste le montant, le symbole € est ajouté automatiquement. <span id="pricePreview"></span></div>
-          <div id="priceHistoryBlock" class="price-history"></div>
+          <!-- fPrice caché — valeur gérée via la modale Historique des prix -->
+          <input type="hidden" id="fPrice">
+          <div id="priceDisplayRow" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);">
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:1px;">Prix actuel</div>
+              <div style="font-size:15px;font-weight:600;color:var(--ink);" id="priceDisplayVal">—</div>
+            </div>
+            <button type="button" id="btnOpenPriceModal" style="display:none;white-space:nowrap;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
+              <i class="ti ti-history" aria-hidden="true"></i> Modifier les prix
+            </button>
+          </div>
+          <span id="pricePreview" style="display:none;"></span>
         </div>
 
         <!-- Zone prix de vente — visible uniquement en mode création -->
@@ -3302,6 +3385,13 @@
   var fName = document.getElementById('fName');
   var fDesc = document.getElementById('fDesc');
   var fPrice = document.getElementById('fPrice');
+  var priceDisplayRow = document.getElementById('priceDisplayRow');
+  var priceDisplayVal = document.getElementById('priceDisplayVal');
+
+  function updatePriceDisplay(){
+    var val = fPrice.value;
+    if(priceDisplayVal) priceDisplayVal.textContent = val || '—';
+  }
   var fPhoto = document.getElementById('fPhoto');
   var photoPreview     = document.getElementById('photoPreview');
   var imgPreviewOverlay = document.getElementById('imgPreviewOverlay');
@@ -3355,123 +3445,186 @@
   var modalLeftFoot = document.getElementById('modalLeftFoot');
 
   var PRICE_ALERT_THRESHOLD = 10; // % d'augmentation à partir duquel on signale une grosse hausse
-  var priceHistoryBlockEl = document.getElementById('priceHistoryBlock');
+  var btnOpenPriceModal   = document.getElementById('btnOpenPriceModal');
+  var priceModalOverlay   = document.getElementById('priceModalOverlay');
 
-  function renderPriceHistory(product){
-    if(!product || !Array.isArray(product.priceHistory) || product.priceHistory.length === 0){
-      priceHistoryBlockEl.innerHTML = '';
-      return;
-    }
-    var entries = product.priceHistory.map(function(h){ return {price: h.price, date: h.date}; });
-    entries.push({price: product.price || '', date: null, current: true});
+  // ── Modale gestion des prix ───────────────────────────────────────
+  function openPriceModal(){
+    var p = products.find(function(x){ return x.id === editingId; });
+    if(!p) return;
 
-    var rows = '';
-    var biggestJump = null;
+    // Ref produit en sous-titre
+    document.getElementById('priceModalRef').textContent = (p.brand ? p.brand + ' — ' : '') + (p.ref || p.name || '');
 
-    // Première ligne : premier prix, sans delta
-    var firstDate = entries[0].date ? new Date(entries[0].date).toLocaleDateString('fr-FR') : 'Premier prix';
-    rows += '<tr>'+
-      '<td class="ph-date">'+escapeHtml(firstDate)+'</td>'+
-      '<td class="ph-price">'+escapeHtml(entries[0].price||'—')+'</td>'+
-      '<td class="ph-delta"></td>'+
-      '<td class="ph-del"><button class="ph-del-btn" data-hi="0" title="Supprimer">×</button></td>'+
-    '</tr>';
+    // Prix actuel
+    document.getElementById('priceModalCurrent').textContent = p.price || '—';
 
-    for(var i=1; i<entries.length; i++){
-      var prev = parsePriceNumber(entries[i-1].price);
-      var cur  = parsePriceNumber(entries[i].price);
-      var deltaHtml = '';
-      if(prev !== null && cur !== null && prev !== 0){
-        var pct = ((cur - prev) / prev) * 100;
+    // Delta global
+    var deltaEl = document.getElementById('priceModalDelta');
+    if(Array.isArray(p.priceHistory) && p.priceHistory.length > 0 && p.price){
+      var first = parsePriceNumber(p.priceHistory[0].price);
+      var cur   = parsePriceNumber(p.price);
+      if(first && cur && first !== 0){
+        var pct = ((cur - first) / first) * 100;
         var sign = pct >= 0 ? '+' : '';
-        var cls  = pct > 0 ? 'up' : (pct < 0 ? 'down' : '');
-        deltaHtml = '<span class="ph-delta '+cls+'">'+sign+pct.toFixed(1)+' %</span>';
-        if(pct >= PRICE_ALERT_THRESHOLD && (biggestJump === null || pct > biggestJump.pct)){
-          biggestJump = {pct: pct, from: entries[i-1].price, to: entries[i].price};
+        deltaEl.textContent = sign + pct.toFixed(1) + ' %';
+        deltaEl.style.color = pct > 0 ? 'var(--warn)' : (pct < 0 ? 'var(--moss,#4a7c59)' : 'var(--ink-soft)');
+      } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
+    } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
+
+    renderPriceModalTable(p);
+
+    // Pré-remplir date du jour
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2,'0');
+    var mm = String(today.getMonth()+1).padStart(2,'0');
+    document.getElementById('priceModalNewDate').value = today.getFullYear()+'-'+mm+'-'+dd;
+    document.getElementById('priceModalNewCatalogue').value = '';
+    document.getElementById('priceModalNewRemise').value = '';
+    document.getElementById('priceModalError').style.display = 'none';
+
+    priceModalOverlay.style.display = 'flex';
+  }
+
+  function closePriceModal(){ priceModalOverlay.style.display = 'none'; }
+
+  function renderPriceModalTable(p){
+    var tbody = document.getElementById('priceModalBody');
+    var emptyEl = document.getElementById('priceModalEmpty');
+    tbody.innerHTML = '';
+
+    var history = Array.isArray(p.priceHistory) ? p.priceHistory : [];
+    var all = history.map(function(h){ return {price: h.price, date: h.date, current: false}; });
+    if(p.price) all.push({price: p.price, date: null, current: true});
+
+    if(all.length === 0){ emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+
+    all.forEach(function(entry, i){
+      var tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--line)';
+      if(entry.current){ tr.style.background = 'var(--paper)'; tr.style.fontStyle = 'italic'; }
+
+      // Date
+      var tdDate = document.createElement('td');
+      tdDate.style.cssText = 'padding:8px 10px;color:var(--ink-soft);white-space:nowrap;font-size:13px;';
+      tdDate.textContent = entry.current ? 'Prix actuel' : (entry.date ? new Date(entry.date).toLocaleDateString('fr-FR') : '—');
+      tr.appendChild(tdDate);
+
+      // Prix
+      var tdPrice = document.createElement('td');
+      tdPrice.style.cssText = 'padding:8px 10px;text-align:right;font-weight:600;white-space:nowrap;font-size:13px;';
+      tdPrice.textContent = entry.price || '—';
+      tr.appendChild(tdPrice);
+
+      // Delta
+      var tdDelta = document.createElement('td');
+      tdDelta.style.cssText = 'padding:8px 10px;text-align:right;font-size:13px;';
+      if(i > 0){
+        var prev = parsePriceNumber(all[i-1].price);
+        var cur  = parsePriceNumber(entry.price);
+        if(prev && cur && prev !== 0){
+          var pct = ((cur - prev) / prev) * 100;
+          var sign = pct >= 0 ? '▲ +' : '▼ ';
+          var span = document.createElement('span');
+          span.style.cssText = 'font-weight:600;font-size:12px;padding:2px 6px;border-radius:10px;';
+          span.textContent = sign + pct.toFixed(1) + ' %';
+          if(pct > 0){ span.style.background='#FEE2E2'; span.style.color='var(--warn)'; }
+          else if(pct < 0){ span.style.background='#EAF3DE'; span.style.color='#3B6D11'; }
+          tdDelta.appendChild(span);
         }
       }
-      if(entries[i].current){
-        rows += '<tr class="ph-current">'+
-          '<td class="ph-date">Prix actuel</td>'+
-          '<td class="ph-price">'+escapeHtml(entries[i].price||'—')+'</td>'+
-          '<td class="ph-delta">'+deltaHtml+'</td>'+
-          '<td class="ph-del"></td>'+
-        '</tr>';
-      } else {
-        var dl = entries[i].date ? new Date(entries[i].date).toLocaleDateString('fr-FR') : '—';
-        rows += '<tr>'+
-          '<td class="ph-date">'+escapeHtml(dl)+'</td>'+
-          '<td class="ph-price">'+escapeHtml(entries[i].price||'—')+'</td>'+
-          '<td class="ph-delta">'+deltaHtml+'</td>'+
-          '<td class="ph-del"><button class="ph-del-btn" data-hi="'+i+'" title="Supprimer">×</button></td>'+
-        '</tr>';
+      tr.appendChild(tdDelta);
+
+      // Supprimer (pas sur le prix actuel)
+      var tdDel = document.createElement('td');
+      tdDel.style.cssText = 'padding:8px 6px;width:32px;';
+      if(!entry.current){
+        var btn = document.createElement('button');
+        btn.style.cssText = 'background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:0 4px;border-radius:3px;';
+        btn.textContent = '×';
+        btn.title = 'Supprimer';
+        btn.addEventListener('mouseover', function(){ this.style.color='var(--warn)'; this.style.background='#FEE2E2'; });
+        btn.addEventListener('mouseout',  function(){ this.style.color='var(--ink-soft)'; this.style.background='none'; });
+        btn.addEventListener('click', function(){
+          var prod = products.find(function(x){ return x.id === editingId; });
+          if(!prod) return;
+          prod.priceHistory.splice(i, 1);
+          save();
+          renderPriceModalTable(prod);
+          renderPriceHistory(prod);
+          document.getElementById('priceModalCurrent').textContent = prod.price || '—';
+        });
+        tdDel.appendChild(btn);
       }
-    }
-
-    var alertHtml = biggestJump
-      ? '<div class="ph-alert">⚠ Forte hausse détectée : +'+biggestJump.pct.toFixed(1)+' % ('+escapeHtml(biggestJump.from)+' → '+escapeHtml(biggestJump.to)+')</div>'
-      : '';
-
-    priceHistoryBlockEl.innerHTML =
-      '<div class="ph-title">Historique des prix <button class="ph-add-price" type="button">+ Nouveau prix</button></div>'+
-      '<table>'+rows+'</table>'+
-      '<div class="ph-add-row" id="phAddRow">'+
-        '<input type="text" id="phNewPriceInput" placeholder="ex. 99,90 (€ ajouté auto)">'+
-        '<button class="ph-confirm-add" type="button">Enregistrer</button>'+
-        '<button class="ph-cancel-add" type="button">✕</button>'+
-      '</div>'+
-      alertHtml;
-
-    // Suppression d'une entrée
-    priceHistoryBlockEl.querySelectorAll('.ph-del-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var idx = parseInt(btn.getAttribute('data-hi'));
-        var p = products.find(function(x){return x.id===editingId;});
-        if(!p) return;
-        var h = p.priceHistory.slice();
-        h.splice(idx, 1);
-        p.priceHistory = h;
-        save(); renderPriceHistory(p);
-      });
-    });
-
-    // Afficher le champ d'ajout
-    priceHistoryBlockEl.querySelector('.ph-add-price').addEventListener('click', function(){
-      document.getElementById('phAddRow').style.display = 'flex';
-      document.getElementById('phNewPriceInput').focus();
-    });
-    priceHistoryBlockEl.querySelector('.ph-cancel-add').addEventListener('click', function(){
-      document.getElementById('phAddRow').style.display = 'none';
-      document.getElementById('phNewPriceInput').value = '';
-    });
-    priceHistoryBlockEl.querySelector('.ph-confirm-add').addEventListener('click', function(){
-      var raw = document.getElementById('phNewPriceInput').value.trim();
-      if(!raw) return;
-      var p = products.find(function(x){return x.id===editingId;});
-      if(!p) return;
-      var history = Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [];
-      if(p.price) history.push({price: p.price, date: Date.now()});
-      var newPrice = formatPrice(raw);
-      p.priceHistory = history;
-      p.price = newPrice;
-      fPrice.value = newPrice;
-      save(); render(); renderPriceHistory(p);
+      tr.appendChild(tdDel);
+      tbody.appendChild(tr);
     });
   }
 
+  // Bouton ouvrir modale prix (visible uniquement en mode édition)
+  if(btnOpenPriceModal){
+    btnOpenPriceModal.addEventListener('click', openPriceModal);
+    btnOpenPriceModal.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; this.style.color='var(--copper)'; });
+    btnOpenPriceModal.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; this.style.color='var(--ink)'; });
+  }
+
+  document.getElementById('priceModalClose').addEventListener('click', closePriceModal);
+  document.getElementById('priceModalCancel').addEventListener('click', closePriceModal);
+  priceModalOverlay.addEventListener('click', function(e){ if(e.target === priceModalOverlay) closePriceModal(); });
+
+  // Ajouter un nouveau prix
+  document.getElementById('priceModalAddBtn').addEventListener('click', function(){
+    var rawCat = document.getElementById('priceModalNewCatalogue').value.trim();
+    var rawRem = document.getElementById('priceModalNewRemise').value.trim();
+    var rawDate = document.getElementById('priceModalNewDate').value;
+    var errEl = document.getElementById('priceModalError');
+    errEl.style.display = 'none';
+
+    if(!rawCat){ errEl.textContent = 'Veuillez saisir un prix catalogue.'; errEl.style.display='block'; return; }
+
+    var p = products.find(function(x){ return x.id === editingId; });
+    if(!p) return;
+
+    var history = Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [];
+    // Sauvegarder le prix actuel dans l'historique
+    if(p.price) history.push({ price: p.price, date: rawDate ? new Date(rawDate).getTime() : Date.now() });
+
+    var newPrice = formatPrice(rawRem || rawCat);
+    p.priceHistory = history;
+    p.price = newPrice;
+    fPrice.value = newPrice;
+    updatePriceDisplay();
+
+    save(); render();
+    renderPriceHistory(p);
+    renderPriceModalTable(p);
+    document.getElementById('priceModalCurrent').textContent = newPrice;
+    document.getElementById('priceModalNewCatalogue').value = '';
+    document.getElementById('priceModalNewRemise').value = '';
+  });
+
+  // Appliquer et fermer
+  document.getElementById('priceModalSave').addEventListener('click', function(){
+    var p = products.find(function(x){ return x.id === editingId; });
+    if(p) renderPriceHistory(p);
+    closePriceModal();
+  });
+
+  function renderPriceHistory(product){ /* géré par la modale prix */ }
   function resetForm(){
     fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
+    if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     f3dAvailable.checked = false;
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
     clearPhotoGallery();
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
-    priceHistoryBlockEl.innerHTML = '';
     refCheckMsgEl.className = 'ref-check-msg'; refCheckMsgEl.textContent = '';
     refDupIconEl.classList.remove('show'); refDupTooltipEl.textContent = '';
     refDupBannerEl.textContent = ''; refDupBannerEl.classList.remove('open');
@@ -3645,6 +3798,9 @@
         updatePhotoPreview();
         renderPriceHistory(p);
         switchTab('manual');
+        if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';
+        if(priceDisplayRow) priceDisplayRow.style.display = 'flex';
+        updatePriceDisplay();
       }
     }else{
       modalTitle.textContent = 'Ajouter un produit';
@@ -3658,6 +3814,8 @@
 
       // Affiche la zone prix de vente uniquement en mode création
       sellingPriceZoneEl.style.display = 'block';
+      if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'none';
+      if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     }
     overlay.classList.add('open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
@@ -3768,11 +3926,7 @@
 
   fPhoto.addEventListener('input', updatePhotoPreview);
   var pricePreviewEl = document.getElementById('pricePreview');
-  fPrice.addEventListener('input', function(){
-    var v = fPrice.value.trim();
-    pricePreviewEl.textContent = v ? '→ ' + formatPrice(v) : '';
-    updateSellingPriceHint();
-  });
+  // fPrice input géré par la modale prix
 
   // ---------- Zone prix de vente ----------
   var sellingPriceZoneEl = document.getElementById('sellingPriceZone');
