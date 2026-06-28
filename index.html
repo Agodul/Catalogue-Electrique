@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -942,9 +942,7 @@
   #btnScrollTop.show{ opacity:1; visibility:visible; transform:translateY(0); }
   #btnScrollTop:hover{ background:var(--copper); border-color:var(--copper); transform:translateY(-2px); }
   #btnScrollTop svg{ width:20px; height:20px; }
-  /* ══════════════════════════════════════
-     RESPONSIVE MOBILE ≤ 640px
-  ══════════════════════════════════════ */
+  
   @media (max-width:640px){
 
     /* ── Header compact ── */
@@ -1096,12 +1094,8 @@
     .fab-search-box{ right:54px; }
   }
 
-  /* ══════════════════════════════════════
-     TRÈS PETIT ÉCRAN ≤ 380px
-  ══════════════════════════════════════ */
-  /* ══════════════════════════════════════
-     PETIT MOBILE ≤ 380px (iPhone SE, etc.)
-  ══════════════════════════════════════ */
+  
+  
   @media (max-width:380px){
     /* Header encore plus compact */
     header{ height:50px; padding:0 10px; gap:5px; }
@@ -1138,9 +1132,7 @@
     .grp-btn{ font-size:11px; padding:4px 8px; }
   }
 
-  /* ══════════════════════════════════════
-     TRÈS PETIT ≤ 320px (iPhone 5)
-  ══════════════════════════════════════ */
+  
   @media (max-width:320px){
     header{ height:48px; padding:0 8px; gap:4px; }
     .brandmark .logo-mark{ height:20px; }
@@ -1158,9 +1150,7 @@
     .wrap{ padding:6px 6px 90px; }
   }
 
-  /* ═══════════════════════════════════════
-     7 ANIMATIONS
-  ═══════════════════════════════════════ */
+  
 
   /* 1 — Cartes en cascade */
   @keyframes cardEnter{
@@ -1271,7 +1261,7 @@
     position:fixed; inset:0;
     background:rgba(28,26,23,.55);
     display:none; align-items:center; justify-content:center;
-    padding:20px; z-index:10000;
+    padding:20px; z-index:10000; padding-bottom:max(20px,env(safe-area-inset-bottom));
     animation:fadeBg .25s ease forwards;
   }
   #whatsNewOverlay.open{ display:flex; }
@@ -1791,6 +1781,81 @@
   .sort-price-btn.active-asc,
   .sort-price-btn.active-desc{ background:var(--copper); color:#fff; border-color:var(--copper); }
   .sort-price-btn .sort-icon{ font-size:14px; transition:transform .2s; }
+
+  /* ── Safe area iPhone (notch / home bar) ────────────────────── */
+  .hdr{ padding-left:max(12px,env(safe-area-inset-left)); padding-right:max(12px,env(safe-area-inset-right)); }
+  #pwaInstallBanner{ bottom:max(24px,env(safe-area-inset-bottom)); }
+
+  /* ── Overflow global ─────────────────────────────────────────── */
+  body{ overflow-x:hidden; }
+
+  /* ── contain sur cartes (perf rendu) ────────────────────────── */
+  .card{ contain:layout style; }
+
+  /* ── will-change sur modales animées ────────────────────────── */
+  #overlay{ will-change:opacity; }
+  #overlay .modal{ will-change:transform; }
+
+  /* ── Scroll fluide iOS ───────────────────────────────────────── */
+  .modal-body, #whatsNewBody, .settings-body{ -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+
+  /* ── focus-visible (outline clavier uniquement) ─────────────── */
+  button:focus:not(:focus-visible){ outline:none; }
+
+  /* ── user-select sur contenu carte ──────────────────────────── */
+  .card .name, .card .ref, .card .price{ user-select:text; -webkit-user-select:text; }
+
+  /* ── Touch targets min 44px mobile ──────────────────────────── */
+  @media(max-width:768px){
+    .hdr-icon, .fab, .close{ min-width:44px; min-height:44px; }
+    .tab-btn{ min-height:40px; }
+  }
+
+  /* ── PWA Banner petit écran ──────────────────────────────────── */
+  #pwaInstallBanner{ max-width:min(340px, calc(100vw - 24px)); }
+  @media(max-width:380px){
+    #pwaInstallBanner{ border-radius:12px; padding:12px 14px 10px; }
+    #pwaInstallBanner img{ width:36px; height:36px; }
+  }
+
+  /* ── Modales bottom sheet responsive ────────────────────────── */
+  @media(max-width:640px){
+    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    .settings-box{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    #overlay .modal{ max-height:92dvh; }
+  }
+
+  /* ── Onglets : scroll horizontal 380px ──────────────────────── */
+  @media(max-width:380px){
+    .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
+    .tab-btn{ flex-shrink:0; }
+  }
+
+  /* ── Grille tablette 641-1024px ──────────────────────────────── */
+  @media(min-width:641px) and (max-width:1024px){
+    .grid{ grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+  }
+
+  /* ── Cartes très petit écran 320px ──────────────────────────── */
+  @media(max-width:320px){
+    .card .name{ font-size:11px; }
+    .card .price{ font-size:12px; }
+    .card .tags{ display:none; }
+  }
+
+  /* ── Éviter zoom iOS sur focus input (<16px) ─────────────────── */
+  @media(max-width:768px){
+    input[type="text"], input[type="url"], input[type="number"],
+    input[type="search"], textarea, select{
+      font-size:max(16px,1em) !important;
+    }
+  }
+
+  /* ── iOS safe-area modales ───────────────────────────────────── */
+  @supports(padding:max(0px)){
+    #overlay .modal{ padding-bottom:max(0px,env(safe-area-inset-bottom)); }
+    .settings-box{ padding-bottom:max(0px,env(safe-area-inset-bottom)); }
+  }
 </style>
 </head>
 <body>
@@ -1909,7 +1974,7 @@
   <div class="settings-box">
     <div class="settings-header">
       <h3>Paramètres</h3>
-      <button class="close sans" id="settingsClose">&times;</button>
+      <button class="close sans" id="settingsClose" aria-label="Fermer">&times;</button>
     </div>
     <div class="settings-body">
       <button id="btnOpenFamilyIcons" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
@@ -2342,7 +2407,7 @@
     <div id="whatsNewBody"></div>
     <div id="whatsNewFoot">
       <span class="wn-hint"><i class="ti ti-keyboard" aria-hidden="true"></i> Échap pour fermer</span>
-      <button class="copper" id="btnWhatsNewClose">C'est parti !</button>
+      <button class="copper" id="btnWhatsNewClose" aria-label="Fermer le changelog">C'est parti !</button>
     </div>
   </div>
 </div>
@@ -2977,7 +3042,7 @@
 
     // Photo
     if(p.photo){
-      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
+      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
     }else{
       vmPhoto.innerHTML = '<span class="ph-placeholder">Pas de photo</span>';
     }
@@ -3148,7 +3213,7 @@
   function renderCard(p){
     var idx = _cardIdx++;
     var photo = p.photo
-      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" onerror="this.style.display=\'none\'; var sp=document.createElement(\'span\'); sp.className=\'ph-placeholder\'; sp.textContent=\'Image indisponible\'; this.parentElement.appendChild(sp);">'
+      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" onerror="this.style.display=\'none\'; var sp=document.createElement(\'span\'); sp.className=\'ph-placeholder\'; sp.textContent=\'Image indisponible\'; this.parentElement.appendChild(sp);">'
       : '<span class="ph-placeholder sans">Pas de photo</span>';
     var tags = '';
     var tagItems = [];
@@ -4264,7 +4329,6 @@
         })
         .catch(function(err){
           clearTimeout(timer);
-          console.warn('[ExtractURL] Proxy '+(idx+1)+' échoué:', err);
           tryProxy(idx + 1);
         });
     }
@@ -4574,7 +4638,7 @@
           });
         }
       }
-    }catch(e){ console.warn('[SPI] Erreur serveur:', e); }
+    }catch(e){ }
   }
 
   // Patch de save() pour pousser vers le serveur après chaque modif
@@ -5911,7 +5975,7 @@
     display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     z-index:9999;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
     border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
-    padding:16px 18px 14px;max-width:340px;width:calc(100% - 32px);
+    padding:clamp(10px,4vw,18px);max-width:340px;width:calc(100% - 24px);
     flex-direction:column;gap:12px;font-family:inherit;">
 
     <!-- Header -->
