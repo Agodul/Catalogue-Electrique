@@ -1516,6 +1516,9 @@
   @media(max-width:768px){
     .url-field-desktop{ display:none; }
     .url-field-mobile{ display:block; }
+    /* iOS : masquer le bouton Android, afficher le champ URL */
+    body.ios .url-field-mobile{ display:none; }
+    body.ios .url-field-desktop{ display:flex; }
   }
 
   /* ── Autocomplete custom (iOS fix) ── */
@@ -2198,18 +2201,12 @@
               ↓ Extraire depuis l'URL
             </button>
           </div>
-          <!-- Mobile : bouton coller automatique -->
+          <!-- Mobile Android : bouton coller automatique -->
           <div class="url-field-mobile" style="margin-top:6px;">
             <button type="button" id="btnPasteExtract" class="copper"
               style="width:100%;padding:12px;font-size:15px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
               📋 Coller le lien et extraire
             </button>
-            <div id="fUrlDisplay" style="font-size:11px;color:var(--ink-soft);margin-top:5px;word-break:break-all;display:none;"></div>
-            <!-- Fallback iOS : champ visible si clipboard refusé -->
-            <div id="pasteFallbackZone" style="display:none;margin-top:8px;">
-              <input type="url" id="pasteFallbackInput" placeholder="Faites un appui long → Coller"
-                style="width:100%;box-sizing:border-box;padding:10px;font-size:14px;border:2px solid var(--accent,#1e3a5f);border-radius:6px;background:var(--surface);color:var(--ink);" />
-            </div>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
         </div>
@@ -4151,50 +4148,31 @@
     return result;
   }
 
-  // ── Extraire depuis URL via proxy (iOS / mobile) ─────────────────
-  // ── Bouton mobile : Coller & Extraire ───────────────────────────
+  // ── Détection iOS → classe sur body ─────────────────────────────
+  if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream){
+    document.body.classList.add('ios');
+  }
+
+  // ── Bouton mobile Android : Coller & Extraire ────────────────────
   var btnPasteExtract = document.getElementById('btnPasteExtract');
-  var fUrlDisplay = document.getElementById('fUrlDisplay');
   if(btnPasteExtract){
-    var pasteFallbackZone  = document.getElementById('pasteFallbackZone');
-    var pasteFallbackInput = document.getElementById('pasteFallbackInput');
-
-    function showPasteFallback(){
-      if(pasteFallbackZone){
-        pasteFallbackZone.style.display = 'block';
-        if(pasteFallbackInput){ setTimeout(function(){ pasteFallbackInput.focus(); }, 100); }
-      }
-    }
-
-    function handlePastedUrl(text){
-      text = (text || '').trim();
-      if(text && /^https?:\/\//.test(text)){
-        fUrl.value = text;
-        if(fUrlDisplay){ fUrlDisplay.textContent = text; fUrlDisplay.style.display='block'; }
-        if(pasteFallbackZone){ pasteFallbackZone.style.display = 'none'; }
-        document.getElementById('btnExtractFromUrl').click();
-      } else {
-        showPasteFallback();
-      }
-    }
-
-    if(pasteFallbackInput){
-      pasteFallbackInput.addEventListener('keydown', function(e){
-        if(e.key === 'Enter'){ handlePastedUrl(pasteFallbackInput.value); }
-      });
-    }
-
     btnPasteExtract.addEventListener('click', function(){
-      // 1. Essayer clipboard API
       if(navigator.clipboard && navigator.clipboard.readText){
         navigator.clipboard.readText()
-          .then(function(text){ handlePastedUrl(text); })
+          .then(function(text){
+            text = (text || '').trim();
+            if(text && /^https?:\/\//.test(text)){
+              fUrl.value = text;
+              document.getElementById('btnExtractFromUrl').click();
+            } else {
+              showToast('Aucun lien trouvé dans le presse-papier', 'warn', 2500);
+            }
+          })
           .catch(function(){
-            // iOS a refusé l'accès → afficher le champ fallback
-            showPasteFallback();
+            showToast('Accès au presse-papier refusé', 'warn', 2500);
           });
       } else {
-        showPasteFallback();
+        showToast('Presse-papier non disponible', 'warn', 2500);
       }
     });
   }
