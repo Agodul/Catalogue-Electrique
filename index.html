@@ -3366,7 +3366,7 @@
   }
 
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(fUrlDisplay){ fUrlDisplay.style.display='none'; fUrlDisplay.textContent=''; }
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value='';
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
@@ -3560,11 +3560,11 @@
         switchTab('manual');
       }else{
         switchTab('auto');
-    }
+      }
 
-  // Affiche la zone prix de vente uniquement en mode création
-  sellingPriceZoneEl.style.display = 'block';
-}
+      // Affiche la zone prix de vente uniquement en mode création
+      sellingPriceZoneEl.style.display = 'block';
+    }
     overlay.classList.add('open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
     var inputs = overlay.querySelectorAll('input, textarea, select');
