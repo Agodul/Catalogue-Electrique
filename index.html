@@ -2407,8 +2407,13 @@
           <div class="hint">Séparez plusieurs tags par des virgules pour mieux retrouver le produit.</div>
         </div>
         <div class="field">
-          <!-- fPrice caché — valeur gérée via la modale Historique des prix -->
-          <input type="hidden" id="fPrice">
+          <!-- Mode création : champ texte visible -->
+          <div id="priceCreateRow">
+            <label for="fPrice">Prix catalogue (€)</label>
+            <input type="text" id="fPrice" placeholder="ex. 89,90 (le € est ajouté automatiquement)">
+            <div class="hint">Saisissez juste le montant, le symbole € est ajouté automatiquement. <span id="pricePreview"></span></div>
+          </div>
+          <!-- Mode édition : affichage + bouton modale -->
           <div id="priceDisplayRow" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);">
             <div>
               <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:1px;">Prix actuel</div>
@@ -2418,7 +2423,6 @@
               <i class="ti ti-history" aria-hidden="true"></i> Modifier les prix
             </button>
           </div>
-          <span id="pricePreview" style="display:none;"></span>
         </div>
 
         <!-- Zone prix de vente — visible uniquement en mode création -->
@@ -3387,6 +3391,7 @@
   var fPrice = document.getElementById('fPrice');
   var priceDisplayRow = document.getElementById('priceDisplayRow');
   var priceDisplayVal = document.getElementById('priceDisplayVal');
+  var priceCreateRow  = document.getElementById('priceCreateRow');
 
   function updatePriceDisplay(){
     var val = fPrice.value;
@@ -3619,6 +3624,7 @@
     familyIconPreviewI.className = 'ti ti-package';
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
+    if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     f3dAvailable.checked = false;
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
@@ -3800,6 +3806,7 @@
         switchTab('manual');
         if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';
         if(priceDisplayRow) priceDisplayRow.style.display = 'flex';
+        if(priceCreateRow)  priceCreateRow.style.display  = 'none';
         updatePriceDisplay();
       }
     }else{
@@ -3816,6 +3823,7 @@
       sellingPriceZoneEl.style.display = 'block';
       if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'none';
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
+      if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
     overlay.classList.add('open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
