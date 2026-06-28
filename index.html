@@ -3906,10 +3906,20 @@
       }
       // Description : meta-description est remplie sur Sonepar
       if(!result.desc){
-        var md = doc.querySelector('meta[name="meta-description"]');
+        var md = doc.querySelector('meta[name="meta-description"]')
+               || doc.querySelector('meta[name="description"]');
         if(md){
-          var mdVal = (md.getAttribute('content') || '').replace(/<[^>]*>/g,'').replace(/&lt;[^&]*&gt;/g,'').trim();
+          var mdVal = md.getAttribute('content') || '';
+          // Nettoyer les balises HTML encodées ou non
+          mdVal = mdVal.replace(/&lt;[^&]+&gt;/g,'').replace(/&amp;/g,'&');
+          mdVal = mdVal.replace(/<[^>]+>/g,'');
+          mdVal = mdVal.replace(/\s+/g,' ').trim();
           if(mdVal.length > 10) result.desc = mdVal;
+        }
+        // Fallback : chercher la description détaillée dans le DOM
+        if(!result.desc){
+          var descEl = doc.querySelector('[class*="description-detaillee"],[class*="product-description"],[class*="long-desc"],[itemprop="description"]');
+          if(descEl) result.desc = descEl.textContent.replace(/\s+/g,' ').trim().slice(0, 500);
         }
       }
       // Marque
