@@ -1805,9 +1805,8 @@
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
-    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
-    .settings-box{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
-    #overlay .modal{ max-height:92dvh; }
+    #overlay .modal{ width:calc(100% - 24px); max-width:100%; max-height:88dvh; }
+    .settings-box{ width:calc(100% - 24px); max-width:100%; max-height:88dvh; }
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
