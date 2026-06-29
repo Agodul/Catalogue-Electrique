@@ -1,10 +1,7 @@
-// ---------- Init ----------
+  // ---------- Init ----------
   load();
   render();
   tryReconnectOnLoad();
-
-  // ── Auth ────────────────────────────────────────────────────────
-  if(typeof initAuth === 'function') initAuth();
 
   // ── Share Target iOS/Android (PWA) ───────────────────────────────
   (function handleShareTarget(){
