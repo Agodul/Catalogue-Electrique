@@ -1,30 +1,59 @@
-// ============================================================
-// auth.js — Authentification locale (SHA-256, sessionStorage)
-// ============================================================
-// Pour ajouter un compte : copier un objet dans ACCOUNTS et
-// remplacer passwordHash par le hash SHA-256 du mot de passe.
-// Outil en ligne pour générer un hash : https://emn178.github.io/online-tools/sha256.html
-// ============================================================
 "use strict";
 
-// ── Comptes autorisés ────────────────────────────────────────
-// passwordHash = SHA-256 du mot de passe en minuscules
-var AUTH_ACCOUNTS = [
-  {
-    username: "admin",
-    displayName: "Administrateur",
-    // Mot de passe par défaut : spi2024
-    // Pour changer : générer le SHA-256 du nouveau mot de passe
-    passwordHash: "84b5514fd9e2a1ce65bb7e0a4ab0112ecd2cce4aa5ced9445f97ece6a23914d4"
-  },
-  {
-    username: "simon",
-    displayName: "Simon",
-    passwordHash: "faa53a912302e80abe48c94c0487c1c6e1d791b8734ea0c23c42f7694670efe3"
-  }
-];
+// ── Compte admin de secours (toujours actif, non modifiable) ─
+var AUTH_ADMIN_FALLBACK = {
+  username: "admin",
+  displayName: "Administrateur",
+  passwordHash: "84b5514fd9e2a1ce65bb7e0a4ab0112ecd2cce4aa5ced9445f97ece6a23914d4",
+  isAdmin: true
+};
 
-var AUTH_SESSION_KEY = "spi_auth_user";
+var AUTH_SESSION_KEY  = "spi_auth_user";
+var AUTH_USERS_KEY    = "spi_auth_users";  // localStorage
+
+// ── Gestion des comptes (localStorage) ──────────────────────
+function authGetAllAccounts() {
+  try {
+    var raw = localStorage.getItem(AUTH_USERS_KEY);
+    var extra = raw ? JSON.parse(raw) : [];
+    // Le compte admin de secours est toujours en tête
+    return [AUTH_ADMIN_FALLBACK].concat(extra.filter(function(u){
+      return u.username.toLowerCase() !== "admin";
+    }));
+  } catch(e) { return [AUTH_ADMIN_FALLBACK]; }
+}
+
+function authSaveExtraAccounts(accounts) {
+  // Ne jamais sauvegarder le compte admin de secours
+  var extra = accounts.filter(function(u){
+    return u.username.toLowerCase() !== "admin";
+  });
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
+}
+
+async function authAddUser(username, displayName, password) {
+  username = username.trim().toLowerCase();
+  displayName = displayName.trim();
+  if (!username || !displayName || !password) return { ok: false, msg: "Tous les champs sont requis." };
+  var all = authGetAllAccounts();
+  if (all.find(function(u){ return u.username === username; })) {
+    return { ok: false, msg: "Cet identifiant existe déjà." };
+  }
+  var hash = await sha256(password);
+  var extra = all.filter(function(u){ return u.username !== "admin"; });
+  extra.push({ username: username, displayName: displayName, passwordHash: hash });
+  authSaveExtraAccounts(extra);
+  return { ok: true };
+}
+
+function authDeleteUser(username) {
+  if (username.toLowerCase() === "admin") return; // protégé
+  var all = authGetAllAccounts();
+  var extra = all.filter(function(u){
+    return u.username !== "admin" && u.username !== username;
+  });
+  authSaveExtraAccounts(extra);
+}
 
 // ── Utilitaire SHA-256 (Web Crypto API natif) ────────────────
 async function sha256(message) {
@@ -62,7 +91,8 @@ function authLogout() {
 // ── Tentative de connexion ───────────────────────────────────
 async function authLogin(username, password) {
   var hash = await sha256(password);
-  var account = AUTH_ACCOUNTS.find(function(a){
+  var accounts = authGetAllAccounts();
+  var account = accounts.find(function(a){
     return a.username.toLowerCase() === username.toLowerCase().trim()
         && a.passwordHash === hash;
   });
@@ -94,6 +124,8 @@ function applyAuthUI() {
 
   // Bouton connexion / déconnexion dans le header
   updateAuthHeaderBtn(loggedIn, user);
+  // Bouton Utilisateurs (visible admin seulement)
+  applyUserSettingsBtnVisibility();
 }
 
 // ── Bouton login/logout dans le header ──────────────────────
@@ -160,6 +192,96 @@ function showAuthToast(msg) {
   setTimeout(function(){ t.classList.remove("show"); }, 2500);
 }
 
+
+// ── Gestion utilisateurs (sous-page Paramètres) ──────────────
+function openUserSettingsPage() {
+  var main = document.querySelector(".settings-body");
+  var page = document.getElementById("settingsUserPage");
+  if (!main || !page) return;
+  main.style.display = "none";
+  page.style.display = "flex";
+  renderUserList();
+}
+
+function closeUserSettingsPage() {
+  var main = document.querySelector(".settings-body");
+  var page = document.getElementById("settingsUserPage");
+  if (!main || !page) return;
+  page.style.display = "none";
+  main.style.display = "";
+}
+
+function renderUserList() {
+  var list = document.getElementById("userList");
+  if (!list) return;
+  var accounts = authGetAllAccounts();
+  list.innerHTML = accounts.map(function(u) {
+    var isAdmin = u.username === "admin";
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper-card);">' +
+      '<div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + u.displayName + '</div>' +
+        '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? ' · Admin' : '') + '</div>' +
+      '</div>' +
+      (isAdmin ? '' :
+        '<button onclick="authDeleteUser('' + u.username + '');renderUserList();" ' +
+        'style="background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;" title="Supprimer">' +
+        '<i class="ti ti-trash"></i></button>') +
+    '</div>';
+  }).join("");
+}
+
+function initUserSettingsPage() {
+  var btnOpen = document.getElementById("btnOpenUserSettings");
+  if (btnOpen) {
+    btnOpen.addEventListener("click", openUserSettingsPage);
+  }
+  var btnBack = document.getElementById("btnUserPageBack");
+  if (btnBack) {
+    btnBack.addEventListener("click", closeUserSettingsPage);
+  }
+  var btnAdd = document.getElementById("btnAddUser");
+  if (btnAdd) {
+    btnAdd.addEventListener("click", async function() {
+      var username = (document.getElementById("newUserUsername").value || "").trim();
+      var display  = (document.getElementById("newUserDisplay").value  || "").trim();
+      var password = (document.getElementById("newUserPassword").value || "").trim();
+      var errEl    = document.getElementById("newUserError");
+      var result   = await authAddUser(username, display, password);
+      if (result.ok) {
+        document.getElementById("newUserUsername").value = "";
+        document.getElementById("newUserDisplay").value  = "";
+        document.getElementById("newUserPassword").value = "";
+        errEl.textContent = "";
+        renderUserList();
+      } else {
+        errEl.textContent = result.msg;
+      }
+    });
+  }
+}
+
+// Afficher/cacher le bouton Utilisateurs selon le statut admin
+function applyUserSettingsBtnVisibility() {
+  var btn = document.getElementById("btnOpenUserSettings");
+  if (!btn) return;
+  var user = authGetCurrentUser();
+  var isAdmin = user && user.username === "admin";
+  btn.style.display = isAdmin ? "flex" : "none";
+}
+
+
+// ── Fix iOS : scroll l'input dans la zone visible quand le clavier s'ouvre ──
+(function(){
+  if(!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+  document.addEventListener('focusin', function(e){
+    var el = e.target;
+    if(el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
+    setTimeout(function(){
+      el.scrollIntoView({ behavior:'smooth', block:'center' });
+    }, 300);
+  });
+})();
+
 // ── Init ──────────────────────────────────────────────────────
 function initAuth() {
   // Fermer modale sur clic overlay
@@ -185,6 +307,8 @@ function initAuth() {
   var btn = document.getElementById("authSubmitBtn");
   if (btn) btn.addEventListener("click", submitAuthForm);
 
+  // Gestion sous-page utilisateurs
+  initUserSettingsPage();
   // Appliquer l'UI au chargement
   applyAuthUI();
 }
