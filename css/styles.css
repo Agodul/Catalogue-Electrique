@@ -375,18 +375,19 @@
     box-shadow:0 24px 80px rgba(0,0,0,.32);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
+    height:calc(100vh - 80px);
   }
   /* Layout 2 colonnes desktop */
   .vm-inner{
     display:flex; flex-direction:row;
-    flex:1; overflow:hidden; min-height:0;
+    flex:1; overflow:hidden; min-height:0; max-height:100%;
   }
   .vm-photo{
     flex:0 0 42%;
     background:#DDE2E8;
     display:flex; align-items:center; justify-content:center;
     overflow:hidden; position:relative;
-    min-height: 150px;
+    min-height: 150px; align-self:stretch;
   }
   .vm-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .vm-scroll{
