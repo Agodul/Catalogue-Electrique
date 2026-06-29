@@ -956,11 +956,13 @@
     .search-field{ display:none; }
     .search-toggle-btn{ display:flex; flex-shrink:0; width:38px; height:38px; }
     .search-expand.open{ display:flex; width:100%; }
+    /* Ligne 1 : [🔍] [Marque ——————————————————]
+       Ligne 2 : [Famille ——] [Série ——] [↕Prix] */
     select#brandFilter{ flex:1 1 0; min-width:0; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
     select#familyFilter, select#seriesFilter{
-      flex:1 1 calc(50% - 3px); width:calc(50% - 3px); max-width:calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
+      flex:1 1 0; min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
     }
-    .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
+    .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
     select#brandFilter, select#seriesFilter{ display:flex; }
     .filters-visible select#familyFilter{ display:flex; }
 
@@ -1095,10 +1097,9 @@
     /* Contenu */
     .wrap{ padding:8px 8px 90px; }
 
-    /* Filtres pleine largeur */
-    select#brandFilter, select#familyFilter, select#seriesFilter{
-      flex:1 1 100%; font-size:12px; padding:7px 8px;
-    }
+    /* Filtres : brandFilter pleine largeur, famille+série côte à côte */
+    select#brandFilter{ flex:1 1 100%; font-size:12px; padding:7px 8px; }
+    select#familyFilter, select#seriesFilter{ flex:1 1 0; font-size:12px; padding:7px 6px; }
 
     /* Grille : 2 colonnes sur très petit écran */
     .grid{ grid-template-columns:repeat(2,1fr); gap:6px; }
@@ -1805,8 +1806,9 @@
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
-    #overlay .modal{ width:calc(100% - 24px); max-width:100%; max-height:88dvh; }
-    .settings-box{ width:calc(100% - 24px); max-width:100%; max-height:88dvh; }
+    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    .settings-box{ border-radius:20px 20px 0 0; width:100%; max-width:100%; }
+    #overlay .modal{ max-height:92dvh; }
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
