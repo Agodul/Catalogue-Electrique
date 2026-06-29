@@ -227,7 +227,7 @@ function renderUserList() {
         '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? ' · Admin' : '') + '</div>' +
       '</div>' +
       (isAdmin ? '' :
-        '<button onclick="authDeleteUser('' + u.username + '');renderUserList();" ' +
+        '<button onclick="authDeleteUser(\'' + u.username + '\');renderUserList();" ' +
         'style="background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;" title="Supprimer">' +
         '<i class="ti ti-trash"></i></button>') +
     '</div>';
