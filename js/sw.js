@@ -2,7 +2,7 @@ const CACHE = "spi-catalogue-v11";
 
 const FILES = [
   "./",
-  "./Catalogue-Electrique/index.html",
+  "./index.html",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./apple-touch-icon.png",
@@ -57,7 +57,7 @@ self.addEventListener("fetch", event => {
     }
 
     // Rediriger vers index.html à la racine (Cloudflare Pages)
-    const redirectTo = "/index.html";
+    const redirectTo = "/Catalogue-Electrique/index.html";
     const qs = new URLSearchParams();
     if(safeTargetUrl)  qs.set("share_url",   safeTargetUrl);
     if(sharedTitle)    qs.set("share_title", sharedTitle.substring(0, 200));
