@@ -40,7 +40,7 @@
     flex-wrap:nowrap;
     position:sticky;
     top:0;
-    z-index:200;
+    z-index:100;
   }
   .brandmark{ display:flex; align-items:center; gap:0; flex-shrink:0; }
   .brandmark .logo-mark{ height:44px; width:auto; flex-shrink:0; }
@@ -481,7 +481,7 @@
   .modal-overlay{
     position:fixed; inset:0; background:rgba(28,26,23,.45);
     display:none; align-items:center; justify-content:center;
-    padding:24px 20px; z-index:50;
+    padding:24px 20px; z-index:500;
   }
   .modal-overlay.open{ display:flex; }
   .modal{
