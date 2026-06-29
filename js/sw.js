@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v12";
+const CACHE = "spi-catalogue-v11";
 
 const FILES = [
   "./",
@@ -43,7 +43,6 @@ self.addEventListener("fetch", event => {
     const sharedTitle = url.searchParams.get("title") || "";
     const sharedText  = url.searchParams.get("text")  || "";
 
-    // Prendre la meilleure URL disponible
     const targetUrl = sharedUrl || sharedText || "";
 
     // ── SÉCURITÉ : valider le schéma avant de rediriger ──────────
@@ -54,13 +53,11 @@ self.addEventListener("fetch", event => {
         if(parsed.protocol === "https:" || parsed.protocol === "http:"){
           safeTargetUrl = parsed.href;
         }
-      } catch(e) {
-        // URL invalide — on ignore
-      }
+      } catch(e) {}
     }
 
-    // Rediriger vers index.html avec les paramètres
-    const redirectTo = "/Catalogue-Electrique/index.html";
+    // Rediriger vers index.html à la racine (Cloudflare Pages)
+    const redirectTo = "/index.html";
     const qs = new URLSearchParams();
     if(safeTargetUrl)  qs.set("share_url",   safeTargetUrl);
     if(sharedTitle)    qs.set("share_title", sharedTitle.substring(0, 200));
