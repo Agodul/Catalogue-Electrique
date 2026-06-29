@@ -371,7 +371,7 @@
   #viewModal{
     background:var(--paper-card); border-radius:12px;
     width:100%; max-width:960px;
-    max-height:calc(100vh - 48px);
+    max-height:100%;
     box-shadow:0 24px 80px rgba(0,0,0,.32);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
