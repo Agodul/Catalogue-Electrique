@@ -363,15 +363,16 @@
 
   /* Modale de consultation */
   #viewOverlay{
-    position:fixed; inset:0; background:rgba(28,26,23,.48);
+    position:fixed; left:0; right:0; top:55px; bottom:0;
+    background:rgba(28,26,23,.48);
     display:none; align-items:center; justify-content:center;
-    padding:60px 20px 20px; z-index:55;
+    padding:20px; z-index:55;
   }
   #viewOverlay.open{ display:flex; }
   #viewModal{
     background:var(--paper-card); border-radius:12px;
     width:100%; max-width:960px;
-    max-height:calc(100vh - 80px);
+    max-height:100%;
     box-shadow:0 24px 80px rgba(0,0,0,.32);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
@@ -379,7 +380,7 @@
   /* Layout 2 colonnes desktop */
   .vm-inner{
     display:flex; flex-direction:row;
-    flex:1; overflow:hidden; min-height:0;
+    flex:1; overflow:hidden; min-height:0; max-height:100%;
   }
   .vm-photo{
     flex:0 0 42%;
@@ -1056,7 +1057,7 @@
     .card .tag{ font-size:8px; padding:1px 3px; }
 
     /* ── Fiche produit : bottom sheet ── */
-    #viewOverlay{ padding:30px 0px 0px 0px; align-items:center; justify-content:center; }
+    #viewOverlay{ top:0; padding:30px 0px 0px 0px; align-items:center; justify-content:center; }
     #viewModal{
       display:flex; flex-direction:column;
       border-radius:16px 16px 16px 16px;
