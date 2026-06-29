@@ -130,11 +130,11 @@
   .wrap{ max-width:1180px; margin:0 auto; padding:28px 32px 80px; }
 
   .toolbar{
-    display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+    display:flex; gap:10px; align-items:center; flex-wrap:nowrap;
     margin-bottom:22px;
   }
   .search-field{
-    flex:1; min-width:220px;
+    flex:1; min-width:200px;
     position:relative;
   }
   .search-field input{
@@ -158,9 +158,7 @@
     background:var(--paper-card);
     color:var(--ink);
     display:none;
-    width:180px;
-    min-width:180px;
-    max-width:180px;
+    flex-shrink:0;
     box-sizing:border-box;
   }
   select#brandFilter, select#seriesFilter{ display:block; }
@@ -931,6 +929,31 @@
   #btnScrollTop:hover{ background:var(--copper); border-color:var(--copper); transform:translateY(-2px); }
   #btnScrollTop svg{ width:20px; height:20px; }
   
+  /* ── Toolbar ≤768px : 2 lignes fixes ────────────────────────── */
+  @media(max-width:768px){
+    .toolbar{ flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+    .search-field{ display:none; }
+    /* Ligne 1 : [🔍] [Marques ——————————————————] */
+    .search-toggle-btn{ display:flex; flex-shrink:0; order:1; }
+    select#brandFilter{
+      order:1; flex:1 1 0; min-width:0; font-size:13px;
+      padding:8px 10px; height:38px; box-sizing:border-box;
+    }
+    /* Ligne 2 : [Familles ——] [Séries ——] [↕Prix] */
+    select#familyFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
+      padding:8px 8px; height:38px; box-sizing:border-box;
+    }
+    select#seriesFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
+      padding:8px 8px; height:38px; box-sizing:border-box;
+    }
+    .sort-price-btn{ order:2; font-size:13px; padding:0 10px; height:38px; flex-shrink:0; }
+    .search-expand.open{ order:3; display:flex; width:100%; }
+    select#brandFilter, select#seriesFilter{ display:flex; }
+    .filters-visible select#familyFilter{ display:flex; }
+  }
+
   @media (max-width:640px){
 
     /* ── Header compact ── */
@@ -954,16 +977,24 @@
     /* ── Layout ── */
     .wrap{ padding:10px 10px 90px; }
 
-    /* ── Toolbar ── */
+    /* ── Toolbar 2 lignes ── */
     .toolbar{ gap:6px; flex-wrap:wrap; margin-bottom:8px; }
     .search-field{ display:none; }
-    .search-toggle-btn{ display:flex; }
-    .search-expand.open{ display:flex; }
-    select#brandFilter{ flex:1 1 100%; width:100%; max-width:100%; font-size:13px; padding:8px 10px; height:38px; box-sizing:border-box; }
-    select#familyFilter, select#seriesFilter{
-      flex:1 1 calc(50% - 3px); width:calc(50% - 3px); max-width:calc(50% - 3px); min-width:0; font-size:13px; padding:8px 8px; height:38px; box-sizing:border-box;
+    .search-toggle-btn{ display:flex; flex-shrink:0; order:1; }
+    .search-expand.open{ display:flex; order:3; width:100%; }
+    select#brandFilter{
+      order:1; flex:1 1 0; min-width:0; font-size:13px;
+      padding:8px 10px; height:38px; box-sizing:border-box;
     }
-    .sort-price-btn{ font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; }
+    select#familyFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
+      padding:8px 8px; height:38px; box-sizing:border-box;
+    }
+    select#seriesFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
+      padding:8px 8px; height:38px; box-sizing:border-box;
+    }
+    .sort-price-btn{ order:2; font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; flex-shrink:0; }
     select#brandFilter, select#seriesFilter{ display:flex; }
     .filters-visible select#familyFilter{ display:flex; }
 
@@ -1098,10 +1129,18 @@
     /* Contenu */
     .wrap{ padding:8px 8px 90px; }
 
-    /* Filtres pleine largeur */
-    select#brandFilter, select#familyFilter, select#seriesFilter{
-      flex:1 1 100%; font-size:12px; padding:7px 8px;
+    /* Toolbar 2 lignes compacte ≤380px */
+    .search-toggle-btn{ order:1; flex-shrink:0; height:36px; }
+    select#brandFilter{
+      order:1; flex:1 1 0; min-width:0; font-size:12px; padding:7px 8px; height:36px; box-sizing:border-box;
     }
+    select#familyFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:12px; padding:7px 5px; height:36px; box-sizing:border-box;
+    }
+    select#seriesFilter{
+      order:2; flex:1 1 0; min-width:0; width:0; font-size:12px; padding:7px 5px; height:36px; box-sizing:border-box;
+    }
+    .sort-price-btn{ order:2; font-size:12px; padding:0 7px; height:36px; flex-shrink:0; }
 
     /* Grille : 2 colonnes sur très petit écran */
     .grid{ grid-template-columns:repeat(2,1fr); gap:6px; }
