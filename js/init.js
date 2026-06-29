@@ -17,6 +17,11 @@
     window.history.replaceState({}, document.title, window.location.pathname);
 
     setTimeout(function(){
+      // Bloquer si non connecté
+      if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
+        showToast('Connexion requise pour ajouter un produit', 'warn', 4000);
+        return;
+      }
       // Basculer vers le catalogue si on est sur l'accueil
       if(homePage && !homePage.classList.contains('hidden')){
         showCatalogueAll();
@@ -79,6 +84,11 @@
   //  L'app reprend exactement le même pipeline que "Coller le code source".
   // ═══════════════════════════════════════════════════════════════
   function triggerExtensionExtraction(){
+    // Bloquer si non connecté
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
+      showToast('Connexion requise pour importer via l\'extension', 'warn', 4000);
+      return;
+    }
     var html = '';
     var url  = '';
     try{
