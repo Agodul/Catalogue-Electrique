@@ -118,6 +118,10 @@ function applyAuthUI() {
   var btnAdd = document.getElementById("btnAdd");
   if (btnAdd) btnAdd.style.display = loggedIn ? "" : "none";
 
+  // Bouton FAB +
+  var btnFabAdd = document.getElementById("btnFabAdd");
+  if (btnFabAdd) btnFabAdd.style.display = loggedIn ? "" : "none";
+
   // Bouton "i" (menu actions fiche produit) — masqué si non connecté
   var vmInfoBtn = document.getElementById("vmInfoBtn");
   if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
