@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -14,6 +13,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <title>SPI Engineering — Catalogue Électrique</title>
 <link rel="stylesheet" href="css/styles.css">
+<script src="js/auth.js" defer></script>
+<script src="js/storage.js" defer></script>
+<script src="js/render.js" defer></script>
+<script src="js/modal.js" defer></script>
+<script src="js/actions.js" defer></script>
+<script src="js/init.js" defer></script>
+<script src="js/pwa.js" defer></script>
 </head>
 <body>
 
@@ -39,6 +45,7 @@
       <span class="filebar-tooltip-icon">i</span>
       <span class="filebar-tooltip-box" id="filebarTooltipBox"></span>
     </span>
+    <button id="btnAuthToggle" class="secondary hdr-menu-btn" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
     <div class="hdr-menu-wrap" id="hdrMenuWrap">
       <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options">⋮</button>
       <div class="hdr-menu" id="hdrMenu">
@@ -229,6 +236,16 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
+      <button id="btnOpenUserSettings" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+        <span style="width:38px;height:38px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-users" style="font-size:20px;color:#3B82F6;"></i>
+        </span>
+        <span>
+          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Gérer les comptes administrateurs</span>
+        </span>
+        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
+      </button>
       <button id="btnOpenServerSettings" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
         <span style="width:38px;height:38px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-server" style="font-size:20px;color:#059669;"></i>
@@ -285,6 +302,40 @@
           <button id="btnPushToServer" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;margin-top:6px;color:var(--ink);">
             ↑ Envoyer le catalogue local au serveur
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-page Utilisateurs -->
+    <div id="settingsUserPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+        <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+          <i class="ti ti-arrow-left"></i>
+        </button>
+        <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+      </div>
+      <div class="settings-body">
+        <div id="userList" style="margin-bottom:16px;"></div>
+        <div style="border-top:1px solid var(--line);padding-top:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Ajouter un utilisateur</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Identifiant</label>
+              <input type="text" id="newUserUsername" placeholder="ex: jean.dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nom affiché</label>
+              <input type="text" id="newUserDisplay" placeholder="ex: Jean Dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Mot de passe</label>
+              <input type="password" id="newUserPassword" placeholder="••••••••" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div id="newUserError" style="font-size:13px;color:#DC2626;min-height:16px;"></div>
+            <button id="btnAddUser" style="width:100%;height:44px;background:#194093;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
+              Ajouter l'utilisateur
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -712,11 +763,31 @@
   </div>
 
 
-<script src="js/storage.js"></script>
-<script src="js/render.js"></script>
-<script src="js/modal.js"></script>
-<script src="js/actions.js"></script>
-<script src="js/init.js"></script>
-<script src="js/pwa.js"></script>
+<!-- ── Modale Login ─────────────────────────────────────── -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <button id="authCloseBtn" title="Fermer"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <div class="auth-box-header">
+      <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
+      <h2>Connexion</h2>
+      <p>Accès réservé aux administrateurs</p>
+    </div>
+    <div class="auth-fields">
+      <div class="auth-field-wrap">
+        <label for="authUsername">Identifiant</label>
+        <input type="text" id="authUsername" autocomplete="username" placeholder="Votre identifiant">
+      </div>
+      <div class="auth-field-wrap">
+        <label for="authPassword">Mot de passe</label>
+        <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+      </div>
+    </div>
+    <p class="auth-error" id="authError"></p>
+    <button id="authSubmitBtn">Se connecter</button>
+  </div>
+</div>
+
+<!-- ── Toast auth ──────────────────────────────────────── -->
+<div id="authToast"></div>
 </body>
 </html>
