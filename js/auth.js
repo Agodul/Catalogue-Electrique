@@ -15,10 +15,13 @@ var AUTH_ACCOUNTS = [
     displayName: "Administrateur",
     // Mot de passe par défaut : spi2024
     // Pour changer : générer le SHA-256 du nouveau mot de passe
-    passwordHash: "a1b9892c047d52f91a00e0e4ad66cac3f09a7b46736c3da0ce2a5b9d46f13e9b"
+    passwordHash: "84b5514fd9e2a1ce65bb7e0a4ab0112ecd2cce4aa5ced9445f97ece6a23914d4"
+  },
+  {
+    username: "simon",
+    displayName: "Simon",
+    passwordHash: "faa53a912302e80abe48c94c0487c1c6e1d791b8734ea0c23c42f7694670efe3"
   }
-  // Ajouter d'autres comptes ici :
-  // { username: "user2", displayName: "Prénom Nom", passwordHash: "..." }
 ];
 
 var AUTH_SESSION_KEY = "spi_auth_user";
@@ -85,11 +88,9 @@ function applyAuthUI() {
   var btnAdd = document.getElementById("btnAdd");
   if (btnAdd) btnAdd.style.display = loggedIn ? "" : "none";
 
-  // Boutons fiche produit (Modifier / Supprimer)
-  var vmEdit   = document.getElementById("vmEditBtn");
-  var vmDelete = document.getElementById("vmDeleteBtn");
-  if (vmEdit)   vmEdit.style.display   = loggedIn ? "" : "none";
-  if (vmDelete) vmDelete.style.display = loggedIn ? "" : "none";
+  // Bouton "i" (menu actions fiche produit) — masqué si non connecté
+  var vmInfoBtn = document.getElementById("vmInfoBtn");
+  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
 
   // Bouton connexion / déconnexion dans le header
   updateAuthHeaderBtn(loggedIn, user);
@@ -164,9 +165,11 @@ function initAuth() {
   // Fermer modale sur clic overlay
   var overlay = document.getElementById("authOverlay");
   if (overlay) {
-    overlay.addEventListener("click", function(e){
-      if (e.target === overlay) closeAuthModal();
-    });
+    // La modale ne se ferme PAS en cliquant en dehors
+
+  // Bouton croix pour fermer
+  var closeBtn = document.getElementById("authCloseBtn");
+  if (closeBtn) closeBtn.addEventListener("click", function(){ closeAuthModal(); });
   }
 
   // Soumettre avec Entrée
@@ -189,9 +192,7 @@ function initAuth() {
 // Ré-appliquer les boutons Modifier/Supprimer à chaque ouverture de fiche
 // (appelé depuis render.js après injection du DOM de la modale produit)
 function authApplyOnProductModal() {
-  var vmEdit   = document.getElementById("vmEditBtn");
-  var vmDelete = document.getElementById("vmDeleteBtn");
-  var loggedIn = authIsLoggedIn();
-  if (vmEdit)   vmEdit.style.display   = loggedIn ? "" : "none";
-  if (vmDelete) vmDelete.style.display = loggedIn ? "" : "none";
+  var vmInfoBtn = document.getElementById("vmInfoBtn");
+  var loggedIn  = authIsLoggedIn();
+  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
 }
