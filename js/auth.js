@@ -219,19 +219,28 @@ function renderUserList() {
   var list = document.getElementById("userList");
   if (!list) return;
   var accounts = authGetAllAccounts();
-  list.innerHTML = accounts.map(function(u) {
+  list.innerHTML = "";
+  accounts.forEach(function(u) {
     var isAdmin = u.username === "admin";
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper-card);">' +
-      '<div>' +
-        '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + u.displayName + '</div>' +
-        '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? ' · Admin' : '') + '</div>' +
-      '</div>' +
-      (isAdmin ? '' :
-        '<button onclick="authDeleteUser(\'' + u.username + '\');renderUserList();" ' +
-        'style="background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;" title="Supprimer">' +
-        '<i class="ti ti-trash"></i></button>') +
-    '</div>';
-  }).join("");
+    var row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper-card);";
+    var info = document.createElement("div");
+    info.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + u.displayName + '</div>' +
+      '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? " · Admin" : "") + '</div>';
+    row.appendChild(info);
+    if (!isAdmin) {
+      var btn = document.createElement("button");
+      btn.title = "Supprimer";
+      btn.innerHTML = '<i class="ti ti-trash"></i>';
+      btn.style.cssText = "background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;";
+      btn.addEventListener("click", function() {
+        authDeleteUser(u.username);
+        renderUserList();
+      });
+      row.appendChild(btn);
+    }
+    list.appendChild(row);
+  });
 }
 
 function initUserSettingsPage() {
