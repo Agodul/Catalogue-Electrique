@@ -13,6 +13,23 @@
     var shareTitle = params.get('share_title');
     if(!shareUrl) return;
 
+    // ── SÉCURITÉ : valider l'URL avant tout traitement ───────────
+    try {
+      var parsed = new URL(shareUrl);
+      // N'accepter que http:// et https://
+      if(parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        console.warn('[ShareTarget] URL rejetée (protocole non autorisé):', parsed.protocol);
+        showToast('URL partagée invalide', 'err', 4000);
+        return;
+      }
+      // Reconstruire l'URL depuis l'objet parsé (évite les injections via fragments malformés)
+      shareUrl = parsed.href;
+    } catch(e) {
+      console.warn('[ShareTarget] URL malformée rejetée:', shareUrl);
+      showToast('URL partagée invalide', 'err', 4000);
+      return;
+    }
+
     // Nettoyer l'URL du navigateur
     window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -31,12 +48,11 @@
 
       setTimeout(function(){
         if(fUrl) fUrl.value = shareUrl;
-        if(shareTitle && fName) fName.value = shareTitle;
+        if(shareTitle && fName) fName.value = escapeHtml ? shareTitle.substring(0, 200) : shareTitle;
         switchTab('auto');
         showToast('Récupération de la page en cours…', 'ok', 3000);
 
-        // ── Extraction automatique via allorigins.win ──────────────
-        // Essayer plusieurs proxies en cascade
+        // ── Extraction automatique via proxies ─────────────────────
         var shareProxies = [
           'https://api.allorigins.win/get?url=' + encodeURIComponent(shareUrl),
           'https://corsproxy.io/?' + encodeURIComponent(shareUrl),
@@ -102,6 +118,22 @@
       localStorage.removeItem('spi_pending_url');
       localStorage.removeItem('spi_pending_ts');
     }catch(e){ return; }
+
+    // ── SÉCURITÉ : valider l'URL provenant du localStorage ───────
+    if(url){
+      try {
+        var parsedUrl = new URL(url);
+        if(parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:'){
+          console.warn('[Extension] URL rejetée (protocole non autorisé):', parsedUrl.protocol);
+          url = '';
+        } else {
+          url = parsedUrl.href;
+        }
+      } catch(e) {
+        console.warn('[Extension] URL malformée ignorée');
+        url = '';
+      }
+    }
 
     // Nettoyer le flag bridge dans l'URL
     if(window.location.search.includes('spi_bridge=1')){

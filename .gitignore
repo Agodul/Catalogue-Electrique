@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dépendances (si utilisées un jour)
+node_modules/
+
+# Fichiers de build locaux
+dist/
+.env
+.env.local

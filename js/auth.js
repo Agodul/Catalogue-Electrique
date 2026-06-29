@@ -1,34 +1,89 @@
 "use strict";
 
-// ── Compte admin de secours (toujours actif, non modifiable) ─
-var AUTH_ADMIN_FALLBACK = {
-  username: "admin",
-  displayName: "Administrateur",
-  passwordHash: "84b5514fd9e2a1ce65bb7e0a4ab0112ecd2cce4aa5ced9445f97ece6a23914d4",
-  isAdmin: true
-};
+// ── Compte admin de secours (toujours actif, non modifiable) ─────────────────
+// SÉCURITÉ : le hash n'est plus codé en dur dans le source.
+// Au premier lancement, si aucun hash n'est stocké, l'admin doit définir
+// son mot de passe via la fonction authSetAdminPassword() ou depuis l'UI.
+var AUTH_ADMIN_FALLBACK_USERNAME = "admin";
+var AUTH_ADMIN_FALLBACK_DISPLAYNAME = "Administrateur";
 
-var AUTH_SESSION_KEY  = "spi_auth_user";
-var AUTH_USERS_KEY    = "spi_auth_users";  // localStorage
+var AUTH_SESSION_KEY   = "spi_auth_user";
+var AUTH_USERS_KEY     = "spi_auth_users";   // localStorage
+var AUTH_ADMIN_KEY     = "spi_auth_admin";   // localStorage (hash admin séparé)
 
-// ── Gestion des comptes (localStorage) ──────────────────────
+// ── PBKDF2 avec sel (remplace SHA-256 nu) ────────────────────────────────────
+// Génère un sel aléatoire de 16 octets (hex)
+function generateSalt() {
+  var arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+// Dérive une clé depuis password + salt avec PBKDF2-SHA-256, 100 000 itérations
+async function pbkdf2Hash(password, salt) {
+  var enc = new TextEncoder();
+  var keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(password.trim()), "PBKDF2", false, ["deriveBits"]
+  );
+  var bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
+    keyMaterial, 256
+  );
+  return Array.from(new Uint8Array(bits)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+// Objet {salt, hash} sérialisable
+async function makeCredential(password) {
+  var salt = generateSalt();
+  var hash = await pbkdf2Hash(password, salt);
+  return { salt: salt, hash: hash };
+}
+
+// Vérifie password contre un objet {salt, hash}
+async function verifyCredential(password, credential) {
+  if (!credential || !credential.salt || !credential.hash) return false;
+  var hash = await pbkdf2Hash(password, credential.salt);
+  return hash === credential.hash;
+}
+
+// ── Gestion du compte admin ──────────────────────────────────────────────────
+function authGetAdminCredential() {
+  try {
+    var raw = localStorage.getItem(AUTH_ADMIN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+async function authSetAdminPassword(newPassword) {
+  var cred = await makeCredential(newPassword);
+  localStorage.setItem(AUTH_ADMIN_KEY, JSON.stringify(cred));
+}
+
+// ── Gestion des comptes utilisateurs (localStorage) ──────────────────────────
 function authGetAllAccounts() {
+  var adminCred = authGetAdminCredential();
+  // L'admin est toujours en tête ; son credential est stocké séparément
+  var adminEntry = {
+    username: AUTH_ADMIN_FALLBACK_USERNAME,
+    displayName: AUTH_ADMIN_FALLBACK_DISPLAYNAME,
+    credential: adminCred,
+    isAdmin: true
+  };
   try {
     var raw = localStorage.getItem(AUTH_USERS_KEY);
     var extra = raw ? JSON.parse(raw) : [];
-    // Le compte admin de secours est toujours en tête
-    return [AUTH_ADMIN_FALLBACK].concat(extra.filter(function(u){
-      return u.username.toLowerCase() !== "admin";
+    return [adminEntry].concat(extra.filter(function(u){
+      return u.username.toLowerCase() !== AUTH_ADMIN_FALLBACK_USERNAME;
     }));
-  } catch(e) { return [AUTH_ADMIN_FALLBACK]; }
+  } catch(e) { return [adminEntry]; }
 }
 
-function authSaveExtraAccounts(accounts) {
-  // Ne jamais sauvegarder le compte admin de secours
-  var extra = accounts.filter(function(u){
-    return u.username.toLowerCase() !== "admin";
+function authSaveExtraAccounts(extra) {
+  // Ne jamais sauvegarder le compte admin dans la liste extra
+  var filtered = extra.filter(function(u){
+    return u.username.toLowerCase() !== AUTH_ADMIN_FALLBACK_USERNAME;
   });
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(filtered));
 }
 
 async function authAddUser(username, displayName, password) {
@@ -39,31 +94,23 @@ async function authAddUser(username, displayName, password) {
   if (all.find(function(u){ return u.username === username; })) {
     return { ok: false, msg: "Cet identifiant existe déjà." };
   }
-  var hash = await sha256(password);
-  var extra = all.filter(function(u){ return u.username !== "admin"; });
-  extra.push({ username: username, displayName: displayName, passwordHash: hash });
+  var cred = await makeCredential(password);
+  var extra = all.filter(function(u){ return u.username !== AUTH_ADMIN_FALLBACK_USERNAME; });
+  extra.push({ username: username, displayName: displayName, credential: cred });
   authSaveExtraAccounts(extra);
   return { ok: true };
 }
 
 function authDeleteUser(username) {
-  if (username.toLowerCase() === "admin") return; // protégé
+  if (username.toLowerCase() === AUTH_ADMIN_FALLBACK_USERNAME) return; // protégé
   var all = authGetAllAccounts();
   var extra = all.filter(function(u){
-    return u.username !== "admin" && u.username !== username;
+    return u.username !== AUTH_ADMIN_FALLBACK_USERNAME && u.username !== username;
   });
   authSaveExtraAccounts(extra);
 }
 
-// ── Utilitaire SHA-256 (Web Crypto API natif) ────────────────
-async function sha256(message) {
-  var msgBuffer = new TextEncoder().encode(message.toLowerCase().trim());
-  var hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  var hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
-}
-
-// ── État de session ──────────────────────────────────────────
+// ── État de session ───────────────────────────────────────────────────────────
 function authGetCurrentUser() {
   try {
     var raw = sessionStorage.getItem(AUTH_SESSION_KEY);
@@ -76,27 +123,30 @@ function authIsLoggedIn() {
 }
 
 function authSetUser(account) {
+  // Ne stocker que les infos d'affichage, jamais le credential
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
     username: account.username,
-    displayName: account.displayName
+    displayName: account.displayName,
+    isAdmin: !!account.isAdmin
   }));
 }
 
 function authLogout() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
-  applyAuthUI();
   showAuthToast("Déconnecté");
 }
 
-// ── Tentative de connexion ───────────────────────────────────
+// ── Tentative de connexion ────────────────────────────────────────────────────
 async function authLogin(username, password) {
-  var hash = await sha256(password);
   var accounts = authGetAllAccounts();
   var account = accounts.find(function(a){
-    return a.username.toLowerCase() === username.toLowerCase().trim()
-        && a.passwordHash === hash;
+    return a.username.toLowerCase() === username.toLowerCase().trim();
   });
-  if (account) {
+  if (!account) {
+    return false;
+  }
+  var ok = await verifyCredential(password, account.credential);
+  if (ok) {
     authSetUser(account);
     closeAuthModal();
     applyAuthUI();
@@ -106,230 +156,171 @@ async function authLogin(username, password) {
   return false;
 }
 
-// ── Appliquer l'UI selon l'état de connexion ─────────────────
-function applyAuthUI() {
-  var loggedIn = authIsLoggedIn();
-  var user     = authGetCurrentUser();
-
-  // Corps de page : classe pour CSS
-  document.body.classList.toggle("auth-readonly", !loggedIn);
-
-  // Bouton "Ajouter un produit"
-  var btnAdd = document.getElementById("btnAdd");
-  if (btnAdd) btnAdd.style.display = loggedIn ? "" : "none";
-
-  // Bouton FAB +
-  var btnFabAdd = document.getElementById("btnFabAdd");
-  if (btnFabAdd) btnFabAdd.style.display = loggedIn ? "" : "none";
-
-  // Bouton "i" (menu actions fiche produit) — masqué si non connecté
-  var vmInfoBtn = document.getElementById("vmInfoBtn");
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
-
-  // Bouton connexion / déconnexion dans le header
-  updateAuthHeaderBtn(loggedIn, user);
-  // Bouton Utilisateurs (visible admin seulement)
-  applyUserSettingsBtnVisibility();
-}
-
-// ── Bouton login/logout dans le header ──────────────────────
-function updateAuthHeaderBtn(loggedIn, user) {
-  var btn = document.getElementById("btnAuthToggle");
-  if (!btn) return;
-  if (loggedIn) {
-    btn.title = "Déconnexion (" + user.displayName + ")";
-    btn.innerHTML = '<i class="ti ti-logout" aria-hidden="true"></i>';
-    btn.onclick = function(){ authLogout(); };
-  } else {
-    btn.title = "Se connecter";
-    btn.innerHTML = '<i class="ti ti-login" aria-hidden="true"></i>';
-    btn.onclick = function(){ openAuthModal(); };
-  }
-}
-
-// ── Modale login ─────────────────────────────────────────────
-function openAuthModal() {
-  var overlay = document.getElementById("authOverlay");
-  if (!overlay) return;
-  document.getElementById("authUsername").value = "";
-  document.getElementById("authPassword").value = "";
-  document.getElementById("authError").textContent = "";
-  overlay.classList.add("show");
-  setTimeout(function(){ document.getElementById("authUsername").focus(); }, 100);
+// ── UI Auth ───────────────────────────────────────────────────────────────────
+function showAuthToast(msg) {
+  if (typeof showToast === 'function') showToast(msg, 'ok', 2500);
 }
 
 function closeAuthModal() {
-  var overlay = document.getElementById("authOverlay");
-  if (overlay) overlay.classList.remove("show");
+  var modal = document.getElementById('authModal');
+  if (modal) modal.classList.remove('open');
 }
 
-async function submitAuthForm() {
-  var username = document.getElementById("authUsername").value;
-  var password = document.getElementById("authPassword").value;
-  var errorEl  = document.getElementById("authError");
-  var btn      = document.getElementById("authSubmitBtn");
+function applyAuthUI() {
+  var user = authGetCurrentUser();
+  var loggedIn = !!user;
 
-  if (!username || !password) {
-    errorEl.textContent = "Veuillez remplir tous les champs.";
-    return;
-  }
+  var authBtn = document.getElementById('authBtn');
+  var authLabel = document.getElementById('authLabel');
+  var logoutBtn = document.getElementById('logoutBtn');
+  var usersBtn = document.getElementById('usersBtn');
 
-  btn.disabled = true;
-  btn.textContent = "Vérification…";
+  if (authLabel) authLabel.textContent = loggedIn ? (user.displayName || user.username) : 'Connexion';
+  if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
+  if (authBtn) authBtn.style.display = loggedIn ? 'none' : '';
 
-  var ok = await authLogin(username, password);
-  if (!ok) {
-    errorEl.textContent = "Identifiant ou mot de passe incorrect.";
-    document.getElementById("authPassword").value = "";
-  }
+  // Bouton Utilisateurs (visible admin seulement)
+  var isAdmin = user && user.username === AUTH_ADMIN_FALLBACK_USERNAME;
+  if (usersBtn) usersBtn.style.display = isAdmin ? '' : 'none';
 
-  btn.disabled = false;
-  btn.textContent = "Se connecter";
-}
-
-// ── Toast discret ─────────────────────────────────────────────
-function showAuthToast(msg) {
-  var t = document.getElementById("authToast");
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(function(){ t.classList.remove("show"); }, 2500);
-}
-
-
-// ── Gestion utilisateurs (sous-page Paramètres) ──────────────
-function openUserSettingsPage() {
-  var main = document.querySelector(".settings-body");
-  var page = document.getElementById("settingsUserPage");
-  if (!main || !page) return;
-  main.style.display = "none";
-  page.style.display = "flex";
-  renderUserList();
-}
-
-function closeUserSettingsPage() {
-  var main = document.querySelector(".settings-body");
-  var page = document.getElementById("settingsUserPage");
-  if (!main || !page) return;
-  page.style.display = "none";
-  main.style.display = "";
-}
-
-function renderUserList() {
-  var list = document.getElementById("userList");
-  if (!list) return;
-  var accounts = authGetAllAccounts();
-  list.innerHTML = "";
-  accounts.forEach(function(u) {
-    var isAdmin = u.username === "admin";
-    var row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper-card);";
-    var info = document.createElement("div");
-    info.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + u.displayName + '</div>' +
-      '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? " · Admin" : "") + '</div>';
-    row.appendChild(info);
-    if (!isAdmin) {
-      var btn = document.createElement("button");
-      btn.title = "Supprimer";
-      btn.innerHTML = '<i class="ti ti-trash"></i>';
-      btn.style.cssText = "background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;";
-      btn.addEventListener("click", function() {
-        authDeleteUser(u.username);
-        renderUserList();
-      });
-      row.appendChild(btn);
-    }
-    list.appendChild(row);
+  // Afficher/cacher les éléments nécessitant une connexion
+  document.querySelectorAll('[data-auth-required]').forEach(function(el){
+    el.style.display = loggedIn ? '' : 'none';
   });
 }
 
-function initUserSettingsPage() {
-  var btnOpen = document.getElementById("btnOpenUserSettings");
-  if (btnOpen) {
-    btnOpen.addEventListener("click", openUserSettingsPage);
+// ── Initialisation du module auth ─────────────────────────────────────────────
+function initAuth() {
+  applyAuthUI();
+
+  // Vérifier si l'admin n'a pas encore de mot de passe configuré
+  var adminCred = authGetAdminCredential();
+  if (!adminCred) {
+    // Afficher un avertissement pour forcer la configuration du mot de passe admin
+    setTimeout(function(){
+      showToast('⚠ Configurez le mot de passe administrateur dans Paramètres → Utilisateurs', 'warn', 8000);
+    }, 1500);
   }
-  var btnBack = document.getElementById("btnUserPageBack");
-  if (btnBack) {
-    btnBack.addEventListener("click", closeUserSettingsPage);
-  }
-  var btnAdd = document.getElementById("btnAddUser");
-  if (btnAdd) {
-    btnAdd.addEventListener("click", async function() {
-      var username = (document.getElementById("newUserUsername").value || "").trim();
-      var display  = (document.getElementById("newUserDisplay").value  || "").trim();
-      var password = (document.getElementById("newUserPassword").value || "").trim();
-      var errEl    = document.getElementById("newUserError");
-      var result   = await authAddUser(username, display, password);
-      if (result.ok) {
-        document.getElementById("newUserUsername").value = "";
-        document.getElementById("newUserDisplay").value  = "";
-        document.getElementById("newUserPassword").value = "";
-        errEl.textContent = "";
-        renderUserList();
-      } else {
-        errEl.textContent = result.msg;
+
+  var loginBtn = document.getElementById('authLoginBtn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async function(){
+      var username = (document.getElementById('authUsername').value || '').trim();
+      var password = document.getElementById('authPassword').value;
+      document.getElementById('authPassword').value = '';
+      if (!username || !password) {
+        showToast('Identifiant et mot de passe requis', 'warn', 3000);
+        return;
+      }
+      var ok = await authLogin(username, password);
+      if (!ok) {
+        showToast('Identifiant ou mot de passe incorrect', 'err', 3000);
       }
     });
   }
+
+  var logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function(){
+      authLogout();
+      applyAuthUI();
+    });
+  }
+
+  var openAuthBtn = document.getElementById('authBtn');
+  if (openAuthBtn) {
+    openAuthBtn.addEventListener('click', function(){
+      var modal = document.getElementById('authModal');
+      if (modal) modal.classList.add('open');
+      var fields = ['authUsername', 'authPassword'];
+      fields.forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    });
+  }
+
+  // Panneau de gestion des utilisateurs (admin)
+  var usersBtn = document.getElementById('usersBtn');
+  if (usersBtn) {
+    usersBtn.addEventListener('click', function(){
+      refreshUsersList();
+      var panel = document.getElementById('usersPanel');
+      if (panel) panel.classList.toggle('open');
+    });
+  }
+
+  var addUserBtn = document.getElementById('addUserBtn');
+  if (addUserBtn) {
+    addUserBtn.addEventListener('click', async function(){
+      var username = (document.getElementById('newUserUsername').value || '').trim();
+      var display  = (document.getElementById('newUserDisplay').value || '').trim();
+      var password = (document.getElementById('newUserPassword').value || '').trim();
+      var result   = await authAddUser(username, display, password);
+      if (result.ok) {
+        showToast('Utilisateur créé', 'ok', 2500);
+        document.getElementById('newUserUsername').value = '';
+        document.getElementById('newUserDisplay').value  = '';
+        document.getElementById('newUserPassword').value = '';
+        refreshUsersList();
+      } else {
+        showToast(result.msg, 'err', 3000);
+      }
+    });
+  }
+
+  // Changement mot de passe admin
+  var setAdminPwBtn = document.getElementById('setAdminPwBtn');
+  if (setAdminPwBtn) {
+    setAdminPwBtn.addEventListener('click', async function(){
+      var pw1 = (document.getElementById('adminPw1') || {}).value || '';
+      var pw2 = (document.getElementById('adminPw2') || {}).value || '';
+      if (!pw1 || pw1.length < 8) { showToast('Mot de passe trop court (8 car. min)', 'err', 3000); return; }
+      if (pw1 !== pw2) { showToast('Les mots de passe ne correspondent pas', 'err', 3000); return; }
+      await authSetAdminPassword(pw1);
+      document.getElementById('adminPw1').value = '';
+      document.getElementById('adminPw2').value = '';
+      showToast('Mot de passe administrateur mis à jour', 'ok', 3000);
+    });
+  }
+}
+
+function refreshUsersList() {
+  var list = document.getElementById('usersListContainer');
+  if (!list) return;
+  var accounts = authGetAllAccounts();
+  var u = authGetCurrentUser();
+  list.innerHTML = accounts.map(function(a){
+    var isAdmin = a.username === AUTH_ADMIN_FALLBACK_USERNAME;
+    var isSelf  = u && u.username === a.username;
+    var noCredWarning = isAdmin && !authGetAdminCredential()
+      ? ' <span style="color:#A32D2D;font-size:11px;">⚠ mot de passe non défini</span>' : '';
+    return '<div class="user-row">'
+      + '<span class="user-display">'+escapeHtml(a.displayName)+'</span>'
+      + '<span class="user-name">@'+escapeHtml(a.username)+'</span>'
+      + noCredWarning
+      + (!isAdmin && !isSelf
+          ? '<button class="user-delete-btn" data-username="'+escapeHtml(a.username)+'"><i class="ti ti-trash"></i></button>'
+          : '<span style="font-size:11px;color:var(--ink-soft)">'+(isAdmin?'admin':''+(isSelf?' (vous)':''))+'</span>')
+      + '</div>';
+  }).join('');
+
+  list.querySelectorAll('.user-delete-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var uname = btn.getAttribute('data-username');
+      if (confirm('Supprimer l\'utilisateur "' + uname + '" ?')) {
+        authDeleteUser(uname);
+        refreshUsersList();
+        showToast('Utilisateur supprimé', 'ok', 2000);
+      }
+    });
+  });
 }
 
 // Afficher/cacher le bouton Utilisateurs selon le statut admin
-function applyUserSettingsBtnVisibility() {
-  var btn = document.getElementById("btnOpenUserSettings");
-  if (!btn) return;
+function updateUsersButtonVisibility() {
   var user = authGetCurrentUser();
-  var isAdmin = user && user.username === "admin";
-  btn.style.display = isAdmin ? "flex" : "none";
-}
-
-
-// ── Fix iOS : scroll l'input dans la zone visible quand le clavier s'ouvre ──
-(function(){
-  if(!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
-  document.addEventListener('focusin', function(e){
-    var el = e.target;
-    if(el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
-    setTimeout(function(){
-      el.scrollIntoView({ behavior:'smooth', block:'center' });
-    }, 300);
-  });
-})();
-
-// ── Init ──────────────────────────────────────────────────────
-function initAuth() {
-  // Fermer modale sur clic overlay
-  var overlay = document.getElementById("authOverlay");
-  if (overlay) {
-    // La modale ne se ferme PAS en cliquant en dehors
-
-  // Bouton croix pour fermer
-  var closeBtn = document.getElementById("authCloseBtn");
-  if (closeBtn) closeBtn.addEventListener("click", function(){ closeAuthModal(); });
-  }
-
-  // Soumettre avec Entrée
-  var fields = ["authUsername", "authPassword"];
-  fields.forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.addEventListener("keydown", function(e){
-      if (e.key === "Enter") submitAuthForm();
-    });
-  });
-
-  // Bouton soumettre
-  var btn = document.getElementById("authSubmitBtn");
-  if (btn) btn.addEventListener("click", submitAuthForm);
-
-  // Gestion sous-page utilisateurs
-  initUserSettingsPage();
-  // Appliquer l'UI au chargement
-  applyAuthUI();
-}
-
-// Ré-appliquer les boutons Modifier/Supprimer à chaque ouverture de fiche
-// (appelé depuis render.js après injection du DOM de la modale produit)
-function authApplyOnProductModal() {
-  var vmInfoBtn = document.getElementById("vmInfoBtn");
-  var loggedIn  = authIsLoggedIn();
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
+  var isAdmin = user && user.username === AUTH_ADMIN_FALLBACK_USERNAME;
+  var usersBtn = document.getElementById('usersBtn');
+  if (usersBtn) usersBtn.style.display = isAdmin ? '' : 'none';
 }

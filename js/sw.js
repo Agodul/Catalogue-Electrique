@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v3";
+const CACHE = "spi-catalogue-v4";
 
 const FILES = [
   "./",
@@ -7,7 +7,15 @@ const FILES = [
   "./favicon.ico",
   "./apple-touch-icon.png",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./css/styles.css",
+  "./js/actions.js",
+  "./js/auth.js",
+  "./js/init.js",
+  "./js/modal.js",
+  "./js/pwa.js",
+  "./js/render.js",
+  "./js/storage.js"
 ];
 
 self.addEventListener("install", event => {
@@ -38,11 +46,24 @@ self.addEventListener("fetch", event => {
     // Prendre la meilleure URL disponible
     const targetUrl = sharedUrl || sharedText || "";
 
+    // ── SÉCURITÉ : valider le schéma avant de rediriger ──────────
+    let safeTargetUrl = "";
+    if(targetUrl){
+      try {
+        const parsed = new URL(targetUrl);
+        if(parsed.protocol === "https:" || parsed.protocol === "http:"){
+          safeTargetUrl = parsed.href;
+        }
+      } catch(e) {
+        // URL invalide — on ignore
+      }
+    }
+
     // Rediriger vers index.html avec les paramètres
     const redirectTo = "/Catalogue-Electrique/index.html";
     const qs = new URLSearchParams();
-    if(targetUrl)   qs.set("share_url",   targetUrl);
-    if(sharedTitle) qs.set("share_title", sharedTitle);
+    if(safeTargetUrl)  qs.set("share_url",   safeTargetUrl);
+    if(sharedTitle)    qs.set("share_title", sharedTitle.substring(0, 200));
 
     event.respondWith(
       Response.redirect(redirectTo + "?" + qs.toString(), 302)
