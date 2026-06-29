@@ -371,7 +371,7 @@
   #viewModal{
     background:var(--paper-card); border-radius:12px;
     width:100%; max-width:960px;
-    max-height:100%;
+    max-height:calc(100vh - 80px);
     box-shadow:0 24px 80px rgba(0,0,0,.32);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
@@ -379,7 +379,7 @@
   /* Layout 2 colonnes desktop */
   .vm-inner{
     display:flex; flex-direction:row;
-    flex:1; overflow:hidden; min-height:0; height:0;
+    flex:1; overflow:hidden; min-height:0;
   }
   .vm-photo{
     flex:0 0 42%;
@@ -391,7 +391,7 @@
   .vm-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .vm-scroll{
     flex:1; overflow-y:auto; overflow-x:hidden; min-width:0; min-height:0;
-    -webkit-overflow-scrolling:touch; height:100%;
+    -webkit-overflow-scrolling:touch;
   }
 
   /* Bouton fermer mobile dans la vue produit */
@@ -1073,7 +1073,7 @@
       border-right:none; border-bottom:1px solid var(--line);
       overflow:hidden;
     }
-    .vm-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-width:0; }
+    .vm-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-width:0; min-height:0; }
     .vm-close-btn{ display:flex; top:8px; left:8px; width:26px; height:26px; }
     .vm-info-btn{ top:8px; right:8px; width:26px; height:26px; font-size:12px; }
     .vm-meta{ grid-template-columns:1fr 1fr; gap:5px 8px; padding:8px 12px; }
