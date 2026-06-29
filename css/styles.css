@@ -462,7 +462,7 @@
   }
   .vm-meta-item span{ font-weight:600; }
   .vm-desc{
-    color:var(--ink-soft); line-height:1.6; margin-bottom:16px;
+    color:var(--ink-soft); line-height:1.6; margin-bottom:16px; font-size:14px;
   }
 
   /* Prix dans la vue détail */
