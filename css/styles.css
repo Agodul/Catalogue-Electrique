@@ -42,6 +42,7 @@
     top:0;
     z-index:100;
   }
+  body.modal-open header{ z-index:1; }
   .brandmark{ display:flex; align-items:center; gap:0; flex-shrink:0; }
   .brandmark .logo-mark{ height:44px; width:auto; flex-shrink:0; }
   .hdr-sep{
