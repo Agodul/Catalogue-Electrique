@@ -1,4 +1,4 @@
-  // ---------- Modale de consultation ----------
+// ---------- Modale de consultation ----------
   var viewOverlay  = document.getElementById('viewOverlay');
   var vmPhoto      = document.getElementById('vmPhoto');
   var vmRef        = document.getElementById('vmRef');
@@ -124,6 +124,7 @@
 
     vmPriceHistory.innerHTML = buildPriceHistoryReadonly(p);
 
+    if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
     viewOverlay.classList.add('open');
   }
 
@@ -287,4 +288,3 @@
     save();
     render();
   }
-
