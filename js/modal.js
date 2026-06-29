@@ -1,4 +1,4 @@
-  // ---------- Modal ----------
+// ---------- Modal ----------
   var overlay = document.getElementById('modalOverlay');
   var modalTitle = document.getElementById('modalTitle');
   var fBrand = document.getElementById('fBrand');
@@ -274,6 +274,7 @@
   }
   function closeModal(){
     overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
     editingId = null;
   }
 
@@ -456,6 +457,7 @@
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
     overlay.classList.add('open');
+    document.body.classList.add('modal-open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
     var inputs = overlay.querySelectorAll('input, textarea, select');
     inputs.forEach(function(el){ el.setAttribute('readonly', 'readonly'); });
@@ -1160,4 +1162,3 @@
       switchTab('manual');
     }
   });
-
