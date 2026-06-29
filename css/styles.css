@@ -371,8 +371,8 @@
   #viewOverlay.open{ display:flex; }
   #viewModal{
     background:var(--paper-card); border-radius:12px;
-    width:100%; max-width:960px;
-    max-height:100%;
+    width:100%; max-width:760px;
+    max-height:80vh;
     box-shadow:0 24px 80px rgba(0,0,0,.32);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
@@ -383,7 +383,7 @@
     flex:1; overflow:hidden; min-height:0; max-height:100%;
   }
   .vm-photo{
-    flex:0 0 42%;
+    flex:0 0 35%;
     background:#DDE2E8;
     display:flex; align-items:center; justify-content:center;
     overflow:hidden; position:relative;
