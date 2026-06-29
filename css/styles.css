@@ -364,8 +364,8 @@
   /* Modale de consultation */
   #viewOverlay{
     position:fixed; inset:0; background:rgba(28,26,23,.48);
-    display:none; align-items:center; justify-content:center;
-    padding:24px 20px; z-index:55;
+    display:none; align-items:flex-start; justify-content:center;
+    padding:24px 20px; z-index:55; overflow-y:auto;
   }
   #viewOverlay.open{ display:flex; }
   #viewModal{
@@ -380,6 +380,7 @@
   .vm-inner{
     display:flex; flex-direction:row;
     flex:1; overflow:hidden; min-height:0;
+    max-height:calc(100vh - 48px);
   }
   .vm-photo{
     flex:0 0 42%;
@@ -967,13 +968,11 @@
 
     /* ── Header compact ── */
     header{ padding:0 12px; height:50px; gap:8px; flex-wrap:nowrap; }
-    .brandmark{ min-width:0; overflow:hidden; }
-    .brandmark .logo-mark{ height:26px; flex-shrink:0; }
-    .hdr-label-wrap{ min-width:0; overflow:hidden; }
-    .hdr-sep{ margin:0 8px; height:18px; flex-shrink:0; }
+    .brandmark .logo-mark{ height:26px; }
+    .hdr-sep{ margin:0 8px; height:18px; }
     .hdr-label-top{ display:none; }
-    h1{ font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .hdr-count-chip{ display:none !important; }
+    h1{ font-size:13px; white-space:nowrap; }
+    .hdr-count-chip{ font-size:11px; padding:2px 8px; }
     .header-actions{ gap:5px; flex-shrink:0; }
     .header-actions button#btnAdd{ display:none; }
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
@@ -1129,13 +1128,11 @@
   @media (max-width:380px){
     /* Header encore plus compact */
     header{ height:50px; padding:0 10px; gap:5px; }
-    .brandmark{ min-width:0; overflow:hidden; }
-    .brandmark .logo-mark{ height:24px; flex-shrink:0; }
-    .hdr-label-wrap{ min-width:0; overflow:hidden; }
-    .hdr-sep{ margin:0 6px; height:16px; flex-shrink:0; }
+    .brandmark .logo-mark{ height:24px; }
+    .hdr-sep{ margin:0 8px; height:16px; }
     .hdr-label-top{ display:none; }
-    h1{ font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .hdr-count-chip{ display:none !important; }
+    h1{ font-size:12px; }
+    .hdr-count-chip{ display:none; }
     .header-actions button#btnAdd{ display:none; }
     .hdr-menu-btn{ padding:4px 7px; }
 

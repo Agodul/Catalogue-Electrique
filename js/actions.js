@@ -1,4 +1,4 @@
-  // ---------- Save product ----------
+// ---------- Save product ----------
   function formatPrice(raw){
     var v = raw.trim();
     if(!v) return v;
@@ -1357,6 +1357,15 @@
   }
 
   document.getElementById('brandmarkLogo').addEventListener('click', function(){
+    // Fermer la fiche produit : retirer la classe 'open' sur l'overlay
+    var viewOverlayEl = document.getElementById('viewOverlay');
+    if(viewOverlayEl) viewOverlayEl.classList.remove('open');
+    // Fermer la modale d'édition
+    var overlayEl = document.getElementById('overlay');
+    if(overlayEl) overlayEl.classList.remove('open');
+    // Fermer le panneau paramètres
+    var settingsBoxEl = document.querySelector('.settings-box');
+    if(settingsBoxEl) settingsBoxEl.classList.remove('open');
     familyFilterEl.value = '';
     brandFilterEl.value  = '';
     seriesFilterEl.value = '';
@@ -1483,4 +1492,3 @@
       familyIconRow.classList.remove('show');
     }
   });
-
