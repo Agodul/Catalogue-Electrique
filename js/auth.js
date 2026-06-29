@@ -7,7 +7,11 @@
 var AUTH_ADMIN_FALLBACK = {
   username: "admin",
   displayName: "Administrateur",
-  isAdmin: true
+  isAdmin: true,
+  credential: {
+    salt: "6013d7f3f4f34ef0974632754e6d1386",
+    hash: "70144e1536f3d16f5f218de0f16647f2205f4bd31d5bdb9ef9791c3c43da4506"
+  }
 };
 
 // Clé localStorage pour stocker le credential admin {salt, hash}
@@ -19,9 +23,12 @@ var AUTH_USERS_KEY    = "spi_auth_users";  // localStorage
 // ── Gestion des comptes (localStorage) ──────────────────────
 function authGetAdminCredential() {
   try {
+    // Priorité : localStorage (permet de changer le mdp depuis l'UI)
     var raw = localStorage.getItem(AUTH_ADMIN_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e) { return null; }
+    if (raw) return JSON.parse(raw);
+    // Fallback : credential intégré dans le code (fonctionne sur tous les appareils)
+    return AUTH_ADMIN_FALLBACK.credential || null;
+  } catch(e) { return AUTH_ADMIN_FALLBACK.credential || null; }
 }
 
 function authGetAllAccounts() {
