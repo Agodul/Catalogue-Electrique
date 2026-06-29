@@ -2,7 +2,7 @@ const CACHE = "spi-catalogue-v11";
 
 const FILES = [
   "./",
-  "./index.html",
+  "./Catalogue-Electrique/index.html",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./apple-touch-icon.png",
