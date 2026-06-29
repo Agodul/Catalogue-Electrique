@@ -11,12 +11,20 @@
     --shadow: 0 1px 3px rgba(0,0,0,0.10), 0 6px 18px rgba(0,0,0,0.10);
   }
   *{box-sizing:border-box;}
+  html{
+    /* Évite le rebond/zoom iOS et la zone blanche au clavier */
+    -webkit-text-size-adjust:100%;
+    height:-webkit-fill-available;
+  }
   body{
     margin:0;
     background:var(--paper);
     color:var(--ink);
     font-family: 'Calibri','Carlito',Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
+    /* iOS : le body prend exactement la hauteur visible, clavier compris */
+    min-height:100dvh;
+    min-height:-webkit-fill-available;
   }
 
   /* ===== HEADER ===== */
@@ -1882,6 +1890,16 @@
   @supports(padding:max(0px)){
     #overlay .modal{ padding-bottom:max(0px,env(safe-area-inset-bottom)); }
     .settings-box{ padding-bottom:max(0px,env(safe-area-inset-bottom)); }
+  }
+
+
+  /* ── iOS : zone blanche clavier ─────────────────────────────── */
+  @supports (-webkit-touch-callout: none) {
+    /* Sur iOS, utiliser fill-available pour les hauteurs */
+    .auth-box{ max-height:-webkit-fill-available; }
+    #authOverlay{ min-height:-webkit-fill-available; }
+    /* Pousser le contenu vers le haut quand le clavier s'ouvre */
+    body{ overflow-y:scroll; -webkit-overflow-scrolling:touch; }
   }
 
   /* ============================================================
