@@ -33,6 +33,8 @@
   </div>
   <div class="hdr-spacer"></div>
   <div class="header-actions">
+    <span class="auth-readonly-badge"><i class="ti ti-eye" aria-hidden="true"></i> Lecture seule</span>
+    <button id="btnAuthToggle" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
     <span class="hdr-count-chip" id="hdrCountChip" style="display:none;">0 produit</span>
     <span class="filebar-tooltip-wrap" id="filebarTooltipWrap" style="display:none;">
       <span class="filebar-tooltip-icon">i</span>
@@ -711,6 +713,33 @@
   </div>
 
 
+<!-- ── Modale Login ─────────────────────────────────────── -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-box-header">
+      <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
+      <h2>Connexion</h2>
+      <p>Accès réservé aux administrateurs</p>
+    </div>
+    <div class="auth-fields">
+      <div class="auth-field-wrap">
+        <label for="authUsername">Identifiant</label>
+        <input type="text" id="authUsername" autocomplete="username" placeholder="Votre identifiant">
+      </div>
+      <div class="auth-field-wrap">
+        <label for="authPassword">Mot de passe</label>
+        <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+      </div>
+    </div>
+    <p class="auth-error" id="authError"></p>
+    <button id="authSubmitBtn">Se connecter</button>
+  </div>
+</div>
+
+<!-- ── Toast auth ──────────────────────────────────────── -->
+<div id="authToast"></div>
+
+<script src="js/auth.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/render.js"></script>
 <script src="js/modal.js"></script>
