@@ -1075,8 +1075,8 @@
       overflow:hidden;
     }
     .vm-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-width:0; min-height:0; }
-    .vm-close-btn{ display:flex; top:8px; left:8px; width:26px; height:26px; }
-    .vm-info-btn{ top:8px; right:8px; width:26px; height:26px; font-size:12px; }
+    .vm-close-btn{ display:flex; position:fixed; top:58px; left:8px; width:32px; height:32px; z-index:200; }
+    .vm-info-btn{ position:fixed; top:58px; right:8px; width:32px; height:32px; font-size:12px; z-index:200; }
     .vm-meta{ grid-template-columns:1fr 1fr; gap:5px 8px; padding:8px 12px; }
     .vm-meta-item a{ font-size:11px ; }
     .vm-meta-item label{ font-size:9px; }
