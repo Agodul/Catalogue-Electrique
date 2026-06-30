@@ -126,11 +126,13 @@
 
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
     viewOverlay.classList.add('open');
+    document.body.classList.add('modal-open');
   }
 
   function closeView(){
     viewOverlay.classList.remove('open');
     vmInfoMenu.classList.remove('open');
+    document.body.classList.remove('modal-open');
     viewingId = null;
   }
 
