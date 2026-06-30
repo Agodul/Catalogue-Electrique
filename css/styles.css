@@ -1087,7 +1087,7 @@
     .vm-tags{ margin-bottom:4px; gap:3px; }
     .vm-desc{
       font-size:11px; line-height:1.4; margin-bottom:4px;
-      max-height:28vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+      max-height:15vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
     }
     .vm-price{ font-size:16px; }
     .vm-price-row{ margin-bottom:6px; }
