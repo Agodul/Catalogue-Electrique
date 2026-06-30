@@ -118,9 +118,7 @@
                         escapeHtml(p.price||'—')+discBadgeVm+badge;
     // Ligne explicite catalogue vs votre prix
     var vmPriceLabelEl = document.getElementById('vmPriceLabel');
-    if(vmPriceLabelEl) vmPriceLabelEl.innerHTML = orig
-      ? 'Prix catalogue : <span style="text-decoration:line-through;margin:0 4px">'+escapeHtml(orig)+'</span>&nbsp;·&nbsp; Votre prix : <strong>'+escapeHtml(p.price||'—')+'</strong>'
-      : '';
+    if(vmPriceLabelEl) vmPriceLabelEl.innerHTML = '';
 
     vmPriceHistory.innerHTML = buildPriceHistoryReadonly(p);
 
