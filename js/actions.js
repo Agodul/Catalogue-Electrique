@@ -364,8 +364,18 @@
         throw new Error('Format invalide');
       }
       save(true);
+      // Fermer les paramètres
+      var settingsOverlay = document.getElementById('settingsOverlay');
+      if(settingsOverlay) settingsOverlay.classList.remove('open');
+      document.body.classList.remove('modal-open');
+      // Réinitialiser et afficher la home
       render();
       renderHome();
+      // Forcer l'affichage de la home
+      var homePage = document.getElementById('homePage');
+      var catalogueWrap = document.getElementById('catalogueWrap');
+      if(homePage) homePage.classList.remove('hidden');
+      if(catalogueWrap) catalogueWrap.style.display = 'none';
       showToast(products.length+' produits chargés depuis le serveur ✓', 'ok', 2500);
     }catch(e){
       showToast('Erreur : '+e.message, 'warn', 3000);
