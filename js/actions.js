@@ -242,32 +242,13 @@
   async function pushToServer(){
     if(!serverUrl || !serverSync) return;
     try{
-      // Récupérer les IDs existants sur le serveur
-      var resp = await fetch(serverUrl+'/products', {headers:{'Content-Type':'application/json'}});
-      if(!resp.ok) return;
-      var existing = await resp.json();
-      var existingIds = existing.map(function(p){ return p.id; });
-
-      // Supprimer les produits qui n'existent plus en local
-      for(var i=0;i<existing.length;i++){
-        if(!products.find(function(p){ return p.id===existing[i].id; })){
-          await fetch(serverUrl+'/products/'+existing[i].id, {method:'DELETE'});
-        }
-      }
-      // PUT ou POST pour chaque produit local
-      for(var j=0;j<products.length;j++){
-        var p = products[j];
-        if(existingIds.indexOf(p.id) !== -1){
-          await fetch(serverUrl+'/products/'+p.id, {
-            method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)
-          });
-        } else {
-          await fetch(serverUrl+'/products', {
-            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)
-          });
-        }
-      }
-    }catch(e){ }
+      var resp = await fetch(serverUrl+'/pushDatas', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ products: products })
+      });
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+    }catch(e){ console.warn('pushToServer:', e.message); }
   }
 
   // Patch de save() pour pousser vers le serveur après chaque modif
@@ -335,12 +316,11 @@
     serverTestResult.style.color = 'var(--ink)';
     serverTestResult.textContent = 'Connexion en cours…';
     try{
-      var r = await fetch(url+'/products');
+      var r = await fetch(url+'/health');
       if(r.ok){
-        var data = await r.json();
         serverTestResult.style.background = '#ECFDF5';
         serverTestResult.style.color = '#065F46';
-        serverTestResult.textContent = '✓ Connecté — '+data.length+' produit(s) sur le serveur';
+        serverTestResult.textContent = '✓ Serveur disponible';
       } else {
         throw new Error('HTTP '+r.status);
       }
@@ -372,13 +352,15 @@
     var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
     if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
     try{
-      var r = await fetch(url+'/products');
+      var r = await fetch(url+'/pullDatas');
       if(!r.ok) throw new Error('HTTP '+r.status);
-      products = await r.json();
+      var data = await r.json();
+      if(!data.products || !Array.isArray(data.products)) throw new Error('Format invalide');
+      products = data.products;
       save(true);
       render();
       renderHome();
-      showToast('Catalogue chargé depuis le serveur ✓', 'ok', 2500);
+      showToast(products.length+' produits chargés depuis le serveur ✓', 'ok', 2500);
     }catch(e){
       showToast('Erreur : '+e.message, 'warn', 3000);
     }
@@ -388,11 +370,17 @@
   document.getElementById('btnPushToServer').addEventListener('click', async function(){
     var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
     if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
-    var tmpSync = serverSync; var tmpUrl = serverUrl;
-    serverSync = true; serverUrl = url;
-    await pushToServer();
-    serverSync = tmpSync; serverUrl = tmpUrl;
-    showToast('Catalogue envoyé au serveur ✓', 'ok', 2500);
+    try{
+      var r = await fetch(url+'/pushDatas', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ products: products })
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      showToast(products.length+' produits envoyés au serveur ✓', 'ok', 2500);
+    }catch(e){
+      showToast('Erreur : '+e.message, 'warn', 3000);
+    }
   });
 
   // ══════════════════════════════════════════════════════════════
