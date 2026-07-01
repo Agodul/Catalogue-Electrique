@@ -1647,7 +1647,7 @@
     return escapeHtml(String(val));
   }
 
-  function openConflictModal(conflicts){
+  window.openConflictModal = function openConflictModal(conflicts){
     _pendingConflicts = conflicts;
     _conflictChoices  = {};
     _selectedConflict = null;
