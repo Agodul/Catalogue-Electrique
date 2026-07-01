@@ -1882,12 +1882,16 @@
     .hdr-count-chip{ display:inline-block; }
     .wrap{ padding:16px 20px 80px; }
     .toolbar{ gap:6px; flex-wrap:nowrap; align-items:stretch; }
-    select#brandFilter, select#familyFilter, select#seriesFilter{
-      font-size:14px; height:38px; padding:6px 4px;
-      flex:1 1 0; min-width:0; max-width:160px;
-    }
-    .sort-price-btn{ font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
-    .search-toggle-btn{ height:38px; width:38px; box-sizing:border-box; flex-shrink:0; }
+    /* Ordre : 🔍 | Marques | Familles | Séries | reset | ↕Prix */
+    .search-field{ order:1; max-width:160px; flex-shrink:1; }
+    .search-field input{ font-size:13px; }
+    .search-toggle-btn{ order:1; height:38px; width:38px; box-sizing:border-box; flex-shrink:0; }
+    select#brandFilter{ order:2; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
+    select#familyFilter{ order:3; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
+    select#seriesFilter{ order:4; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
+    #btnResetFilters{ order:5; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    .search-expand{ order:7; }
   }
 
   @media(min-width:541px) and (max-width:768px){
