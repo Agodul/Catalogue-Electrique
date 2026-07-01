@@ -260,23 +260,14 @@
   async function doSyncCheck(){
     if(!serverUrl || !serverSync) return;
     try{
-      var lastTs = getLastLocalTimestamp();
-      var r = await fetch(serverUrl+'/check?timestamp='+lastTs);
+      var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
+      var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
+      var r = await fetch(checkUrl);
       if(!r.ok) return;
       var data = await r.json();
       if(data.count > 0){
-        var r2 = await fetch(serverUrl+'/pullDatas');
-        if(!r2.ok) return;
-        var d2 = await r2.json();
-        if(d2 && Array.isArray(d2.items)){
-          products = d2.items.map(function(item){ return item.data; });
-        } else if(Array.isArray(d2)){
-          products = d2;
-        } else { return; }
-        save(true);
-        render();
-        renderHome();
-        showToast('Catalogue mis à jour ('+data.count+' modification(s)) ✓', 'ok', 2500);
+        // Il y a des nouveautés → sync différentielle par ref
+        await syncFromServer(false);
       }
     }catch(e){ /* silencieux */ }
   }
@@ -296,13 +287,68 @@
   async function pushToServer(){
     if(!serverUrl || !serverSync) return;
     try{
-      var resp = await fetch(serverUrl+'/pushDatas', {
+      // Push tous les produits locaux — le serveur ignore les plus anciens (via createdAt)
+      await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify(products)
       });
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
     }catch(e){ console.warn('pushToServer:', e.message); }
+  }
+
+  // ── Pull différentiel : récupère les nouveautés serveur et fusionne par ref ──
+  async function syncFromServer(silent){
+    if(!serverUrl) return;
+    try{
+      var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
+      var pullUrl  = serverUrl+'/pullDatas' + (lastSync !== '0' ? '?date='+lastSync : '');
+      var r = await fetch(pullUrl);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var data = await r.json();
+
+      var serverItems = [];
+      if(data && Array.isArray(data.items)){
+        serverItems = data.items.map(function(item){ return item.data; });
+      } else if(Array.isArray(data)){
+        serverItems = data;
+      }
+
+      // Mettre à jour lastSync
+      localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
+      if(serverItems.length === 0) return;
+
+      // Index local par ref
+      var localMap = {};
+      products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+
+      var added = 0, updated = 0;
+      serverItems.forEach(function(sp){
+        if(!sp || !sp.ref) return;
+        var idx = localMap[sp.ref];
+        if(idx === undefined){
+          // Ref inconnue → nouveau produit serveur
+          localMap[sp.ref] = products.length;
+          products.push(sp);
+          added++;
+        } else {
+          // Ref connue → comparer updatedAt
+          var localTs  = products[idx].updatedAt || products[idx].createdAt || 0;
+          var serverTs = sp.updatedAt || sp.createdAt || 0;
+          if(serverTs > localTs){
+            products[idx] = sp;
+            updated++;
+          }
+          // Local plus récent → on garde le local
+        }
+      });
+
+      if(added > 0 || updated > 0){
+        save(true);
+        render();
+        renderHome();
+        if(!silent) showToast(added+' ajouté(s), '+updated+' mis à jour ✓', 'ok', 3000);
+      }
+    }catch(e){ console.warn('syncFromServer:', e.message); }
   }
 
   // Patch de save() pour pousser vers le serveur après chaque modif
@@ -419,6 +465,7 @@
         throw new Error('Format invalide');
       }
       save(true);
+      localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
       // Fermer les paramètres
       var settingsOverlay = document.getElementById('settingsOverlay');
       if(settingsOverlay) settingsOverlay.classList.remove('open');
@@ -448,7 +495,11 @@
         body: JSON.stringify(products)
       });
       if(!r.ok) throw new Error('HTTP '+r.status);
-      showToast(products.length+' produits envoyés au serveur ✓', 'ok', 2500);
+      var result = await r.json();
+      // Pull différentiel pour récupérer ce qu'on n'avait pas
+      serverUrl = url;
+      await syncFromServer(true);
+      showToast(result.upserted+' envoyé(s), catalogue synchronisé ✓', 'ok', 3000);
     }catch(e){
       showToast('Erreur : '+e.message, 'warn', 3000);
     }
