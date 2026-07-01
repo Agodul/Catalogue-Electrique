@@ -1339,6 +1339,7 @@
   }
 
   function showHome(){
+    if(typeof viewAll !== 'undefined') viewAll = false;
     homePage.classList.remove('hidden');
     catalogueWrap.style.display = 'none';
     document.getElementById('hdrCountChip').style.display = 'none';
@@ -1346,6 +1347,10 @@
   }
 
   function showCatalogue(brandFilter, familyFilter){
+    // Désactiver le mode viewAll si on filtre par marque ou famille
+    if(brandFilter || familyFilter){
+      if(typeof viewAll !== 'undefined') viewAll = false;
+    }
     homePage.classList.add('hidden');
     catalogueWrap.style.display = '';
     document.getElementById('hdrCountChip').style.display = '';
@@ -1361,6 +1366,7 @@
 
   function showCatalogueAll(){
     document.querySelector('.toolbar').classList.add('filters-visible');
+    if(typeof viewAll !== 'undefined') viewAll = true;
     showCatalogue('','');
   }
 

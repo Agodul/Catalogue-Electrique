@@ -293,6 +293,7 @@
   var familyListEl = null; // remplacé par autocomplete custom
   var seriesListEl = null; // remplacé par autocomplete custom
   var groupBy = 'brand'; // 'brand' | 'family' | 'series'
+  var viewAll = false; // true = affichage plat sans groupement
 
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, function(c){
@@ -529,16 +530,17 @@
     var html = '';
     var _lazyItems = []; // produits à afficher progressivement
 
-    if(hasSearch){
-      // ── Mode recherche : liste plate triée par score ──
-      _lazyItems = filtered;
+    if(hasSearch || viewAll){
+      // ── Mode recherche ou "Voir tout" : liste plate ──
+      _lazyItems = filtered.slice(40);
+      var label = hasSearch ? 'Résultats' : 'Tous les produits';
       html += '<div class="brand-group" id="lazySearchGroup">';
-      html += '<div class="brand-heading"><h2>Résultats</h2><span class="tally sans">'+filtered.length+(filtered.length>1?' références':' référence')+'</span></div>';
+      html += '<div class="brand-heading"><h2>'+label+'</h2><span class="tally sans">'+filtered.length+(filtered.length>1?' références':' référence')+'</span></div>';
       html += '<div class="grid" id="lazyGrid">';
       filtered.slice(0, 40).forEach(function(p){ html += renderCard(p); });
       html += '</div></div>';
       if(filtered.length > 40){
-        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+( filtered.length - 40)+' restants)</button></div>';
+        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
       }
     } else {
       // ── Mode normal : groupement par marque/famille/série ──
