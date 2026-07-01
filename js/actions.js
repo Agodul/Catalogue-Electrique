@@ -355,8 +355,14 @@
       var r = await fetch(url+'/pullDatas');
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
-      if(!Array.isArray(data)) throw new Error('Format invalide');
-      products = data;
+      // Format serveur : { count: N, items: [ { ref, data: {...produit} } ] }
+      if(data && Array.isArray(data.items)){
+        products = data.items.map(function(item){ return item.data; });
+      } else if(Array.isArray(data)){
+        products = data;
+      } else {
+        throw new Error('Format invalide');
+      }
       save(true);
       render();
       renderHome();
