@@ -2033,3 +2033,13 @@
     z-index:10001; white-space:nowrap;
   }
   #authToast.show{ opacity:1; }
+
+  /* ── Lazy load bouton ── */
+  .btn-load-more{
+    background:var(--paper-card); border:1.5px solid var(--line);
+    border-radius:10px; padding:10px 28px;
+    font-size:14px; font-weight:500; color:var(--ink);
+    cursor:pointer; font-family:Calibri,Arial,sans-serif;
+    transition:background .15s;
+  }
+  .btn-load-more:hover{ background:var(--surface-2); }

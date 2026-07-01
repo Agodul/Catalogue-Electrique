@@ -444,6 +444,8 @@
 
   var _lastRenderKey = '';
   var _vmMenuTimer = null;
+  var _lazyScrollHandler = null;
+
   function render(){
     _cardIdx = 0;
     refreshFilterCache();
@@ -525,46 +527,87 @@
 
     var hasSearch = !!normalizeSearch(searchInputEl.value);
     var html = '';
+    var _lazyItems = []; // produits à afficher progressivement
 
     if(hasSearch){
-      // ── Mode recherche : liste plate triée par score, sans groupement ──
-      // Les produits sont déjà triés par pertinence dans getFilteredProducts()
-      html += '<div class="brand-group">';
+      // ── Mode recherche : liste plate triée par score ──
+      _lazyItems = filtered;
+      html += '<div class="brand-group" id="lazySearchGroup">';
       html += '<div class="brand-heading"><h2>Résultats</h2><span class="tally sans">'+filtered.length+(filtered.length>1?' références':' référence')+'</span></div>';
-      html += '<div class="grid">';
-      filtered.forEach(function(p){ html += renderCard(p); });
+      html += '<div class="grid" id="lazyGrid">';
+      filtered.slice(0, 40).forEach(function(p){ html += renderCard(p); });
       html += '</div></div>';
+      if(filtered.length > 40){
+        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+( filtered.length - 40)+' restants)</button></div>';
+      }
     } else {
       // ── Mode normal : groupement par marque/famille/série ──
       var fieldMap = {brand:'brand', family:'family', series:'series'};
       var fallbackMap = {brand:'(Sans marque)', family:'(Sans famille)', series:'(Sans série)'};
       var g = groupByField(filtered, fieldMap[groupBy], fallbackMap[groupBy], false);
+      var totalRendered = 0;
       g.order.forEach(function(groupName){
         var items = g.groups[groupName];
         html += '<div class="brand-group">';
         html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
         html += '<div class="grid">';
-        items.forEach(function(p){ html += renderCard(p); });
+        items.forEach(function(p){
+          if(totalRendered < 40){
+            html += renderCard(p);
+            totalRendered++;
+          } else {
+            // Stocker pour lazy load
+            _lazyItems.push(p);
+          }
+        });
         html += '</div></div>';
       });
+      if(_lazyItems.length > 0){
+        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
+      }
     }
     contentEl.innerHTML = html;
 
-    // Appliquer la classe de vue sur chaque grille
-    contentEl.querySelectorAll('.grid').forEach(function(g){
-    });
+    // ── Lazy load : charger plus de cartes au clic ou au scroll ──
+    var _lazyOffset = 40;
+    window._loadMoreCards = function(){
+      var grid = document.getElementById('lazyGrid') || contentEl.querySelector('.brand-group:last-of-type .grid');
+      if(!grid) return;
+      var batch = _lazyItems.slice(0, 40);
+      _lazyItems = _lazyItems.slice(40);
+      var frag = document.createDocumentFragment();
+      var tmp = document.createElement('div');
+      batch.forEach(function(p){ tmp.innerHTML = renderCard(p); frag.appendChild(tmp.firstChild); });
+      grid.appendChild(frag);
+      // Rebinder les clics sur les nouvelles cartes
+      grid.querySelectorAll('[data-view]').forEach(function(card){
+        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
+      });
+      var moreBtn = document.getElementById('lazyMore');
+      if(_lazyItems.length === 0){
+        if(moreBtn) moreBtn.remove();
+      } else {
+        if(moreBtn) moreBtn.querySelector('button').textContent = 'Afficher plus ('+_lazyItems.length+' restants)';
+      }
+    };
 
-    // Animation 1 & 6 — délai progressif via style inline déjà dans le HTML
+    // Auto-load au scroll
+    if(_lazyScrollHandler) window.removeEventListener('scroll', _lazyScrollHandler, true);
+    if(_lazyItems.length > 0){
+      _lazyScrollHandler = function(){
+        var el = document.getElementById('lazyMore');
+        if(!el) return;
+        var rect = el.getBoundingClientRect();
+        if(rect.top < window.innerHeight + 200){ window._loadMoreCards(); }
+      };
+      window.addEventListener('scroll', _lazyScrollHandler, true);
+    }
 
     // Clic sur la carte → ouvre la vue de consultation
     contentEl.querySelectorAll('[data-view]').forEach(function(card){
       card.addEventListener('click', function(e){
-        // Ne pas ouvrir si on a cliqué sur le bouton ⓘ lui-même
         openView(card.getAttribute('data-view'));
       });
     });
 
-    // Clic sur le bouton ⓘ de la carte → ouvre directement la vue puis le menu
-
   }
-
