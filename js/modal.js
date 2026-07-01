@@ -535,6 +535,11 @@
   });
   fabSearchInput.addEventListener('input', function(){
     searchInputEl.value = fabSearchInput.value;
+    // Basculer vers le catalogue si on est sur la home
+    var homePage = document.getElementById('homePage');
+    if(homePage && !homePage.classList.contains('hidden') && fabSearchInput.value.trim().length > 0){
+      showCatalogueAll();
+    }
     render();
   });
   fabSearchInput.addEventListener('keydown', function(e){
