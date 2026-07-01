@@ -225,6 +225,7 @@
     serverUrl  = localStorage.getItem(SERVER_KEY) || '';
     serverSync = localStorage.getItem(SERVER_SYNC_KEY) === '1';
     updateServerSubtitle();
+    if(serverSync && serverUrl) setTimeout(startSyncPolling, 1000);
   }
 
   function updateServerSubtitle(){
@@ -236,6 +237,52 @@
     localStorage.setItem(SERVER_KEY, serverUrl);
     localStorage.setItem(SERVER_SYNC_KEY, serverSync ? '1' : '0');
     updateServerSubtitle();
+  }
+
+  // ── Polling /check toutes les 30s ─────────────────────────────────
+  var _syncInterval = null;
+
+  function getLastLocalTimestamp(){
+    if(!products || products.length === 0) return 0;
+    return products.reduce(function(max, p){
+      var ts = p.updatedAt || p.createdAt || 0;
+      return ts > max ? ts : max;
+    }, 0);
+  }
+
+  async function doSyncCheck(){
+    if(!serverUrl || !serverSync) return;
+    try{
+      var lastTs = getLastLocalTimestamp();
+      var r = await fetch(serverUrl+'/check?timestamp='+lastTs);
+      if(!r.ok) return;
+      var data = await r.json();
+      if(data.count > 0){
+        var r2 = await fetch(serverUrl+'/pullDatas');
+        if(!r2.ok) return;
+        var d2 = await r2.json();
+        if(d2 && Array.isArray(d2.items)){
+          products = d2.items.map(function(item){ return item.data; });
+        } else if(Array.isArray(d2)){
+          products = d2;
+        } else { return; }
+        save(true);
+        render();
+        renderHome();
+        showToast('Catalogue mis à jour ('+data.count+' modification(s)) ✓', 'ok', 2500);
+      }
+    }catch(e){ /* silencieux */ }
+  }
+
+  function startSyncPolling(){
+    stopSyncPolling();
+    if(!serverUrl || !serverSync) return;
+    doSyncCheck();
+    _syncInterval = setInterval(doSyncCheck, 30000);
+  }
+
+  function stopSyncPolling(){
+    if(_syncInterval){ clearInterval(_syncInterval); _syncInterval = null; }
   }
 
   // ── Sync vers serveur ─────────────────────────────────────────────
@@ -343,6 +390,7 @@
     serverUrl  = serverUrlInput.value.trim().replace(/\/+$/,'');
     serverSync = document.getElementById('serverSyncSlider').classList.contains('active');
     saveServerConfig();
+    if(serverSync) startSyncPolling(); else stopSyncPolling();
     showToast('Configuration serveur enregistrée ✓', 'ok', 2500);
     showSettingsMain();
   });
