@@ -1883,11 +1883,10 @@
     .wrap{ padding:16px 20px 80px; }
     .toolbar{ gap:6px; flex-wrap:nowrap; }
     select#brandFilter, select#familyFilter, select#seriesFilter{
-      font-size:12px; height:38px; padding:6px 4px;
-      flex:1 1 0; min-width:0;
+      font-size:14px; height:38px; padding:6px 4px;
+      flex:1 1 0; min-width:0; max-width:160px;
     }
-    .search-field{ flex:1 1 0; min-width:80px; font-size:12px; }
-    .sort-price-btn{ font-size:12px; padding:0 8px; flex-shrink:0; }
+    .sort-price-btn{ font-size:14px; padding:0 8px; flex-shrink:0; }
   }
 
   @media(min-width:541px) and (max-width:768px){
