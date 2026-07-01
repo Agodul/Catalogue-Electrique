@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v22";
+const CACHE = "spi-catalogue-v23";
 
 const FILES = [
   "./",
