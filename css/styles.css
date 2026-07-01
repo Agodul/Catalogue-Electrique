@@ -367,7 +367,7 @@
     position:fixed; left:0; right:0; top:55px; bottom:0;
     background:rgba(28,26,23,.48);
     display:none; align-items:center; justify-content:center;
-    padding:20px; z-index:200;
+    padding:20px;
   }
   #viewOverlay.open{ display:flex; }
   #viewModal{
