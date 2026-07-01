@@ -821,5 +821,28 @@
 
 <!-- ── Toast auth ──────────────────────────────────────── -->
 <div id="authToast"></div>
+
+<!-- ===== MODALE CONFLITS SYNC ===== -->
+<div id="conflictOverlay" style="display:none;position:fixed;inset:0;background:rgba(28,26,23,.55);z-index:10500;align-items:center;justify-content:center;padding:20px;">
+  <div id="conflictModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.32);">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--ink);">⚠️ Conflits de synchronisation</div>
+        <div id="conflictSubtitle" style="font-size:13px;color:var(--ink-soft);margin-top:2px;"></div>
+      </div>
+      <button id="conflictCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
+    </div>
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
+      <div id="conflictList" style="width:220px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;padding:8px 0;"></div>
+      <div id="conflictDetail" style="flex:1;overflow-y:auto;padding:20px;min-width:0;"></div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">
+      <button id="conflictKeepAllLocal" style="padding:9px 18px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Garder tout le local</button>
+      <button id="conflictKeepAllServer" style="padding:9px 18px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Garder tout le serveur</button>
+      <button id="conflictApplyBtn" style="padding:9px 22px;border:none;border-radius:8px;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Appliquer les choix</button>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN MODALE CONFLITS ===== -->
 </body>
 </html>
