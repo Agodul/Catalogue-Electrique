@@ -310,6 +310,7 @@
       if(whatsNewOverlay){
         buildWhatsNewContent();
         whatsNewOverlay.classList.add('open');
+        document.body.classList.add('modal-open');
       }
     });
     btnOpenWhatsNew.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
@@ -1168,6 +1169,7 @@
 
   function closeWhatsNew(){
     if(whatsNewOverlay) whatsNewOverlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
     try{ localStorage.setItem(WN_KEY, '1'); }catch(e){}
   }
 
@@ -1370,6 +1372,7 @@
     brandFilterEl.value  = '';
     seriesFilterEl.value = '';
     document.querySelector('.toolbar').classList.remove('filters-visible');
+    document.body.classList.remove('modal-open');
     showHome();
   });
 

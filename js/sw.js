@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v18";
+const CACHE = "spi-catalogue-v19";
 
 const FILES = [
   "./",
@@ -56,7 +56,7 @@ self.addEventListener("fetch", event => {
       } catch(e) {}
     }
 
-    // Rediriger vers index.html à la racine (Cloudflare Pages)
+    // Rediriger vers index.html à la racine (GitHub Pages)
     const redirectTo = "/Catalogue-Electrique/index.html";
     const qs = new URLSearchParams();
     if(safeTargetUrl)  qs.set("share_url",   safeTargetUrl);
