@@ -1617,8 +1617,7 @@
     } else {
       familyIconRow.classList.remove('show');
     }
-  
-
+  });
 
   // ══════════════════════════════════════════════════════════════════
   //  GESTION DES CONFLITS DE SYNC
@@ -1823,4 +1822,4 @@
         alert('La modale de conflits sera disponible après le prochain déploiement complet.');
       }
     });
-  }});
+  };
