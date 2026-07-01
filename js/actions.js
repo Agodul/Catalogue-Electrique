@@ -118,7 +118,14 @@
   });
 
   // ---------- Search / filter ----------
-  searchInputEl.addEventListener('input', render);
+  searchInputEl.addEventListener('input', function(){
+    // Si on est sur la home et qu'on tape, basculer vers le catalogue
+    var homePage = document.getElementById('homePage');
+    if(homePage && !homePage.classList.contains('hidden') && searchInputEl.value.trim().length > 0){
+      showCatalogueAll();
+    }
+    render();
+  });
   brandFilterEl.addEventListener('change', render);
   familyFilterEl.addEventListener('change', render);
   seriesFilterEl.addEventListener('change', render);
@@ -1273,6 +1280,11 @@
     });
     searchInputMobile.addEventListener('input', function(){
       searchInputEl.value = searchInputMobile.value;
+      // Si on est sur la home et qu'on tape, basculer vers le catalogue
+      var homePage = document.getElementById('homePage');
+      if(homePage && !homePage.classList.contains('hidden') && searchInputMobile.value.trim().length > 0){
+        showCatalogueAll();
+      }
       render();
     });
   }
