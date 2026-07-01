@@ -536,9 +536,15 @@
   fabSearchInput.addEventListener('input', function(){
     searchInputEl.value = fabSearchInput.value;
     // Basculer vers le catalogue si on est sur la home
-    var homePage = document.getElementById('homePage');
-    if(homePage && !homePage.classList.contains('hidden') && fabSearchInput.value.trim().length > 0){
-      showCatalogueAll();
+    if(fabSearchInput.value.trim().length > 0){
+      var homePage = document.getElementById('homePage');
+      var catalogueWrap = document.getElementById('catalogueWrap');
+      var hdrCountChip = document.getElementById('hdrCountChip');
+      if(homePage && !homePage.classList.contains('hidden')){
+        homePage.classList.add('hidden');
+        if(catalogueWrap) catalogueWrap.style.display = '';
+        if(hdrCountChip) hdrCountChip.style.display = '';
+      }
     }
     render();
   });
