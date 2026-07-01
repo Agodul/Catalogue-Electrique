@@ -294,6 +294,7 @@
   var seriesListEl = null; // remplacé par autocomplete custom
   var groupBy = 'brand'; // 'brand' | 'family' | 'series'
   var viewAll = false; // true = affichage plat sans groupement
+  window._setViewAll = function(v){ viewAll = v; };
 
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, function(c){
