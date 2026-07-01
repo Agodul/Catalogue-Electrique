@@ -991,21 +991,24 @@
     /* ── Toolbar 2 lignes ── */
     .toolbar{ gap:6px; flex-wrap:wrap; margin-bottom:8px; }
     .search-field{ display:none; }
+    /* Ligne 1 : recherche + tri */
     .search-toggle-btn{ display:flex; flex-shrink:0; order:1; }
-    .search-expand.open{ display:flex; order:3; width:100%; }
+    .sort-price-btn{ order:1; font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; flex-shrink:0; }
+    /* Ligne 2 : filtres pleine largeur */
     select#brandFilter{
-      order:1; flex:1 1 0; min-width:0; font-size:13px;
-      padding:8px 10px; height:38px; box-sizing:border-box;
+      order:2; flex:1 1 40%; min-width:0; font-size:13px;
+      padding:8px 6px; height:38px; box-sizing:border-box;
     }
     select#familyFilter{
-      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
-      padding:8px 8px; height:38px; box-sizing:border-box;
+      order:2; flex:1 1 40%; min-width:0; width:0; font-size:13px;
+      padding:8px 6px; height:38px; box-sizing:border-box;
     }
     select#seriesFilter{
-      order:2; flex:1 1 0; min-width:0; width:0; font-size:13px;
-      padding:8px 8px; height:38px; box-sizing:border-box;
+      order:2; flex:1 1 40%; min-width:0; width:0; font-size:13px;
+      padding:8px 6px; height:38px; box-sizing:border-box;
     }
-    .sort-price-btn{ order:2; font-size:13px; padding:0 10px; height:38px; box-sizing:border-box; flex-shrink:0; }
+    /* Ligne 3 : search expand */
+    .search-expand.open{ display:flex; order:3; width:100%; }
     select#brandFilter, select#seriesFilter{ display:flex; }
     .filters-visible select#familyFilter{ display:flex; }
 
