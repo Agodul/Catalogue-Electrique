@@ -195,6 +195,11 @@ async function authLogin(username, password) {
 function applyAuthUI() {
   var loggedIn = authIsLoggedIn();
   var user     = authGetCurrentUser();
+  var isAdmin  = user && user.username === AUTH_ADMIN_FALLBACK.username;
+
+  // Section Tests & Debug : visible uniquement pour l'admin
+  var testSection = document.getElementById('settingsTestSection');
+  if(testSection) testSection.style.display = isAdmin ? '' : 'none';
 
   // Corps de page : classe pour CSS
   document.body.classList.toggle("auth-readonly", !loggedIn);

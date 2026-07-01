@@ -1617,4 +1617,65 @@
     } else {
       familyIconRow.classList.remove('show');
     }
-  });
+  
+
+  // ── Bouton test modale conflits ────────────────────────────────────
+  var btnTestConflict = document.getElementById('btnTestConflictModal');
+  if(btnTestConflict){
+    btnTestConflict.addEventListener('click', function(){
+      var settingsBox = document.querySelector('.settings-box');
+      if(settingsBox) settingsBox.classList.remove('open');
+      document.body.classList.remove('modal-open');
+
+      var fakeConflicts = [
+        {
+          ref: 'BNI00L3',
+          local: {
+            ref:'BNI00L3', name:'Module IO-Link BALLUFF v2 (local)', brand:'BALLUFF',
+            family:'Master', series:'BNI', supplier:'BALLUFF',
+            price:'154.50 EUR', priceCatalogue:'415 EUR',
+            desc:'Version modifiée localement hors ligne.',
+            url:'https://www.balluff.com/bni00l3', photo:'',
+            createdAt: Date.now()-7200000, updatedAt: Date.now()-1200000,
+            priceHistory:[{date:Date.now()-7200000, price:'415 EUR'}]
+          },
+          server: {
+            ref:'BNI00L3', name:'Module IO-Link BALLUFF (serveur)', brand:'BALLUFF',
+            family:'Master', series:'BNI', supplier:'BALLUFF',
+            price:'160.00 EUR', priceCatalogue:'415 EUR',
+            desc:'BNI00L3 (BNI XG3-508-0B5-R067) - Modules réseau multiprotocoles.',
+            url:'https://www.balluff.com/bni00l3', photo:'',
+            createdAt: Date.now()-7200000, updatedAt: Date.now()-600000,
+            priceHistory:[{date:Date.now()-7200000, price:'415 EUR'}]
+          }
+        },
+        {
+          ref: 'BMF00JC',
+          local: {
+            ref:'BMF00JC', name:'Capteur magnétique (local)', brand:'BALLUFF',
+            family:'Capteur magnétique', series:'BMF', supplier:'BALLUFF',
+            price:'20 EUR', priceCatalogue:'64.67 EUR',
+            desc:'Version locale avec note ajoutée manuellement.',
+            url:'https://www.balluff.com/bmf00jc', photo:'',
+            createdAt: Date.now()-3600000, updatedAt: Date.now()-1800000,
+            priceHistory:[]
+          },
+          server: {
+            ref:'BMF00JC', name:'Capteur magnétique BMF (serveur)', brand:'BALLUFF',
+            family:'Capteur magnétique', series:'BMF', supplier:'BALLUFF',
+            price:'22 EUR', priceCatalogue:'64.67 EUR',
+            desc:'BMF00JC (BMF 235K-PS-C-2A-SA5-S49-00,3) - Interrupteur cylindrique.',
+            url:'https://www.balluff.com/bmf00jc', photo:'',
+            createdAt: Date.now()-3600000, updatedAt: Date.now()-900000,
+            priceHistory:[]
+          }
+        }
+      ];
+
+      if(typeof openConflictModal === 'function'){
+        openConflictModal(fakeConflicts);
+      } else {
+        alert('La modale de conflits sera disponible après le prochain déploiement complet.');
+      }
+    });
+  }});
