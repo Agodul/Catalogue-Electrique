@@ -79,6 +79,7 @@
           history.push({price: oldPrice, date: Date.now()});
           payload.priceHistory = history;
         }
+        payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
         products[idx] = Object.assign({}, existing, payload);
         // Propager l'icône à tous les produits de la même famille
         if(familyVal && payload.familyIcon){
@@ -96,6 +97,7 @@
         });
       }
       payload.createdAt = Date.now();
+      payload.updatedAt = Date.now();
       payload.priceHistory = initialHistory;
       products.push(payload);
     }
