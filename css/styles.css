@@ -973,7 +973,7 @@
     .hdr-sep{ margin:0 8px; height:18px; }
     .hdr-label-top{ display:none; }
     h1{ font-size:13px; white-space:nowrap; }
-    .hdr-count-chip{ font-size:11px; padding:2px 8px; }
+    .hdr-count-chip{ display:none; }
     .header-actions{ gap:5px; flex-shrink:0; }
     .header-actions button#btnAdd{ display:none; }
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
