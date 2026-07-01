@@ -245,7 +245,7 @@
       var resp = await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ products: products })
+        body: JSON.stringify(products)
       });
       if(!resp.ok) throw new Error('HTTP '+resp.status);
     }catch(e){ console.warn('pushToServer:', e.message); }
@@ -355,8 +355,8 @@
       var r = await fetch(url+'/pullDatas');
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
-      if(!data.products || !Array.isArray(data.products)) throw new Error('Format invalide');
-      products = data.products;
+      if(!Array.isArray(data)) throw new Error('Format invalide');
+      products = data;
       save(true);
       render();
       renderHome();
@@ -374,7 +374,7 @@
       var r = await fetch(url+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ products: products })
+        body: JSON.stringify(products)
       });
       if(!r.ok) throw new Error('HTTP '+r.status);
       showToast(products.length+' produits envoyés au serveur ✓', 'ok', 2500);
