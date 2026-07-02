@@ -201,6 +201,10 @@ function applyAuthUI() {
   var testSection = document.getElementById('settingsTestSection');
   if(testSection) testSection.style.display = isAdmin ? '' : 'none';
 
+  // Section sync serveur (toggle + boutons) : visible uniquement si connecté
+  var serverAdminSection = document.getElementById('serverAdminSection');
+  if(serverAdminSection) serverAdminSection.style.display = loggedIn ? '' : 'none';
+
   // Corps de page : classe pour CSS
   document.body.classList.toggle("auth-readonly", !loggedIn);
 

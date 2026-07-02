@@ -454,12 +454,39 @@
     else slider.classList.remove('active');
   }
 
-  document.getElementById('btnSaveServer').addEventListener('click', function(){
-    serverUrl  = serverUrlInput.value.trim().replace(/\/+$/,'');
+  document.getElementById('btnSaveServer').addEventListener('click', async function(){
+    var newUrl     = serverUrlInput.value.trim().replace(/\/+$/, '');
+    var urlChanged = newUrl && newUrl !== serverUrl;
+    serverUrl  = newUrl;
     serverSync = document.getElementById('serverSyncSlider').classList.contains('active');
     saveServerConfig();
     if(serverSync) startSyncPolling(); else stopSyncPolling();
-    showToast('Configuration serveur enregistrée ✓', 'ok', 2500);
+
+    // Si l'URL vient d'être définie → import automatique du catalogue
+    if(urlChanged && serverUrl){
+      showToast('Import du catalogue depuis le serveur…', 'ok', 2500);
+      try{
+        var r = await fetch(serverUrl+'/pullDatas');
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        var data = await r.json();
+        if(data && Array.isArray(data.items)){
+          products = data.items.map(function(item){ return item.data; });
+        } else if(Array.isArray(data)){
+          products = data;
+        } else {
+          throw new Error('Format invalide');
+        }
+        save(true);
+        localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
+        render();
+        renderHome();
+        showToast(products.length+' produits importés depuis le serveur ✓', 'ok', 3000);
+      }catch(e){
+        showToast('Import automatique échoué : '+e.message, 'err', 4000);
+      }
+    } else {
+      showToast('Configuration serveur enregistrée ✓', 'ok', 2500);
+    }
     showSettingsMain();
   });
 
