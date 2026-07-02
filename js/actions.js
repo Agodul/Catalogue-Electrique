@@ -242,7 +242,7 @@
 
   function updateServerSubtitle(){
     var el = document.getElementById('serverSettingsSub');
-    if(el) el.textContent = serverUrl ? (serverSync ? '🟢 '+serverUrl : '⚪ '+serverUrl) : 'Non configuré';
+    if(el) el.textContent = serverUrl ? '🟢 '+serverUrl : 'Non configuré';
   }
 
   function saveServerConfig(){
@@ -383,7 +383,6 @@
   var btnOpenServerSettings = document.getElementById('btnOpenServerSettings');
   var btnServerPageBack   = document.getElementById('btnServerPageBack');
   var serverUrlInput      = document.getElementById('serverUrlInput');
-  var serverSyncToggle    = document.getElementById('serverSyncToggle');
   var serverTestResult    = document.getElementById('serverTestResult');
 
   function showSettingsMain(){
@@ -402,8 +401,7 @@
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'flex';
     serverUrlInput.value = serverUrl;
-    serverSyncToggle.checked = serverSync;
-    updateSyncSlider();
+
   }
 
   var btnOpenWhatsNew = document.getElementById('btnOpenWhatsNew');
@@ -454,12 +452,7 @@
   });
 
   // Enregistrer config
-  function updateSyncSlider(){
-    var slider = document.getElementById('serverSyncSlider');
-    if(!slider) return;
-    if(serverSync) slider.classList.add('active');
-    else slider.classList.remove('active');
-  }
+
 
   document.getElementById('btnSaveServer').addEventListener('click', async function(){
     var newUrl     = serverUrlInput.value.trim().replace(/\/+$/, '');
