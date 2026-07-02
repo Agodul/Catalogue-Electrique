@@ -350,8 +350,14 @@
         if(isModalOpen){
           if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         } else {
-          render();
-          renderHome();
+          // Re-render uniquement la vue active
+          var homePage = document.getElementById('homePage');
+          var isOnHome = homePage && !homePage.classList.contains('hidden');
+          if(isOnHome){
+            renderHome();
+          } else {
+            render();
+          }
           if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         }
       }
