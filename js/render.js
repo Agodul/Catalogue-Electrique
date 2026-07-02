@@ -321,8 +321,22 @@
 
       // Supprimer en local
       products = products.filter(function(x){return x.id!==id;});
-      save();
-      render();
-      if(sUrl) showToast('Produit supprimé du catalogue et du serveur ✓', 'ok', 2500);
+      save(true); // skipFileWrite pour ne pas bloquer
+
+      // Actualisation en arrière-plan sans interrompre l'utilisateur
+      var homePage = document.getElementById('homePage');
+      var isOnHome = homePage && !homePage.classList.contains('hidden');
+      if(isOnHome){
+        renderHome();
+      } else {
+        // Fermer la fiche si elle affiche le produit supprimé
+        var viewOverlay = document.getElementById('viewOverlay');
+        if(viewOverlay && viewOverlay.classList.contains('open')){
+          viewOverlay.classList.remove('open');
+          document.body.classList.remove('modal-open');
+        }
+        render();
+      }
+      showToast(sUrl ? 'Produit supprimé du catalogue et du serveur ✓' : 'Produit supprimé ✓', 'ok', 2500);
     });
   }
