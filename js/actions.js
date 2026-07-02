@@ -871,20 +871,68 @@
         + '</div></div>';
       document.body.appendChild(overlay);
       overlay.querySelector('#_importMerge').addEventListener('click', function(){
-        var existingIds = new Set(products.map(function(p){return p.id;}));
+        // Même logique que syncFromServer : ref inconnue → ajout, ref connue → conflit
+        var localMap = {};
+        products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+        var added = 0;
+        var importConflicts = [];
+
         _pendingImport.forEach(function(p){
-          if(!p.id || existingIds.has(p.id)) p.id = 'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-          products.push(p);
+          if(!p.id) p.id = 'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+          if(!p.ref){
+            // Pas de ref → ajout direct
+            products.push(p);
+            added++;
+            return;
+          }
+          var idx = localMap[p.ref];
+          if(idx === undefined){
+            // Ref inconnue → ajout
+            localMap[p.ref] = products.length;
+            products.push(p);
+            added++;
+          } else {
+            // Ref connue → conflit si contenu différent
+            var lp = products[idx];
+            if(JSON.stringify(lp) !== JSON.stringify(p)){
+              importConflicts.push({ ref: p.ref, local: lp, server: p });
+            }
+          }
         });
-        save(); render();
-        showToast('Fusion réussie — '+count+' produit(s) ajouté(s).', 'ok', 3000);
+
+        save();
+        // Forcer retour à la home
+        var homePage = document.getElementById('homePage');
+        var catalogueWrap = document.getElementById('catalogueWrap');
+        var hdrCountChip = document.getElementById('hdrCountChip');
+        if(homePage) homePage.classList.remove('hidden');
+        if(catalogueWrap) catalogueWrap.style.display = 'none';
+        if(hdrCountChip) hdrCountChip.style.display = 'none';
+        render(); renderHome();
         document.body.removeChild(overlay);
         e.target.value = '';
+
+        if(importConflicts.length > 0){
+          setTimeout(function(){
+            if(typeof window.openConflictModal === 'function'){
+              window.openConflictModal(importConflicts);
+            }
+          }, 300);
+        } else {
+          showToast(added+' produit(s) ajouté(s) ✓', 'ok', 3000);
+        }
       });
       overlay.querySelector('#_importReplace').addEventListener('click', function(){
         products = _pendingImport;
-        save(); render();
-        showToast('Catalogue remplacé — '+count+' produit(s).', 'ok', 3000);
+        save();
+        var homePage = document.getElementById('homePage');
+        var catalogueWrap = document.getElementById('catalogueWrap');
+        var hdrCountChip = document.getElementById('hdrCountChip');
+        if(homePage) homePage.classList.remove('hidden');
+        if(catalogueWrap) catalogueWrap.style.display = 'none';
+        if(hdrCountChip) hdrCountChip.style.display = 'none';
+        render(); renderHome();
+        showToast('Catalogue remplacé — '+count+' produit(s) ✓', 'ok', 3000);
         document.body.removeChild(overlay);
         e.target.value = '';
       });
