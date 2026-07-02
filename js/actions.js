@@ -364,11 +364,12 @@
 
       // Ouvrir la modale de conflits si des ref connues diffèrent
       if(conflicts.length > 0){
+        showToast(conflicts.length+' produit(s) modifié(s) sur le serveur — choisissez la version à conserver', 'warn', 4000);
         setTimeout(function(){
           if(typeof window.openConflictModal === 'function'){
             window.openConflictModal(conflicts);
           }
-        }, 300);
+        }, 500);
       }
     }catch(e){ console.warn('syncFromServer:', e.message); }
   }
