@@ -389,7 +389,18 @@
               if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
               return JSON.stringify(c, Object.keys(c).sort());
             }
-            if(withoutServerFields(lp) !== withoutServerFields(sp)){
+            var localStr = withoutServerFields(lp);
+            var serverStr = withoutServerFields(sp);
+            if(localStr !== serverStr){
+              // Log pour debug - trouver le champ différent
+              var lObj = JSON.parse(localStr);
+              var sObj = JSON.parse(serverStr);
+              var diffKeys = Object.keys(Object.assign({}, lObj, sObj)).filter(function(k){
+                return JSON.stringify(lObj[k]) !== JSON.stringify(sObj[k]);
+              });
+              console.warn('Conflit ref='+sp.ref+' champs différents:', diffKeys);
+              console.warn('Local:', lObj);
+              console.warn('Serveur:', sObj);
               conflicts.push({ ref: sp.ref, local: lp, server: sp });
             }
           }
