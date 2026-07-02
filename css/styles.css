@@ -2095,13 +2095,13 @@
       flex-shrink:0;
       -webkit-overflow-scrolling:touch;
     }
+    /* Les cartes se partagent équitablement toute la largeur */
     .conflict-item{
-      min-width:110px;
-      max-width:140px;
+      flex:1 0 0;
+      min-width:80px;
       height:60px;
       border-bottom:none !important;
       border-right:1px solid var(--line);
-      flex-shrink:0;
       padding:8px 10px !important;
       box-sizing:border-box;
       display:flex;
@@ -2109,6 +2109,7 @@
       justify-content:center;
       gap:3px;
     }
+    .conflict-item:last-child{ border-right:none; }
     .conflict-item > div:first-child{ font-size:12px !important; font-weight:700; }
     .conflict-item > div:nth-child(2){ display:none !important; }
     .conflict-item > div:last-child span{ font-size:9px !important; padding:1px 4px !important; }
