@@ -139,6 +139,7 @@ function authLogout() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   applyAuthUI();
   showAuthToast("Déconnecté");
+  // Le polling continue même après logout (lecture seule du catalogue)
 }
 
 // ── Tentative de connexion ───────────────────────────────────
@@ -186,6 +187,10 @@ async function authLogin(username, password) {
     closeAuthModal();
     applyAuthUI();
     showAuthToast("Connecté en tant que " + account.displayName);
+    // Démarrer le polling si serveur configuré
+    if(typeof startSyncPolling === 'function' && localStorage.getItem('cat_server_url')){
+      startSyncPolling();
+    }
     return true;
   }
   return false;
