@@ -374,8 +374,13 @@
           var lp = products[idx];
           function withoutServerFields(p){
             var c = Object.assign({}, p);
-            delete c.updatedAt; // ajouté/modifié par le serveur
-            return JSON.stringify(c);
+            delete c.updatedAt;  // ajouté/modifié par le serveur
+            delete c.id;         // id local peut différer
+            delete c.familyIcon; // peut différer selon le contexte
+            // Normaliser les tableaux vides vs undefined
+            if(!c.tags || c.tags.length === 0) delete c.tags;
+            if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
+            return JSON.stringify(c, Object.keys(c).sort());
           }
           if(withoutServerFields(lp) !== withoutServerFields(sp)){
             conflicts.push({ ref: sp.ref, local: lp, server: sp });
