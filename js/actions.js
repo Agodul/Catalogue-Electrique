@@ -297,10 +297,15 @@
       // Marquer tous les produits comme récemment sauvegardés
       var now = Date.now();
       products.forEach(function(p){ if(p.ref) _recentlySaved[p.ref] = now; });
+      // Pour forcer l'upsert des modifications, on envoie avec createdAt = now
+      // Le serveur accepte le plus récent (createdAt) par ref
+      var toSend = products.map(function(p){
+        return Object.assign({}, p, { createdAt: now });
+      });
       await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(products)
+        body: JSON.stringify(toSend)
       });
     }catch(e){ console.warn('pushToServer:', e.message); }
   }
