@@ -1,6 +1,6 @@
 "use strict";
 
-  var STORAGE_KEY = "catalogue_produits_v1";
+  var STORAGE_KEY = "cat_produits_v1";
   var products = [];
   var editingId = null;
 
@@ -219,7 +219,7 @@
   btnDisconnectFile.addEventListener('click', disconnectFile);
 
   // ---------- Persistence ----------
-  var FAMILY_ICONS_KEY = 'spi_family_icons';
+  var FAMILY_ICONS_KEY = 'cat_family_icons';
   var familyIcons = {}; // { "Câbles": "ti-plug-connected", ... }
 
   function loadFamilyIcons(){

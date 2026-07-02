@@ -108,15 +108,15 @@
     var html = '';
     var url  = '';
     try{
-      html = localStorage.getItem('spi_pending_html') || '';
-      url  = localStorage.getItem('spi_pending_url')  || '';
-      var ts = parseInt(localStorage.getItem('spi_pending_ts') || '0', 10);
+      html = localStorage.getItem('cat_pending_html') || '';
+      url  = localStorage.getItem('cat_pending_url')  || '';
+      var ts = parseInt(localStorage.getItem('cat_pending_ts') || '0', 10);
       // Ignorer si données trop vieilles (> 5 min)
       if(!html || (Date.now() - ts) > 5 * 60 * 1000) return;
       // Nettoyer immédiatement pour éviter un double-déclenchement
-      localStorage.removeItem('spi_pending_html');
-      localStorage.removeItem('spi_pending_url');
-      localStorage.removeItem('spi_pending_ts');
+      localStorage.removeItem('cat_pending_html');
+      localStorage.removeItem('cat_pending_url');
+      localStorage.removeItem('cat_pending_ts');
     }catch(e){ return; }
 
     // ── SÉCURITÉ : valider l'URL provenant du localStorage ───────
@@ -136,7 +136,7 @@
     }
 
     // Nettoyer le flag bridge dans l'URL
-    if(window.location.search.includes('spi_bridge=1')){
+    if(window.location.search.includes('cat_bridge=1')){
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -158,6 +158,6 @@
     triggerExtensionExtraction();
   });
 
-  // Cas 2 : catalogue vient d'être ouvert avec ?spi_bridge=1
+  // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
   // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.

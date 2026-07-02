@@ -15,10 +15,10 @@ var AUTH_ADMIN_FALLBACK = {
 };
 
 // Clé localStorage pour stocker le credential admin {salt, hash}
-var AUTH_ADMIN_KEY = "spi_auth_admin";
+var AUTH_ADMIN_KEY = "cat_auth_admin";
 
-var AUTH_SESSION_KEY  = "spi_auth_user";
-var AUTH_USERS_KEY    = "spi_auth_users";  // localStorage
+var AUTH_SESSION_KEY  = "cat_auth_user";
+var AUTH_USERS_KEY    = "cat_auth_users";  // localStorage
 
 // ── Gestion des comptes (localStorage) ──────────────────────
 function authGetAdminCredential() {

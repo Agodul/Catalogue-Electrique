@@ -225,9 +225,9 @@
     });
   }
 
-  var SERVER_KEY           = 'spi_server_url';
-  var SERVER_SYNC_KEY      = 'spi_server_sync';
-  var SERVER_LAST_SYNC_KEY = 'spi_server_last_sync';
+  var SERVER_KEY           = 'cat_server_url';
+  var SERVER_SYNC_KEY      = 'cat_server_sync';
+  var SERVER_LAST_SYNC_KEY = 'cat_server_last_sync';
   var serverUrl  = '';
   var serverSync = false;
 
@@ -1254,7 +1254,7 @@
 
   // Dernière version = dernier élément du tableau
   var latestWN = WHATS_NEW_VERSIONS[WHATS_NEW_VERSIONS.length - 1];
-  var WN_KEY   = 'catalogue_whats_new_' + latestWN.version;
+  var WN_KEY   = 'cat_whats_new_' + latestWN.version;
 
   // Génère le contenu HTML depuis les données
   function buildWhatsNewContent(){
