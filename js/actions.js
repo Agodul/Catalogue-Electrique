@@ -324,7 +324,8 @@
       var localMap = {};
       products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
 
-      var added = 0, updated = 0;
+      var added = 0;
+      var conflicts = [];
       serverItems.forEach(function(sp){
         if(!sp || !sp.ref) return;
         var idx = localMap[sp.ref];
@@ -334,34 +335,34 @@
           products.push(sp);
           added++;
         } else {
-          // Ref connue → comparer updatedAt
-          var localTs  = products[idx].updatedAt || products[idx].createdAt || 0;
-          var serverTs = sp.updatedAt || sp.createdAt || 0;
-          if(serverTs > localTs){
-            products[idx] = sp;
-            updated++;
+          // Ref connue → conflit si contenu différent, l'admin choisit
+          var lp = products[idx];
+          if(JSON.stringify(lp) !== JSON.stringify(sp)){
+            conflicts.push({ ref: sp.ref, local: lp, server: sp });
           }
-          // Local plus récent → on garde le local
+          // Local conservé par défaut
         }
       });
 
-      if(added > 0 || updated > 0){
+      if(added > 0){
         save(true);
-
-        // Actualisation en arrière-plan : on re-render sans interrompre l'utilisateur
-        // Si une modale est ouverte ou l'utilisateur scroll, on diffère légèrement
         var isModalOpen = document.body.classList.contains('modal-open');
-        var isScrolling = window.scrollY > 100;
-
         if(isModalOpen){
-          // Modale ouverte → juste sauvegarder, l'UI se mettra à jour à la fermeture
-          if(!silent) showToast(added+' nouveau(x) produit(s) disponible(s) ✓', 'ok', 3000);
+          if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         } else {
-          // Pas de modale → actualiser directement en arrière-plan
           render();
           renderHome();
-          if(!silent) showToast(added+' ajouté(s), '+updated+' mis à jour ✓', 'ok', 3000);
+          if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         }
+      }
+
+      // Ouvrir la modale de conflits si des ref connues diffèrent
+      if(conflicts.length > 0){
+        setTimeout(function(){
+          if(typeof window.openConflictModal === 'function'){
+            window.openConflictModal(conflicts);
+          }
+        }, 300);
       }
     }catch(e){ console.warn('syncFromServer:', e.message); }
   }
