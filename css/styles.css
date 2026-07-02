@@ -2046,7 +2046,22 @@
   /* ── Modale conflits sync ─────────────────────────────────────── */
   #conflictOverlay{ display:none; }
   #conflictOverlay.open{ display:flex !important; }
+  .conflict-item{ transition:background .15s, border-color .15s; }
   .conflict-item:hover{ background:var(--surface-2) !important; }
+  .conflict-item.selected{
+    background:#194093 !important;
+    border-left:3px solid #4A6FD4 !important;
+  }
+  .conflict-item.selected > div{ color:#fff !important; }
+  .conflict-item.selected > div:last-child span{
+    background:rgba(255,255,255,0.25) !important;
+    color:#fff !important;
+    border-color:rgba(255,255,255,0.3) !important;
+  }
+  /* Non sélectionnées : légèrement atténuées */
+  #conflictList:has(.selected) .conflict-item:not(.selected){
+    opacity:0.55;
+  }
 
   @media(max-width:640px){
     #conflictOverlay{
