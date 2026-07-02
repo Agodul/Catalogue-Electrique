@@ -138,7 +138,7 @@
     if(vmPdfAdminBtns)  vmPdfAdminBtns.style.display = 'none';
     if(vmPdfFrame)      vmPdfFrame.src = '';
 
-    var isAdmin = typeof authCurrentUser === 'function' && authCurrentUser() && authCurrentUser().role === 'admin';
+    var isAdmin = typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin;
 
     if(sUrl){
       if(p.hasDoc && p.ref){
