@@ -324,7 +324,6 @@
   async function pushToServer(){
     if(!serverUrl) return;
     try{
-      // Push tous les produits locaux — le serveur ignore les plus anciens (via createdAt)
       await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -332,6 +331,8 @@
       });
     }catch(e){ console.warn('pushToServer:', e.message); }
   }
+  // Exposer globalement pour storage.js
+  window.pushToServer = pushToServer;
 
   // ── Pull différentiel : récupère les nouveautés serveur et fusionne par ref ──
   async function syncFromServer(silent){
