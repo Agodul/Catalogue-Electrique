@@ -280,11 +280,30 @@
     '</div>';
   }
 
-  function deleteProduct(id){
+  async function deleteProduct(id){
     var p = products.find(function(x){return x.id===id;});
     if(!p) return;
     if(!confirm('Supprimer « '+(p.name||p.ref)+' » du catalogue ?')) return;
+    var ref = p.ref;
+    var sUrl = localStorage.getItem('cat_server_url');
+
+    // Si serveur configuré → supprimer d'abord sur le serveur
+    if(sUrl && ref){
+      try{
+        var r = await fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(ref), { method:'DELETE' });
+        if(!r.ok){
+          showToast('Impossible de supprimer sur le serveur (HTTP '+r.status+') — suppression annulée', 'err', 4000);
+          return;
+        }
+      }catch(e){
+        showToast('Serveur inaccessible — suppression annulée', 'err', 4000);
+        return;
+      }
+    }
+
+    // Supprimer en local
     products = products.filter(function(x){return x.id!==id;});
     save();
     render();
+    if(sUrl) showToast('Produit supprimé du catalogue et du serveur ✓', 'ok', 2500);
   }
