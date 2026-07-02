@@ -280,30 +280,49 @@
     '</div>';
   }
 
-  async function deleteProduct(id){
+  function deleteProduct(id){
     var p = products.find(function(x){return x.id===id;});
     if(!p) return;
-    if(!confirm('Supprimer « '+(p.name||p.ref)+' » du catalogue ?')) return;
-    var ref = p.ref;
-    var sUrl = localStorage.getItem('cat_server_url');
 
-    // Si serveur configuré → supprimer d'abord sur le serveur
-    if(sUrl && ref){
-      try{
-        var r = await fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(ref), { method:'DELETE' });
-        if(!r.ok){
-          showToast('Impossible de supprimer sur le serveur (HTTP '+r.status+') — suppression annulée', 'err', 4000);
+    // Modale de confirmation custom
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+      + '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px;">Supprimer ce produit ?</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">« '+escapeHtml(p.name||p.ref)+' » sera supprimé définitivement du catalogue.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;">'
+      + '<button id="_confirmDelete" style="padding:10px 14px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Supprimer</button>'
+      + '<button id="_cancelDelete" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
+      + '</div></div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#_cancelDelete').addEventListener('click', function(){
+      document.body.removeChild(overlay);
+    });
+
+    overlay.querySelector('#_confirmDelete').addEventListener('click', async function(){
+      document.body.removeChild(overlay);
+      var ref = p.ref;
+      var sUrl = localStorage.getItem('cat_server_url');
+
+      // Si serveur configuré → supprimer d'abord sur le serveur
+      if(sUrl && ref){
+        try{
+          var r = await fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(ref), { method:'DELETE' });
+          if(!r.ok){
+            showToast('Impossible de supprimer sur le serveur (HTTP '+r.status+') — suppression annulée', 'err', 4000);
+            return;
+          }
+        }catch(e){
+          showToast('Serveur inaccessible — suppression annulée', 'err', 4000);
           return;
         }
-      }catch(e){
-        showToast('Serveur inaccessible — suppression annulée', 'err', 4000);
-        return;
       }
-    }
 
-    // Supprimer en local
-    products = products.filter(function(x){return x.id!==id;});
-    save();
-    render();
-    if(sUrl) showToast('Produit supprimé du catalogue et du serveur ✓', 'ok', 2500);
+      // Supprimer en local
+      products = products.filter(function(x){return x.id!==id;});
+      save();
+      render();
+      if(sUrl) showToast('Produit supprimé du catalogue et du serveur ✓', 'ok', 2500);
+    });
   }
