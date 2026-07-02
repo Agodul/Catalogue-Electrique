@@ -225,8 +225,9 @@
     });
   }
 
-  var SERVER_KEY = 'spi_server_url';
-  var SERVER_SYNC_KEY = 'spi_server_sync';
+  var SERVER_KEY           = 'spi_server_url';
+  var SERVER_SYNC_KEY      = 'spi_server_sync';
+  var SERVER_LAST_SYNC_KEY = 'spi_server_last_sync';
   var serverUrl  = '';
   var serverSync = false;
 
