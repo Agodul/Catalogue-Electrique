@@ -472,7 +472,7 @@
     if(modalPdfExisting) modalPdfExisting.style.display = 'none';
     if(modalPdfUpload) modalPdfUpload.style.display = 'none';
 
-    if(sUrl && isAdmin && editingId){
+    if(isAdmin && editingId){
       var pForPdf = products.find(function(x){ return x.id === editingId; });
       if(modalPdfSection) modalPdfSection.style.display = '';
       if(pForPdf && pForPdf.hasDoc){
@@ -484,6 +484,7 @@
 
       function doUploadPdf(file){
         if(!file || !pForPdf || !pForPdf.ref) return;
+        if(!sUrl){ showToast('Serveur non configuré — impossible d\'envoyer le PDF', 'err', 4000); return; }
         var fd = new FormData();
         fd.append('id', pForPdf.ref);
         fd.append('document', file, file.name);
