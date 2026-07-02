@@ -257,7 +257,8 @@
       writeProductsToFile();
     }
     // Sync serveur si activée
-    if(typeof serverSync !== 'undefined' && serverSync && typeof pushToServer === 'function'){
+    // Push vers le serveur si configuré
+    if(typeof pushToServer === 'function' && localStorage.getItem('cat_server_url')){
       pushToServer();
     }
     // Animation 7 — pulse du point de sauvegarde

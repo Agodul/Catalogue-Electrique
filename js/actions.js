@@ -110,13 +110,47 @@
     save();
     render();
     var savedId = editingId || products[products.length - 1].id;
+    var savedRef = products.find(function(p){ return p.id === savedId; });
+    savedRef = savedRef ? savedRef.ref : null;
 
-    // Fermer après la fin du flash (1.2s)
+    // Fermer après le flash
     setTimeout(function(){
       btnSaveEl.classList.remove('save-anim');
       closeModal();
       openView(savedId);
     }, 900);
+
+    // Push vers le serveur et vérifier si conflit
+    var sUrl = localStorage.getItem('cat_server_url');
+    if(sUrl && savedRef){
+      var productToSave = products.find(function(p){ return p.id === savedId; });
+      if(productToSave){
+        // Push immédiat
+        fetch(sUrl+'/pushDatas', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify([productToSave])
+        }).then(async function(r){
+          if(!r.ok) return;
+          // Vérifier si le serveur a une version différente
+          var r2 = await fetch(sUrl+'/pullDatas?brand='+encodeURIComponent(productToSave.brand||''));
+          if(!r2.ok) return;
+          var data = await r2.json();
+          var serverItems = data && Array.isArray(data.items)
+            ? data.items.map(function(i){ return i.data; })
+            : (Array.isArray(data) ? data : []);
+          var serverVersion = serverItems.find(function(sp){ return sp && sp.ref === savedRef; });
+          if(serverVersion && JSON.stringify(productToSave) !== JSON.stringify(serverVersion)){
+            // Le serveur a une version différente → conflit
+            setTimeout(function(){
+              if(typeof window.openConflictModal === 'function'){
+                window.openConflictModal([{ ref: savedRef, local: productToSave, server: serverVersion }]);
+              }
+            }, 1000);
+          }
+        }).catch(function(e){ console.warn('push after save:', e.message); });
+      }
+    }
   });
 
   // ---------- Search / filter ----------
