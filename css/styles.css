@@ -2046,22 +2046,28 @@
   /* ── Modale conflits sync ─────────────────────────────────────── */
   #conflictOverlay{ display:none; }
   #conflictOverlay.open{ display:flex !important; }
-  .conflict-item{ transition:background .15s; }
-  .conflict-item:hover:not(.selected){ background:var(--surface-2) !important; }
-  /* Carte non sélectionnée : fond neutre */
+  .conflict-item{
+    transition:background .15s;
+    padding:10px 14px;
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+    box-sizing:border-box;
+  }
+  .conflict-item:hover:not(.selected){ background:var(--surface-2); }
+  /* Carte non sélectionnée */
   .conflict-item:not(.selected){
     background:var(--paper-card);
-    color:var(--ink-soft);
+    opacity:0.6;
   }
-  /* Carte sélectionnée : fond bleu vif */
+  /* Carte sélectionnée : fond bleu */
   .conflict-item.selected{
-    background:#194093 !important;
-    color:#fff !important;
+    background:#EEF4FF;
+    border-left:3px solid #194093;
+    opacity:1;
   }
-  .conflict-item.selected > div{ color:#fff !important; }
-  .conflict-item.selected > div:last-child span{
-    background:rgba(255,255,255,0.2) !important;
-    color:#fff !important;
+  .conflict-item.selected > div:first-child{
+    color:#194093 !important;
+    font-weight:700;
   }
 
   @media(max-width:640px){
