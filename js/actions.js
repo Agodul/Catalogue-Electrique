@@ -370,9 +370,14 @@
           products.push(sp);
           added++;
         } else {
-          // Ref connue → conflit si contenu différent, l'admin choisit
+          // Ref connue → conflit si contenu différent (hors updatedAt ajouté par le serveur)
           var lp = products[idx];
-          if(JSON.stringify(lp) !== JSON.stringify(sp)){
+          function withoutServerFields(p){
+            var c = Object.assign({}, p);
+            delete c.updatedAt; // ajouté/modifié par le serveur
+            return JSON.stringify(c);
+          }
+          if(withoutServerFields(lp) !== withoutServerFields(sp)){
             conflicts.push({ ref: sp.ref, local: lp, server: sp });
           }
           // Local conservé par défaut
@@ -929,7 +934,8 @@
           } else {
             // Ref connue → conflit si contenu différent
             var lp = products[idx];
-            if(JSON.stringify(lp) !== JSON.stringify(p)){
+            function stripUpdated(o){ var c=Object.assign({},o); delete c.updatedAt; return JSON.stringify(c); }
+            if(stripUpdated(lp) !== stripUpdated(p)){
               importConflicts.push({ ref: p.ref, local: lp, server: p });
             }
           }
