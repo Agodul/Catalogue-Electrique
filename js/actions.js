@@ -347,9 +347,21 @@
 
       if(added > 0 || updated > 0){
         save(true);
-        render();
-        renderHome();
-        if(!silent) showToast(added+' ajouté(s), '+updated+' mis à jour ✓', 'ok', 3000);
+
+        // Actualisation en arrière-plan : on re-render sans interrompre l'utilisateur
+        // Si une modale est ouverte ou l'utilisateur scroll, on diffère légèrement
+        var isModalOpen = document.body.classList.contains('modal-open');
+        var isScrolling = window.scrollY > 100;
+
+        if(isModalOpen){
+          // Modale ouverte → juste sauvegarder, l'UI se mettra à jour à la fermeture
+          if(!silent) showToast(added+' nouveau(x) produit(s) disponible(s) ✓', 'ok', 3000);
+        } else {
+          // Pas de modale → actualiser directement en arrière-plan
+          render();
+          renderHome();
+          if(!silent) showToast(added+' ajouté(s), '+updated+' mis à jour ✓', 'ok', 3000);
+        }
       }
     }catch(e){ console.warn('syncFromServer:', e.message); }
   }
