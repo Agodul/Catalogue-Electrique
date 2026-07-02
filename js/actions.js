@@ -478,9 +478,21 @@
         }
         save(true);
         localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
+        // Fermer les paramètres et afficher la home proprement
+        showSettingsMain();
+        var settingsOverlay = document.getElementById('settingsOverlay');
+        if(settingsOverlay) settingsOverlay.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        var homePage = document.getElementById('homePage');
+        var catalogueWrap = document.getElementById('catalogueWrap');
+        var hdrCountChip = document.getElementById('hdrCountChip');
+        if(homePage) homePage.classList.remove('hidden');
+        if(catalogueWrap) catalogueWrap.style.display = 'none';
+        if(hdrCountChip) hdrCountChip.style.display = 'none';
         render();
         renderHome();
         showToast(products.length+' produits importés depuis le serveur ✓', 'ok', 3000);
+        return;
       }catch(e){
         showToast('Import automatique échoué : '+e.message, 'err', 4000);
       }
@@ -513,13 +525,14 @@
       if(settingsOverlay) settingsOverlay.classList.remove('open');
       document.body.classList.remove('modal-open');
       // Réinitialiser et afficher la home
-      render();
-      renderHome();
-      // Forcer l'affichage de la home
       var homePage = document.getElementById('homePage');
       var catalogueWrap = document.getElementById('catalogueWrap');
+      var hdrCountChip = document.getElementById('hdrCountChip');
       if(homePage) homePage.classList.remove('hidden');
       if(catalogueWrap) catalogueWrap.style.display = 'none';
+      if(hdrCountChip) hdrCountChip.style.display = 'none';
+      render();
+      renderHome();
       showToast(products.length+' produits chargés depuis le serveur ✓', 'ok', 2500);
     }catch(e){
       showToast('Erreur : '+e.message, 'warn', 3000);
