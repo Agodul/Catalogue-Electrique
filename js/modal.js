@@ -456,6 +456,76 @@
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
+    // ── Section PDF dans le formulaire (admin + modification uniquement) ──
+    var sUrl = localStorage.getItem('cat_server_url');
+    var isAdmin = typeof authCurrentUser === 'function' && authCurrentUser() && authCurrentUser().role === 'admin';
+    var modalPdfSection  = document.getElementById('modalPdfSection');
+    var modalPdfExisting = document.getElementById('modalPdfExisting');
+    var modalPdfUpload   = document.getElementById('modalPdfUpload');
+    var modalPdfFilename = document.getElementById('modalPdfFilename');
+    var modalPdfInput    = document.getElementById('modalPdfInput');
+    var modalPdfReplaceInput = document.getElementById('modalPdfReplaceInput');
+    var modalPdfReplaceBtn   = document.getElementById('modalPdfReplaceBtn');
+    var modalPdfRemoveBtn    = document.getElementById('modalPdfRemoveBtn');
+
+    if(modalPdfSection) modalPdfSection.style.display = 'none';
+    if(modalPdfExisting) modalPdfExisting.style.display = 'none';
+    if(modalPdfUpload) modalPdfUpload.style.display = 'none';
+
+    if(sUrl && isAdmin && editingId){
+      var pForPdf = products.find(function(x){ return x.id === editingId; });
+      if(modalPdfSection) modalPdfSection.style.display = '';
+      if(pForPdf && pForPdf.hasDoc){
+        if(modalPdfExisting) modalPdfExisting.style.display = '';
+        if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
+      } else {
+        if(modalPdfUpload) modalPdfUpload.style.display = '';
+      }
+
+      function doUploadPdf(file){
+        if(!file || !pForPdf || !pForPdf.ref) return;
+        var fd = new FormData();
+        fd.append('id', pForPdf.ref);
+        fd.append('document', file, file.name);
+        showToast('Envoi du PDF en cours…', 'ok', 3000);
+        fetch(sUrl + '/pushDocs', { method:'POST', body: fd })
+          .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
+          .then(function(data){
+            var idx2 = products.findIndex(function(x){ return x.id === editingId; });
+            if(idx2 !== -1){
+              products[idx2].hasDoc = true;
+              products[idx2].docFilename = data.filename || file.name;
+              save(true);
+            }
+            showToast('PDF envoyé ✓', 'ok', 2500);
+            if(modalPdfUpload) modalPdfUpload.style.display = 'none';
+            if(modalPdfExisting) modalPdfExisting.style.display = '';
+            if(modalPdfFilename) modalPdfFilename.textContent = data.filename || file.name;
+          })
+          .catch(function(e){ showToast('Erreur envoi PDF : ' + e, 'err', 4000); });
+      }
+
+      if(modalPdfInput) modalPdfInput.onchange = function(){ doUploadPdf(this.files[0]); };
+      if(modalPdfReplaceInput) modalPdfReplaceInput.onchange = function(){ doUploadPdf(this.files[0]); };
+      if(modalPdfReplaceBtn) modalPdfReplaceBtn.onclick = function(){ if(modalPdfReplaceInput) modalPdfReplaceInput.click(); };
+
+      if(modalPdfRemoveBtn){
+        modalPdfRemoveBtn.onclick = function(){
+          if(!pForPdf || !pForPdf.ref) return;
+          fetch(sUrl + '/deleteDocs?id=' + encodeURIComponent(pForPdf.ref), { method:'DELETE' })
+            .then(function(){
+              var idx2 = products.findIndex(function(x){ return x.id === editingId; });
+              if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; save(true); }
+              showToast('PDF supprimé ✓', 'ok', 2500);
+              if(modalPdfExisting) modalPdfExisting.style.display = 'none';
+              if(modalPdfUpload) modalPdfUpload.style.display = '';
+            })
+            .catch(function(e){ showToast('Erreur suppression PDF : ' + e, 'err', 4000); });
+        };
+      }
+    }
+    // ── Fin section PDF ──
+
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)

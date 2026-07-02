@@ -693,6 +693,28 @@
         </div>
       </div>
 
+      <!-- ===== SECTION PDF FORMULAIRE ===== -->
+      <div id="modalPdfSection" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Document PDF</div>
+        <div id="modalPdfExisting" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);">
+            <i class="ti ti-file-type-pdf" style="font-size:20px;color:#E53E3E;flex-shrink:0;"></i>
+            <span id="modalPdfFilename" style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+            <button id="modalPdfReplaceBtn" style="padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">Remplacer</button>
+            <button id="modalPdfRemoveBtn" style="padding:4px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">Supprimer</button>
+          </div>
+        </div>
+        <div id="modalPdfUpload" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;width:fit-content;">
+            <i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;"></i>
+            Ajouter un document PDF
+            <input type="file" id="modalPdfInput" accept=".pdf" style="display:none;">
+          </label>
+        </div>
+        <input type="file" id="modalPdfReplaceInput" accept=".pdf" style="display:none;">
+      </div>
+      <!-- ===== FIN SECTION PDF FORMULAIRE ===== -->
+
     </div>
     <div class="modal-foot" id="modalFoot">
       <div class="left-foot" id="modalLeftFoot"></div>
