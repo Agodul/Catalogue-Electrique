@@ -1667,7 +1667,7 @@
     list.innerHTML = _pendingConflicts.map(function(c){
       var choice = _conflictChoices[c.ref] || 'local';
       var isSel  = _selectedConflict === c.ref;
-      return '<div class="conflict-item" data-ref="'+escapeHtml(c.ref)+'" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);background:'+(isSel?'var(--surface-2)':'transparent')+';">'
+      return '<div class="conflict-item'+(isSel?' selected':'')+'" data-ref="'+escapeHtml(c.ref)+'" style="cursor:pointer;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(c.ref)+'</div>'
         +'<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">'+escapeHtml((c.local.name||c.local.ref||''))+'</div>'
         +'<div style="margin-top:5px;display:flex;gap:4px;">'
