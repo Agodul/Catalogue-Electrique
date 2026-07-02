@@ -286,6 +286,7 @@
 
   // ── Polling /check toutes les 30s ─────────────────────────────────
   var _syncInterval = null;
+  var _recentlySaved = {}; // {ref: timestamp} - ignore conflits 60s après une sauvegarde locale
 
   function getLastLocalTimestamp(){
     if(!products || products.length === 0) return 0;
@@ -324,6 +325,9 @@
   async function pushToServer(){
     if(!serverUrl) return;
     try{
+      // Marquer tous les produits comme récemment sauvegardés
+      var now = Date.now();
+      products.forEach(function(p){ if(p.ref) _recentlySaved[p.ref] = now; });
       await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -370,20 +374,24 @@
           products.push(sp);
           added++;
         } else {
-          // Ref connue → conflit si contenu différent (hors updatedAt ajouté par le serveur)
+          // Ref connue → conflit si contenu différent
+          // Ignorer si sauvegardé localement il y a moins de 60s (évite faux conflits après push)
           var lp = products[idx];
-          function withoutServerFields(p){
-            var c = Object.assign({}, p);
-            delete c.updatedAt;  // ajouté/modifié par le serveur
-            delete c.id;         // id local peut différer
-            delete c.familyIcon; // peut différer selon le contexte
-            // Normaliser les tableaux vides vs undefined
-            if(!c.tags || c.tags.length === 0) delete c.tags;
-            if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
-            return JSON.stringify(c, Object.keys(c).sort());
-          }
-          if(withoutServerFields(lp) !== withoutServerFields(sp)){
-            conflicts.push({ ref: sp.ref, local: lp, server: sp });
+          var recentSave = _recentlySaved[sp.ref];
+          var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
+          if(!tooRecent){
+            function withoutServerFields(p){
+              var c = Object.assign({}, p);
+              delete c.updatedAt;
+              delete c.id;
+              delete c.familyIcon;
+              if(!c.tags || c.tags.length === 0) delete c.tags;
+              if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
+              return JSON.stringify(c, Object.keys(c).sort());
+            }
+            if(withoutServerFields(lp) !== withoutServerFields(sp)){
+              conflicts.push({ ref: sp.ref, local: lp, server: sp });
+            }
           }
           // Local conservé par défaut
         }
