@@ -226,16 +226,18 @@
   }
 
   var SERVER_KEY           = 'cat_server_url';
-  var SERVER_SYNC_KEY      = 'cat_server_sync';
   var SERVER_LAST_SYNC_KEY = 'cat_server_last_sync';
   var serverUrl  = '';
-  var serverSync = false;
 
   function loadServerConfig(){
     serverUrl  = localStorage.getItem(SERVER_KEY) || '';
-    serverSync = localStorage.getItem(SERVER_SYNC_KEY) === '1';
     updateServerSubtitle();
-    if(serverSync && serverUrl) setTimeout(startSyncPolling, 1000);
+    if(serverUrl){
+      setTimeout(function(){
+        doSyncCheck();
+        startSyncPolling();
+      }, 1500);
+    }
   }
 
   function updateServerSubtitle(){
@@ -245,7 +247,6 @@
 
   function saveServerConfig(){
     localStorage.setItem(SERVER_KEY, serverUrl);
-    localStorage.setItem(SERVER_SYNC_KEY, serverSync ? '1' : '0');
     updateServerSubtitle();
   }
 
@@ -261,7 +262,7 @@
   }
 
   async function doSyncCheck(){
-    if(!serverUrl || !serverSync) return;
+    if(!serverUrl) return;
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
@@ -277,9 +278,8 @@
 
   function startSyncPolling(){
     stopSyncPolling();
-    if(!serverUrl || !serverSync) return;
-    doSyncCheck();
-    _syncInterval = setInterval(doSyncCheck, 30000);
+    if(!serverUrl) return;
+    _syncInterval = setInterval(doSyncCheck, 15000);
   }
 
   function stopSyncPolling(){
@@ -288,7 +288,7 @@
 
   // ── Sync vers serveur ─────────────────────────────────────────────
   async function pushToServer(){
-    if(!serverUrl || !serverSync) return;
+    if(!serverUrl) return;
     try{
       // Push tous les produits locaux — le serveur ignore les plus anciens (via createdAt)
       await fetch(serverUrl+'/pushDatas', {
@@ -458,9 +458,8 @@
     var newUrl     = serverUrlInput.value.trim().replace(/\/+$/, '');
     var urlChanged = newUrl && newUrl !== serverUrl;
     serverUrl  = newUrl;
-    serverSync = document.getElementById('serverSyncSlider').classList.contains('active');
     saveServerConfig();
-    if(serverSync) startSyncPolling(); else stopSyncPolling();
+    if(serverUrl) startSyncPolling(); else stopSyncPolling();
 
     // Si l'URL vient d'être définie → import automatique du catalogue
     if(urlChanged && serverUrl){

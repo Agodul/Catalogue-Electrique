@@ -297,20 +297,7 @@
           </button>
         </div>
         <div id="serverTestResult" style="display:none;padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
-        <div id="serverAdminSection" style="border-top:1px solid var(--line);padding-top:16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:13px;font-weight:600;color:var(--ink);">Synchronisation active</span>
-            <div id="serverSyncSlider" onclick="
-              var active = this.classList.toggle('active');
-              document.getElementById('serverSyncToggle').checked = active;
-            " style="position:relative;display:inline-block;width:42px;height:24px;cursor:pointer;">
-              <input type="checkbox" id="serverSyncToggle" style="display:none;">
-              <span style="position:absolute;inset:0;border-radius:24px;transition:.3s;" id="serverSyncTrack"></span>
-              <span id="serverSyncThumb" style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--ink-soft);">Quand activée, toutes les modifications sont envoyées au serveur en temps réel.</div>
-        </div>
+
         <div id="serverButtonsSection" style="border-top:1px solid var(--line);padding-top:16px;margin-top:16px;">
           <button id="btnSyncFromServer" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;color:var(--ink);">
             ↓ Charger depuis le serveur maintenant
