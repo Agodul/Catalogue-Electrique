@@ -499,6 +499,39 @@
           </div>
           <div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:Calibri,Arial,sans-serif;"></div>
       <div class="vm-price-history" id="vmPriceHistory"></div>
+
+          <!-- ===== SECTION PDF ===== -->
+          <div id="vmPdfSection" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px;">
+                <i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;"></i>
+                Document PDF
+              </div>
+              <div id="vmPdfAdminBtns" style="display:none;gap:6px;display:none;">
+                <label id="vmPdfUploadLabel" style="padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:4px;">
+                  <i class="ti ti-upload" style="font-size:14px;"></i> Envoyer
+                  <input type="file" id="vmPdfInput" accept=".pdf" style="display:none;">
+                </label>
+                <button id="vmPdfDeleteBtn" style="padding:5px 10px;border-radius:7px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:4px;">
+                  <i class="ti ti-trash" style="font-size:14px;"></i> Supprimer
+                </button>
+              </div>
+            </div>
+            <!-- Prévisualisation PDF -->
+            <div id="vmPdfPreview" style="width:100%;height:480px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#f8f8f8;">
+              <iframe id="vmPdfFrame" style="width:100%;height:100%;border:none;" title="PDF"></iframe>
+            </div>
+          </div>
+          <!-- Section upload si pas de PDF -->
+          <div id="vmPdfUploadSection" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+            <label id="vmPdfUploadLabel2" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:fit-content;">
+              <i class="ti ti-file-type-pdf" style="font-size:20px;color:#E53E3E;"></i>
+              Ajouter un document PDF
+              <input type="file" id="vmPdfInput2" accept=".pdf" style="display:none;">
+            </label>
+          </div>
+          <!-- ===== FIN SECTION PDF ===== -->
+
         </div>
       </div>
     </div>
