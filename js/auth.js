@@ -525,20 +525,26 @@ function openAddUserModal() {
 function initAuth() {
   applyAuthUI();
 
-  // Formulaire de login
-  var form = document.getElementById('authForm');
-  if (form) {
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      var username = document.getElementById('authUsername').value.trim();
-      var password = document.getElementById('authPassword').value;
-      var errEl    = document.getElementById('authError');
-      if (errEl) errEl.textContent = '';
-
-      var ok = await authLogin(username, password);
-      if (!ok && errEl) errEl.textContent = 'Identifiants incorrects.';
-    });
+  // Bouton "Se connecter"
+  async function doLogin() {
+    var username = document.getElementById('authUsername').value.trim();
+    var password = document.getElementById('authPassword').value;
+    var errEl    = document.getElementById('authError');
+    if (errEl) errEl.textContent = '';
+    var ok = await authLogin(username, password);
+    if (!ok && errEl) errEl.textContent = 'Identifiants incorrects.';
   }
+
+  var submitBtn = document.getElementById('authSubmitBtn');
+  if (submitBtn) submitBtn.addEventListener('click', doLogin);
+
+  // Touche Entrée dans les champs
+  ['authUsername', 'authPassword'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+  });
 
   var closeBtn = document.getElementById('authCloseBtn');
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
