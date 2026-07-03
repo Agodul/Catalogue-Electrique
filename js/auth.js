@@ -369,7 +369,7 @@ function updateAuthHeaderBtn(loggedIn, user) {
 function openAuthModal() {
   var overlay = document.getElementById('authOverlay');
   if (overlay) {
-    overlay.classList.add('open');
+    overlay.classList.add('show');
     document.body.classList.add('modal-open');
     setTimeout(function() {
       var inp = document.getElementById('authUsername');
@@ -381,7 +381,7 @@ function openAuthModal() {
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
   if (overlay) {
-    overlay.classList.remove('open');
+    overlay.classList.remove('show');
     document.body.classList.remove('modal-open');
   }
   var errEl = document.getElementById('authError');
