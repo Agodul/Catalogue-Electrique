@@ -351,7 +351,7 @@ function applyAuthUI() {
 }
 
 function updateAuthHeaderBtn(loggedIn, user) {
-  var btn = document.getElementById('btnAuthHeader');
+  var btn = document.getElementById('btnAuthToggle');
   if (!btn) return;
   if (loggedIn) {
     btn.title = 'Connecté : ' + (user ? user.displayName : '');
