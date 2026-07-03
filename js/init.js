@@ -155,9 +155,13 @@
 
   // Cas 1 : catalogue déjà ouvert → le content script envoie un CustomEvent
   window.addEventListener('spi_extension_ready', function(){
-    triggerExtensionExtraction();
+    // Délai pour laisser l'auth s'initialiser si page vient d'être ouverte
+    setTimeout(function(){ triggerExtensionExtraction(); }, 800);
   });
 
   // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
-  // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
+  // Si la page vient juste d'être ouverte, tenter aussi un check direct après chargement
+  if(window.location.search.includes('cat_bridge=1')){
+    setTimeout(function(){ triggerExtensionExtraction(); }, 1500);
+  }
