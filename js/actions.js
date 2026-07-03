@@ -336,7 +336,9 @@
       });
       await fetch(serverUrl+'/pushDatas', {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers: typeof window.authHeaders === 'function'
+          ? window.authHeaders()
+          : {'Content-Type':'application/json'},
         body: JSON.stringify(toSend)
       });
     }catch(e){ console.warn('pushToServer:', e.message); }
@@ -350,7 +352,9 @@
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var pullUrl  = serverUrl+'/pullDatas' + (lastSync !== '0' ? '?date='+lastSync : '');
-      var r = await fetch(pullUrl);
+      var r = await fetch(pullUrl, {
+        headers: typeof window.authHeaders === 'function' ? window.authHeaders() : {}
+      });
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
 

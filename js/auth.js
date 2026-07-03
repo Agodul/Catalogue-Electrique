@@ -1,122 +1,29 @@
 "use strict";
 
-// ── Compte admin de secours (toujours actif, non modifiable) ─
-// SÉCURITÉ : le hash n'est plus codé en dur dans le source public.
-// Le credential admin est stocké dans localStorage sous AUTH_ADMIN_KEY.
-// Au premier lancement, l'admin doit définir son mot de passe via l'UI.
+// ══════════════════════════════════════════════════════════════════════════
+//  AUTH.JS — Authentification serveur JWT + fallback local
+//  Catalogue Électrique — SPI Engineering
+// ══════════════════════════════════════════════════════════════════════════
+
+var AUTH_SESSION_KEY = "cat_auth_user";   // sessionStorage : { token, user }
+var AUTH_SERVER_KEY  = "cat_server_url";  // localStorage : URL serveur
+
+// Compte admin de secours (fallback hors ligne)
 var AUTH_ADMIN_FALLBACK = {
-  username: "admin",
+  username:    "admin",
   displayName: "Administrateur",
-  isAdmin: true,
+  isAdmin:     true,
   credential: {
     salt: "6013d7f3f4f34ef0974632754e6d1386",
     hash: "70144e1536f3d16f5f218de0f16647f2205f4bd31d5bdb9ef9791c3c43da4506"
   }
 };
 
-// Clé localStorage pour stocker le credential admin {salt, hash}
-var AUTH_ADMIN_KEY = "cat_auth_admin";
+var AUTH_ADMIN_KEY  = "cat_auth_admin";
+var AUTH_USERS_KEY  = "cat_auth_users";
 
-var AUTH_SESSION_KEY  = "cat_auth_user";
-var AUTH_USERS_KEY    = "cat_auth_users";  // localStorage
+// ── Helpers session ──────────────────────────────────────────────────────
 
-// ── Gestion des comptes (localStorage) ──────────────────────
-function authGetAdminCredential() {
-  try {
-    // Priorité : localStorage (permet de changer le mdp depuis l'UI)
-    var raw = localStorage.getItem(AUTH_ADMIN_KEY);
-    if (raw) return JSON.parse(raw);
-    // Fallback : credential intégré dans le code (fonctionne sur tous les appareils)
-    return AUTH_ADMIN_FALLBACK.credential || null;
-  } catch(e) { return AUTH_ADMIN_FALLBACK.credential || null; }
-}
-
-function authGetAllAccounts() {
-  var adminEntry = Object.assign({}, AUTH_ADMIN_FALLBACK, {
-    credential: authGetAdminCredential()
-  });
-  try {
-    var raw = localStorage.getItem(AUTH_USERS_KEY);
-    var extra = raw ? JSON.parse(raw) : [];
-    // Le compte admin de secours est toujours en tête
-    return [adminEntry].concat(extra.filter(function(u){
-      return u.username.toLowerCase() !== "admin";
-    }));
-  } catch(e) { return [adminEntry]; }
-}
-
-function authSaveExtraAccounts(accounts) {
-  // Ne jamais sauvegarder le compte admin de secours
-  var extra = accounts.filter(function(u){
-    return u.username.toLowerCase() !== "admin";
-  });
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
-}
-
-async function authAddUser(username, displayName, password) {
-  username = username.trim().toLowerCase();
-  displayName = displayName.trim();
-  if (!username || !displayName || !password) return { ok: false, msg: "Tous les champs sont requis." };
-  var all = authGetAllAccounts();
-  if (all.find(function(u){ return u.username === username; })) {
-    return { ok: false, msg: "Cet identifiant existe déjà." };
-  }
-  var cred = await makeCredential(password);
-  var extra = all.filter(function(u){ return u.username !== "admin"; });
-  extra.push({ username: username, displayName: displayName, credential: cred });
-  authSaveExtraAccounts(extra);
-  return { ok: true };
-}
-
-function authDeleteUser(username) {
-  if (username.toLowerCase() === "admin") return; // protégé
-  var all = authGetAllAccounts();
-  var extra = all.filter(function(u){
-    return u.username !== "admin" && u.username !== username;
-  });
-  authSaveExtraAccounts(extra);
-}
-
-// ── Utilitaires hachage sécurisé (PBKDF2-SHA256 + sel) ─────────
-function generateSalt() {
-  var arr = new Uint8Array(16);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-}
-
-async function pbkdf2Hash(password, salt) {
-  var enc = new TextEncoder();
-  var keyMaterial = await crypto.subtle.importKey(
-    "raw", enc.encode(password.trim()), "PBKDF2", false, ["deriveBits"]
-  );
-  var bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
-    keyMaterial, 256
-  );
-  return Array.from(new Uint8Array(bits)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-}
-
-async function makeCredential(password) {
-  var salt = generateSalt();
-  var hash = await pbkdf2Hash(password, salt);
-  return { salt: salt, hash: hash };
-}
-
-async function verifyCredential(password, credential) {
-  if (!credential || !credential.salt || !credential.hash) return false;
-  var computed = await pbkdf2Hash(password, credential.salt);
-  return computed === credential.hash;
-}
-
-// Conservé pour migration (ancien format SHA-256 nu)
-async function sha256Legacy(message) {
-  var msgBuffer = new TextEncoder().encode(message.toLowerCase().trim());
-  var hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  var hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
-}
-
-// ── État de session ──────────────────────────────────────────
 function authGetCurrentUser() {
   try {
     var raw = sessionStorage.getItem(AUTH_SESSION_KEY);
@@ -128,340 +35,522 @@ function authIsLoggedIn() {
   return authGetCurrentUser() !== null;
 }
 
+function authGetToken() {
+  var s = authGetCurrentUser();
+  return s ? (s.token || null) : null;
+}
+
+function authSetSession(token, user) {
+  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ token: token, user: user }));
+}
+
+// Compatibilité : authGetCurrentUser retourne l'objet user directement
+var _origGet = authGetCurrentUser;
+authGetCurrentUser = function() {
+  var s = _origGet();
+  return s ? (s.user || s) : null;
+};
+
+function authClearUser() {
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+}
+
 function authSetUser(account) {
+  // Fallback local (hors ligne)
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
-    username: account.username,
-    displayName: account.displayName,
-    isAdmin: !!account.isAdmin
+    token: null,
+    user: {
+      username:    account.username,
+      displayName: account.displayName,
+      isAdmin:     !!account.isAdmin,
+      permissions: account.permissions || _defaultPermissions(account.isAdmin)
+    }
   }));
 }
 
-function authLogout() {
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
-  applyAuthUI();
-  showAuthToast("Déconnecté");
-  // Le polling continue même après logout (lecture seule du catalogue)
+function _defaultPermissions(isAdmin) {
+  return {
+    canEdit:        !!isAdmin,
+    canDelete:      !!isAdmin,
+    canManageUsers: !!isAdmin,
+    canViewDocs:    true,
+    canUploadDocs:  !!isAdmin,
+    canExport:      !!isAdmin,
+    canSyncServer:  !!isAdmin
+  };
 }
 
-// ── Tentative de connexion ───────────────────────────────────
-async function authLogin(username, password) {
-  var accounts = authGetAllAccounts();
-  var account = accounts.find(function(a){
-    return a.username.toLowerCase() === username.toLowerCase().trim();
-  });
-  if (!account) return false;
+function authHasPermission(perm) {
+  var u = authGetCurrentUser();
+  if (!u) return false;
+  if (u.isAdmin) return true;
+  return u.permissions ? !!u.permissions[perm] : false;
+}
 
-  var ok = false;
+// ── Authentification serveur ─────────────────────────────────────────────
 
-  // Nouveau format PBKDF2
-  if (account.credential && account.credential.salt) {
-    ok = await verifyCredential(password, account.credential);
+async function authLoginServer(username, password) {
+  var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+  if (!sUrl) return null;
+  try {
+    var r = await fetch(sUrl + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    });
+    if (!r.ok) return null;
+    var data = await r.json();
+    if (data && data.token && data.user) {
+      authSetSession(data.token, Object.assign({ permissions: _defaultPermissions(data.user.isAdmin) }, data.user));
+      return data.user;
+    }
+    return null;
+  } catch(e) {
+    console.warn('authLoginServer:', e.message);
+    return null;
   }
-  // Migration : ancien format SHA-256 nu (comptes extra existants)
-  else if (account.passwordHash) {
-    var legacyHash = await sha256Legacy(password);
-    if (legacyHash === account.passwordHash) {
-      ok = true;
-      // Migrer vers PBKDF2 silencieusement
-      var newCred = await makeCredential(password);
-      var all = authGetAllAccounts();
-      var extra = all.filter(function(u){ return u.username !== "admin"; }).map(function(u){
-        if (u.username === account.username) {
-          var migrated = Object.assign({}, u);
-          delete migrated.passwordHash;
-          migrated.credential = newCred;
-          return migrated;
-        }
-        return u;
+}
+
+async function authLogoutServer() {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (sUrl && token) {
+    try {
+      await fetch(sUrl + '/logout', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
       });
-      authSaveExtraAccounts(extra);
+    } catch(e) {}
+  }
+}
+
+async function authRefreshMe() {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token) return false;
+  try {
+    var r = await fetch(sUrl + '/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok) {
+      // Token expiré
+      authClearUser();
+      applyAuthUI();
+      showAuthToast('Session expirée — veuillez vous reconnecter');
+      return false;
+    }
+    var user = await r.json();
+    authSetSession(token, Object.assign({ permissions: _defaultPermissions(user.isAdmin) }, user));
+    return true;
+  } catch(e) { return false; }
+}
+
+// Rafraîchir le token toutes les 30 min
+setInterval(function() {
+  if (authIsLoggedIn() && authGetToken()) authRefreshMe();
+}, 30 * 60 * 1000);
+
+// ── Authentification locale (fallback hors ligne) ────────────────────────
+
+function authGetAdminCredential() {
+  try {
+    var raw = localStorage.getItem(AUTH_ADMIN_KEY);
+    if (raw) return JSON.parse(raw);
+    return AUTH_ADMIN_FALLBACK.credential || null;
+  } catch(e) { return AUTH_ADMIN_FALLBACK.credential || null; }
+}
+
+function authGetAllAccounts() {
+  var adminEntry = Object.assign({}, AUTH_ADMIN_FALLBACK, {
+    credential: authGetAdminCredential()
+  });
+  try {
+    var raw   = localStorage.getItem(AUTH_USERS_KEY);
+    var extra = raw ? JSON.parse(raw) : [];
+    return [adminEntry].concat(extra.filter(function(u) {
+      return u.username.toLowerCase() !== 'admin';
+    }));
+  } catch(e) { return [adminEntry]; }
+}
+
+function authSaveExtraAccounts(accounts) {
+  var extra = accounts.filter(function(u) {
+    return u.username.toLowerCase() !== 'admin';
+  });
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
+}
+
+async function sha256hex(str) {
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(function(b) {
+    return b.toString(16).padStart(2, '0');
+  }).join('');
+}
+
+async function authLoginLocal(username, password) {
+  var accounts = authGetAllAccounts();
+  var account  = accounts.find(function(a) {
+    return a.username.toLowerCase() === username.toLowerCase();
+  });
+  if (!account || !account.credential) return false;
+  var hash = await sha256hex(account.credential.salt + password);
+  if (hash !== account.credential.hash) return false;
+  authSetUser(account);
+  return true;
+}
+
+// ── Login principal (serveur d'abord, fallback local) ────────────────────
+
+async function authLogin(username, password) {
+  var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+
+  // 1. Essayer le serveur si configuré
+  if (sUrl) {
+    var serverUser = await authLoginServer(username, password);
+    if (serverUser) {
+      closeAuthModal();
+      applyAuthUI();
+      showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
+      if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
+      return true;
     }
   }
-  // Admin sans credential défini = connexion bloquée
-  else if (account.isAdmin && !account.credential) {
-    showAuthToast("⚠ Mot de passe admin non configuré — voir Paramètres");
-    return false;
-  }
 
+  // 2. Fallback local (hors ligne ou serveur non configuré)
+  var ok = await authLoginLocal(username, password);
   if (ok) {
-    authSetUser(account);
+    var user = authGetCurrentUser();
     closeAuthModal();
     applyAuthUI();
-    showAuthToast("Connecté en tant que " + account.displayName);
-    // Démarrer le polling si serveur configuré
-    if(typeof startSyncPolling === 'function' && localStorage.getItem('cat_server_url')){
-      startSyncPolling();
-    }
+    showAuthToast('Connecté en tant que ' + (user ? user.displayName : username) + ' (mode local)');
+    if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
     return true;
   }
+
   return false;
 }
 
-// ── Appliquer l'UI selon l'état de connexion ─────────────────
+// ── Logout ───────────────────────────────────────────────────────────────
+
+function authLogout() {
+  authLogoutServer(); // async, non bloquant
+  authClearUser();
+  applyAuthUI();
+  showAuthToast('Déconnecté');
+}
+
+// ── Gestion utilisateurs serveur ─────────────────────────────────────────
+
+async function authFetchUsers() {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token) return null;
+  try {
+    var r = await fetch(sUrl + '/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function authCreateUser(userData) {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token) return false;
+  try {
+    var r = await fetch(sUrl + '/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(userData)
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+async function authUpdateUser(username, data) {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token) return false;
+  try {
+    var r = await fetch(sUrl + '/users/' + encodeURIComponent(username), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+async function authDeleteUser(username) {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token) return false;
+  try {
+    var r = await fetch(sUrl + '/users/' + encodeURIComponent(username), {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+// ── Header Authorization pour toutes les requêtes serveur ────────────────
+
+function authHeaders() {
+  var token = authGetToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return headers;
+}
+
+// Exposer globalement pour actions.js
+window.authHeaders = authHeaders;
+
+// ── UI Auth ──────────────────────────────────────────────────────────────
+
 function applyAuthUI() {
   var loggedIn = authIsLoggedIn();
   var user     = authGetCurrentUser();
-  var isAdmin  = user && user.username === AUTH_ADMIN_FALLBACK.username;
+  var isAdmin  = user && user.isAdmin;
 
-  // Section Tests & Debug : visible uniquement pour l'admin
+  // Sections admin
   var testSection = document.getElementById('settingsTestSection');
-  if(testSection) testSection.style.display = isAdmin ? '' : 'none';
+  if (testSection) testSection.style.display = isAdmin ? '' : 'none';
 
-  // Bouton icônes familles : visible uniquement pour l'admin
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
-  if(btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
-
+  if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
   var serverButtonsSection = document.getElementById('serverButtonsSection');
-  if(serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';
+  if (serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';
 
-  // Corps de page : classe pour CSS
-  document.body.classList.toggle("auth-readonly", !loggedIn);
+  // Mode lecture seule
+  document.body.classList.toggle('auth-readonly', !loggedIn);
 
-  // Bouton "Ajouter un produit"
-  var btnAdd = document.getElementById("btnAdd");
-  if (btnAdd) btnAdd.style.display = loggedIn ? "" : "none";
+  // Bouton ajouter
+  var btnAdd = document.getElementById('btnAdd');
+  if (btnAdd) btnAdd.style.display = isAdmin ? '' : 'none';
 
-  // Bouton FAB +
-  var btnFabAdd = document.getElementById("btnFabAdd");
-  if (btnFabAdd) btnFabAdd.style.display = loggedIn ? "" : "none";
+  var btnFabAdd = document.getElementById('btnFabAdd');
+  if (btnFabAdd) btnFabAdd.style.display = isAdmin ? '' : 'none';
 
-  // Bouton "i" (menu actions fiche produit) — masqué si non connecté
-  var vmInfoBtn = document.getElementById("vmInfoBtn");
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
+  // Bouton info produit (menu ⓘ)
+  var vmInfoBtn = document.getElementById('vmInfoBtn');
+  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? '' : 'none';
 
-  // Bouton connexion / déconnexion dans le header
   updateAuthHeaderBtn(loggedIn, user);
-  // Bouton Utilisateurs (visible admin seulement)
-  applyUserSettingsBtnVisibility();
+
+  // Rafraîchir la page utilisateurs si ouverte
+  if (typeof renderUserPage === 'function') renderUserPage();
 }
 
-// ── Bouton login/logout dans le header ──────────────────────
 function updateAuthHeaderBtn(loggedIn, user) {
-  var btn = document.getElementById("btnAuthToggle");
+  var btn = document.getElementById('btnAuthHeader');
   if (!btn) return;
   if (loggedIn) {
-    btn.title = "Déconnexion (" + user.displayName + ")";
+    btn.title = 'Connecté : ' + (user ? user.displayName : '');
     btn.innerHTML = '<i class="ti ti-logout" aria-hidden="true"></i>';
-    btn.onclick = function(){ authLogout(); };
+    btn.onclick = function() { authLogout(); };
   } else {
-    btn.title = "Se connecter";
+    btn.title = 'Se connecter';
     btn.innerHTML = '<i class="ti ti-login" aria-hidden="true"></i>';
-    btn.onclick = function(){ openAuthModal(); };
+    btn.onclick = function() { openAuthModal(); };
   }
 }
 
-// ── Modale login ─────────────────────────────────────────────
+// ── Modale login ─────────────────────────────────────────────────────────
+
 function openAuthModal() {
-  var overlay = document.getElementById("authOverlay");
-  if (!overlay) return;
-  document.getElementById("authUsername").value = "";
-  document.getElementById("authPassword").value = "";
-  document.getElementById("authError").textContent = "";
-  overlay.classList.add("show");
-  setTimeout(function(){ document.getElementById("authUsername").focus(); }, 100);
+  var overlay = document.getElementById('authOverlay');
+  if (overlay) {
+    overlay.classList.add('open');
+    document.body.classList.add('modal-open');
+    setTimeout(function() {
+      var inp = document.getElementById('authUsername');
+      if (inp) inp.focus();
+    }, 100);
+  }
 }
 
 function closeAuthModal() {
-  var overlay = document.getElementById("authOverlay");
-  if (overlay) overlay.classList.remove("show");
+  var overlay = document.getElementById('authOverlay');
+  if (overlay) {
+    overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
+  }
+  var errEl = document.getElementById('authError');
+  if (errEl) errEl.textContent = '';
 }
 
-async function submitAuthForm() {
-  var username = document.getElementById("authUsername").value;
-  var password = document.getElementById("authPassword").value;
-  var errorEl  = document.getElementById("authError");
-  var btn      = document.getElementById("authSubmitBtn");
+function showAuthToast(msg) {
+  if (typeof showToast === 'function') showToast(msg, 'ok', 2500);
+}
 
-  if (!username || !password) {
-    errorEl.textContent = "Veuillez remplir tous les champs.";
+// ── Page utilisateurs ────────────────────────────────────────────────────
+
+async function renderUserPage() {
+  var container = document.getElementById('userListContainer');
+  if (!container) return;
+
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+
+  // Si serveur configuré → charger depuis le serveur
+  if (sUrl && token) {
+    var serverUsers = await authFetchUsers();
+    if (serverUsers) {
+      _renderUserList(container, serverUsers, true);
+      return;
+    }
+  }
+
+  // Fallback local
+  var localUsers = authGetAllAccounts();
+  _renderUserList(container, localUsers, false);
+}
+
+function _renderUserList(container, users, isServer) {
+  var user    = authGetCurrentUser();
+  var isAdmin = user && user.isAdmin;
+
+  container.innerHTML = '';
+
+  if (!isAdmin) {
+    container.innerHTML = '<p style="color:var(--ink-soft);font-size:13px;">Accès réservé à l\'administrateur.</p>';
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = "Vérification…";
+  var source = isServer
+    ? '<span style="font-size:11px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:4px;padding:2px 8px;">🌐 Serveur</span>'
+    : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 8px;">⚠️ Local (hors ligne)</span>';
 
-  var ok = await authLogin(username, password);
-  if (!ok) {
-    errorEl.textContent = "Identifiant ou mot de passe incorrect.";
-    document.getElementById("authPassword").value = "";
-  }
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
+    + '<div style="font-size:13px;font-weight:700;color:var(--ink);">Utilisateurs ' + source + '</div>'
+    + (isServer ? '<button id="btnAddUser" style="padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">+ Ajouter</button>' : '')
+    + '</div>';
 
-  btn.disabled = false;
-  btn.textContent = "Se connecter";
-}
-
-// ── Toast discret ─────────────────────────────────────────────
-function showAuthToast(msg) {
-  var t = document.getElementById("authToast");
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(function(){ t.classList.remove("show"); }, 2500);
-}
-
-
-// ── Gestion utilisateurs (sous-page Paramètres) ──────────────
-async function authSetAdminPassword(newPassword) {
-  var cred = await makeCredential(newPassword);
-  localStorage.setItem(AUTH_ADMIN_KEY, JSON.stringify(cred));
-}
-
-function openUserSettingsPage() {
-  var main = document.querySelector(".settings-body");
-  var page = document.getElementById("settingsUserPage");
-  if (!main || !page) return;
-  main.style.display = "none";
-  page.style.display = "flex";
-  renderUserList();
-}
-
-function closeUserSettingsPage() {
-  var main = document.querySelector(".settings-body");
-  var page = document.getElementById("settingsUserPage");
-  if (!main || !page) return;
-  page.style.display = "none";
-  main.style.display = "";
-}
-
-function renderUserList() {
-  var list = document.getElementById("userList");
-  if (!list) return;
-  var accounts = authGetAllAccounts();
-  list.innerHTML = "";
-  accounts.forEach(function(u) {
-    var isAdmin = u.username === "admin";
-    var row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--paper-card);";
-    var info = document.createElement("div");
-    info.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + u.displayName + '</div>' +
-      '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdmin ? " · Admin" : "") + '</div>';
-    row.appendChild(info);
-    if (!isAdmin) {
-      var btn = document.createElement("button");
-      btn.title = "Supprimer";
-      btn.innerHTML = '<i class="ti ti-trash"></i>';
-      btn.style.cssText = "background:none;border:none;cursor:pointer;color:#EF4444;font-size:18px;padding:4px;display:flex;align-items:center;";
-      btn.addEventListener("click", function() {
-        authDeleteUser(u.username);
-        renderUserList();
-      });
-      row.appendChild(btn);
-    }
-    list.appendChild(row);
+  users.forEach(function(u) {
+    var isSelf   = user && u.username === user.username;
+    var isAdminU = u.isAdmin || u.username === 'admin';
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--paper-card);';
+    div.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:'+(isAdminU?'#194093':'#e2e8f0')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      + '<i class="ti '+(isAdminU?'ti-shield-check':'ti-user')+'" style="color:'+(isAdminU?'#fff':'#64748b')+';font-size:16px;"></i></div>'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + (u.displayName || u.username) + '</div>'
+      + '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdminU ? ' · Admin' : '') + '</div>'
+      + '</div>'
+      + (!isSelf && isServer ? '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">Supprimer</button>' : '');
+    container.appendChild(div);
   });
-}
 
-function initUserSettingsPage() {
-  var btnOpen = document.getElementById("btnOpenUserSettings");
-  if (btnOpen) {
-    btnOpen.addEventListener("click", openUserSettingsPage);
-  }
-  var btnBack = document.getElementById("btnUserPageBack");
-  if (btnBack) {
-    btnBack.addEventListener("click", closeUserSettingsPage);
-  }
-  // ── Changement mot de passe admin ───────────────────────────
-  var setAdminPwBtn = document.getElementById("setAdminPwBtn");
-  if (setAdminPwBtn) {
-    setAdminPwBtn.addEventListener("click", async function() {
-      var pw1 = (document.getElementById("adminPw1") || {}).value || "";
-      var pw2 = (document.getElementById("adminPw2") || {}).value || "";
-      if (!pw1 || pw1.length < 8) { showToast("Mot de passe trop court (8 caractères min.)", "err", 3000); return; }
-      if (pw1 !== pw2) { showToast("Les mots de passe ne correspondent pas", "err", 3000); return; }
-      await authSetAdminPassword(pw1);
-      document.getElementById("adminPw1").value = "";
-      document.getElementById("adminPw2").value = "";
-      showToast("Mot de passe administrateur mis à jour ✓", "ok", 3000);
-    });
-  }
-  var btnAdd = document.getElementById("btnAddUser");
+  // Bouton ajouter
+  var btnAdd = document.getElementById('btnAddUser');
   if (btnAdd) {
-    btnAdd.addEventListener("click", async function() {
-      var username = (document.getElementById("newUserUsername").value || "").trim();
-      var display  = (document.getElementById("newUserDisplay").value  || "").trim();
-      var password = (document.getElementById("newUserPassword").value || "").trim();
-      var errEl    = document.getElementById("newUserError");
-      var result   = await authAddUser(username, display, password);
-      if (result.ok) {
-        document.getElementById("newUserUsername").value = "";
-        document.getElementById("newUserDisplay").value  = "";
-        document.getElementById("newUserPassword").value = "";
-        errEl.textContent = "";
-        renderUserList();
-      } else {
-        errEl.textContent = result.msg;
-      }
-    });
+    btnAdd.addEventListener('click', function() { openAddUserModal(); });
   }
-}
 
-// Afficher/cacher le bouton Utilisateurs selon le statut admin
-function applyUserSettingsBtnVisibility() {
-  var btn = document.getElementById("btnOpenUserSettings");
-  if (!btn) return;
-  var user = authGetCurrentUser();
-  var isAdmin = user && user.username === "admin";
-  btn.style.display = isAdmin ? "flex" : "none";
-}
-
-
-// ── Fix iOS : scroll l'input dans la zone visible quand le clavier s'ouvre ──
-(function(){
-  if(!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
-  document.addEventListener('focusin', function(e){
-    var el = e.target;
-    if(el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
-    setTimeout(function(){
-      el.scrollIntoView({ behavior:'smooth', block:'center' });
-    }, 300);
+  // Boutons supprimer
+  container.querySelectorAll('.btnDelUser').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      var uname = this.getAttribute('data-user');
+      if (!confirm('Supprimer l\'utilisateur "' + uname + '" ?')) return;
+      var ok = await authDeleteUser(uname);
+      if (ok) { showAuthToast('Utilisateur supprimé ✓'); renderUserPage(); }
+      else showAuthToast('Erreur suppression', 'err', 3000);
+    });
   });
-})();
+}
 
-// ── Init ──────────────────────────────────────────────────────
+function openAddUserModal() {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;">'
+    + '<input id="_nuUsername" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuDisplay" placeholder="Nom affiché" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuPassword" type="password" placeholder="Mot de passe" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;">'
+    + '<input type="checkbox" id="_nuAdmin"> Administrateur</label>'
+    + '</div>'
+    + '<div id="_nuError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;">'
+    + '<button id="_nuCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
+    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Créer l\'utilisateur</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+
+  ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_nuSubmit').onclick = async function() {
+    var username    = ov.querySelector('#_nuUsername').value.trim();
+    var displayName = ov.querySelector('#_nuDisplay').value.trim();
+    var password    = ov.querySelector('#_nuPassword').value;
+    var isAdminNew  = ov.querySelector('#_nuAdmin').checked;
+    var errEl       = ov.querySelector('#_nuError');
+
+    if (!username || !password) {
+      errEl.textContent = 'Identifiant et mot de passe requis.';
+      errEl.style.display = '';
+      return;
+    }
+
+    var ok = await authCreateUser({
+      username:    username,
+      displayName: displayName || username,
+      password:    password,
+      isAdmin:     isAdminNew,
+      permissions: _defaultPermissions(isAdminNew)
+    });
+
+    if (ok) {
+      document.body.removeChild(ov);
+      showAuthToast('Utilisateur créé ✓');
+      renderUserPage();
+    } else {
+      errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
+      errEl.style.display = '';
+    }
+  };
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+
 function initAuth() {
-  // Fermer modale sur clic overlay
-  var overlay = document.getElementById("authOverlay");
-  if (overlay) {
-    // La modale ne se ferme PAS en cliquant en dehors
-
-  // Bouton croix pour fermer
-  var closeBtn = document.getElementById("authCloseBtn");
-  if (closeBtn) closeBtn.addEventListener("click", function(){ closeAuthModal(); });
-  }
-
-  // Soumettre avec Entrée
-  var fields = ["authUsername", "authPassword"];
-  fields.forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.addEventListener("keydown", function(e){
-      if (e.key === "Enter") submitAuthForm();
-    });
-  });
-
-  // Bouton soumettre
-  var btn = document.getElementById("authSubmitBtn");
-  if (btn) btn.addEventListener("click", submitAuthForm);
-
-  // Gestion sous-page utilisateurs
-  initUserSettingsPage();
-  // Appliquer l'UI au chargement
   applyAuthUI();
 
-  // Avertir si le mot de passe admin n'est pas encore défini
-  if (!authGetAdminCredential()) {
-    setTimeout(function(){
-      if (typeof showToast === 'function') {
-        showToast('⚠ Définissez le mot de passe admin dans Paramètres → Utilisateurs', 'warn', 8000);
-      }
-    }, 1500);
+  // Formulaire de login
+  var form = document.getElementById('authForm');
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var username = document.getElementById('authUsername').value.trim();
+      var password = document.getElementById('authPassword').value;
+      var errEl    = document.getElementById('authError');
+      if (errEl) errEl.textContent = '';
+
+      var ok = await authLogin(username, password);
+      if (!ok && errEl) errEl.textContent = 'Identifiants incorrects.';
+    });
+  }
+
+  var closeBtn = document.getElementById('authCloseBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
+
+  // Vérifier token au chargement
+  if (authIsLoggedIn() && authGetToken()) {
+    authRefreshMe();
   }
 }
 
-// Ré-appliquer les boutons Modifier/Supprimer à chaque ouverture de fiche
-// (appelé depuis render.js après injection du DOM de la modale produit)
 function authApplyOnProductModal() {
-  var vmInfoBtn = document.getElementById("vmInfoBtn");
+  var vmInfoBtn = document.getElementById('vmInfoBtn');
   var loggedIn  = authIsLoggedIn();
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? "" : "none";
+  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? '' : 'none';
 }
