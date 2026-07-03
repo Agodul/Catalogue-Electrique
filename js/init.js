@@ -1,6 +1,14 @@
 // ---------- Init ----------
   load();
   render();
+
+  // Restaurer "Voir tout le catalogue" si actif avant F5
+  if(sessionStorage.getItem('cat_view_all') === '1'){
+    setTimeout(function(){
+      if(typeof showCatalogueAll === 'function') showCatalogueAll();
+    }, 100);
+  }
+
   tryReconnectOnLoad();
 
   // ── Auth ────────────────────────────────────────────────────────

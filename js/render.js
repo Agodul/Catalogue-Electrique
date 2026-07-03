@@ -151,7 +151,7 @@
     docList.innerHTML = '';
 
     if(p.hasDoc && p.ref && sUrl){
-      var pdfUrl  = sUrl + '/pullDocs?id=' + encodeURIComponent(p.ref);
+      var pdfUrl  = sUrl + '/pullDocs?ref=' + encodeURIComponent(p.ref);
       var docName = p.docFilename || 'Document.pdf';
 
       var item = document.createElement('div');

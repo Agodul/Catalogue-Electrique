@@ -486,7 +486,7 @@
         if(!file || !pForPdf || !pForPdf.ref) return;
         if(!sUrl){ showToast('Serveur non configuré — impossible d\'envoyer le PDF', 'err', 4000); return; }
         var fd = new FormData();
-        fd.append('id', pForPdf.ref);
+        fd.append('ref', pForPdf.ref);
         fd.append('document', file, file.name);
         showToast('Envoi du PDF en cours…', 'ok', 3000);
         fetch(sUrl + '/pushDocs', { method:'POST', body: fd })
