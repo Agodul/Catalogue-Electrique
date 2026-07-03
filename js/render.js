@@ -122,100 +122,12 @@
 
     vmPriceHistory.innerHTML = buildPriceHistoryReadonly(p);
 
-    // ── Section PDF ─────────────────────────────────────────────────
-    var sUrl = localStorage.getItem('cat_server_url');
+    // ── Section PDF masquée (upload uniquement dans "Modifier le produit") ──
     var vmPdfSection    = document.getElementById('vmPdfSection');
     var vmPdfUploadSect = document.getElementById('vmPdfUploadSection');
-    var vmPdfAdminBtns  = document.getElementById('vmPdfAdminBtns');
-    var vmPdfFrame      = document.getElementById('vmPdfFrame');
-    var vmPdfInput      = document.getElementById('vmPdfInput');
-    var vmPdfInput2     = document.getElementById('vmPdfInput2');
-    var vmPdfDeleteBtn  = document.getElementById('vmPdfDeleteBtn');
-
-    // Réinitialiser
     if(vmPdfSection)    vmPdfSection.style.display = 'none';
     if(vmPdfUploadSect) vmPdfUploadSect.style.display = 'none';
-    if(vmPdfAdminBtns)  vmPdfAdminBtns.style.display = 'none';
-    if(vmPdfFrame)      vmPdfFrame.src = '';
 
-    var isAdmin = typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin;
-
-    if(sUrl){
-      if(p.hasDoc && p.ref){
-        // Le produit a un PDF → afficher la prévisualisation
-        var pdfUrl = sUrl + '/pullDocs?id=' + encodeURIComponent(p.ref);
-        if(vmPdfSection)  vmPdfSection.style.display = '';
-        if(vmPdfFrame)    vmPdfFrame.src = pdfUrl;
-        // Boutons admin (envoyer + supprimer)
-        if(isAdmin && vmPdfAdminBtns){
-          vmPdfAdminBtns.style.display = 'flex';
-        }
-      } else if(isAdmin){
-        // Pas de PDF + admin → bouton upload
-        if(vmPdfUploadSect) vmPdfUploadSect.style.display = '';
-      }
-    }
-
-    // Upload PDF (bouton "Envoyer" sur fiche existante)
-    function handlePdfUpload(file){
-      if(!file || !p.ref || !sUrl) return;
-      var fd = new FormData();
-      fd.append('id', p.ref);
-      fd.append('document', file, file.name);
-      showToast('Envoi du PDF en cours…', 'ok', 3000);
-      fetch(sUrl + '/pushDocs', { method:'POST', body: fd })
-        .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
-        .then(function(data){
-          // Mettre à jour le produit localement
-          var idx = products.findIndex(function(x){ return x.id === id; });
-          if(idx !== -1){
-            products[idx].hasDoc = true;
-            products[idx].docFilename = data.filename || file.name;
-            save(true);
-          }
-          showToast('PDF envoyé avec succès ✓', 'ok', 2500);
-          openView(id); // Recharger la fiche
-        })
-        .catch(function(e){ showToast('Erreur envoi PDF : ' + e, 'err', 4000); });
-    }
-
-    if(vmPdfInput)  vmPdfInput.onchange  = function(){ handlePdfUpload(this.files[0]); };
-    if(vmPdfInput2) vmPdfInput2.onchange = function(){ handlePdfUpload(this.files[0]); };
-
-    // Supprimer PDF
-    if(vmPdfDeleteBtn){
-      vmPdfDeleteBtn.onclick = function(){
-        if(!p.ref || !sUrl) return;
-        // Modale de confirmation
-        var ov = document.createElement('div');
-        ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
-        ov.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-          + '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px;">Supprimer le PDF ?</div>'
-          + '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Le document sera supprimé du serveur définitivement.</div>'
-          + '<div style="display:flex;flex-direction:column;gap:8px;">'
-          + '<button id="_confirmPdfDel" style="padding:10px 14px;border-radius:8px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Supprimer</button>'
-          + '<button id="_cancelPdfDel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-          + '</div></div>';
-        document.body.appendChild(ov);
-        ov.querySelector('#_cancelPdfDel').onclick = function(){ document.body.removeChild(ov); };
-        ov.querySelector('#_confirmPdfDel').onclick = function(){
-          document.body.removeChild(ov);
-          fetch(sUrl + '/deleteDocs?id=' + encodeURIComponent(p.ref), { method:'DELETE' })
-            .then(function(r){
-              var idx = products.findIndex(function(x){ return x.id === id; });
-              if(idx !== -1){
-                products[idx].hasDoc = false;
-                products[idx].docFilename = '';
-                save(true);
-              }
-              showToast('PDF supprimé ✓', 'ok', 2500);
-              openView(id);
-            })
-            .catch(function(e){ showToast('Erreur suppression PDF : ' + e, 'err', 4000); });
-        };
-      };
-    }
-    // ── Fin section PDF ─────────────────────────────────────────────
 
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
     viewOverlay.classList.add('open');
