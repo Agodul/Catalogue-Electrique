@@ -348,37 +348,33 @@
           products.push(sp);
           added++;
         } else {
-          // Ref connue → conflit si contenu différent
-          // Ignorer si sauvegardé localement il y a moins de 60s (évite faux conflits après push)
+          // Ref connue
           var lp = products[idx];
-          var recentSave = _recentlySaved[sp.ref];
-          var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
-          if(!tooRecent){
-            function withoutServerFields(p){
-              var c = Object.assign({}, p);
-              delete c.updatedAt;
-              delete c.id;
-              delete c.familyIcon;
-              if(!c.tags || c.tags.length === 0) delete c.tags;
-              if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
-              return JSON.stringify(c, Object.keys(c).sort());
+          var isAdmin = typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin;
+
+          if(!isAdmin){
+            // Non connecté → serveur prioritaire, écrase le local silencieusement
+            products[idx] = sp;
+          } else {
+            // Admin → conflit si contenu différent (ignorer 60s après un push)
+            var recentSave = _recentlySaved[sp.ref];
+            var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
+            if(!tooRecent){
+              function withoutServerFields(p){
+                var c = Object.assign({}, p);
+                delete c.updatedAt;
+                delete c.id;
+                delete c.familyIcon;
+                if(!c.tags || c.tags.length === 0) delete c.tags;
+                if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
+                return JSON.stringify(c, Object.keys(c).sort());
+              }
+              if(withoutServerFields(lp) !== withoutServerFields(sp)){
+                conflicts.push({ ref: sp.ref, local: lp, server: sp });
+              }
             }
-            var localStr = withoutServerFields(lp);
-            var serverStr = withoutServerFields(sp);
-            if(localStr !== serverStr){
-              // Log pour debug - trouver le champ différent
-              var lObj = JSON.parse(localStr);
-              var sObj = JSON.parse(serverStr);
-              var diffKeys = Object.keys(Object.assign({}, lObj, sObj)).filter(function(k){
-                return JSON.stringify(lObj[k]) !== JSON.stringify(sObj[k]);
-              });
-              console.warn('Conflit ref='+sp.ref+' champs différents:', diffKeys);
-              console.warn('Local:', lObj);
-              console.warn('Serveur:', sObj);
-              conflicts.push({ ref: sp.ref, local: lp, server: sp });
-            }
+            // Local conservé par défaut pour l'admin
           }
-          // Local conservé par défaut
         }
       });
 
