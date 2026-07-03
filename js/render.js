@@ -134,7 +134,7 @@
     var vmDocBtnWrap = document.getElementById('vmDocBtnWrap');
     var sUrlDoc      = localStorage.getItem('cat_server_url');
     if(vmDocBtnWrap) vmDocBtnWrap.style.display = (p.hasDoc && sUrlDoc) ? '' : 'none';
-    if(vmDocBtn) vmDocBtn.onclick = function(){ openDocModal(p, sUrlDoc); };
+    if(vmDocBtn) vmDocBtn.onclick = function(){ window._openDocModal(p, sUrlDoc); };
     // ── Fin bouton Document ─────────────────────────────────────────
 
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
@@ -143,7 +143,7 @@
   }
 
   // ── Modale Documents ────────────────────────────────────────────
-  function openDocModal(p, sUrl){
+  window._openDocModal = function openDocModal(p, sUrl){
     var overlay = document.getElementById('docOverlay');
     var docList = document.getElementById('docList');
     if(!overlay || !docList) return;
