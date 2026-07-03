@@ -537,6 +537,14 @@
     saveServerConfig();
     if(serverUrl) startSyncPolling(); else stopSyncPolling();
 
+    // Si nouvelle URL et pas connecté → ouvrir la fenêtre de login d'abord
+    if(urlChanged && serverUrl && typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
+      showToast('Veuillez vous connecter pour importer le catalogue', 'warn', 3500);
+      if(typeof openAuthModal === 'function') openAuthModal();
+      showSettingsMain();
+      return;
+    }
+
     // Si l'URL vient d'être définie → import automatique du catalogue
     if(urlChanged && serverUrl){
       showToast('Import du catalogue depuis le serveur…', 'ok', 2500);

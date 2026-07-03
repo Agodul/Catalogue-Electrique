@@ -295,6 +295,7 @@
   var seriesListEl = null; // remplacé par autocomplete custom
   var groupBy = 'brand'; // 'brand' | 'family' | 'series'
   var viewAll = sessionStorage.getItem('cat_view_all') === '1'; // persisté sur F5
+  window._getProducts = function(){ return products; };
   window._setViewAll = function(v){
     viewAll = v;
     sessionStorage.setItem('cat_view_all', v ? '1' : '0');
