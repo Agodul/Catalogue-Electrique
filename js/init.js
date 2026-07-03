@@ -1,6 +1,14 @@
 // ---------- Init ----------
   load();
   render();
+
+  // Restaurer "Voir tout le catalogue" si actif avant F5
+  if(sessionStorage.getItem('cat_view_all') === '1'){
+    setTimeout(function(){
+      if(typeof showCatalogueAll === 'function') showCatalogueAll();
+    }, 100);
+  }
+
   tryReconnectOnLoad();
 
   // ── Auth ────────────────────────────────────────────────────────
@@ -155,13 +163,9 @@
 
   // Cas 1 : catalogue déjà ouvert → le content script envoie un CustomEvent
   window.addEventListener('spi_extension_ready', function(){
-    // Délai pour laisser l'auth s'initialiser si page vient d'être ouverte
-    setTimeout(function(){ triggerExtensionExtraction(); }, 800);
+    triggerExtensionExtraction();
   });
 
   // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
-  // Si la page vient juste d'être ouverte, tenter aussi un check direct après chargement
-  if(window.location.search.includes('cat_bridge=1')){
-    setTimeout(function(){ triggerExtensionExtraction(); }, 1500);
-  }
+  // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
