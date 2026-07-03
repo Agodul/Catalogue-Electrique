@@ -24,32 +24,32 @@ var AUTH_USERS_KEY  = "cat_auth_users";
 
 // ── Helpers session ──────────────────────────────────────────────────────
 
-function authGetCurrentUser() {
+function _authGetSession() {
   try {
     var raw = sessionStorage.getItem(AUTH_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch(e) { return null; }
 }
 
+// Retourne l'objet user (pas la session complète)
+function authGetCurrentUser() {
+  var s = _authGetSession();
+  if (!s) return null;
+  return s.user || s; // compatibilité session locale et JWT
+}
+
 function authIsLoggedIn() {
-  return authGetCurrentUser() !== null;
+  return _authGetSession() !== null;
 }
 
 function authGetToken() {
-  var s = authGetCurrentUser();
+  var s = _authGetSession();
   return s ? (s.token || null) : null;
 }
 
 function authSetSession(token, user) {
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ token: token, user: user }));
 }
-
-// Compatibilité : authGetCurrentUser retourne l'objet user directement
-var _origGet = authGetCurrentUser;
-authGetCurrentUser = function() {
-  var s = _origGet();
-  return s ? (s.user || s) : null;
-};
 
 function authClearUser() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
