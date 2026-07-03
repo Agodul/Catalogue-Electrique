@@ -129,6 +129,14 @@
     if(vmPdfUploadSect) vmPdfUploadSect.style.display = 'none';
 
 
+    // ── Bouton Document (visible pour tous) ────────────────────────
+    var vmDocBtn     = document.getElementById('vmDocBtn');
+    var vmDocBtnWrap = document.getElementById('vmDocBtnWrap');
+    var sUrlDoc      = localStorage.getItem('cat_server_url');
+    if(vmDocBtnWrap) vmDocBtnWrap.style.display = (p.hasDoc && sUrlDoc) ? '' : 'none';
+    if(vmDocBtn) vmDocBtn.onclick = function(){ openDocModal(p, sUrlDoc); };
+    // ── Fin bouton Document ─────────────────────────────────────────
+
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
     viewOverlay.classList.add('open');
     document.body.classList.add('modal-open');
