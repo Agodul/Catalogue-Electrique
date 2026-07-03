@@ -352,32 +352,9 @@
   //     70 — nom exact complet
   //     60 — nom commence par le terme
   //     50 — marque ou famille exacte
-  //     40 — marque ou famille contient le terme
-  //     30 — série contient le terme
-  //     20 — nom contient le terme (milieu de mot)
-  //     10 — description contient le terme
-  //      0 — fournisseur ou tags contiennent le terme
-  //  Si plusieurs mots : score = somme des scores individuels
-  //  Les produits sont triés par score décroissant
   // ─────────────────────────────────────────────────────────────
-  function scoreProduct(p, terms){
-    var score = 0;
-    var ref  = normalizeSearch(p.ref);
-    var tags = normalizeSearch((p.tags||[]).join(' '));
-
-    terms.forEach(function(t){
-      if(!t) return;
-      // Référence
-      if(ref === t)                 score += 100;
-      else if(ref.indexOf(t) === 0) score += 80;
-      else if(ref.indexOf(t) !== -1) score += 60;
-      // Tags
-      if(tags === t)                score += 80;
-      else if(tags.indexOf(t) !== -1) score += 40;
-    });
-    return score;
-  }
-
+  //  Recherche par référence ET tags uniquement
+  // ─────────────────────────────────────────────────────────────
   function getFilteredProducts(){
     var raw = normalizeSearch(searchInputEl.value);
     var brand  = brandFilterEl.value;
@@ -404,19 +381,26 @@
     // Découpe en mots pour recherche multi-termes
     var terms = raw.split(/\s+/).filter(Boolean);
 
-    // Filtrer : garder seulement les produits qui contiennent TOUS les termes
+    // Filtrer : ref OU tags contiennent tous les termes
     var matched = filtered.filter(function(p){
-      var hay = normalizeSearch([p.ref, (p.tags||[]).join(' ')].join(' '));
-      return terms.every(function(t){ return hay.indexOf(t) !== -1; });
+      var ref  = normalizeSearch(p.ref || '');
+      var tags = normalizeSearch((p.tags||[]).join(' '));
+      return terms.every(function(t){
+        return ref.indexOf(t) !== -1 || tags.indexOf(t) !== -1;
+      });
     });
 
-    // Calculer et stocker le score sur chaque produit
-    matched.forEach(function(p){ p._score = scoreProduct(p, terms); });
+    // Trier : ref exacte en premier, puis ref partielle, puis tags
+    matched.sort(function(a, b){
+      var ra = normalizeSearch(a.ref||'');
+      var rb = normalizeSearch(b.ref||'');
+      var term0 = terms[0] || '';
+      var aExact = ra === term0 ? 2 : ra.indexOf(term0) === 0 ? 1 : 0;
+      var bExact = rb === term0 ? 2 : rb.indexOf(term0) === 0 ? 1 : 0;
+      return bExact - aExact;
+    });
 
-    // Trier par score décroissant
-    matched.sort(function(a, b){ return b._score - a._score; });
-
-    // Appliquer ensuite le tri prix si actif (écrase le tri pertinence)
+    // Tri prix si actif
     if(window._priceSort === 'asc'){
       matched.sort(function(a,b){ return (parsePriceNumber(a.price)||0) - (parsePriceNumber(b.price)||0); });
     } else if(window._priceSort === 'desc'){
