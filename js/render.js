@@ -152,6 +152,8 @@
 
     if(p.hasDoc && p.ref && sUrl){
       var pdfUrl  = sUrl + '/pullDocs?ref=' + encodeURIComponent(p.ref);
+      var _pdfHeaders = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete _pdfHeaders['Content-Type'];
       var docName = p.docFilename || 'Document.pdf';
 
       var item = document.createElement('div');
@@ -378,7 +380,7 @@
       // Si serveur configuré → supprimer d'abord sur le serveur
       if(sUrl && ref){
         try{
-          var r = await fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(ref), { method:'DELETE' });
+          var r = await fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(ref), { method:'DELETE', headers: (function(){ var h = typeof window.authHeaders==='function'?Object.assign({},window.authHeaders()):{}; delete h['Content-Type']; return h; })() });
           if(!r.ok){
             showToast('Impossible de supprimer sur le serveur (HTTP '+r.status+') — suppression annulée', 'err', 4000);
             return;

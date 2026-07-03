@@ -489,7 +489,7 @@
         fd.append('ref', pForPdf.ref);
         fd.append('document', file, file.name);
         showToast('Envoi du PDF en cours…', 'ok', 3000);
-        fetch(sUrl + '/pushDocs', { method:'POST', body: fd })
+        (function(){ var h = typeof window.authHeaders==='function'?Object.assign({},window.authHeaders()):{}; delete h['Content-Type']; return fetch(sUrl + '/pushDocs', { method:'POST', headers: h, body: fd }); })()
           .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
           .then(function(data){
             var idx2 = products.findIndex(function(x){ return x.id === editingId; });

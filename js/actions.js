@@ -272,7 +272,9 @@
   async function syncDeletions(){
     if(!serverUrl) return;
     try{
-      var r = await fetch(serverUrl+'/pullDatas');
+      var getHeaders = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
+      delete getHeaders['Content-Type'];
+      var r = await fetch(serverUrl+'/pullDatas', { headers: getHeaders });
       if(!r.ok) return;
       var data = await r.json();
       var serverItems = data && Array.isArray(data.items)
@@ -302,7 +304,9 @@
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
-      var r = await fetch(checkUrl);
+      var chkH = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete chkH['Content-Type'];
+      var r = await fetch(checkUrl, { headers: chkH });
       if(!r.ok) return;
       var data = await r.json();
       if(data.count > 0){
@@ -352,9 +356,10 @@
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var pullUrl  = serverUrl+'/pullDatas' + (lastSync !== '0' ? '?date='+lastSync : '');
-      var r = await fetch(pullUrl, {
-        headers: typeof window.authHeaders === 'function' ? window.authHeaders() : {}
-      });
+      var fetchOpts = { headers: typeof window.authHeaders === 'function' ? window.authHeaders() : {} };
+      // Supprimer Content-Type pour les GET
+      delete fetchOpts.headers['Content-Type'];
+      var r = await fetch(pullUrl, fetchOpts);
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
 
@@ -536,7 +541,9 @@
     if(urlChanged && serverUrl){
       showToast('Import du catalogue depuis le serveur…', 'ok', 2500);
       try{
-        var r = await fetch(serverUrl+'/pullDatas');
+        var pullHeaders = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
+          delete pullHeaders['Content-Type'];
+          var r = await fetch(serverUrl+'/pullDatas', { headers: pullHeaders });
         if(!r.ok) throw new Error('HTTP '+r.status);
         var data = await r.json();
         if(data && Array.isArray(data.items)){
@@ -577,7 +584,9 @@
     var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
     if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
     try{
-      var r = await fetch(url+'/pullDatas');
+      var initH = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete initH['Content-Type'];
+      var r = await fetch(url+'/pullDatas', { headers: initH });
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
       // Format serveur : { count: N, items: [ { ref, data: {...produit} } ] }
