@@ -168,10 +168,15 @@
         + '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger</a>';
       docList.appendChild(item);
 
-      var preview = document.createElement('div');
-      preview.style.cssText = 'width:100%;height:420px;border:1px solid var(--line);border-radius:10px;overflow:hidden;';
-      preview.innerHTML = '<iframe src="'+pdfUrl+'" style="width:100%;height:100%;border:none;" title="'+escapeHtml(docName)+'"></iframe>';
-      docList.appendChild(preview);
+      // Iframe bloquée par CSP sur GitHub Pages (HTTP vs HTTPS)
+      // → bouton pour ouvrir dans un nouvel onglet
+      var openBtn = document.createElement('a');
+      openBtn.href = pdfUrl;
+      openBtn.target = '_blank';
+      openBtn.rel = 'noopener';
+      openBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:1.5px dashed var(--line);border-radius:10px;color:var(--ink-soft);font-size:13px;text-decoration:none;margin-top:4px;';
+      openBtn.innerHTML = '<i class="ti ti-external-link" style="font-size:18px;"></i> Ouvrir le PDF dans un nouvel onglet';
+      docList.appendChild(openBtn);
     } else {
       docList.innerHTML = '<div style="text-align:center;color:var(--ink-soft);padding:40px;font-size:14px;">Aucun document disponible</div>';
     }
