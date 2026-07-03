@@ -238,8 +238,11 @@
     if(serverUrl){
       setTimeout(function(){
         doSyncCheck();
+        syncDeletions();
         startSyncPolling();
       }, 1500);
+      // Sync suppressions toutes les 5 minutes
+      setInterval(syncDeletions, 5 * 60 * 1000);
     }
   }
 
@@ -263,6 +266,35 @@
       var ts = p.updatedAt || p.createdAt || 0;
       return ts > max ? ts : max;
     }, 0);
+  }
+
+  // Sync complète pour détecter les suppressions côté serveur
+  async function syncDeletions(){
+    if(!serverUrl) return;
+    try{
+      var r = await fetch(serverUrl+'/pullDatas');
+      if(!r.ok) return;
+      var data = await r.json();
+      var serverItems = data && Array.isArray(data.items)
+        ? data.items.map(function(i){ return i.data; })
+        : (Array.isArray(data) ? data : []);
+      if(!serverItems.length) return;
+
+      // Construire un Set des refs serveur
+      var serverRefs = new Set(serverItems.map(function(p){ return p && p.ref; }).filter(Boolean));
+
+      // Supprimer localement les produits absents du serveur
+      var before = products.length;
+      products = products.filter(function(p){ return !p.ref || serverRefs.has(p.ref); });
+      var deleted = before - products.length;
+
+      if(deleted > 0){
+        save(true);
+        var homePage = document.getElementById('homePage');
+        var isOnHome = homePage && !homePage.classList.contains('hidden');
+        if(isOnHome){ renderHome(); } else { render(); }
+      }
+    }catch(e){ console.warn('syncDeletions:', e.message); }
   }
 
   async function doSyncCheck(){
