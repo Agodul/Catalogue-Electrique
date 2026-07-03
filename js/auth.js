@@ -131,7 +131,8 @@ function authIsLoggedIn() {
 function authSetUser(account) {
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
     username: account.username,
-    displayName: account.displayName
+    displayName: account.displayName,
+    isAdmin: !!account.isAdmin
   }));
 }
 
