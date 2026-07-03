@@ -142,6 +142,56 @@
     document.body.classList.add('modal-open');
   }
 
+  // ── Modale Documents ────────────────────────────────────────────
+  function openDocModal(p, sUrl){
+    var overlay = document.getElementById('docOverlay');
+    var docList = document.getElementById('docList');
+    if(!overlay || !docList) return;
+
+    docList.innerHTML = '';
+
+    if(p.hasDoc && p.ref && sUrl){
+      var pdfUrl  = sUrl + '/pullDocs?id=' + encodeURIComponent(p.ref);
+      var docName = p.docFilename || 'Document.pdf';
+
+      var item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;';
+      item.innerHTML = '<div style="width:40px;height:40px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        + '<i class="ti ti-file-type-pdf" style="font-size:22px;color:#E53E3E;"></i></div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(docName)+'</div>'
+        + '<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">PDF</div>'
+        + '</div>'
+        + '<a href="'+pdfUrl+'" target="_blank" style="padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0;">'
+        + '<i class="ti ti-eye" style="font-size:14px;"></i> Voir</a>'
+        + '<a href="'+pdfUrl+'" download="'+escapeHtml(docName)+'" style="padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0;">'
+        + '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger</a>';
+      docList.appendChild(item);
+
+      var preview = document.createElement('div');
+      preview.style.cssText = 'width:100%;height:420px;border:1px solid var(--line);border-radius:10px;overflow:hidden;';
+      preview.innerHTML = '<iframe src="'+pdfUrl+'" style="width:100%;height:100%;border:none;" title="'+escapeHtml(docName)+'"></iframe>';
+      docList.appendChild(preview);
+    } else {
+      docList.innerHTML = '<div style="text-align:center;color:var(--ink-soft);padding:40px;font-size:14px;">Aucun document disponible</div>';
+    }
+
+    overlay.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    document.getElementById('docCloseBtn').onclick = function(){
+      overlay.style.display = 'none';
+      document.body.classList.remove('modal-open');
+    };
+    overlay.onclick = function(e){
+      if(e.target === overlay){
+        overlay.style.display = 'none';
+        document.body.classList.remove('modal-open');
+      }
+    };
+  }
+  // ── Fin modale Documents ─────────────────────────────────────────
+
   function closeView(){
     viewOverlay.classList.remove('open');
     vmInfoMenu.classList.remove('open');
