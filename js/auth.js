@@ -703,24 +703,7 @@ function initAuth() {
   var closeBtn = document.getElementById('authCloseBtn');
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
 
-  // Navigation vers la page utilisateurs
-  var btnOpenUsers = document.getElementById('btnOpenUserSettings');
-  var btnUserBack  = document.getElementById('btnUserPageBack');
-  var settingsMain = document.getElementById('settingsMain');
-  var userPage     = document.getElementById('settingsUserPage');
-
-  if (btnOpenUsers) {
-    btnOpenUsers.addEventListener('click', function() {
-      if (settingsMain) settingsMain.style.display = 'none';
-      if (userPage) { userPage.style.display = 'flex'; renderUserPage(); }
-    });
-  }
-  if (btnUserBack) {
-    btnUserBack.addEventListener('click', function() {
-      if (userPage) userPage.style.display = 'none';
-      if (settingsMain) settingsMain.style.display = '';
-    });
-  }
+  // Navigation gérée dans actions.js
 
   // Vérifier token au chargement
   if (authIsLoggedIn() && authGetToken()) {

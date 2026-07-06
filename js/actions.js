@@ -454,6 +454,7 @@
   // ── Navigation Paramètres ─────────────────────────────────────────
   var settingsFamilyPage  = document.getElementById('settingsFamilyPage');
   var settingsServerPage  = document.getElementById('settingsServerPage');
+  var settingsUserPage    = document.getElementById('settingsUserPage');
   var btnOpenFamilyIcons  = document.getElementById('btnOpenFamilyIcons');
   var btnFamilyPageBack   = document.getElementById('btnFamilyPageBack');
   var btnOpenServerSettings = document.getElementById('btnOpenServerSettings');
@@ -465,12 +466,19 @@
     document.querySelector('.settings-body').style.display = '';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
+    if(settingsUserPage) settingsUserPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'flex';
     settingsServerPage.style.display = 'none';
     renderSettingsFamilies();
+  }
+  function showSettingsUserPage(){
+    document.querySelector('.settings-body').style.display = 'none';
+    settingsFamilyPage.style.display = 'none';
+    settingsServerPage.style.display = 'none';
+    if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
     document.querySelector('.settings-body').style.display = 'none';
@@ -495,6 +503,10 @@
   }
 
   btnOpenFamilyIcons.addEventListener('click', function(){ showSettingsFamilyPage(); });
+  var btnOpenUserSettings = document.getElementById('btnOpenUserSettings');
+  if(btnOpenUserSettings) btnOpenUserSettings.addEventListener('click', function(){ showSettingsUserPage(); });
+  var btnUserPageBack = document.getElementById('btnUserPageBack');
+  if(btnUserPageBack) btnUserPageBack.addEventListener('click', function(){ showSettingsMain(); });
   btnOpenFamilyIcons.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
   btnOpenFamilyIcons.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
   btnFamilyPageBack.addEventListener('click', function(){ showSettingsMain(); });
