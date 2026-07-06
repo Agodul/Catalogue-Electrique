@@ -330,6 +330,10 @@ function applyAuthUI() {
   var testSection = document.getElementById('settingsTestSection');
   if (testSection) testSection.style.display = isAdmin ? '' : 'none';
 
+  // Bouton Utilisateurs : visible admin uniquement
+  var btnUsers = document.getElementById('btnOpenUserSettings');
+  if (btnUsers) btnUsers.style.display = isAdmin ? 'flex' : 'none';
+
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
