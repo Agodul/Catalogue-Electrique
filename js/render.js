@@ -138,9 +138,10 @@
     // ── Fin bouton Document ─────────────────────────────────────────
 
     // Appliquer permissions sur les boutons de la fiche
+    // Par défaut : interdit si non connecté ou permissions non chargées
     var _perms   = window._userPerms || {};
-    var _canEdit   = _perms.canEdit   !== undefined ? _perms.canEdit   : true;
-    var _canDelete = _perms.canDelete !== undefined ? _perms.canDelete : true;
+    var _canEdit   = !!_perms.canEdit;
+    var _canDelete = !!_perms.canDelete;
     var _vmEdit = document.getElementById('vmEditBtn');
     var _vmDel  = document.getElementById('vmDeleteBtn');
     if(_vmEdit)   _vmEdit.style.display   = _canEdit   ? '' : 'none';
