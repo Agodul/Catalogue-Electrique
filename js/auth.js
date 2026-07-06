@@ -8,20 +8,6 @@
 var AUTH_SESSION_KEY = "cat_auth_user";   // sessionStorage : { token, user }
 var AUTH_SERVER_KEY  = "cat_server_url";  // localStorage : URL serveur
 
-// Compte admin de secours (fallback hors ligne)
-var AUTH_ADMIN_FALLBACK = {
-  username:    "admin",
-  displayName: "Administrateur",
-  isAdmin:     true,
-  credential: {
-    salt: "6013d7f3f4f34ef0974632754e6d1386",
-    hash: "70144e1536f3d16f5f218de0f16647f2205f4bd31d5bdb9ef9791c3c43da4506"
-  }
-};
-
-var AUTH_ADMIN_KEY  = "cat_auth_admin";
-var AUTH_USERS_KEY  = "cat_auth_users";
-
 // ── Helpers session ──────────────────────────────────────────────────────
 
 function _authGetSession() {
@@ -53,19 +39,6 @@ function authSetSession(token, user) {
 
 function authClearUser() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
-}
-
-function authSetUser(account) {
-  // Fallback local (hors ligne)
-  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
-    token: null,
-    user: {
-      username:    account.username,
-      displayName: account.displayName,
-      isAdmin:     !!account.isAdmin,
-      permissions: account.permissions || _defaultPermissions(account.isAdmin)
-    }
-  }));
 }
 
 function _defaultPermissions(isAdmin) {
@@ -152,51 +125,11 @@ setInterval(function() {
 
 // ── Authentification locale (fallback hors ligne) ────────────────────────
 
-function authGetAdminCredential() {
-  try {
-    var raw = localStorage.getItem(AUTH_ADMIN_KEY);
-    if (raw) return JSON.parse(raw);
-    return AUTH_ADMIN_FALLBACK.credential || null;
-  } catch(e) { return AUTH_ADMIN_FALLBACK.credential || null; }
-}
-
-function authGetAllAccounts() {
-  var adminEntry = Object.assign({}, AUTH_ADMIN_FALLBACK, {
-    credential: authGetAdminCredential()
-  });
-  try {
-    var raw   = localStorage.getItem(AUTH_USERS_KEY);
-    var extra = raw ? JSON.parse(raw) : [];
-    return [adminEntry].concat(extra.filter(function(u) {
-      return u.username.toLowerCase() !== 'admin';
-    }));
-  } catch(e) { return [adminEntry]; }
-}
-
-function authSaveExtraAccounts(accounts) {
-  var extra = accounts.filter(function(u) {
-    return u.username.toLowerCase() !== 'admin';
-  });
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
-}
-
 async function sha256hex(str) {
   var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(function(b) {
     return b.toString(16).padStart(2, '0');
   }).join('');
-}
-
-async function authLoginLocal(username, password) {
-  var accounts = authGetAllAccounts();
-  var account  = accounts.find(function(a) {
-    return a.username.toLowerCase() === username.toLowerCase();
-  });
-  if (!account || !account.credential) return false;
-  var hash = await sha256hex(account.credential.salt + password);
-  if (hash !== account.credential.hash) return false;
-  authSetUser(account);
-  return true;
 }
 
 // ── Login principal (serveur d'abord, fallback local) ────────────────────
@@ -222,18 +155,7 @@ async function authLogin(username, password) {
     }
   }
 
-  // 2. Fallback local (hors ligne ou serveur non configuré)
-  var ok = await authLoginLocal(username, password);
-  if (ok) {
-    var user = authGetCurrentUser();
-    closeAuthModal();
-    applyAuthUI();
-    showAuthToast('Connecté en tant que ' + (user ? user.displayName : username) + ' (mode local)');
-    if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-    return true;
-  }
-
-  return false;
+    return false;
 }
 
 // ── Logout ───────────────────────────────────────────────────────────────
@@ -450,10 +372,8 @@ async function renderUserPage() {
     }
   }
 
-  // Fallback local
-  var localUsers = authGetAllAccounts();
-  _renderUserList(container, localUsers, false);
-  _bindAddUserForm(false);
+  // Pas de serveur → message
+  container.innerHTML = '<p style="color:var(--ink-soft);font-size:13px;padding:12px 0;">Connectez-vous au serveur pour gérer les utilisateurs.</p>';
 }
 
 function _renderUserList(container, users, isServer) {
