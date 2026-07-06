@@ -5,7 +5,8 @@
   var fRef = document.getElementById('fRef');
   var fFamily = document.getElementById('fFamily');
   var fSeries = document.getElementById('fSeries');
-  var fSupplier = document.getElementById('fSupplier');
+  var fSupplier  = document.getElementById('fSupplier');
+  var fLeadTime  = document.getElementById('fLeadTime');
   var fUrl = document.getElementById('fUrl');
   var fHtml = document.getElementById('fHtml');
   var chkShowHtml = document.getElementById('chkShowHtml');
@@ -248,7 +249,7 @@
 
   function renderPriceHistory(product){ /* géré par la modale prix */ }
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
@@ -427,6 +428,7 @@
         modalLeftFoot.textContent = 'Ajouté le ' + (p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—');
         fBrand.value = p.brand||''; fRef.value = p.ref||''; fUrl.value = p.url||'';
         fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
+        if(fLeadTime) fLeadTime.value = p.leadTime||'';
         fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
         f3dAvailable.checked = !!p.available3DX;
         f3dLink.value = p.available3DXLink || '';
