@@ -381,8 +381,8 @@ function applyAuthUI() {
 
   updateAuthHeaderBtn(loggedIn, user);
 
-  // Rafraîchir la page utilisateurs si ouverte
-  if (typeof renderUserPage === 'function') renderUserPage();
+  // Rafraîchir la page utilisateurs si ouverte (admin uniquement)
+  if (isAdmin && typeof renderUserPage === 'function') renderUserPage();
 }
 
 function updateAuthHeaderBtn(loggedIn, user) {
