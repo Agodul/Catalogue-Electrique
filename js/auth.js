@@ -330,6 +330,10 @@ function applyAuthUI() {
   var testSection = document.getElementById('settingsTestSection');
   if (testSection) testSection.style.display = isAdmin ? '' : 'none';
 
+  // Bouton Utilisateurs : visible admin uniquement
+  var btnUsers = document.getElementById('btnOpenUserSettings');
+  if (btnUsers) btnUsers.style.display = isAdmin ? 'flex' : 'none';
+
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
@@ -401,7 +405,7 @@ function showAuthToast(msg) {
 // ── Page utilisateurs ────────────────────────────────────────────────────
 
 async function renderUserPage() {
-  var container = document.getElementById('userListContainer');
+  var container = document.getElementById('userList');
   if (!container) return;
 
   var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
@@ -412,6 +416,7 @@ async function renderUserPage() {
     var serverUsers = await authFetchUsers();
     if (serverUsers) {
       _renderUserList(container, serverUsers, true);
+      _bindAddUserForm(true);
       return;
     }
   }
@@ -419,6 +424,7 @@ async function renderUserPage() {
   // Fallback local
   var localUsers = authGetAllAccounts();
   _renderUserList(container, localUsers, false);
+  _bindAddUserForm(false);
 }
 
 function _renderUserList(container, users, isServer) {
@@ -433,34 +439,63 @@ function _renderUserList(container, users, isServer) {
   }
 
   var source = isServer
-    ? '<span style="font-size:11px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:4px;padding:2px 8px;">🌐 Serveur</span>'
-    : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 8px;">⚠️ Local (hors ligne)</span>';
+    ? '<span style="font-size:11px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:4px;padding:2px 7px;margin-left:8px;">🌐 Serveur</span>'
+    : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;margin-left:8px;">⚠️ Local</span>';
 
-  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
-    + '<div style="font-size:13px;font-weight:700;color:var(--ink);">Utilisateurs ' + source + '</div>'
-    + (isServer ? '<button id="btnAddUser" style="padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">+ Ajouter</button>' : '')
-    + '</div>';
+  window._cachedUsers = users; // pour récupérer les permissions au clic Modifier
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;margin-bottom:12px;';
+  header.innerHTML = '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);">Utilisateurs</span>' + source;
+  container.appendChild(header);
 
   users.forEach(function(u) {
     var isSelf   = user && u.username === user.username;
     var isAdminU = u.isAdmin || u.username === 'admin';
+    var perms    = u.permissions || {};
+
+    // Badges permissions
+    var permBadges = '';
+    if (isAdminU) {
+      permBadges = '<span style="font-size:10px;background:#EEF4FF;color:#194093;border-radius:4px;padding:1px 6px;margin-right:3px;">Admin complet</span>';
+    } else {
+      var permList = [
+        ['canEdit','Éditer'],['canDelete','Supprimer'],['canViewDocs','Docs'],
+        ['canUploadDocs','Upload'],['canExport','Export'],['canSyncServer','Sync']
+      ];
+      permList.forEach(function(p) {
+        var active = !!perms[p[0]];
+        permBadges += '<span style="font-size:10px;background:'+(active?'#F0FDF4':'#F9FAFB')+';color:'+(active?'#166534':'#94A3B8')+';border-radius:4px;padding:1px 6px;margin-right:3px;">'+p[1]+'</span>';
+      });
+    }
+
     var div = document.createElement('div');
     div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--paper-card);';
     div.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:'+(isAdminU?'#194093':'#e2e8f0')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
       + '<i class="ti '+(isAdminU?'ti-shield-check':'ti-user')+'" style="color:'+(isAdminU?'#fff':'#64748b')+';font-size:16px;"></i></div>'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + (u.displayName || u.username) + '</div>'
-      + '<div style="font-size:11px;color:var(--ink-soft);">' + u.username + (isAdminU ? ' · Admin' : '') + '</div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + (u.displayName||u.username)
+      + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+u.username+'</span></div>'
+      + '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">' + permBadges + '</div>'
       + '</div>'
-      + (!isSelf && isServer ? '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">Supprimer</button>' : '');
+      + (!isSelf && isServer
+          ? '<div style="display:flex;gap:6px;flex-shrink:0;">'
+            + '<button data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" style="padding:5px 10px;border-radius:6px;border:1px solid #194093;background:var(--paper-card);color:#194093;font-size:12px;cursor:pointer;font-family:inherit;">Modifier</button>'
+            + '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">✕</button>'
+            + '</div>'
+          : isSelf ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">(vous)</span>' : '');
     container.appendChild(div);
   });
 
-  // Bouton ajouter
-  var btnAdd = document.getElementById('btnAddUser');
-  if (btnAdd) {
-    btnAdd.addEventListener('click', function() { openAddUserModal(); });
-  }
+  // Boutons modifier
+  container.querySelectorAll('.btnEditUser').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var uname   = this.getAttribute('data-user');
+      var display = this.getAttribute('data-display');
+      var isAdm   = this.getAttribute('data-admin') === '1';
+      var perms = _cachedUsers ? (_cachedUsers.find(function(u){ return u.username===uname; })||{}).permissions||{} : {};
+      openEditUserModal(uname, display, isAdm, perms);
+    });
+  });
 
   // Boutons supprimer
   container.querySelectorAll('.btnDelUser').forEach(function(btn) {
@@ -471,6 +506,43 @@ function _renderUserList(container, users, isServer) {
       if (ok) { showAuthToast('Utilisateur supprimé ✓'); renderUserPage(); }
       else showAuthToast('Erreur suppression', 'err', 3000);
     });
+  });
+}
+
+function _bindAddUserForm(isServer) {
+  var btn = document.getElementById('btnAddUser');
+  if (!btn) return;
+  var newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', async function() {
+    var username = (document.getElementById('newUserUsername')||{value:''}).value.trim();
+    var display  = (document.getElementById('newUserDisplay')||{value:''}).value.trim();
+    var password = (document.getElementById('newUserPassword')||{value:''}).value;
+    var errEl    = document.getElementById('newUserError');
+    if (!username || !password) {
+      if (errEl) errEl.textContent = 'Identifiant et mot de passe requis.';
+      return;
+    }
+    if (isServer) {
+      var ok = await authCreateUser({
+        username:    username,
+        displayName: display || username,
+        password:    password,
+        isAdmin:     false,
+        permissions: _defaultPermissions(false)
+      });
+      if (ok) {
+        if (errEl) errEl.textContent = '';
+        ['newUserUsername','newUserDisplay','newUserPassword'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+        showAuthToast('Utilisateur créé ✓');
+        renderUserPage();
+      } else {
+        if (errEl) errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
+      }
+    }
   });
 }
 
@@ -526,6 +598,82 @@ function openAddUserModal() {
   };
 }
 
+function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
+  currentPerms = currentPerms || {};
+  var PERM_LIST = [
+    ['canEdit',       'Créer et modifier des produits'],
+    ['canDelete',     'Supprimer des produits'],
+    ['canViewDocs',   'Voir les documents PDF'],
+    ['canUploadDocs', 'Uploader des documents PDF'],
+    ['canExport',     'Exporter le catalogue'],
+    ['canSyncServer', 'Synchronisation serveur']
+  ];
+
+  var permCheckboxes = PERM_LIST.map(function(p) {
+    var checked = currentPerms[p[0]] ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:3px 0;">'
+      + '<input type="checkbox" class="_euPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+  }).join('');
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + (displayName || username) + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;">'
+    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + (displayName || '') + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_euPassword" type="password" placeholder="Nouveau mot de passe (vide = inchangé)" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
+    + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'
+    + '<div id="_euPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;'+(isAdminUser?'display:none;':'')+'background:var(--paper);">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Permissions individuelles</div>'
+    + permCheckboxes
+    + '</div>'
+    + '</div>'
+    + '<div id="_euError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;">'
+    + '<button id="_euCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
+    + '<button id="_euSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+
+  // Toggle section permissions
+  ov.querySelector('#_euAdmin').addEventListener('change', function() {
+    var sec = ov.querySelector('#_euPermsSection');
+    if (sec) sec.style.display = this.checked ? 'none' : '';
+  });
+
+  ov.querySelector('#_euCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_euSubmit').onclick = async function() {
+    var displayNew  = ov.querySelector('#_euDisplay').value.trim();
+    var passwordNew = ov.querySelector('#_euPassword').value;
+    var isAdminNew  = ov.querySelector('#_euAdmin').checked;
+    var errEl       = ov.querySelector('#_euError');
+
+    // Récupérer permissions cochées
+    var permsNew = _defaultPermissions(isAdminNew);
+    if (!isAdminNew) {
+      ov.querySelectorAll('._euPerm').forEach(function(cb) {
+        permsNew[cb.getAttribute('data-perm')] = cb.checked;
+      });
+      permsNew.canViewDocs = true; // toujours autorisé
+    }
+
+    var data = { isAdmin: isAdminNew, permissions: permsNew };
+    if (displayNew) data.displayName = displayNew;
+    if (passwordNew) data.password = passwordNew;
+
+    var ok = await authUpdateUser(username, data);
+    if (ok) {
+      document.body.removeChild(ov);
+      showAuthToast('Utilisateur modifié ✓');
+      renderUserPage();
+    } else {
+      errEl.textContent = 'Erreur — serveur inaccessible ou droits insuffisants.';
+      errEl.style.display = '';
+    }
+  };
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 
 function initAuth() {
@@ -554,6 +702,25 @@ function initAuth() {
 
   var closeBtn = document.getElementById('authCloseBtn');
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
+
+  // Navigation vers la page utilisateurs
+  var btnOpenUsers = document.getElementById('btnOpenUserSettings');
+  var btnUserBack  = document.getElementById('btnUserPageBack');
+  var settingsMain = document.getElementById('settingsMain');
+  var userPage     = document.getElementById('settingsUserPage');
+
+  if (btnOpenUsers) {
+    btnOpenUsers.addEventListener('click', function() {
+      if (settingsMain) settingsMain.style.display = 'none';
+      if (userPage) { userPage.style.display = 'flex'; renderUserPage(); }
+    });
+  }
+  if (btnUserBack) {
+    btnUserBack.addEventListener('click', function() {
+      if (userPage) userPage.style.display = 'none';
+      if (settingsMain) settingsMain.style.display = '';
+    });
+  }
 
   // Vérifier token au chargement
   if (authIsLoggedIn() && authGetToken()) {
