@@ -359,9 +359,10 @@ function applyAuthUI() {
   var btnFabAdd = document.getElementById('btnFabAdd');
   if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
-  // Bouton info produit (menu ⓘ) — visible si connecté
+  // Bouton ⓘ — visible uniquement si canEdit ou canDelete
   var vmInfoBtn = document.getElementById('vmInfoBtn');
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? '' : 'none';
+  var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
+  if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 
   // Export catalogue
   var btnExport = document.getElementById('btnExportJSON');
