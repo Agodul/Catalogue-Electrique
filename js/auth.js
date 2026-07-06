@@ -468,6 +468,9 @@ function _renderUserList(container, users, isServer) {
     : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;margin-left:8px;">⚠️ Local</span>';
 
   window._cachedUsers = users; // pour récupérer les permissions au clic Modifier
+  // Fonction d'échappement XSS locale
+  function _esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
   var header = document.createElement('div');
   header.style.cssText = 'display:flex;align-items:center;margin-bottom:12px;';
   header.innerHTML = '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);">Utilisateurs</span>' + source;
@@ -498,8 +501,8 @@ function _renderUserList(container, users, isServer) {
     div.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:'+(isAdminU?'#194093':'#e2e8f0')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
       + '<i class="ti '+(isAdminU?'ti-shield-check':'ti-user')+'" style="color:'+(isAdminU?'#fff':'#64748b')+';font-size:16px;"></i></div>'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + (u.displayName||u.username)
-      + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+u.username+'</span></div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + _esc(u.displayName||u.username)
+      + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+_esc(u.username)+'</span></div>'
       + '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">' + permBadges + '</div>'
       + '</div>'
       + (isSelf
@@ -629,6 +632,19 @@ function openAddUserModal() {
 
 function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   currentPerms = currentPerms || {};
+
+  function _escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  var safeTitleName   = _escapeHtml(displayName || username);
+  var safeDisplayValue = _escapeHtml(displayName || '');
+
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
@@ -639,17 +655,19 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
-    var checked = currentPerms[p[0]] ? ' checked' : '';
+    var checked   = currentPerms[p[0]] ? ' checked' : '';
+    var permKey   = _escapeHtml(p[0]);
+    var permLabel = _escapeHtml(p[1]);
     return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:3px 0;">'
-      + '<input type="checkbox" class="_euPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+      + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+'> '+permLabel+'</label>';
   }).join('');
 
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + (displayName || username) + '</div>'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + (displayName || '') + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_euPassword" type="password" placeholder="Nouveau mot de passe (vide = inchangé)" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'
