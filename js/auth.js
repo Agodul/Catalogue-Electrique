@@ -334,6 +334,10 @@ function applyAuthUI() {
   var btnUsers = document.getElementById('btnOpenUserSettings');
   if (btnUsers) btnUsers.style.display = isAdmin ? 'flex' : 'none';
 
+  // Bouton Nettoyer descriptions : visible admin uniquement
+  var btnClean = document.getElementById('btnCleanDescs');
+  if (btnClean) btnClean.style.display = isAdmin ? '' : 'none';
+
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
