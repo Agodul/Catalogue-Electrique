@@ -629,6 +629,14 @@ function openAddUserModal() {
 
 function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   currentPerms = currentPerms || {};
+  function _escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
@@ -638,18 +646,23 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canSyncServer', 'Synchronisation serveur']
   ];
 
+  var safeTitleName = _escapeHtml(displayName || username);
+  var safeDisplayValue = _escapeHtml(displayName || '');
+
   var permCheckboxes = PERM_LIST.map(function(p) {
     var checked = currentPerms[p[0]] ? ' checked' : '';
+    var permKey = _escapeHtml(p[0]);
+    var permLabel = _escapeHtml(p[1]);
     return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:3px 0;">'
-      + '<input type="checkbox" class="_euPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+      + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+'> '+permLabel+'</label>';
   }).join('');
 
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + (displayName || username) + '</div>'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + (displayName || '') + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_euPassword" type="password" placeholder="Nouveau mot de passe (vide = inchangé)" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'
