@@ -340,19 +340,43 @@ function applyAuthUI() {
   var serverButtonsSection = document.getElementById('serverButtonsSection');
   if (serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';
 
+  // Récupérer les permissions granulaires
+  var perms = (user && user.permissions) || {};
+  var canEdit        = isAdmin || !!perms.canEdit;
+  var canDelete      = isAdmin || !!perms.canDelete;
+  var canViewDocs    = isAdmin || !!perms.canViewDocs;
+  var canUploadDocs  = isAdmin || !!perms.canUploadDocs;
+  var canExport      = isAdmin || !!perms.canExport;
+  var canSyncServer  = isAdmin || !!perms.canSyncServer;
+
   // Mode lecture seule
   document.body.classList.toggle('auth-readonly', !loggedIn);
 
-  // Bouton ajouter
+  // Bouton ajouter produit
   var btnAdd = document.getElementById('btnAdd');
-  if (btnAdd) btnAdd.style.display = isAdmin ? '' : 'none';
+  if (btnAdd) btnAdd.style.display = canEdit ? '' : 'none';
 
   var btnFabAdd = document.getElementById('btnFabAdd');
-  if (btnFabAdd) btnFabAdd.style.display = isAdmin ? '' : 'none';
+  if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
-  // Bouton info produit (menu ⓘ)
+  // Bouton info produit (menu ⓘ) — visible si connecté
   var vmInfoBtn = document.getElementById('vmInfoBtn');
   if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? '' : 'none';
+
+  // Export catalogue
+  var btnExport = document.getElementById('btnExportJSON');
+  if (btnExport) btnExport.style.display = canExport ? '' : 'none';
+  var btnExportXlsx = document.getElementById('btnExportXLSX');
+  if (btnExportXlsx) btnExportXlsx.style.display = canExport ? '' : 'none';
+
+  // Sync serveur manuelle
+  var serverButtonsSection = document.getElementById('serverButtonsSection');
+  if (serverButtonsSection) serverButtonsSection.style.display = canSyncServer ? '' : 'none';
+
+  // Exposer les permissions pour les autres modules
+  window._userPerms = {
+    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn
+  };
 
   updateAuthHeaderBtn(loggedIn, user);
 

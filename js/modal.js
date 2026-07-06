@@ -458,7 +458,7 @@
     }
     // ── Section PDF dans le formulaire (admin + modification uniquement) ──
     var sUrl = localStorage.getItem('cat_server_url');
-    var isAdmin = typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin;
+    var isAdmin = window._userPerms ? window._userPerms.canEdit : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
     var modalPdfSection  = document.getElementById('modalPdfSection');
     var modalPdfExisting = document.getElementById('modalPdfExisting');
     var modalPdfUpload   = document.getElementById('modalPdfUpload');
