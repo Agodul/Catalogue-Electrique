@@ -502,12 +502,16 @@ function _renderUserList(container, users, isServer) {
       + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+u.username+'</span></div>'
       + '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">' + permBadges + '</div>'
       + '</div>'
-      + (!isSelf && isServer
-          ? '<div style="display:flex;gap:6px;flex-shrink:0;">'
-            + '<button data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" style="padding:5px 10px;border-radius:6px;border:1px solid #194093;background:var(--paper-card);color:#194093;font-size:12px;cursor:pointer;font-family:inherit;">Modifier</button>'
-            + '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">✕</button>'
-            + '</div>'
-          : isSelf ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">(vous)</span>' : '');
+      + (isSelf
+          ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">(vous)</span>'
+          : (u.username.toLowerCase() === 'admin'
+            ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">Protégé</span>'
+            : (isServer
+              ? '<div style="display:flex;gap:6px;flex-shrink:0;">'
+                + '<button data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" style="padding:5px 10px;border-radius:6px;border:1px solid #194093;background:var(--paper-card);color:#194093;font-size:12px;cursor:pointer;font-family:inherit;">Modifier</button>'
+                + '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">✕</button>'
+                + '</div>'
+              : '')));
     container.appendChild(div);
   });
 
