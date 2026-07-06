@@ -137,6 +137,15 @@
     if(vmDocBtn) vmDocBtn.onclick = function(){ window._openDocModal(p, sUrlDoc); };
     // ── Fin bouton Document ─────────────────────────────────────────
 
+    // Appliquer permissions sur les boutons de la fiche
+    var _perms   = window._userPerms || {};
+    var _canEdit   = _perms.canEdit   !== undefined ? _perms.canEdit   : true;
+    var _canDelete = _perms.canDelete !== undefined ? _perms.canDelete : true;
+    var _vmEdit = document.getElementById('vmEditBtn');
+    var _vmDel  = document.getElementById('vmDeleteBtn');
+    if(_vmEdit)   _vmEdit.style.display   = _canEdit   ? '' : 'none';
+    if(_vmDel)    _vmDel.style.display    = _canDelete ? '' : 'none';
+
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
     viewOverlay.classList.add('open');
     document.body.classList.add('modal-open');
@@ -246,21 +255,11 @@
     }
   });
 
-  var _vmEditBtn = document.getElementById('vmEditBtn');
-  if(_vmEditBtn){
-    var _canEdit = window._userPerms ? window._userPerms.canEdit : false;
-    _vmEditBtn.style.display = _canEdit ? '' : 'none';
-  }
   document.getElementById('vmEditBtn').addEventListener('click', function(){
     var id = viewingId;
     closeView();
     openModal(id);
   });
-  var _vmDeleteBtn = document.getElementById('vmDeleteBtn');
-  if(_vmDeleteBtn){
-    var _canDelete = window._userPerms ? window._userPerms.canDelete : false;
-    _vmDeleteBtn.style.display = _canDelete ? '' : 'none';
-  }
   document.getElementById('vmDeleteBtn').addEventListener('click', function(){
     var id = viewingId;
     closeView();
