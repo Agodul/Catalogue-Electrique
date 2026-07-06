@@ -1223,11 +1223,29 @@
 
   /* 1 — Cartes en cascade */
   @keyframes cardEnter{
-    from{ opacity:0; transform:translateY(18px); }
-    to{   opacity:1; transform:translateY(0); }
+    from{ opacity:0; transform:translateY(14px) scale(.985); }
+    to{   opacity:1; transform:translateY(0)    scale(1); }
   }
-  .card{ opacity:0; animation:none; }
-  .card.card-visible{ animation:cardEnter .38s ease forwards; }
+  .card{
+    opacity:0;
+    animation:none;
+    will-change:opacity, transform;
+  }
+  .card.card-visible{
+    animation:cardEnter .42s cubic-bezier(.22,.68,0,1.2) forwards;
+  }
+  /* Décalage progressif selon la position dans la grille */
+  .card.card-visible:nth-child(1)  { animation-delay:.00s; }
+  .card.card-visible:nth-child(2)  { animation-delay:.04s; }
+  .card.card-visible:nth-child(3)  { animation-delay:.08s; }
+  .card.card-visible:nth-child(4)  { animation-delay:.12s; }
+  .card.card-visible:nth-child(5)  { animation-delay:.16s; }
+  .card.card-visible:nth-child(6)  { animation-delay:.20s; }
+  .card.card-visible:nth-child(7)  { animation-delay:.24s; }
+  .card.card-visible:nth-child(8)  { animation-delay:.28s; }
+  .card.card-visible:nth-child(9)  { animation-delay:.32s; }
+  .card.card-visible:nth-child(10) { animation-delay:.36s; }
+  .card.card-visible:nth-child(n+11){ animation-delay:.40s; }
 
   /* 2 — Modales glissent depuis le bas */
   @keyframes slideUp{ from{ opacity:0; transform:translateY(40px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
