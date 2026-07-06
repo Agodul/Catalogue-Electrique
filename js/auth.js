@@ -738,6 +738,7 @@ function initAuth() {
 
 function authApplyOnProductModal() {
   var vmInfoBtn = document.getElementById('vmInfoBtn');
-  var loggedIn  = authIsLoggedIn();
-  if (vmInfoBtn) vmInfoBtn.style.display = loggedIn ? '' : 'none';
+  // Utiliser les permissions déjà calculées dans applyAuthUI
+  var showInfo = window._userPerms ? (window._userPerms.canEdit || window._userPerms.canDelete || window._userPerms.isAdmin) : false;
+  if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 }
