@@ -648,7 +648,9 @@
     try{
       var r = await fetch(url+'/pushDatas', {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers: typeof window.authHeaders === 'function'
+          ? window.authHeaders()
+          : {'Content-Type':'application/json'},
         body: JSON.stringify(products)
       });
       if(!r.ok) throw new Error('HTTP '+r.status);
