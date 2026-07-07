@@ -707,56 +707,37 @@ function openChangePasswordModal() {
     + '</div></div>';
   document.body.appendChild(ov);
 
-  document.body.appendChild(ov);
+  ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_cpSubmit').onclick = async function() {
+    var pwCur  = ov.querySelector('#_cpCurrent').value;
+    var pw1    = ov.querySelector('#_cpNew').value;
+    var pw2    = ov.querySelector('#_cpConfirm').value;
+    var errEl  = ov.querySelector('#_cpError');
+    errEl.textContent = '';
 
-  ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
+    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
+    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
+    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; return; }
+    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
 
-  ov.querySelector('#_nuAdmin').addEventListener('change', function() {
-    var sec = ov.querySelector('#_nuPermsSection');
-    if (sec) sec.style.display = this.checked ? 'none' : '';
-  });
-
-  ov.querySelector('#_nuSubmit').onclick = async function() {
-    var username    = ov.querySelector('#_nuUsername').value.trim();
-    var displayName = ov.querySelector('#_nuDisplay').value.trim();
-    var password    = ov.querySelector('#_nuPassword').value;
-    var isAdminNew  = ov.querySelector('#_nuAdmin').checked;
-    var errEl       = ov.querySelector('#_nuError');
-
-    if (!username || !password) {
-      errEl.textContent = 'Identifiant et mot de passe requis.';
-      errEl.style.display = '';
-      return;
-    }
-
-    var permsNew = _defaultPermissions(isAdminNew);
-    if (!isAdminNew) {
-      ov.querySelectorAll('._nuPerm').forEach(function(cb) {
-        permsNew[cb.getAttribute('data-perm')] = cb.checked;
+    try {
+      var r = await fetch(sUrl + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, password: pwCur })
       });
-      permsNew.canViewDocs = true;
-    }
+      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
+    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
 
-    var ok = await authCreateUser({
-      username:    username,
-      displayName: displayName || username,
-      password:    password,
-      isAdmin:     isAdminNew,
-      permissions: permsNew
-    });
-
+    var ok = await authUpdateUser(user.username, { password: pw1 });
     if (ok) {
       document.body.removeChild(ov);
-      showAuthToast('Utilisateur créé ✓');
-      renderUserPage();
+      showAuthToast('Mot de passe modifié ✓');
     } else {
-      errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
-      errEl.style.display = '';
+      errEl.textContent = 'Erreur serveur.';
     }
   };
 }
-
-// ── Init ─────────────────────────────────────────────────────────────────
 
 function initAuth() {
   applyAuthUI();
