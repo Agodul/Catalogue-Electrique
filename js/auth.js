@@ -526,7 +526,7 @@ function openAddUserModal() {
     + '<div id="_nuError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
     + '<button id="_nuCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Créer l\'utilisateur</button>'
+    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Créer l&#39;utilisateur</button>'
     + '</div></div>';
   document.body.appendChild(ov);
 
