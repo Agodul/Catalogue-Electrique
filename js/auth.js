@@ -142,15 +142,9 @@ async function authLogin(username, password) {
     var serverUser = await authLoginServer(username, password);
     if (serverUser) {
       closeAuthModal();
-      applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
-      if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-      // Import automatique du catalogue après login si pas encore de données
-      var products = typeof window._getProducts === 'function' ? window._getProducts() : null;
-      var needsImport = !products || products.length === 0;
-      if(needsImport && typeof syncFromServer === 'function'){
-        setTimeout(function(){ syncFromServer(false); }, 500);
-      }
+      // Recharger la page pour appliquer toutes les permissions proprement
+      setTimeout(function(){ window.location.reload(); }, 800);
       return true;
     }
   }
