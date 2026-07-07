@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v158";
+const CACHE = "spi-catalogue-v159";
 
 const FILES = [
   "./",
@@ -19,10 +19,14 @@ const FILES = [
 ];
 
 self.addEventListener("install", event => {
+  // Précharger les fichiers statiques en parallèle
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(FILES))
+    caches.open(CACHE).then(cache => {
+      return Promise.allSettled(
+        FILES.map(f => cache.add(f).catch(() => null))
+      );
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
@@ -68,10 +72,21 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // ── Cache-first pour les fichiers statiques ───────────────────────
+  // ── Stale-While-Revalidate : cache immédiat + màj en arrière-plan ─
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+    caches.open(CACHE).then(cache => {
+      return cache.match(event.request).then(cached => {
+        const fetchPromise = fetch(event.request).then(network => {
+          // Mettre en cache uniquement les réponses valides de même origine
+          if(network && network.status === 200 && event.request.method === 'GET'){
+            cache.put(event.request, network.clone());
+          }
+          return network;
+        }).catch(() => cached); // Si réseau KO → garder le cache
+
+        // Retourner le cache immédiatement si disponible, sinon attendre le réseau
+        return cached || fetchPromise;
+      });
     })
   );
 });
