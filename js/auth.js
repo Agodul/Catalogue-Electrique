@@ -512,25 +512,50 @@ function _bindAddUserForm(isServer) {
 }
 
 function openAddUserModal() {
+  var PERM_LIST = [
+    ['canEdit',       'Cr\u00e9er et modifier des produits'],
+    ['canDelete',     'Supprimer des produits'],
+    ['canViewDocs',   'Voir les documents PDF'],
+    ['canUploadDocs', 'Uploader des documents PDF'],
+    ['canExport',     'Exporter le catalogue'],
+    ['canSyncServer', 'Synchronisation serveur']
+  ];
+
+  var permCheckboxes = PERM_LIST.map(function(p) {
+    var checked = p[0] === 'canViewDocs' ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:2px 0;">'
+      + '<input type="checkbox" class="_nuPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+  }).join('');
+
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_nuUsername" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_nuDisplay" placeholder="Nom affiché" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuDisplay" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_nuPassword" type="password" placeholder="Mot de passe" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;">'
-    + '<input type="checkbox" id="_nuAdmin"> Administrateur</label>'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:6px 0;border-top:1px solid var(--line);margin-top:4px;">'
+    + '<input type="checkbox" id="_nuAdmin"> <strong>Administrateur</strong> (acc\u00e8s complet)</label>'
+    + '<div id="_nuPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Permissions individuelles</div>'
+    + permCheckboxes
+    + '</div>'
     + '</div>'
     + '<div id="_nuError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
     + '<button id="_nuCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Créer l&#39;utilisateur</button>'
+    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cr\u00e9er l&#39;utilisateur</button>'
     + '</div></div>';
   document.body.appendChild(ov);
 
   ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
+
+  ov.querySelector('#_nuAdmin').addEventListener('change', function() {
+    var sec = ov.querySelector('#_nuPermsSection');
+    if (sec) sec.style.display = this.checked ? 'none' : '';
+  });
+
   ov.querySelector('#_nuSubmit').onclick = async function() {
     var username    = ov.querySelector('#_nuUsername').value.trim();
     var displayName = ov.querySelector('#_nuDisplay').value.trim();
@@ -544,25 +569,32 @@ function openAddUserModal() {
       return;
     }
 
+    var permsNew = _defaultPermissions(isAdminNew);
+    if (!isAdminNew) {
+      ov.querySelectorAll('._nuPerm').forEach(function(cb) {
+        permsNew[cb.getAttribute('data-perm')] = cb.checked;
+      });
+      permsNew.canViewDocs = true;
+    }
+
     var ok = await authCreateUser({
       username:    username,
       displayName: displayName || username,
       password:    password,
       isAdmin:     isAdminNew,
-      permissions: _defaultPermissions(isAdminNew)
+      permissions: permsNew
     });
 
     if (ok) {
       document.body.removeChild(ov);
-      showAuthToast('Utilisateur créé ✓');
+      showAuthToast('Utilisateur cr\u00e9\u00e9 \u2713');
       renderUserPage();
     } else {
-      errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
+      errEl.textContent = 'Erreur \u2014 identifiant d\u00e9j\u00e0 existant ou serveur inaccessible.';
       errEl.style.display = '';
     }
   };
 }
-
 function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   currentPerms = currentPerms || {};
 
@@ -675,35 +707,51 @@ function openChangePasswordModal() {
     + '</div></div>';
   document.body.appendChild(ov);
 
-  ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
-  ov.querySelector('#_cpSubmit').onclick = async function() {
-    var pwCur  = ov.querySelector('#_cpCurrent').value;
-    var pw1    = ov.querySelector('#_cpNew').value;
-    var pw2    = ov.querySelector('#_cpConfirm').value;
-    var errEl  = ov.querySelector('#_cpError');
-    errEl.textContent = '';
+  document.body.appendChild(ov);
 
-    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
-    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
-    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; return; }
-    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+  ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
 
-    // Vérifier le mot de passe actuel via /login
-    try {
-      var r = await fetch(sUrl + '/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user.username, password: pwCur })
+  ov.querySelector('#_nuAdmin').addEventListener('change', function() {
+    var sec = ov.querySelector('#_nuPermsSection');
+    if (sec) sec.style.display = this.checked ? 'none' : '';
+  });
+
+  ov.querySelector('#_nuSubmit').onclick = async function() {
+    var username    = ov.querySelector('#_nuUsername').value.trim();
+    var displayName = ov.querySelector('#_nuDisplay').value.trim();
+    var password    = ov.querySelector('#_nuPassword').value;
+    var isAdminNew  = ov.querySelector('#_nuAdmin').checked;
+    var errEl       = ov.querySelector('#_nuError');
+
+    if (!username || !password) {
+      errEl.textContent = 'Identifiant et mot de passe requis.';
+      errEl.style.display = '';
+      return;
+    }
+
+    var permsNew = _defaultPermissions(isAdminNew);
+    if (!isAdminNew) {
+      ov.querySelectorAll('._nuPerm').forEach(function(cb) {
+        permsNew[cb.getAttribute('data-perm')] = cb.checked;
       });
-      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
-    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
+      permsNew.canViewDocs = true;
+    }
 
-    var ok = await authUpdateUser(user.username, { password: pw1 });
+    var ok = await authCreateUser({
+      username:    username,
+      displayName: displayName || username,
+      password:    password,
+      isAdmin:     isAdminNew,
+      permissions: permsNew
+    });
+
     if (ok) {
       document.body.removeChild(ov);
-      showAuthToast('Mot de passe modifié ✓');
+      showAuthToast('Utilisateur créé ✓');
+      renderUserPage();
     } else {
-      errEl.textContent = 'Erreur serveur.';
+      errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
+      errEl.style.display = '';
     }
   };
 }
