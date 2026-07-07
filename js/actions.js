@@ -1599,6 +1599,11 @@
 
   function showHome(){
     if(window._setViewAll) window._setViewAll(false);
+    // Vider la recherche au retour à l'accueil
+    var si = document.getElementById('searchInput');
+    var sim = document.getElementById('searchInputMobile');
+    if(si)  si.value  = '';
+    if(sim) sim.value = '';
     homePage.classList.remove('hidden');
     catalogueWrap.style.display = 'none';
     document.getElementById('hdrCountChip').style.display = 'none';
