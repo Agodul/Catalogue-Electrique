@@ -568,9 +568,12 @@
       // En mode normal (groupement) : utiliser le conteneur principal
       var grid = document.getElementById('lazyGrid');
       if(!grid){
-        // Mode groupement : utiliser #content (le vrai contentEl)
+        // Mode groupement : utiliser #content et récupérer le dernier groupe
         var mainContent = document.getElementById('content');
-        if(mainContent) grid = mainContent.querySelector('.brand-group:last-of-type .grid');
+        if(mainContent){
+          var allGroups = mainContent.querySelectorAll('.brand-group .grid');
+          if(allGroups.length > 0) grid = allGroups[allGroups.length - 1];
+        }
       }
       if(!grid) return;
       var batch = _lazyItems.slice(0, 40);
