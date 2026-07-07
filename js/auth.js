@@ -142,9 +142,12 @@ async function authLogin(username, password) {
     var serverUser = await authLoginServer(username, password);
     if (serverUser) {
       closeAuthModal();
+      applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
-      // Recharger la page pour appliquer toutes les permissions proprement
-      setTimeout(function(){ window.location.reload(); }, 800);
+      // Sync + re-render silencieux en arrière-plan
+      if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
+      if (typeof syncFromServer === 'function') syncFromServer(true);
+      if (typeof render === 'function') setTimeout(render, 200);
       return true;
     }
   }
