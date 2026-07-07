@@ -507,15 +507,7 @@
   var btnOpenUserSettings = document.getElementById('btnOpenUserSettings');
   if(btnOpenUserSettings) btnOpenUserSettings.addEventListener('click', function(){ showSettingsUserPage(); });
 
-  // Bouton Mon compte (non-admin) → ouvre la même page mais scrolle vers "Mon mot de passe"
-  var btnOpenMyAccount = document.getElementById('btnOpenMyAccount');
-  if(btnOpenMyAccount) btnOpenMyAccount.addEventListener('click', function(){
-    showSettingsUserPage();
-    setTimeout(function(){
-      var el = document.getElementById('myPasswordSection');
-      if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
-    }, 100);
-  });
+  // Bouton Mon compte géré dans auth.js
   var btnUserPageBack = document.getElementById('btnUserPageBack');
   if(btnUserPageBack) btnUserPageBack.addEventListener('click', function(){ showSettingsMain(); });
   btnOpenFamilyIcons.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });

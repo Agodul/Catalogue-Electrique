@@ -261,11 +261,11 @@ function applyAuthUI() {
   var btnMyAccount2 = document.getElementById('btnOpenMyAccount');
   if (btnMyAccount2) btnMyAccount2.style.display = (loggedIn && !isAdmin) ? 'flex' : 'none';
 
-  // Boutons dans l'en-tête de la page utilisateurs
+  // Boutons dans l'en-tête de la page utilisateurs (admin uniquement)
   var btnAdminPw = document.getElementById('btnAdminChangePassword');
   var btnAddUserOpenBtn = document.getElementById('btnAddUserOpen');
   var sUrlPw2 = localStorage.getItem(AUTH_SERVER_KEY);
-  if (btnAdminPw) btnAdminPw.style.display = (loggedIn && sUrlPw2) ? 'flex' : 'none';
+  if (btnAdminPw) btnAdminPw.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
   if (btnAddUserOpenBtn) btnAddUserOpenBtn.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
 
 
@@ -738,16 +738,10 @@ function initAuth() {
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
 
   // Navigation gérée dans actions.js
-  // Bouton Mon compte → même page utilisateurs
+  // Bouton Mon compte → ouvre directement la modale changement mot de passe
   var btnMyAcc = document.getElementById('btnOpenMyAccount');
   if (btnMyAcc) btnMyAcc.addEventListener('click', function() {
-    if (typeof showSettingsUserPage === 'function') {
-      showSettingsUserPage();
-      setTimeout(function(){
-        var el = document.getElementById('myPasswordSection');
-        if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
-      }, 150);
-    }
+    openChangePasswordModal();
   });
 
   // Vérifier token au chargement
