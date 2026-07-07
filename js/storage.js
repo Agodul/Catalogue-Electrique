@@ -540,7 +540,7 @@
       var totalRendered = 0;
       g.order.forEach(function(groupName){
         var items = g.groups[groupName];
-        html += '<div class="brand-group">';
+        html += '<div class="brand-group" data-group="'+escapeHtml(groupName)+'">';
         html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
         html += '<div class="grid">';
         items.forEach(function(p){
@@ -548,8 +548,8 @@
             html += renderCard(p);
             totalRendered++;
           } else {
-            // Stocker pour lazy load
-            _lazyItems.push(p);
+            // Stocker pour lazy load avec le groupe d'appartenance
+            _lazyItems.push({ p: p, group: groupName });
           }
         });
         html += '</div></div>';
@@ -563,14 +563,33 @@
     // ── Lazy load : charger plus de cartes au clic ou au scroll ──
     var _lazyOffset = 40;
     window._loadMoreCards = function(){
-      var grid = document.getElementById('lazyGrid') || contentEl.querySelector('.brand-group:last-of-type .grid');
+      // En mode recherche/viewAll : lazyGrid existe
+      // En mode normal (groupement) : ajouter au dernier groupe existant
+      var grid = document.getElementById('lazyGrid');
+      if(!grid){
+        // Mode groupement : créer un nouveau groupe "Suite" ou ajouter au dernier
+        var lastGroup = contentEl.querySelector('.brand-group:last-of-type .grid');
+        if(lastGroup) grid = lastGroup;
+      }
       if(!grid) return;
       var batch = _lazyItems.slice(0, 40);
       _lazyItems = _lazyItems.slice(40);
       var frag = document.createDocumentFragment();
       var tmp = document.createElement('div');
-      batch.forEach(function(p){ tmp.innerHTML = renderCard(p); frag.appendChild(tmp.firstChild); });
-      grid.appendChild(frag);
+      // Les items peuvent être des produits directs ou des objets {p, group}
+      batch.forEach(function(item){
+        var p = item.p || item;
+        var group = item.group;
+        var targetGrid = grid;
+        if(group){
+          // Trouver le groupe correspondant
+          var groupEl = contentEl.querySelector('.brand-group[data-group="'+group+'"] .grid');
+          if(groupEl) targetGrid = groupEl;
+        }
+        tmp.innerHTML = renderCard(p);
+        var card = tmp.firstChild;
+        targetGrid.appendChild(card);
+      });
       // Rebinder les clics sur les nouvelles cartes
       grid.querySelectorAll('[data-view]').forEach(function(card){
         if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
