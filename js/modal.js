@@ -249,7 +249,7 @@
 
   function renderPriceHistory(product){ /* géré par la modale prix */ }
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
