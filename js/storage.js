@@ -294,6 +294,7 @@
   var familyListEl = null; // remplacé par autocomplete custom
   var seriesListEl = null; // remplacé par autocomplete custom
   var groupBy = 'brand'; // 'brand' | 'family' | 'series'
+  var _lazyItems = []; // persistant entre renders et _loadMoreCards
   var viewAll = sessionStorage.getItem('cat_view_all') === '1'; // persisté sur F5
   window._getProducts = function(){ return products; };
   window._setViewAll = function(v){
@@ -518,7 +519,7 @@
 
     var hasSearch = !!normalizeSearch(searchInputEl.value);
     var html = '';
-    var _lazyItems = []; // produits à afficher progressivement
+    _lazyItems = []; // produits à afficher progressivement
 
     if(hasSearch || viewAll){
       // ── Mode recherche ou "Voir tout" : liste plate ──
