@@ -264,10 +264,12 @@ function applyAuthUI() {
   var btnMyAccount2 = document.getElementById('btnOpenMyAccount');
   if (btnMyAccount2) btnMyAccount2.style.display = (loggedIn && !isAdmin) ? 'flex' : 'none';
 
-  // Section "Mon mot de passe"
-  var myPwSection2 = document.getElementById('myPasswordSection');
+  // Boutons dans l'en-tête de la page utilisateurs
+  var btnAdminPw = document.getElementById('btnAdminChangePassword');
+  var btnAddUserOpenBtn = document.getElementById('btnAddUserOpen');
   var sUrlPw2 = localStorage.getItem(AUTH_SERVER_KEY);
-  if (myPwSection2) myPwSection2.style.display = (loggedIn && !!sUrlPw2) ? '' : 'none';
+  if (btnAdminPw) btnAdminPw.style.display = (loggedIn && sUrlPw2) ? 'flex' : 'none';
+  if (btnAddUserOpenBtn) btnAddUserOpenBtn.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
 
 
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
@@ -655,6 +657,60 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   };
 }
 
+function openChangePasswordModal() {
+  var user = authGetCurrentUser();
+  var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+  if (!user || !sUrl) return;
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Changer mon mot de passe</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;">'
+    + '<input id="_cpCurrent" type="password" placeholder="Mot de passe actuel" autocomplete="current-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_cpNew" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_cpConfirm" type="password" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '</div>'
+    + '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;">'
+    + '<button id="_cpCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
+    + '<button id="_cpSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+
+  ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_cpSubmit').onclick = async function() {
+    var pwCur  = ov.querySelector('#_cpCurrent').value;
+    var pw1    = ov.querySelector('#_cpNew').value;
+    var pw2    = ov.querySelector('#_cpConfirm').value;
+    var errEl  = ov.querySelector('#_cpError');
+    errEl.textContent = '';
+
+    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
+    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
+    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; return; }
+    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+    // Vérifier le mot de passe actuel via /login
+    try {
+      var r = await fetch(sUrl + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, password: pwCur })
+      });
+      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
+    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
+
+    var ok = await authUpdateUser(user.username, { password: pw1 });
+    if (ok) {
+      document.body.removeChild(ov);
+      showAuthToast('Mot de passe modifié ✓');
+    } else {
+      errEl.textContent = 'Erreur serveur.';
+    }
+  };
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 
 function initAuth() {
@@ -702,48 +758,13 @@ function initAuth() {
     authRefreshMe();
   }
 
-  // Changement de mot de passe utilisateur connecté
-  var btnChangeMyPw = document.getElementById('btnChangeMyPassword');
-  if (btnChangeMyPw) {
-    btnChangeMyPw.addEventListener('click', async function() {
-      var pwCurrent = (document.getElementById('myCurrentPassword')||{value:''}).value;
-      var pw1       = (document.getElementById('myNewPassword')||{value:''}).value;
-      var pw2       = (document.getElementById('myConfirmPassword')||{value:''}).value;
-      var errEl     = document.getElementById('myPasswordError');
-      if (errEl) errEl.textContent = '';
+  // Bouton "Mon mot de passe" dans l'en-tête de la page utilisateurs
+  var btnAdminChangePw = document.getElementById('btnAdminChangePassword');
+  if (btnAdminChangePw) btnAdminChangePw.addEventListener('click', function() { openChangePasswordModal(); });
 
-      if (!pwCurrent) { if (errEl) errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
-      if (!pw1)       { if (errEl) errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
-      if (pw1.length < 6) { if (errEl) errEl.textContent = 'Mot de passe trop court (6 min).'; return; }
-      if (pw1 !== pw2) { if (errEl) errEl.textContent = 'Les nouveaux mots de passe ne correspondent pas.'; return; }
-
-      var user = authGetCurrentUser();
-      if (!user) return;
-      var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
-      if (!sUrl || !authGetToken()) { if (errEl) errEl.textContent = 'Serveur non configuré.'; return; }
-
-      // Vérifier le mot de passe actuel
-      try {
-        var r = await fetch(sUrl + '/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user.username, password: pwCurrent })
-        });
-        if (!r.ok) { if (errEl) errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
-      } catch(e) { if (errEl) errEl.textContent = 'Impossible de joindre le serveur.'; return; }
-
-      // Mettre à jour
-      var ok = await authUpdateUser(user.username, { password: pw1 });
-      if (ok) {
-        showAuthToast('Mot de passe modifié ✓');
-        ['myCurrentPassword','myNewPassword','myConfirmPassword'].forEach(function(id){
-          var el = document.getElementById(id); if (el) el.value = '';
-        });
-      } else {
-        if (errEl) errEl.textContent = 'Erreur serveur.';
-      }
-    });
-  }
+  // Bouton "Ajouter" dans l'en-tête de la page utilisateurs
+  var btnAddUserOpen = document.getElementById('btnAddUserOpen');
+  if (btnAddUserOpen) btnAddUserOpen.addEventListener('click', function() { openAddUserModal(); });
 }
 
 function authApplyOnProductModal() {

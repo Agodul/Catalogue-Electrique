@@ -323,59 +323,24 @@
 
     <!-- Sous-page Utilisateurs -->
     <div id="settingsUserPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
-        <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
-          <i class="ti ti-arrow-left"></i>
-        </button>
-        <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+            <i class="ti ti-arrow-left"></i>
+          </button>
+          <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btnAdminChangePassword" style="display:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+            <i class="ti ti-key" style="font-size:14px;"></i> Mon mot de passe
+          </button>
+          <button id="btnAddUserOpen" style="display:none;padding:7px 12px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+            <i class="ti ti-user-plus" style="font-size:14px;"></i> Ajouter
+          </button>
+        </div>
       </div>
       <div class="settings-body">
-        <div id="userList" style="margin-bottom:16px;"></div>
-
-
-        <!-- Section changement mot de passe utilisateur connecté -->
-        <div id="myPasswordSection" style="border-top:1px solid var(--line);padding-top:16px;margin-top:8px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Mon mot de passe</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Mot de passe actuel</label>
-              <input type="password" id="myCurrentPassword" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nouveau mot de passe</label>
-              <input type="password" id="myNewPassword" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Confirmer le nouveau mot de passe</label>
-              <input type="password" id="myConfirmPassword" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div id="myPasswordError" style="font-size:13px;color:#DC2626;min-height:16px;"></div>
-            <button id="btnChangeMyPassword" style="width:100%;height:44px;background:#194093;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
-              Changer mon mot de passe
-            </button>
-          </div>
-        </div>        <div style="border-top:1px solid var(--line);padding-top:16px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Ajouter un utilisateur</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Identifiant</label>
-              <input type="text" id="newUserUsername" placeholder="ex: jean.dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nom affiché</label>
-              <input type="text" id="newUserDisplay" placeholder="ex: Jean Dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Mot de passe</label>
-              <input type="password" id="newUserPassword" placeholder="••••••••" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div id="newUserError" style="font-size:13px;color:#DC2626;min-height:16px;"></div>
-            <button id="btnAddUser" style="width:100%;height:44px;background:#194093;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
-              Ajouter l'utilisateur
-            </button>
-          </div>
-        </div>
-
+        <div id="userList"></div>
       </div>
     </div>
 
