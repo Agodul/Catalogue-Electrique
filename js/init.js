@@ -2,11 +2,13 @@
   load();
   render();
 
-  // Masquer le splash screen
+  // Masquer le splash screen avec délai minimum pour qu'il soit visible
   var splash = document.getElementById('app-splash');
   if(splash){
-    splash.classList.add('hide');
-    setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+    setTimeout(function(){
+      splash.classList.add('hide');
+      setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+    }, 1200); // visible au minimum 1.2s
   }
 
   // Restaurer "Voir tout le catalogue" si actif avant F5
