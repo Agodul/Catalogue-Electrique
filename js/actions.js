@@ -1663,7 +1663,7 @@
       familyCounts[f] = (familyCounts[f]||0) + 1;
     });
     var families = Object.keys(familyCounts).sort(function(a,b){
-      return familyCounts[b] - familyCounts[a];
+      return a.localeCompare(b, 'fr', { sensitivity: 'base' });
     });
 
     if(families.length === 0){
