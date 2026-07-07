@@ -2,6 +2,13 @@
   load();
   render();
 
+  // Masquer le splash screen
+  var splash = document.getElementById('app-splash');
+  if(splash){
+    splash.classList.add('hide');
+    setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+  }
+
   // Restaurer "Voir tout le catalogue" si actif avant F5
   if(sessionStorage.getItem('cat_view_all') === '1'){
     setTimeout(function(){
