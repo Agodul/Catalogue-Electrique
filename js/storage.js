@@ -565,12 +565,12 @@
     var _lazyOffset = 40;
     window._loadMoreCards = function(){
       // En mode recherche/viewAll : lazyGrid existe
-      // En mode normal (groupement) : ajouter au dernier groupe existant
+      // En mode normal (groupement) : utiliser le conteneur principal
       var grid = document.getElementById('lazyGrid');
       if(!grid){
-        // Mode groupement : créer un nouveau groupe "Suite" ou ajouter au dernier
-        var lastGroup = contentEl.querySelector('.brand-group:last-of-type .grid');
-        if(lastGroup) grid = lastGroup;
+        // Mode groupement : utiliser #content (le vrai contentEl)
+        var mainContent = document.getElementById('content');
+        if(mainContent) grid = mainContent.querySelector('.brand-group:last-of-type .grid');
       }
       if(!grid) return;
       var batch = _lazyItems.slice(0, 40);
