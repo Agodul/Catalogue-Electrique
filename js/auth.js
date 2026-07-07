@@ -260,6 +260,16 @@ function applyAuthUI() {
   var btnClean = document.getElementById('btnCleanDescs');
   if (btnClean) btnClean.style.display = isAdmin ? '' : 'none';
 
+  // Bouton Mon compte : visible pour les non-admins connectés
+  var btnMyAccount2 = document.getElementById('btnOpenMyAccount');
+  if (btnMyAccount2) btnMyAccount2.style.display = (loggedIn && !isAdmin) ? 'flex' : 'none';
+
+  // Section "Mon mot de passe"
+  var myPwSection2 = document.getElementById('myPasswordSection');
+  var sUrlPw2 = localStorage.getItem(AUTH_SERVER_KEY);
+  if (myPwSection2) myPwSection2.style.display = (loggedIn && !!sUrlPw2) ? '' : 'none';
+
+
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
@@ -675,10 +685,64 @@ function initAuth() {
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
 
   // Navigation gérée dans actions.js
+  // Bouton Mon compte → même page utilisateurs
+  var btnMyAcc = document.getElementById('btnOpenMyAccount');
+  if (btnMyAcc) btnMyAcc.addEventListener('click', function() {
+    if (typeof showSettingsUserPage === 'function') {
+      showSettingsUserPage();
+      setTimeout(function(){
+        var el = document.getElementById('myPasswordSection');
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 150);
+    }
+  });
 
   // Vérifier token au chargement
   if (authIsLoggedIn() && authGetToken()) {
     authRefreshMe();
+  }
+
+  // Changement de mot de passe utilisateur connecté
+  var btnChangeMyPw = document.getElementById('btnChangeMyPassword');
+  if (btnChangeMyPw) {
+    btnChangeMyPw.addEventListener('click', async function() {
+      var pwCurrent = (document.getElementById('myCurrentPassword')||{value:''}).value;
+      var pw1       = (document.getElementById('myNewPassword')||{value:''}).value;
+      var pw2       = (document.getElementById('myConfirmPassword')||{value:''}).value;
+      var errEl     = document.getElementById('myPasswordError');
+      if (errEl) errEl.textContent = '';
+
+      if (!pwCurrent) { if (errEl) errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
+      if (!pw1)       { if (errEl) errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
+      if (pw1.length < 6) { if (errEl) errEl.textContent = 'Mot de passe trop court (6 min).'; return; }
+      if (pw1 !== pw2) { if (errEl) errEl.textContent = 'Les nouveaux mots de passe ne correspondent pas.'; return; }
+
+      var user = authGetCurrentUser();
+      if (!user) return;
+      var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+      if (!sUrl || !authGetToken()) { if (errEl) errEl.textContent = 'Serveur non configuré.'; return; }
+
+      // Vérifier le mot de passe actuel
+      try {
+        var r = await fetch(sUrl + '/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user.username, password: pwCurrent })
+        });
+        if (!r.ok) { if (errEl) errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
+      } catch(e) { if (errEl) errEl.textContent = 'Impossible de joindre le serveur.'; return; }
+
+      // Mettre à jour
+      var ok = await authUpdateUser(user.username, { password: pw1 });
+      if (ok) {
+        showAuthToast('Mot de passe modifié ✓');
+        ['myCurrentPassword','myNewPassword','myConfirmPassword'].forEach(function(id){
+          var el = document.getElementById(id); if (el) el.value = '';
+        });
+      } else {
+        if (errEl) errEl.textContent = 'Erreur serveur.';
+      }
+    });
   }
 }
 

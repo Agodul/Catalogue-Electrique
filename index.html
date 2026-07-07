@@ -237,6 +237,18 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
+      <!-- Bouton Mon compte - visible pour les non-admins connectés -->
+      <button id="btnOpenMyAccount" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+        <span style="width:38px;height:38px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-user-circle" style="font-size:20px;color:#7C3AED;"></i>
+        </span>
+        <span>
+          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Mon compte</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Modifier mon mot de passe</span>
+        </span>
+        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
+      </button>
+
       <button id="btnOpenUserSettings" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-users" style="font-size:20px;color:#3B82F6;"></i>
@@ -319,7 +331,30 @@
       </div>
       <div class="settings-body">
         <div id="userList" style="margin-bottom:16px;"></div>
-        <div style="border-top:1px solid var(--line);padding-top:16px;">
+
+
+        <!-- Section changement mot de passe utilisateur connecté -->
+        <div id="myPasswordSection" style="border-top:1px solid var(--line);padding-top:16px;margin-top:8px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Mon mot de passe</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Mot de passe actuel</label>
+              <input type="password" id="myCurrentPassword" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nouveau mot de passe</label>
+              <input type="password" id="myNewPassword" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Confirmer le nouveau mot de passe</label>
+              <input type="password" id="myConfirmPassword" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
+            </div>
+            <div id="myPasswordError" style="font-size:13px;color:#DC2626;min-height:16px;"></div>
+            <button id="btnChangeMyPassword" style="width:100%;height:44px;background:#194093;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
+              Changer mon mot de passe
+            </button>
+          </div>
+        </div>        <div style="border-top:1px solid var(--line);padding-top:16px;">
           <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Ajouter un utilisateur</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div>
