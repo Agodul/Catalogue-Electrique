@@ -12,9 +12,6 @@
         splash.classList.add('hide');
         setTimeout(function(){
           if(splash.parentNode) splash.parentNode.removeChild(splash);
-          // Restaurer le background du body
-          document.body.style.background = '';
-          document.body.style.margin = '';
         }, 400);
       }, 1200);
     } else {

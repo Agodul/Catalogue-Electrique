@@ -11,6 +11,8 @@
       transition:opacity .3s ease;
     }
     #app-splash.hide{ opacity:0; pointer-events:none; }
+    /* Dès que splash est caché, le body reprend son fond normal immédiatement */
+    body:not(:has(#app-splash:not(.hide))){ background:var(--paper, #F8F7F4) !important; }
     #app-splash svg{ width:120px; fill:#fff; }
     #app-splash .splash-dots{ display:flex;gap:8px; }
     #app-splash .splash-dots span{
