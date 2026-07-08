@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v186";
+const CACHE = "spi-catalogue-v187";
 
 const FILES = [
   "./",
@@ -69,6 +69,14 @@ self.addEventListener("fetch", event => {
     event.respondWith(
       Response.redirect(redirectTo + "?" + qs.toString(), 302)
     );
+    return;
+  }
+
+  // Ne jamais cacher la vidéo splash (pour faciliter les mises à jour)
+  if(event.request.url.includes('splash.mp4')){
+    event.respondWith(fetch(event.request).catch(function(){
+      return caches.match(event.request);
+    }));
     return;
   }
 
