@@ -4,12 +4,26 @@
   <!-- ── Splash écran blanc immédiat ── -->
   <style>
     #app-splash{
-      position:fixed;inset:0;z-index:99999;
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
+      margin-top:calc(-1 * env(safe-area-inset-top, 0));
+      z-index:99999;
       background:#194093;
       display:var(--splash-display, block);
       transition:opacity .3s ease;
       overflow:hidden;
     }
+    #app-splash video{
+      position:absolute;
+      top:calc(-1 * env(safe-area-inset-top, 0));
+      left:0;right:0;bottom:0;
+      width:100%;
+      height:calc(100% + env(safe-area-inset-top, 0) + env(safe-area-inset-bottom, 0));
+      object-fit:cover;
+    }
+    body.splash-active{ overflow:hidden; position:fixed; width:100%; touch-action:none; }
     #app-splash.hide{ opacity:0; pointer-events:none; }
     /* Dès que splash est caché, le body reprend son fond normal immédiatement */
     body:not(:has(#app-splash:not(.hide))){ background:var(--paper, #F8F7F4) !important; }
@@ -43,11 +57,10 @@
 
 </head>
 <body>
-  <script>if(sessionStorage.getItem('app_started')){document.documentElement.style.setProperty('--splash-display','none');}</script>
+  <script>if(sessionStorage.getItem('app_started')){document.documentElement.style.setProperty('--splash-display','none');}else{document.body.classList.add('splash-active');}</script>
   <div id="app-splash">
     <video autoplay muted playsinline preload="auto"
-      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
-      onended="this.parentNode.classList.add('hide');setTimeout(function(){var s=document.getElementById('app-splash');if(s&&s.parentNode)s.parentNode.removeChild(s);},400);">
+      onended="var s=document.getElementById('app-splash');if(s){s.classList.add('hide');document.body.classList.remove('splash-active');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}">
       <source src="assets/splash.mp4" type="video/mp4">
     </video>
   </div>

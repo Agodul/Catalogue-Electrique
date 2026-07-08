@@ -13,6 +13,7 @@
       setTimeout(function(){
         if(document.getElementById('app-splash')){
           splash.classList.add('hide');
+          document.body.classList.remove('splash-active');
           setTimeout(function(){
             if(splash.parentNode) splash.parentNode.removeChild(splash);
           }, 400);
