@@ -8,12 +8,16 @@
     var isFirstLoad = !sessionStorage.getItem('app_started');
     if(isFirstLoad){
       sessionStorage.setItem('app_started', '1');
+      // La vidéo se ferme seule à la fin via onended
+      // Fallback si la vidéo ne démarre pas (3s max)
       setTimeout(function(){
-        splash.classList.add('hide');
-        setTimeout(function(){
-          if(splash.parentNode) splash.parentNode.removeChild(splash);
-        }, 400);
-      }, 1200);
+        if(document.getElementById('app-splash')){
+          splash.classList.add('hide');
+          setTimeout(function(){
+            if(splash.parentNode) splash.parentNode.removeChild(splash);
+          }, 400);
+        }
+      }, 5000);
     } else {
       // F5 ou rechargement → supprimer immédiatement
       if(splash.parentNode) splash.parentNode.removeChild(splash);

@@ -5,26 +5,14 @@
   <style>
     #app-splash{
       position:fixed;inset:0;z-index:99999;
-      background:#194093;
-      display:var(--splash-display, flex);align-items:center;justify-content:center;
-      flex-direction:column;gap:16px;
+      background:#000;
+      display:var(--splash-display, block);
       transition:opacity .3s ease;
+      overflow:hidden;
     }
     #app-splash.hide{ opacity:0; pointer-events:none; }
     /* Dès que splash est caché, le body reprend son fond normal immédiatement */
     body:not(:has(#app-splash:not(.hide))){ background:var(--paper, #F8F7F4) !important; }
-    #app-splash svg{ width:120px; fill:#fff; }
-    #app-splash .splash-dots{ display:flex;gap:8px; }
-    #app-splash .splash-dots span{
-      width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);
-      animation:splashPulse 1.2s ease-in-out infinite;
-    }
-    #app-splash .splash-dots span:nth-child(2){ animation-delay:.2s; }
-    #app-splash .splash-dots span:nth-child(3){ animation-delay:.4s; }
-    @keyframes splashPulse{
-      0%,100%{ opacity:.3;transform:scale(.8); }
-      50%{ opacity:1;transform:scale(1.1); }
-    }
   </style>
 
 <meta charset="UTF-8">
@@ -57,14 +45,12 @@
 <body>
   <script>if(sessionStorage.getItem('app_started')){document.documentElement.style.setProperty('--splash-display','none');}</script>
   <div id="app-splash">
-    <svg viewBox="0 0 2169.43 1024" xmlns="http://www.w3.org/2000/svg" style="width:160px;">
-      <path fill="white" d="M676.11,488.58c.58,11.58-3.89,22.13-11.4,29.63l-64.71,64.03-220.18,217.9c-24.17-11.81-46.6-26.59-66.78-43.86-14.83-12.68-28.45-26.71-40.66-41.89-42.77-53.15-68.32-120.42-68.32-193.57,0-172.03,141.29-311.49,315.57-311.49,27.82,0,54.8,3.55,80.49,10.23l-268.51,265.72-.02.02c-1.84,1.68-3.62,3.43-5.32,5.26-14.95,16.04-24.1,37.58-24.1,61.25,0,13.15,2.83,25.65,7.91,36.91,8.87,19.67,24.61,35.58,44.17,44.65,11.49,5.33,24.29,8.31,37.79,8.31,23.09,0,44.14-8.71,60.06-23.01,2.16-1.95,4.22-3.99,6.19-6.13l87.09-86.18,63.91-63.25.83-.81c7.33-7,17.38-11.17,28.4-10.77,20.1.72,36.59,16.96,37.59,37.05Z"/>
-      <path fill="white" d="M835.21,520.82c0,172.03-141.29,311.49-315.58,311.49-27.39,0-53.96-3.45-79.3-9.92l253.52-250.89,16.39-16.22c6.24-6.17,11.49-13.29,15.32-21.18,6.28-12.93,9.79-27.44,9.79-42.78,0-12.79-2.44-25-6.89-36.2-9.99-25.19-30.1-45.26-55.3-55.2h0c-11.15-4.4-23.3-6.81-36-6.81-19.45,0-37.57,5.65-52.82,15.4-5.69,3.64-10.91,7.97-15.71,12.73l-4.74,4.69-89.88,88.95-59.79,59.16-2.18,2.16c-5.49,4.93-12.69,7.91-20.57,7.91-17.19,0-31.13-14.21-31.13-31.74,0-8.49,3.28-16.19,8.6-21.89l.04-.04,1.56-1.55s.04-.04.06-.06l59.22-58.59,230.64-228.25c19.45,9.58,37.75,21.09,54.66,34.28,15.41,12.01,29.65,25.42,42.55,40.02,18.82,21.32,34.74,45.19,47.17,71.02,8.35,17.33,15.12,35.54,20.13,54.46,6.69,25.24,10.25,51.74,10.25,79.05Z"/>
-      <path fill="white" d="M1923.13,665.26c-16.4,0-29.71-10.71-29.71-23.93v-274.09c0-13.22,13.31-23.93,29.71-23.93s29.71,10.71,29.71,23.93v274.09c0,13.22-13.31,23.93-29.71,23.93Z"/>
-      <path fill="white" d="M1752.9,343.58h-289.28c-13.22,0-23.93,13.31-23.93,29.71s10.71,29.71,23.93,29.71h289.28c22.6,0,41,17.72,41,40.33s-18.39,40.99-41,40.99h-253.79v-29.98c0-13.22-13.31-23.93-29.71-23.93s-29.71,10.71-29.71,23.93v186.99c0,13.22,13.31,23.93,29.71,23.93s29.71-10.71,29.71-23.93v-98.94h253.79c54.63,0,99.08-44.45,99.08-99.07s-44.44-99.74-99.08-99.74Z"/>
-      <path fill="white" d="M1288.53,469.15h-212.52c-20.13,0-40.43-10.48-40.43-33.89s20.3-33.89,40.43-33.89h232.48c7.67,0,12.93,1.54,15.63,4.57,4.78,5.35,5.22,16.82,4.69,21.6-2.03,15.79,9.04,30.3,24.85,32.47,1.34.18,2.67.27,3.98.27,14.29,0,26.73-10.55,28.73-25.09.56-4.09,4.81-40.7-18.41-67.33-9.77-11.2-28.02-24.56-59.48-24.56h-232.48c-56.16,0-98.51,39.54-98.51,91.97s42.35,91.96,98.51,91.97h142.25s70.27,0,70.27,0c22.3,0,40.44,18.14,40.44,40.43s-18.14,40.43-40.44,40.43h-239.21c-6.42,0-8.18-1.85-8.76-2.46-3.75-3.95-5.34-14.04-5.06-19.85,1.01-15.9-10.98-29.67-26.9-30.81-15.96-1.14-29.9,10.89-31.05,26.88-.28,3.93-2.1,39.07,20.44,63.29,8.93,9.59,25.07,21.02,51.32,21.02h239.21c54.32,0,98.51-44.19,98.51-98.51s-44.19-98.51-98.51-98.51Z"/>
-    </svg>
-    <div class="splash-dots"><span></span><span></span><span></span></div>
+    <video autoplay muted playsinline preload="auto"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"
+      onended="this.parentNode.classList.add('hide');setTimeout(function(){var s=document.getElementById('app-splash');if(s&&s.parentNode)s.parentNode.removeChild(s);},400);">
+      <source src="assets/splash.mp4" type="video/mp4">
+    </video>
+  </div>
   </div>
 
 <header>
