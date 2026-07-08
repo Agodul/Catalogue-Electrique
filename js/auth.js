@@ -144,10 +144,7 @@ async function authLogin(username, password) {
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
-      // Re-render immédiat pour appliquer les permissions sur l'UI
-      if (typeof render === 'function') render();
-      if (typeof renderHome === 'function') renderHome();
-      // Sync serveur en arrière-plan
+      // Sync serveur en arrière-plan uniquement
       if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
       if (typeof syncFromServer === 'function') setTimeout(function(){ syncFromServer(true); }, 300);
       return true;
