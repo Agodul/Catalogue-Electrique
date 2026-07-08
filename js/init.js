@@ -2,13 +2,20 @@
   load();
   render();
 
-  // Masquer le splash screen avec délai minimum pour qu'il soit visible
+  // Afficher le splash uniquement au premier démarrage (pas au F5)
   var splash = document.getElementById('app-splash');
   if(splash){
-    setTimeout(function(){
-      splash.classList.add('hide');
-      setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
-    }, 1200); // visible au minimum 1.2s
+    var isFirstLoad = !sessionStorage.getItem('app_started');
+    if(isFirstLoad){
+      sessionStorage.setItem('app_started', '1');
+      setTimeout(function(){
+        splash.classList.add('hide');
+        setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+      }, 1200);
+    } else {
+      // F5 ou rechargement → supprimer immédiatement
+      if(splash.parentNode) splash.parentNode.removeChild(splash);
+    }
   }
 
   // Restaurer "Voir tout le catalogue" si actif avant F5
