@@ -144,10 +144,12 @@ async function authLogin(username, password) {
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
-      // Sync + re-render silencieux en arrière-plan
+      // Re-render immédiat pour appliquer les permissions sur l'UI
+      if (typeof render === 'function') render();
+      if (typeof renderHome === 'function') renderHome();
+      // Sync serveur en arrière-plan
       if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-      if (typeof syncFromServer === 'function') syncFromServer(true);
-      if (typeof render === 'function') setTimeout(render, 200);
+      if (typeof syncFromServer === 'function') setTimeout(function(){ syncFromServer(true); }, 300);
       return true;
     }
   }
