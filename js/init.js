@@ -10,7 +10,12 @@
       sessionStorage.setItem('app_started', '1');
       setTimeout(function(){
         splash.classList.add('hide');
-        setTimeout(function(){ if(splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+        setTimeout(function(){
+          if(splash.parentNode) splash.parentNode.removeChild(splash);
+          // Restaurer le background du body
+          document.body.style.background = '';
+          document.body.style.margin = '';
+        }, 400);
       }, 1200);
     } else {
       // F5 ou rechargement → supprimer immédiatement

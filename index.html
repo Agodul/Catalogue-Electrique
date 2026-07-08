@@ -1,6 +1,30 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <!-- ── Splash écran blanc immédiat ── -->
+  <style>
+    #app-splash{
+      position:fixed;inset:0;z-index:99999;
+      background:#194093;
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:16px;
+      transition:opacity .3s ease;
+    }
+    #app-splash.hide{ opacity:0; pointer-events:none; }
+    #app-splash svg{ width:120px; fill:#fff; }
+    #app-splash .splash-dots{ display:flex;gap:8px; }
+    #app-splash .splash-dots span{
+      width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);
+      animation:splashPulse 1.2s ease-in-out infinite;
+    }
+    #app-splash .splash-dots span:nth-child(2){ animation-delay:.2s; }
+    #app-splash .splash-dots span:nth-child(3){ animation-delay:.4s; }
+    @keyframes splashPulse{
+      0%,100%{ opacity:.3;transform:scale(.8); }
+      50%{ opacity:1;transform:scale(1.1); }
+    }
+  </style>
+
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com http: https:; worker-src 'self';">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
@@ -27,31 +51,8 @@
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
 
-  <!-- ── Splash écran blanc immédiat ── -->
-  <style>
-    #app-splash{
-      position:fixed;inset:0;z-index:99999;
-      background:#194093;
-      display:flex;align-items:center;justify-content:center;
-      flex-direction:column;gap:16px;
-      transition:opacity .3s ease;
-    }
-    #app-splash.hide{ opacity:0; pointer-events:none; }
-    #app-splash svg{ width:120px; fill:#fff; }
-    #app-splash .splash-dots{ display:flex;gap:8px; }
-    #app-splash .splash-dots span{
-      width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);
-      animation:splashPulse 1.2s ease-in-out infinite;
-    }
-    #app-splash .splash-dots span:nth-child(2){ animation-delay:.2s; }
-    #app-splash .splash-dots span:nth-child(3){ animation-delay:.4s; }
-    @keyframes splashPulse{
-      0%,100%{ opacity:.3;transform:scale(.8); }
-      50%{ opacity:1;transform:scale(1.1); }
-    }
-  </style>
 </head>
-<body>
+<body style="background:#194093;margin:0;">
   <div id="app-splash">
     <svg viewBox="0 0 2169.43 1024" xmlns="http://www.w3.org/2000/svg" style="width:160px;">
       <path fill="white" d="M676.11,488.58c.58,11.58-3.89,22.13-11.4,29.63l-64.71,64.03-220.18,217.9c-24.17-11.81-46.6-26.59-66.78-43.86-14.83-12.68-28.45-26.71-40.66-41.89-42.77-53.15-68.32-120.42-68.32-193.57,0-172.03,141.29-311.49,315.57-311.49,27.82,0,54.8,3.55,80.49,10.23l-268.51,265.72-.02.02c-1.84,1.68-3.62,3.43-5.32,5.26-14.95,16.04-24.1,37.58-24.1,61.25,0,13.15,2.83,25.65,7.91,36.91,8.87,19.67,24.61,35.58,44.17,44.65,11.49,5.33,24.29,8.31,37.79,8.31,23.09,0,44.14-8.71,60.06-23.01,2.16-1.95,4.22-3.99,6.19-6.13l87.09-86.18,63.91-63.25.83-.81c7.33-7,17.38-11.17,28.4-10.77,20.1.72,36.59,16.96,37.59,37.05Z"/>
