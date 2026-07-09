@@ -374,6 +374,86 @@
         if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+e.message+'</div>';
       });
 
+    // ── Goto page ─────────────────────────────────────────────────
+    var gotoInput = document.getElementById('pdfViewerGotoInput');
+    if(gotoInput){
+      gotoInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){
+          var n = parseInt(gotoInput.value);
+          if(_pdfDoc && n >= 1 && n <= _pdfDoc.numPages){
+            _pdfPage = n;
+            _pdfRenderPage(_pdfPage);
+          }
+          gotoInput.value = '';
+          gotoInput.blur();
+        }
+      });
+    }
+
+    // ── Recherche texte ───────────────────────────────────────────
+    var _searchMatches = []; // [{page, items}]
+    var _searchIdx     = -1;
+
+    var searchBar   = document.getElementById('pdfViewerSearchBar');
+    var searchInput = document.getElementById('pdfViewerSearchInput');
+    var searchCount = document.getElementById('pdfViewerSearchCount');
+    var btnSrchPrev = document.getElementById('pdfViewerSearchPrev');
+    var btnSrchNext = document.getElementById('pdfViewerSearchNext');
+    var btnSrchOpen = document.getElementById('pdfViewerSearchBtn');
+    var btnSrchClose= document.getElementById('pdfViewerSearchClose');
+
+    function showSearchBar(){ if(searchBar){ searchBar.style.display='flex'; if(searchInput) searchInput.focus(); } }
+    function hideSearchBar(){ if(searchBar){ searchBar.style.display='none'; _searchMatches=[]; _searchIdx=-1; if(searchCount) searchCount.textContent=''; } }
+
+    if(btnSrchOpen)  btnSrchOpen.onclick  = showSearchBar;
+    if(btnSrchClose) btnSrchClose.onclick = hideSearchBar;
+
+    async function doSearch(query){
+      if(!_pdfDoc || !query.trim()){ if(searchCount) searchCount.textContent=''; return; }
+      _searchMatches = [];
+      var q = query.toLowerCase();
+      for(var i = 1; i <= _pdfDoc.numPages; i++){
+        var page = await _pdfDoc.getPage(i);
+        var tc   = await page.getTextContent();
+        var text = tc.items.map(function(it){ return it.str; }).join(' ').toLowerCase();
+        if(text.indexOf(q) !== -1) _searchMatches.push(i);
+      }
+      _searchIdx = _searchMatches.length > 0 ? 0 : -1;
+      updateSearchCount();
+      if(_searchIdx >= 0){ _pdfPage = _searchMatches[0]; _pdfRenderPage(_pdfPage); }
+    }
+
+    function updateSearchCount(){
+      if(!searchCount) return;
+      if(_searchMatches.length === 0){ searchCount.textContent = 'Aucun résultat'; return; }
+      searchCount.textContent = (_searchIdx+1) + ' / ' + _searchMatches.length;
+    }
+
+    if(btnSrchNext) btnSrchNext.onclick = function(){
+      if(_searchMatches.length === 0) return;
+      _searchIdx = (_searchIdx + 1) % _searchMatches.length;
+      _pdfPage = _searchMatches[_searchIdx];
+      _pdfRenderPage(_pdfPage);
+      updateSearchCount();
+    };
+    if(btnSrchPrev) btnSrchPrev.onclick = function(){
+      if(_searchMatches.length === 0) return;
+      _searchIdx = (_searchIdx - 1 + _searchMatches.length) % _searchMatches.length;
+      _pdfPage = _searchMatches[_searchIdx];
+      _pdfRenderPage(_pdfPage);
+      updateSearchCount();
+    };
+
+    var _searchDebounce;
+    if(searchInput) searchInput.addEventListener('input', function(){
+      clearTimeout(_searchDebounce);
+      _searchDebounce = setTimeout(function(){ doSearch(searchInput.value); }, 400);
+    });
+    if(searchInput) searchInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') btnSrchNext && btnSrchNext.click();
+      if(e.key === 'Escape') hideSearchBar();
+    });
+
     // ── Pan / drag ────────────────────────────────────────────────
     var _pan = { active: false, startX: 0, startY: 0, scrollX: 0, scrollY: 0 };
     var _body = document.getElementById('pdfViewerBody');
