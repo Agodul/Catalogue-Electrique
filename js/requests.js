@@ -11,7 +11,7 @@
 
   // ── Helpers ───────────────────────────────────────────────────
   function reqServerUrl(){
-    return localStorage.getItem('spi_server_url') || '';
+    return localStorage.getItem('cat_server_url') || '';
   }
   function reqHeaders(){
     return typeof window.authHeaders === 'function' ? window.authHeaders() : {};

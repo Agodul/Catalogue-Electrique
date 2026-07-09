@@ -108,7 +108,7 @@
     }
     var _saveUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
     var _saveIsAdmin = _saveUser && _saveUser.isAdmin;
-    var _serverUrl = localStorage.getItem('spi_server_url') || '';
+    var _serverUrl = localStorage.getItem('cat_server_url') || '';
 
     // Non-admin avec serveur configuré → soumettre une demande
     if(!_saveIsAdmin && _serverUrl && typeof window.reqSubmit === 'function'){
