@@ -265,70 +265,67 @@
         if(body){
           body.style.alignItems = cssW > body.clientWidth ? 'flex-start' : 'center';
         }
-        // Surlignemant des occurrences de recherche
-        _pdfDrawHighlights(page, vp, dpr, cssW, cssH);
+        // Text layer (surlignemant recherche)
+        _pdfDrawTextLayer(page, vp, dpr, cssW, cssH);
       });
     }).catch(function(e){ console.error('render page', e); });
   }
 
-  function _pdfDrawHighlights(page, vp, dpr, cssW, cssH){
-    var oldOv = document.getElementById('pdfHighlightOverlay');
-    if(oldOv) oldOv.parentNode.removeChild(oldOv);
-    if(!_highlightQuery) return;
+  function _pdfDrawTextLayer(page, vp, dpr, cssW, cssH){
+    // Supprimer l'ancien text layer
+    var old = document.getElementById('pdfTextLayer');
+    if(old) old.parentNode.removeChild(old);
+
+    var textLayerDiv = document.createElement('div');
+    textLayerDiv.id = 'pdfTextLayer';
+    textLayerDiv.style.cssText = [
+      'position:absolute', 'top:0', 'left:0',
+      'width:' + cssW + 'px', 'height:' + cssH + 'px',
+      'overflow:hidden', 'opacity:1', 'line-height:1',
+      'pointer-events:none'
+    ].join(';');
+
+    var canvas = document.getElementById('pdfViewerCanvas');
+    if(canvas && canvas.parentNode){
+      canvas.parentNode.style.position = 'relative';
+      canvas.parentNode.insertBefore(textLayerDiv, canvas.nextSibling);
+    }
+
+    // Viewport CSS (sans dpr — le text layer travaille en coordonnées CSS)
+    var vpCss = page.getViewport({ scale: (vp.scale / dpr) });
 
     page.getTextContent().then(function(tc){
-      var q = _highlightQuery.toLowerCase();
-      var overlay = document.createElement('div');
-      overlay.id = 'pdfHighlightOverlay';
-      overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;width:'+cssW+'px;height:'+cssH+'px;';
-
-      tc.items.forEach(function(item){
-        if(!item.str || item.str.trim() === '') return;
-        var lstr = item.str.toLowerCase();
-        var idx  = lstr.indexOf(q);
-        if(idx === -1) return;
-
-        // Appliquer la transformation viewport complète (comme PDF.js le fait en interne)
-        var tx = pdfjsLib.Util.transform(vp.transform, item.transform);
-        // tx = [scaleX, skewY, skewX, scaleY, translateX, translateY]
-        // translateX/Y sont déjà en coordonnées canvas (physiques)
-        var x = tx[4] / dpr;
-        var y = tx[5] / dpr;
-        // La hauteur du glyphe vient de scaleY (tx[3] peut être négatif)
-        var scaleY = Math.abs(tx[3]) / dpr;
-        var scaleX = Math.abs(tx[0]) / dpr;
-        // Largeur totale du mot en px CSS
-        var wTotal = item.width  * Math.abs(vp.scale) / dpr;
-        var h      = item.height * Math.abs(vp.scale) / dpr;
-
-        // En PDF, y est la baseline (bas du texte), on remonte de h
-        // tx[5] est déjà transformé depuis le repère PDF (y inversé par vp.transform)
-        var top  = y - h;
-        var left = x + (idx / item.str.length) * wTotal;
-        var w    = (q.length / item.str.length) * wTotal;
-
-        // Garde-fou : rester dans les bornes du canvas
-        if(left < 0 || top < 0 || left > cssW || top > cssH) return;
-
-        var mark = document.createElement('div');
-        mark.style.cssText = [
-          'position:absolute',
-          'left:'   + left + 'px',
-          'top:'    + top  + 'px',
-          'width:'  + w    + 'px',
-          'height:' + h    + 'px',
-          'background:rgba(255,210,0,.5)',
-          'border-radius:2px',
-          'mix-blend-mode:multiply'
-        ].join(';');
-        overlay.appendChild(mark);
+      pdfjsLib.renderTextLayer({
+        textContentSource: tc,
+        container: textLayerDiv,
+        viewport: vpCss,
+        textDivs: []
+      }).promise.then(function(){
+        // Appliquer la recherche si active
+        _pdfApplySearch(textLayerDiv);
       });
+    });
+  }
 
-      var canvas = document.getElementById('pdfViewerCanvas');
-      if(canvas && canvas.parentNode){
-        canvas.parentNode.style.position = 'relative';
-        canvas.parentNode.insertBefore(overlay, canvas.nextSibling);
-      }
+  function _pdfApplySearch(textLayerDiv){
+    // Retirer anciens surlignages
+    textLayerDiv = textLayerDiv || document.getElementById('pdfTextLayer');
+    if(!textLayerDiv) return;
+    textLayerDiv.querySelectorAll('mark').forEach(function(m){
+      m.outerHTML = m.innerHTML;
+    });
+    if(!_highlightQuery) return;
+
+    var q = _highlightQuery.toLowerCase();
+    textLayerDiv.querySelectorAll('span').forEach(function(span){
+      if(!span.textContent) return;
+      var lc = span.textContent.toLowerCase();
+      if(lc.indexOf(q) === -1) return;
+      // Surligner avec <mark>
+      span.innerHTML = span.textContent.replace(
+        new RegExp('(' + q.replace(/[.*+?^${}()|\[\]\\]/g,'\\$&') + ')', 'gi'),
+        '<mark style="background:rgba(255,200,0,.6);color:inherit;border-radius:2px;padding:0;">$1</mark>'
+      );
     });
   }
 
@@ -494,6 +491,7 @@
       _searchIdx = _searchMatches.length > 0 ? 0 : -1;
       updateSearchCount();
       if(_searchIdx >= 0){ _pdfPage = _searchMatches[0]; _pdfRenderPage(_pdfPage); }
+      else { _pdfApplySearch(); }
     }
 
     function updateSearchCount(){
