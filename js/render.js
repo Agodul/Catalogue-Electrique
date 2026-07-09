@@ -277,8 +277,8 @@
       var s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js';
       s.onload = function(){
-        // Désactiver le worker pour éviter les conflits CSP/origin
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
         cb();
       };
       document.head.appendChild(s);
