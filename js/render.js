@@ -240,7 +240,8 @@
     s.onload = function(){
       // workerSrc vide = fake worker dans le thread principal
       // contourne l'erreur "window is not defined" dans le worker
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      // Pointer le worker vers pdf.js lui-même (fake worker mode)
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/Catalogue-Electrique/js/pdf.min.js';
       cb();
     };
     s.onerror = function(){ console.error('PDF.js non chargé'); };
