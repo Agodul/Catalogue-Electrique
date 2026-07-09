@@ -272,17 +272,18 @@
   }
 
   function _pdfDrawTextLayer(page, vp, dpr, cssW, cssH){
-    // Supprimer l'ancien text layer
-    var old = document.getElementById('pdfTextLayer');
-    if(old) old.parentNode.removeChild(old);
+    var oldLayer = document.getElementById('pdfTextLayer');
+    if(oldLayer) oldLayer.parentNode.removeChild(oldLayer);
 
     var textLayerDiv = document.createElement('div');
     textLayerDiv.id = 'pdfTextLayer';
+    // --scale-factor requis par PDF.js 3.x
+    var cssScale = vp.scale / dpr;
     textLayerDiv.style.cssText = [
       'position:absolute', 'top:0', 'left:0',
       'width:' + cssW + 'px', 'height:' + cssH + 'px',
-      'overflow:hidden', 'opacity:1', 'line-height:1',
-      'pointer-events:none'
+      'overflow:hidden', 'line-height:1', 'pointer-events:none',
+      '--scale-factor:' + cssScale
     ].join(';');
 
     var canvas = document.getElementById('pdfViewerCanvas');
@@ -291,19 +292,23 @@
       canvas.parentNode.insertBefore(textLayerDiv, canvas.nextSibling);
     }
 
-    // Viewport CSS (sans dpr — le text layer travaille en coordonnées CSS)
-    var vpCss = page.getViewport({ scale: (vp.scale / dpr) });
+    // Viewport CSS (sans dpr)
+    var vpCss = page.getViewport({ scale: cssScale });
 
     page.getTextContent().then(function(tc){
-      pdfjsLib.renderTextLayer({
+      var task = pdfjsLib.renderTextLayer({
         textContentSource: tc,
         container: textLayerDiv,
         viewport: vpCss,
         textDivs: []
-      }).promise.then(function(){
-        // Appliquer la recherche si active
-        _pdfApplySearch(textLayerDiv);
       });
+      var p = task.promise || (task.then ? task : null);
+      if(p){
+        p.then(function(){ _pdfApplySearch(textLayerDiv); })
+         .catch(function(e){ console.warn('TextLayer:', e); });
+      } else {
+        setTimeout(function(){ _pdfApplySearch(textLayerDiv); }, 300);
+      }
     });
   }
 
