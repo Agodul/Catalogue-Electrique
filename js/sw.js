@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v232";
+const CACHE = "spi-catalogue-v234";
 
 const FILES = [
   "./",
@@ -19,7 +19,8 @@ const FILES = [
   "./js/storage.js",
   "./js/pdf.min.js",
   "./js/pdf.worker.min.js",
-  "./assets/splash.mp4"
+  "./assets/splash.mp4",
+  "./assets/splash-mobile.mp4"
 ];
 
 self.addEventListener("install", event => {
@@ -32,15 +33,15 @@ self.addEventListener("install", event => {
 
       const cacheOthers = Promise.allSettled(otherFiles.map(f => cache.add(f).catch(() => null)));
 
-      // Vidéo : fetch sans Range header et stocker la réponse complète
+      // Vidéo : fetch sans Range header et stocker avec URL absolue comme clé
       const cacheVideos = Promise.allSettled(videoFiles.map(async f => {
         try {
-          const res = await fetch(f, { headers: {} });
+          const absUrl = new URL(f, self.location.href).href;
+          const res = await fetch(absUrl, { headers: {} });
           if(res.ok){
-            // Stocker avec l'URL sans paramètres comme clé
-            await cache.put(f, res);
+            await cache.put(absUrl, res.clone());
           }
-        } catch(e) {}
+        } catch(e) { console.warn('SW video cache failed:', e); }
       }));
 
       return Promise.allSettled([cacheOthers, cacheVideos]);
@@ -91,40 +92,54 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // ── Vidéos : gestion des Range requests depuis le cache ──────────
+  // ── Vidéos : Range requests depuis le cache ──────────────────
   if(url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')){
-    event.respondWith(
-      caches.open(CACHE).then(async cache => {
-        // Chercher avec l'URL seule (ignorer le Range header dans la clé)
-        const cached = await cache.match(url.pathname) || await cache.match(event.request.url);
+    event.respondWith((async () => {
+      try {
+        const cache = await caches.open(CACHE);
+        const absUrl = url.origin + url.pathname;
+
+        // Chercher dans le cache (ignorer Range header)
+        let cached = await cache.match(absUrl, { ignoreSearch: true });
+
         if(!cached){
-          // Pas en cache : fetch normal
-          return fetch(event.request).catch(() => new Response('', {status: 503}));
+          // Pas en cache : fetch complet et stocker
+          try {
+            const fullReq = new Request(absUrl, { headers: {}, mode: 'cors', credentials: 'same-origin' });
+            const netRes  = await fetch(fullReq);
+            if(netRes.ok){
+              await cache.put(absUrl, netRes.clone());
+              cached = netRes;
+            }
+          } catch(e) {}
         }
 
-        const rangeHeader = event.request.headers.get('range');
-        if(!rangeHeader) return cached;
+        if(!cached) return fetch(event.request).catch(() => new Response('', {status:503}));
 
-        // Gérer la requête Range depuis le blob en cache
-        const blob = await cached.blob();
-        const total = blob.size;
-        const [, start, end] = rangeHeader.match(/bytes=(\d+)-(\d*)/) || [];
-        const startByte = parseInt(start) || 0;
-        const endByte   = end ? parseInt(end) : total - 1;
+        const rangeHeader = event.request.headers.get('range');
+        if(!rangeHeader) return cached.clone();
+
+        // Servir le bon chunk
+        const blob      = await cached.clone().blob();
+        const total     = blob.size;
+        const parts     = rangeHeader.replace('bytes=','').split('-');
+        const startByte = parseInt(parts[0]) || 0;
+        const endByte   = parts[1] ? parseInt(parts[1]) : total - 1;
         const chunk     = blob.slice(startByte, endByte + 1);
 
         return new Response(chunk, {
           status: 206,
-          statusText: 'Partial Content',
           headers: {
-            'Content-Type':  cached.headers.get('Content-Type') || 'video/mp4',
-            'Content-Range': 'bytes ' + startByte + '-' + endByte + '/' + total,
+            'Content-Type':   'video/mp4',
+            'Content-Range':  'bytes ' + startByte + '-' + endByte + '/' + total,
             'Content-Length': String(endByte - startByte + 1),
             'Accept-Ranges':  'bytes'
           }
         });
-      })
-    );
+      } catch(e) {
+        return fetch(event.request).catch(() => new Response('', {status:503}));
+      }
+    })());
     return;
   }
 

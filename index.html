@@ -23,6 +23,17 @@
       height:calc(100% + env(safe-area-inset-top, 0) + env(safe-area-inset-bottom, 0));
       object-fit:cover;
     }
+    /* Mobile : réduire la résolution de rendu pour économiser les ressources */
+    @media (max-width: 768px){
+      #app-splash video{
+        transform: scale(1);
+        will-change: auto;
+        /* Limiter à 480p max sur mobile */
+        max-height: 100vh;
+        object-fit: cover;
+        object-position: center center;
+      }
+    }
     body.splash-active{ overflow:hidden; position:fixed; width:100%; touch-action:none; }
     #app-splash.hide{ opacity:0; pointer-events:none; }
     /* Dès que splash est caché, le body reprend son fond normal immédiatement */
@@ -62,6 +73,9 @@
   <div id="app-splash">
     <video autoplay muted playsinline preload="auto"
       onended="var s=document.getElementById('app-splash');if(s){s.classList.add('hide');document.body.classList.remove('splash-active');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}">
+      <!-- Mobile : version allégée 640x360 -->
+      <source src="assets/splash-mobile.mp4" type="video/mp4" media="(max-width: 768px)">
+      <!-- Desktop : version HD 1920x1080 -->
       <source src="assets/splash.mp4" type="video/mp4">
     </video>
   </div>
