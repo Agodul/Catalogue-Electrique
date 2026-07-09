@@ -81,6 +81,8 @@
           payload.priceHistory = history;
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
+        var _currentUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+        payload.updatedBy = _currentUser ? (_currentUser.username || _currentUser.name || 'admin') : 'inconnu';
         products[idx] = Object.assign({}, existing, payload);
         // Propager l'icône à tous les produits de la même famille
         if(familyVal && payload.familyIcon){
@@ -99,6 +101,8 @@
       }
       payload.createdAt = Date.now();
       payload.updatedAt = Date.now();
+      var _currentUser2 = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+      payload.updatedBy = _currentUser2 ? (_currentUser2.username || _currentUser2.name || 'admin') : 'inconnu';
       payload.priceHistory = initialHistory;
       products.push(payload);
     }
@@ -398,7 +402,10 @@
             // Non connecté → serveur prioritaire, écrase le local silencieusement
             products[idx] = sp;
           } else {
-            // Admin → conflit si contenu différent (ignorer 60s après un push)
+            // Admin → conflit seulement si le local est PLUS RÉCENT que le serveur
+            // (= l'admin a modifié en local après la dernière sync)
+            // Si le serveur est plus récent ou égal → c'est l'admin lui-même qui a pushé
+            // depuis un autre appareil → prendre le serveur silencieusement
             var recentSave = _recentlySaved[sp.ref];
             var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
             if(!tooRecent){
@@ -412,10 +419,21 @@
                 return JSON.stringify(c, Object.keys(c).sort());
               }
               if(withoutServerFields(lp) !== withoutServerFields(sp)){
-                conflicts.push({ ref: sp.ref, local: lp, server: sp });
+                var spUpdated = sp.updatedAt || sp.createdAt || 0;
+                var lpUpdated = lp.updatedAt || lp.createdAt || 0;
+                if(spUpdated >= lpUpdated){
+                  // Serveur plus récent → c'est l'admin qui a pushé depuis un autre appareil
+                  // Prendre le serveur silencieusement
+                  products[idx] = sp;
+                  added++; // compter comme màj
+                } else {
+                  // Local plus récent → vrai conflit
+                  // Afficher qui a modifié côté serveur
+                  conflicts.push({ ref: sp.ref, local: lp, server: sp, updatedBy: sp.updatedBy || '?' });
+                }
               }
             }
-            // Local conservé par défaut pour l'admin
+            // Local conservé par défaut si tooRecent
           }
         }
       });
@@ -1866,7 +1884,7 @@
     overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
     document.getElementById('conflictSubtitle').textContent =
-      conflicts.length + ' produit(s) en conflit (modifié des deux côtés dans la même heure)';
+      conflicts.length + ' produit(s) en conflit — votre version locale est plus récente que le serveur';
     renderConflictList();
     if(conflicts.length > 0) selectConflict(conflicts[0].ref);
   }
@@ -1880,6 +1898,7 @@
       return '<div class="conflict-item'+(isSel?' selected':'')+'" data-ref="'+escapeHtml(c.ref)+'" style="cursor:pointer;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(c.ref)+'</div>'
         +'<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">'+escapeHtml((c.local.name||c.local.ref||''))+'</div>'
+        +(c.updatedBy ? '<div style="font-size:10px;color:var(--copper);margin-top:2px;">Serveur : '+escapeHtml(c.updatedBy)+'</div>' : '')
         +'<div style="margin-top:5px;display:flex;gap:4px;">'
         +'<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(choice==='local'?'#194093':'var(--surface-1)')+';color:'+(choice==='local'?'#fff':'var(--ink-soft)')+';">Local</span>'
         +'<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(choice==='server'?'#194093':'var(--surface-1)')+';color:'+(choice==='server'?'#fff':'var(--ink-soft)')+';">Serveur</span>'

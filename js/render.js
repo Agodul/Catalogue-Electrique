@@ -406,6 +406,14 @@
       _body.addEventListener('mouseup',    panEnd);
       _body.addEventListener('mouseleave', panEnd);
 
+      // Bloquer le double-tap zoom natif du navigateur
+      var _lastTap = 0;
+      _body.addEventListener('touchend', function(e){
+        var now = Date.now();
+        if(now - _lastTap < 300){ e.preventDefault(); }
+        _lastTap = now;
+      }, { passive: false });
+
       // Touch mobile
       _body.addEventListener('touchstart', function(e){ if(e.touches.length === 1) panStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
       _body.addEventListener('touchmove',  function(e){ if(e.touches.length === 1) panMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
@@ -421,7 +429,7 @@
       }
     }
     document.getElementById('pdfViewerClose').onclick = closePdfViewer;
-    viewer.onclick = function(e){ if(e.target===viewer) closePdfViewer(); };
+    // Ne pas fermer en cliquant en dehors — uniquement via le bouton ✕
   };
   // ── Fin PDF Viewer ───────────────────────────────────────────────
 
