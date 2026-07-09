@@ -299,7 +299,7 @@
           };
         }
         loadPdfJs(function(){
-          pdfjsLib.getDocument({ data: buffer }).promise.then(function(pdf){
+          pdfjsLib.getDocument({ data: buffer, isEvalSupported: false, disableFontFace: false }).promise.then(function(pdf){
             _pdfDoc = pdf;
             var pageEl = document.getElementById('pdfViewerPage');
             if(pageEl) pageEl.textContent = '1 / ' + pdf.numPages;
