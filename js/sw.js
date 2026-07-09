@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v229";
+const CACHE = "spi-catalogue-v230";
 
 const FILES = [
   "./",
@@ -25,9 +25,24 @@ self.addEventListener("install", event => {
   // Précharger les fichiers statiques en parallèle
   event.waitUntil(
     caches.open(CACHE).then(cache => {
-      return Promise.allSettled(
-        FILES.map(f => cache.add(f).catch(() => null))
-      );
+      // Cacher tous les fichiers sauf la vidéo (qui nécessite un traitement spécial)
+      const videoFiles = FILES.filter(f => f.endsWith('.mp4') || f.endsWith('.webm'));
+      const otherFiles = FILES.filter(f => !f.endsWith('.mp4') && !f.endsWith('.webm'));
+
+      const cacheOthers = Promise.allSettled(otherFiles.map(f => cache.add(f).catch(() => null)));
+
+      // Vidéo : fetch sans Range header et stocker la réponse complète
+      const cacheVideos = Promise.allSettled(videoFiles.map(async f => {
+        try {
+          const res = await fetch(f, { headers: {} });
+          if(res.ok){
+            // Stocker avec l'URL sans paramètres comme clé
+            await cache.put(f, res);
+          }
+        } catch(e) {}
+      }));
+
+      return Promise.allSettled([cacheOthers, cacheVideos]);
     }).then(() => self.skipWaiting())
   );
 });
@@ -79,8 +94,12 @@ self.addEventListener("fetch", event => {
   if(url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')){
     event.respondWith(
       caches.open(CACHE).then(async cache => {
-        const cached = await cache.match(event.request.url); // match sans Range header
-        if(!cached) return fetch(event.request);
+        // Chercher avec l'URL seule (ignorer le Range header dans la clé)
+        const cached = await cache.match(url.pathname) || await cache.match(event.request.url);
+        if(!cached){
+          // Pas en cache : fetch normal
+          return fetch(event.request).catch(() => new Response('', {status: 503}));
+        }
 
         const rangeHeader = event.request.headers.get('range');
         if(!rangeHeader) return cached;
