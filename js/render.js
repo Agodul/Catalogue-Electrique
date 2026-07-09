@@ -255,9 +255,14 @@
         if(loader) loader.style.display = 'none';
         canvas.style.display = 'block';
         if(pageEl) pageEl.textContent = num + ' / ' + _pdfDoc.numPages;
-        // Mettre à jour le bouton zoom
         var zoomEl = document.getElementById('pdfViewerZoomLevel');
         if(zoomEl) zoomEl.textContent = Math.round(_pdfZoom * 100) + '%';
+        // Centrer si le canvas rentre dans le conteneur, sinon aligner à gauche pour le pan
+        var body = document.getElementById('pdfViewerBody');
+        if(body){
+          var canvasW = Math.floor(vp.width / dpr);
+          body.style.alignItems = canvasW > body.clientWidth ? 'flex-start' : 'center';
+        }
       });
     }).catch(function(e){ console.error('render page', e); });
   }
@@ -369,9 +374,51 @@
         if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+e.message+'</div>';
       });
 
+    // ── Pan / drag ────────────────────────────────────────────────
+    var _pan = { active: false, startX: 0, startY: 0, scrollX: 0, scrollY: 0 };
+    var _body = document.getElementById('pdfViewerBody');
+    if(_body){
+      _body.style.cursor = 'grab';
+
+      function panStart(x, y){
+        _pan.active  = true;
+        _pan.startX  = x;
+        _pan.startY  = y;
+        _pan.scrollX = _body.scrollLeft;
+        _pan.scrollY = _body.scrollTop;
+        _body.style.cursor = 'grabbing';
+        _body.style.userSelect = 'none';
+      }
+      function panMove(x, y){
+        if(!_pan.active) return;
+        _body.scrollLeft = _pan.scrollX - (x - _pan.startX);
+        _body.scrollTop  = _pan.scrollY - (y - _pan.startY);
+      }
+      function panEnd(){
+        _pan.active = false;
+        _body.style.cursor = 'grab';
+        _body.style.userSelect = '';
+      }
+
+      // Souris
+      _body.addEventListener('mousedown',  function(e){ if(e.button === 0) panStart(e.clientX, e.clientY); });
+      _body.addEventListener('mousemove',  function(e){ panMove(e.clientX, e.clientY); });
+      _body.addEventListener('mouseup',    panEnd);
+      _body.addEventListener('mouseleave', panEnd);
+
+      // Touch mobile
+      _body.addEventListener('touchstart', function(e){ if(e.touches.length === 1) panStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+      _body.addEventListener('touchmove',  function(e){ if(e.touches.length === 1) panMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+      _body.addEventListener('touchend',   panEnd);
+    }
+
     function closePdfViewer(){
       viewer.style.display = 'none';
       document.body.classList.remove('modal-open');
+      // Nettoyer les listeners pan
+      if(_body){
+        _body.replaceWith(_body.cloneNode(true));
+      }
     }
     document.getElementById('pdfViewerClose').onclick = closePdfViewer;
     viewer.onclick = function(e){ if(e.target===viewer) closePdfViewer(); };
