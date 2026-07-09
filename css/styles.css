@@ -2210,3 +2210,17 @@
     }
   }
   @keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+  /* PDF.js Text Layer */
+  #pdfTextLayer span {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+  }
+  #pdfTextLayer mark {
+    background: rgba(255, 200, 0, 0.55);
+    border-radius: 2px;
+    color: transparent;
+  }
