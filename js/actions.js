@@ -507,26 +507,28 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
+  var _settingsMainBody = document.getElementById('settingsMainBody');
+
   function showSettingsMain(){
-    document.querySelector('.settings-body').style.display = '';
+    if(_settingsMainBody) _settingsMainBody.style.display = '';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
     if(settingsUserPage) settingsUserPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
-    document.querySelector('.settings-body').style.display = 'none';
+    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
     settingsFamilyPage.style.display = 'flex';
     settingsServerPage.style.display = 'none';
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
-    document.querySelector('.settings-body').style.display = 'none';
+    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
-    document.querySelector('.settings-body').style.display = 'none';
+    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'flex';
     serverUrlInput.value = serverUrl;
