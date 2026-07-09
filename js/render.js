@@ -234,12 +234,14 @@
   var _pdfZoom  = 1.0;
   var _pdfBlobUrl = null;
 
+  var _highlightQuery = '';
+
   function _pdfRenderPage(num){
     if(!_pdfDoc) return;
-    var canvas = document.getElementById('pdfViewerCanvas');
-    var loader = document.getElementById('pdfViewerLoader');
-    var pageEl = document.getElementById('pdfViewerPage');
-    var body   = document.getElementById('pdfViewerBody');
+    var canvas  = document.getElementById('pdfViewerCanvas');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var pageEl  = document.getElementById('pdfViewerPage');
+    var body    = document.getElementById('pdfViewerBody');
     if(!canvas) return;
     _pdfDoc.getPage(num).then(function(page){
       var dpr   = window.devicePixelRatio || 1;
@@ -249,22 +251,75 @@
       var vp    = page.getViewport({ scale: scale * dpr });
       canvas.width  = vp.width;
       canvas.height = vp.height;
-      canvas.style.width  = Math.floor(vp.width / dpr) + 'px';
-      canvas.style.height = Math.floor(vp.height / dpr) + 'px';
+      var cssW = Math.floor(vp.width / dpr);
+      var cssH = Math.floor(vp.height / dpr);
+      canvas.style.width  = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+
       page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function(){
         if(loader) loader.style.display = 'none';
         canvas.style.display = 'block';
         if(pageEl) pageEl.textContent = num + ' / ' + _pdfDoc.numPages;
         var zoomEl = document.getElementById('pdfViewerZoomLevel');
         if(zoomEl) zoomEl.textContent = Math.round(_pdfZoom * 100) + '%';
-        // Centrer si le canvas rentre dans le conteneur, sinon aligner à gauche pour le pan
-        var body = document.getElementById('pdfViewerBody');
         if(body){
-          var canvasW = Math.floor(vp.width / dpr);
-          body.style.alignItems = canvasW > body.clientWidth ? 'flex-start' : 'center';
+          body.style.alignItems = cssW > body.clientWidth ? 'flex-start' : 'center';
         }
+        // Surlignemant des occurrences de recherche
+        _pdfDrawHighlights(page, vp, dpr, cssW, cssH);
       });
     }).catch(function(e){ console.error('render page', e); });
+  }
+
+  function _pdfDrawHighlights(page, vp, dpr, cssW, cssH){
+    // Supprimer l'ancien overlay
+    var oldOv = document.getElementById('pdfHighlightOverlay');
+    if(oldOv) oldOv.parentNode.removeChild(oldOv);
+    if(!_highlightQuery) return;
+
+    page.getTextContent().then(function(tc){
+      var q = _highlightQuery.toLowerCase();
+      var overlay = document.createElement('div');
+      overlay.id = 'pdfHighlightOverlay';
+      overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+      overlay.style.width  = cssW + 'px';
+      overlay.style.height = cssH + 'px';
+
+      tc.items.forEach(function(item){
+        if(!item.str) return;
+        var idx = item.str.toLowerCase().indexOf(q);
+        if(idx === -1) return;
+
+        // Transformer les coordonnées PDF → CSS
+        var tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+        var x  = tx[4] / dpr;
+        var y  = tx[5] / dpr;
+        var w  = (item.width  * vp.scale) / dpr;
+        var h  = (item.height * vp.scale) / dpr;
+        // PDF origin = bas gauche, CSS = haut gauche
+        y = cssH - y - h;
+
+        var mark = document.createElement('div');
+        mark.style.cssText = [
+          'position:absolute',
+          'left:'   + (x + (idx / item.str.length) * w) + 'px',
+          'top:'    + y + 'px',
+          'width:'  + (q.length / item.str.length * w) + 'px',
+          'height:' + h + 'px',
+          'background:rgba(255,200,0,.45)',
+          'border-radius:2px',
+          'mix-blend-mode:multiply'
+        ].join(';');
+        overlay.appendChild(mark);
+      });
+
+      // Insérer l'overlay dans le même conteneur que le canvas
+      var canvas = document.getElementById('pdfViewerCanvas');
+      if(canvas && canvas.parentNode){
+        canvas.parentNode.style.position = 'relative';
+        canvas.parentNode.insertBefore(overlay, canvas.nextSibling);
+      }
+    });
   }
 
   window._openPdfViewer = function(pdfUrl, docName){
@@ -409,9 +464,17 @@
     if(btnSrchClose) btnSrchClose.onclick = hideSearchBar;
 
     async function doSearch(query){
-      if(!_pdfDoc || !query.trim()){ if(searchCount) searchCount.textContent=''; return; }
+      _highlightQuery = query.trim();
+      if(!_pdfDoc || !_highlightQuery){
+        _highlightQuery = '';
+        if(searchCount) searchCount.textContent = '';
+        // Supprimer overlay si vide
+        var oldOv = document.getElementById('pdfHighlightOverlay');
+        if(oldOv) oldOv.parentNode.removeChild(oldOv);
+        return;
+      }
       _searchMatches = [];
-      var q = query.toLowerCase();
+      var q = _highlightQuery.toLowerCase();
       for(var i = 1; i <= _pdfDoc.numPages; i++){
         var page = await _pdfDoc.getPage(i);
         var tc   = await page.getTextContent();
@@ -551,6 +614,8 @@
 
     function closePdfViewer(){
       viewer.style.display = 'none';
+      _highlightQuery = '';
+      _searchMatches = []; _searchIdx = -1;
       document.body.classList.remove('modal-open');
       // Nettoyer les listeners pan
       if(_body){
