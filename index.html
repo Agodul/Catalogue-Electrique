@@ -951,14 +951,8 @@
         <button id="pdfViewerClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;line-height:1;">✕</button>
       </div>
     </div>
-    <div id="pdfViewerBody" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;align-items:center;background:#f0f0f0;">
-      <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;padding:60px 0;"></div>
-      <canvas id="pdfViewerCanvas" style="max-width:100%;box-shadow:0 2px 16px rgba(0,0,0,.2);opacity:0;transition:opacity .2s;"></canvas>
-    </div>
-    <div id="pdfViewerNav" style="display:none;align-items:center;justify-content:center;gap:16px;padding:12px;border-top:1px solid var(--line);flex-shrink:0;">
-      <button id="pdfViewerPrev" style="padding:6px 16px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">← Précédent</button>
-      <span id="pdfViewerPage" style="font-size:13px;color:var(--ink-soft);min-width:70px;text-align:center;"></span>
-      <button id="pdfViewerNext" style="padding:6px 16px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Suivant →</button>
+    <div id="pdfViewerBody" style="flex:1;display:flex;flex-direction:column;padding:16px;overflow:hidden;">
+      <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;flex:1;"></div>
     </div>
   </div>
 </div>
