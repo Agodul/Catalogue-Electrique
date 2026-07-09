@@ -410,14 +410,48 @@
       var _lastTap = 0;
       _body.addEventListener('touchend', function(e){
         var now = Date.now();
-        if(now - _lastTap < 300){ e.preventDefault(); }
+        if(now - _lastTap < 300 && e.touches.length === 0){ e.preventDefault(); }
         _lastTap = now;
       }, { passive: false });
 
-      // Touch mobile
-      _body.addEventListener('touchstart', function(e){ if(e.touches.length === 1) panStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-      _body.addEventListener('touchmove',  function(e){ if(e.touches.length === 1) panMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-      _body.addEventListener('touchend',   panEnd);
+      // Touch mobile — pan 1 doigt, pinch-zoom 2 doigts
+      var _pinchStartDist = 0;
+      var _pinchStartZoom = 1;
+      _body.addEventListener('touchstart', function(e){
+        if(e.touches.length === 1){
+          panStart(e.touches[0].clientX, e.touches[0].clientY);
+        } else if(e.touches.length === 2){
+          panEnd();
+          var dx = e.touches[0].clientX - e.touches[1].clientX;
+          var dy = e.touches[0].clientY - e.touches[1].clientY;
+          _pinchStartDist = Math.sqrt(dx*dx + dy*dy);
+          _pinchStartZoom = _pdfZoom;
+        }
+      }, { passive: true });
+      _body.addEventListener('touchmove', function(e){
+        if(e.touches.length === 1){
+          panMove(e.touches[0].clientX, e.touches[0].clientY);
+        } else if(e.touches.length === 2 && _pinchStartDist > 0){
+          var dx = e.touches[0].clientX - e.touches[1].clientX;
+          var dy = e.touches[0].clientY - e.touches[1].clientY;
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          var newZoom = Math.min(4, Math.max(0.5, _pinchStartZoom * (dist / _pinchStartDist)));
+          // Arrondir à 0.25 près pour éviter les re-renders trop fréquents
+          newZoom = Math.round(newZoom * 4) / 4;
+          if(newZoom !== _pdfZoom){
+            _pdfZoom = newZoom;
+            _pdfRenderPage(_pdfPage);
+          }
+        }
+      }, { passive: true });
+      _body.addEventListener('touchend', function(e){
+        if(e.touches.length === 0){ panEnd(); _pinchStartDist = 0; }
+      });
+
+      // Masquer les boutons zoom sur mobile
+      var isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      var zoomBtns = document.getElementById('pdfViewerZoomBtns');
+      if(isMobile && zoomBtns) zoomBtns.style.display = 'none';
     }
 
     function closePdfViewer(){
