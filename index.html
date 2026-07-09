@@ -22,16 +22,26 @@
       width:100%;
       height:calc(100% + env(safe-area-inset-top, 0) + env(safe-area-inset-bottom, 0));
       object-fit:cover;
+      object-position:center center;
     }
-    /* Mobile : réduire la résolution de rendu pour économiser les ressources */
-    @media (max-width: 768px){
+    /* Tablette : vidéo à 50% de la taille */
+    @media (max-width: 1024px){
       #app-splash video{
-        transform: scale(1);
-        will-change: auto;
-        /* Limiter à 480p max sur mobile */
-        max-height: 100vh;
-        object-fit: cover;
-        object-position: center center;
+        width:50%;
+        height:50%;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+      }
+    }
+    /* Mobile : vidéo à 33% de la taille */
+    @media (max-width: 480px){
+      #app-splash video{
+        width:33%;
+        height:33%;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
       }
     }
     body.splash-active{ overflow:hidden; position:fixed; width:100%; touch-action:none; }
@@ -73,9 +83,6 @@
   <div id="app-splash">
     <video autoplay muted playsinline preload="auto"
       onended="var s=document.getElementById('app-splash');if(s){s.classList.add('hide');document.body.classList.remove('splash-active');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}">
-      <!-- Mobile : version allégée 640x360 -->
-      <source src="assets/splash-mobile.mp4" type="video/mp4" media="(max-width: 768px)">
-      <!-- Desktop : version HD 1920x1080 -->
       <source src="assets/splash.mp4" type="video/mp4">
     </video>
   </div>
