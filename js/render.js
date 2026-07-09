@@ -275,10 +275,10 @@
     function loadPdfJs(cb){
       if(window.pdfjsLib){ cb(); return; }
       var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js';
       s.onload = function(){
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        // Désactiver le worker pour éviter les conflits CSP/origin
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
         cb();
       };
       document.head.appendChild(s);
