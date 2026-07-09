@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v224";
+const CACHE = "spi-catalogue-v226";
 
 const FILES = [
   "./",
@@ -71,6 +71,39 @@ self.addEventListener("fetch", event => {
 
     event.respondWith(
       Response.redirect(redirectTo + "?" + qs.toString(), 302)
+    );
+    return;
+  }
+
+  // ── Vidéos : gestion des Range requests depuis le cache ──────────
+  if(url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')){
+    event.respondWith(
+      caches.open(CACHE).then(async cache => {
+        const cached = await cache.match(event.request.url); // match sans Range header
+        if(!cached) return fetch(event.request);
+
+        const rangeHeader = event.request.headers.get('range');
+        if(!rangeHeader) return cached;
+
+        // Gérer la requête Range depuis le blob en cache
+        const blob = await cached.blob();
+        const total = blob.size;
+        const [, start, end] = rangeHeader.match(/bytes=(\d+)-(\d*)/) || [];
+        const startByte = parseInt(start) || 0;
+        const endByte   = end ? parseInt(end) : total - 1;
+        const chunk     = blob.slice(startByte, endByte + 1);
+
+        return new Response(chunk, {
+          status: 206,
+          statusText: 'Partial Content',
+          headers: {
+            'Content-Type':  cached.headers.get('Content-Type') || 'video/mp4',
+            'Content-Range': 'bytes ' + startByte + '-' + endByte + '/' + total,
+            'Content-Length': String(endByte - startByte + 1),
+            'Accept-Ranges':  'bytes'
+          }
+        });
+      })
     );
     return;
   }
