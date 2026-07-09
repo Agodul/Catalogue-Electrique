@@ -507,28 +507,30 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
-  var _settingsMainBody = document.getElementById('settingsMainBody');
+  function _getSettingsMainBody(){
+    return document.getElementById('settingsMainBody') || document.querySelector('.settings-box > .settings-body');
+  }
 
   function showSettingsMain(){
-    if(_settingsMainBody) _settingsMainBody.style.display = '';
+    var b = _getSettingsMainBody(); if(b) b.style.display = '';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
     if(settingsUserPage) settingsUserPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
-    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
+    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
     settingsFamilyPage.style.display = 'flex';
     settingsServerPage.style.display = 'none';
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
-    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
+    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
-    if(_settingsMainBody) _settingsMainBody.style.display = 'none';
+    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'flex';
     serverUrlInput.value = serverUrl;
