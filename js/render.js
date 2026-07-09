@@ -272,7 +272,6 @@
   }
 
   function _pdfDrawHighlights(page, vp, dpr, cssW, cssH){
-    // Supprimer l'ancien overlay
     var oldOv = document.getElementById('pdfHighlightOverlay');
     if(oldOv) oldOv.parentNode.removeChild(oldOv);
     if(!_highlightQuery) return;
@@ -281,39 +280,50 @@
       var q = _highlightQuery.toLowerCase();
       var overlay = document.createElement('div');
       overlay.id = 'pdfHighlightOverlay';
-      overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-      overlay.style.width  = cssW + 'px';
-      overlay.style.height = cssH + 'px';
+      overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;width:'+cssW+'px;height:'+cssH+'px;';
 
       tc.items.forEach(function(item){
-        if(!item.str) return;
-        var idx = item.str.toLowerCase().indexOf(q);
+        if(!item.str || item.str.trim() === '') return;
+        var lstr = item.str.toLowerCase();
+        var idx  = lstr.indexOf(q);
         if(idx === -1) return;
 
-        // Transformer les coordonnées PDF → CSS
+        // Appliquer la transformation viewport complète (comme PDF.js le fait en interne)
         var tx = pdfjsLib.Util.transform(vp.transform, item.transform);
-        var x  = tx[4] / dpr;
-        var y  = tx[5] / dpr;
-        var w  = (item.width  * vp.scale) / dpr;
-        var h  = (item.height * vp.scale) / dpr;
-        // PDF origin = bas gauche, CSS = haut gauche
-        y = cssH - y - h;
+        // tx = [scaleX, skewY, skewX, scaleY, translateX, translateY]
+        // translateX/Y sont déjà en coordonnées canvas (physiques)
+        var x = tx[4] / dpr;
+        var y = tx[5] / dpr;
+        // La hauteur du glyphe vient de scaleY (tx[3] peut être négatif)
+        var scaleY = Math.abs(tx[3]) / dpr;
+        var scaleX = Math.abs(tx[0]) / dpr;
+        // Largeur totale du mot en px CSS
+        var wTotal = item.width  * Math.abs(vp.scale) / dpr;
+        var h      = item.height * Math.abs(vp.scale) / dpr;
+
+        // En PDF, y est la baseline (bas du texte), on remonte de h
+        // tx[5] est déjà transformé depuis le repère PDF (y inversé par vp.transform)
+        var top  = y - h;
+        var left = x + (idx / item.str.length) * wTotal;
+        var w    = (q.length / item.str.length) * wTotal;
+
+        // Garde-fou : rester dans les bornes du canvas
+        if(left < 0 || top < 0 || left > cssW || top > cssH) return;
 
         var mark = document.createElement('div');
         mark.style.cssText = [
           'position:absolute',
-          'left:'   + (x + (idx / item.str.length) * w) + 'px',
-          'top:'    + y + 'px',
-          'width:'  + (q.length / item.str.length * w) + 'px',
-          'height:' + h + 'px',
-          'background:rgba(255,200,0,.45)',
+          'left:'   + left + 'px',
+          'top:'    + top  + 'px',
+          'width:'  + w    + 'px',
+          'height:' + h    + 'px',
+          'background:rgba(255,210,0,.5)',
           'border-radius:2px',
           'mix-blend-mode:multiply'
         ].join(';');
         overlay.appendChild(mark);
       });
 
-      // Insérer l'overlay dans le même conteneur que le canvas
       var canvas = document.getElementById('pdfViewerCanvas');
       if(canvas && canvas.parentNode){
         canvas.parentNode.style.position = 'relative';
