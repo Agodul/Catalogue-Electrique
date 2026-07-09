@@ -1618,12 +1618,11 @@
     homePage.classList.add('hidden');
     catalogueWrap.style.display = '';
     document.getElementById('hdrCountChip').style.display = '';
-    if(familyFilter){
-      familyFilterEl.value = familyFilter;
-    }
-    if(brandFilter){
-      brandFilterEl.value = brandFilter;
-    }
+    // Utiliser getElementById directement pour éviter la collision de noms
+    var famEl = document.getElementById('familyFilter');
+    var brandEl = document.getElementById('brandFilter');
+    if(famEl && familyFilter) famEl.value = familyFilter;
+    if(brandEl && brandFilter) brandEl.value = brandFilter;
     render();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
