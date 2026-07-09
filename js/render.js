@@ -288,18 +288,30 @@
     var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
     delete h['Content-Type'];
 
+    // Charger JSZip si besoin
+    function loadJSZip(cb){
+      if(window.JSZip){ cb(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = cb;
+      document.head.appendChild(s);
+    }
+
     fetch(pdfUrl, { headers: h })
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-      .then(function(buffer){
-        if(_pdfBlobUrl) URL.revokeObjectURL(_pdfBlobUrl);
-        _pdfBlobUrl = URL.createObjectURL(new Blob([buffer],{type:'application/pdf'}));
-        if(btnDl) btnDl.onclick = function(){
-          var a = document.createElement('a');
-          a.href = _pdfBlobUrl; a.download = docName||'document.pdf';
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        };
-        loadLib(function(){
-          pdfjsLib.getDocument({ data: buffer, isEvalSupported: false, disableAutoFetch: true, disableStream: true }).promise
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+      .then(function(blob){
+        var contentType = blob.type || '';
+        // Si ZIP : extraire le premier PDF
+        function processPdfBuffer(buffer){
+          if(_pdfBlobUrl) URL.revokeObjectURL(_pdfBlobUrl);
+          _pdfBlobUrl = URL.createObjectURL(new Blob([buffer],{type:'application/pdf'}));
+          if(btnDl) btnDl.onclick = function(){
+            var a = document.createElement('a');
+            a.href = _pdfBlobUrl; a.download = docName||'document.pdf';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          };
+          loadLib(function(){
+            pdfjsLib.getDocument({ data: buffer, isEvalSupported: false, disableAutoFetch: true, disableStream: true }).promise
             .then(function(pdf){
               _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');
@@ -311,7 +323,32 @@
             .catch(function(e){
               if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur PDF : '+e.message+'</div>';
             });
-        });
+          });
+        }
+        if(contentType.indexOf('zip') !== -1 || contentType.indexOf('octet') !== -1){
+          loadJSZip(function(){
+            blob.arrayBuffer().then(function(zipBuf){
+              JSZip.loadAsync(zipBuf).then(function(zip){
+                // Trouver le premier fichier PDF dans le zip
+                var pdfFile = null;
+                zip.forEach(function(path, file){
+                  if(!pdfFile && path.toLowerCase().endsWith('.pdf')) pdfFile = file;
+                });
+                if(!pdfFile){
+                  // Prendre le premier fichier si pas de .pdf
+                  zip.forEach(function(path, file){ if(!pdfFile) pdfFile = file; });
+                }
+                if(pdfFile){
+                  pdfFile.async('arraybuffer').then(processPdfBuffer);
+                } else {
+                  if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;">Aucun PDF trouvé dans le ZIP</div>';
+                }
+              });
+            });
+          });
+        } else {
+          blob.arrayBuffer().then(processPdfBuffer);
+        }
       })
       .catch(function(e){
         if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+e.message+'</div>';
