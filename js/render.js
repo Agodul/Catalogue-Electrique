@@ -236,7 +236,7 @@
   function _pdfLoadLib(cb){
     if(window.pdfjsLib){ cb(); return; }
     var s = document.createElement('script');
-    s.src = '/Catalogue-Electrique/pdfjs/pdf.min.js';
+    s.src = '/Catalogue-Electrique/js/pdf.min.js';
     s.onload = function(){
       // workerSrc vide = fake worker dans le thread principal
       // contourne l'erreur "window is not defined" dans le worker
