@@ -299,7 +299,7 @@
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
         };
         _pdfLoadLib(function(){
-          pdfjsLib.getDocument({ data: buffer, isEvalSupported: false }).promise
+          pdfjsLib.getDocument({ data: buffer, isEvalSupported: false, disableAutoFetch: true, disableStream: true }).promise
             .then(function(pdf){
               _pdfDoc  = pdf;
               _pdfPage = 1;
