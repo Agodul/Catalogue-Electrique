@@ -229,8 +229,9 @@
   // ── Fin modale Documents ─────────────────────────────────────────
 
   // ── PDF Viewer (PDF.js canvas) ─────────────────────────────────
-  var _pdfDoc  = null;
-  var _pdfPage = 1;
+  var _pdfDoc   = null;
+  var _pdfPage  = 1;
+  var _pdfZoom  = 1.0;
   var _pdfBlobUrl = null;
 
   function _pdfRenderPage(num){
@@ -241,15 +242,22 @@
     var body   = document.getElementById('pdfViewerBody');
     if(!canvas) return;
     _pdfDoc.getPage(num).then(function(page){
+      var dpr   = window.devicePixelRatio || 1;
       var vp0   = page.getViewport({ scale: 1 });
-      var scale = body ? Math.min((body.clientWidth - 40) / vp0.width, 2.5) : 1.5;
-      var vp    = page.getViewport({ scale: scale });
+      var baseScale = body ? Math.min((body.clientWidth - 40) / vp0.width, 2.5) : 1.5;
+      var scale = baseScale * _pdfZoom;
+      var vp    = page.getViewport({ scale: scale * dpr });
       canvas.width  = vp.width;
       canvas.height = vp.height;
+      canvas.style.width  = Math.floor(vp.width / dpr) + 'px';
+      canvas.style.height = Math.floor(vp.height / dpr) + 'px';
       page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function(){
         if(loader) loader.style.display = 'none';
         canvas.style.display = 'block';
         if(pageEl) pageEl.textContent = num + ' / ' + _pdfDoc.numPages;
+        // Mettre à jour le bouton zoom
+        var zoomEl = document.getElementById('pdfViewerZoomLevel');
+        if(zoomEl) zoomEl.textContent = Math.round(_pdfZoom * 100) + '%';
       });
     }).catch(function(e){ console.error('render page', e); });
   }
@@ -315,9 +323,16 @@
             .then(function(pdf){
               _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');
-              if(navEl) navEl.style.display = pdf.numPages > 1 ? 'flex' : 'none';
+              if(navEl) navEl.style.display = 'flex'; // toujours visible pour le zoom
               if(btnPrev) btnPrev.onclick = function(){ if(_pdfPage > 1){ _pdfPage--; _pdfRenderPage(_pdfPage); } };
               if(btnNext) btnNext.onclick = function(){ if(_pdfPage < pdf.numPages){ _pdfPage++; _pdfRenderPage(_pdfPage); } };
+              var btnZoomIn  = document.getElementById('pdfViewerZoomIn');
+              var btnZoomOut = document.getElementById('pdfViewerZoomOut');
+              var btnZoomReset = document.getElementById('pdfViewerZoomReset');
+              if(btnZoomIn)    btnZoomIn.onclick    = function(){ _pdfZoom = Math.min(_pdfZoom + 0.25, 4); _pdfRenderPage(_pdfPage); };
+              if(btnZoomOut)   btnZoomOut.onclick   = function(){ _pdfZoom = Math.max(_pdfZoom - 0.25, 0.5); _pdfRenderPage(_pdfPage); };
+              if(btnZoomReset) btnZoomReset.onclick = function(){ _pdfZoom = 1; _pdfRenderPage(_pdfPage); };
+              _pdfZoom = 1;
               _pdfRenderPage(1);
             })
             .catch(function(e){

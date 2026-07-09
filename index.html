@@ -955,10 +955,18 @@
       <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;padding:60px 0;"></div>
       <canvas id="pdfViewerCanvas" style="display:none;max-width:100%;box-shadow:0 4px 20px rgba(0,0,0,.4);"></canvas>
     </div>
-    <div id="pdfViewerNav" style="display:none;align-items:center;justify-content:center;gap:16px;padding:10px;background:#3a3d40;flex-shrink:0;">
-      <button id="pdfViewerPrev" style="padding:5px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;">← Précédent</button>
-      <span id="pdfViewerPage" style="font-size:13px;color:rgba(255,255,255,.7);min-width:70px;text-align:center;"></span>
-      <button id="pdfViewerNext" style="padding:5px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;">Suivant →</button>
+    <div id="pdfViewerNav" style="display:none;align-items:center;justify-content:space-between;padding:10px 16px;background:#3a3d40;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="pdfViewerPrev" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;">←</button>
+        <span id="pdfViewerPage" style="font-size:13px;color:rgba(255,255,255,.7);min-width:70px;text-align:center;"></span>
+        <button id="pdfViewerNext" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;font-family:inherit;">→</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button id="pdfViewerZoomOut" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:15px;cursor:pointer;font-family:inherit;line-height:1;">−</button>
+        <span id="pdfViewerZoomLevel" style="font-size:12px;color:rgba(255,255,255,.7);min-width:40px;text-align:center;">100%</span>
+        <button id="pdfViewerZoomIn" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:15px;cursor:pointer;font-family:inherit;line-height:1;">+</button>
+        <button id="pdfViewerZoomReset" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:11px;cursor:pointer;font-family:inherit;">1:1</button>
+      </div>
     </div>
   </div>
 </div>
