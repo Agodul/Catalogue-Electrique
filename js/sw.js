@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v231";
+const CACHE = "spi-catalogue-v232";
 
 const FILES = [
   "./",
@@ -14,6 +14,7 @@ const FILES = [
   "./js/init.js",
   "./js/modal.js",
   "./js/pwa.js",
+  "./js/requests.js",
   "./js/render.js",
   "./js/storage.js",
   "./js/pdf.min.js",

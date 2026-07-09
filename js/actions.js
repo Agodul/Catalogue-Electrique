@@ -106,6 +106,24 @@
       payload.priceHistory = initialHistory;
       products.push(payload);
     }
+    var _saveUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+    var _saveIsAdmin = _saveUser && _saveUser.isAdmin;
+    var _serverUrl = localStorage.getItem('spi_server_url') || '';
+
+    // Non-admin avec serveur configuré → soumettre une demande
+    if(!_saveIsAdmin && _serverUrl && typeof window.reqSubmit === 'function'){
+      var _existingProduct = editingId ? products.find(function(p){ return p.id === editingId; }) : null;
+      window.reqSubmit(payload, _existingProduct || null).then(function(ok){
+        if(ok){
+          showToast('Demande soumise — en attente de validation par un admin ✓', 'ok', 4000);
+          closeModal();
+        } else {
+          showToast('Erreur lors de la soumission de la demande', 'err', 3000);
+        }
+      });
+      return;
+    }
+
     // Animation 5 — flash vert sur le bouton enregistrer
     var btnSaveEl = document.getElementById('btnSave');
     btnSaveEl.classList.remove('save-anim');
@@ -245,9 +263,17 @@
         doSyncCheck();
         syncDeletions();
         startSyncPolling();
+        // Démarrer le polling des demandes (admin uniquement)
+        if(typeof window._reqStartPolling === 'function') window._reqStartPolling();
       }, 1500);
       // Sync suppressions toutes les 5 minutes
       setInterval(syncDeletions, 5 * 60 * 1000);
+    }
+    // Afficher le bouton demandes pour les non-admins connectés (pour voir leurs propres demandes)
+    var _btnReqEl = document.getElementById('btnRequests');
+    var _curUserForReq = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+    if(_btnReqEl && _curUserForReq && serverUrl){
+      _btnReqEl.style.display = '';
     }
   }
 
@@ -568,7 +594,7 @@
     var urlChanged = newUrl && newUrl !== serverUrl;
     serverUrl  = newUrl;
     saveServerConfig();
-    if(serverUrl) startSyncPolling(); else stopSyncPolling();
+    if(serverUrl){ startSyncPolling(); if(typeof window._reqStartPolling === 'function') window._reqStartPolling(); } else { stopSyncPolling(); if(typeof window._reqStopPolling === 'function') window._reqStopPolling(); }
 
     // Si nouvelle URL et pas connecté → ouvrir la fenêtre de login d'abord
     if(urlChanged && serverUrl && typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){

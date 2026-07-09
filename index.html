@@ -54,6 +54,7 @@
 <script src="js/actions.js" defer></script>
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
+<script src="js/requests.js" defer></script>
 
 </head>
 <body>
@@ -89,6 +90,11 @@
       <span class="filebar-tooltip-box" id="filebarTooltipBox"></span>
     </span>
     <button id="btnAuthToggle" class="secondary hdr-menu-btn" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
+    <!-- Badge demandes en attente (admin) -->
+    <button id="btnRequests" class="secondary hdr-menu-btn" title="Demandes en attente" style="display:none;position:relative;">
+      <i class="ti ti-bell" aria-hidden="true"></i>
+      <span id="requestsBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;"></span>
+    </button>
     <div class="hdr-menu-wrap" id="hdrMenuWrap">
       <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options">⋮</button>
       <div class="hdr-menu" id="hdrMenu">
@@ -873,6 +879,40 @@
     </div>
   </div>
 
+
+<!-- ===== PANNEAU DEMANDES ===== -->
+<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10800;align-items:flex-start;justify-content:flex-end;">
+  <div id="requestsPanel" style="background:var(--paper-card);width:100%;max-width:560px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.2);overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="ti ti-bell" style="font-size:20px;color:#194093;"></i>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--ink);">Demandes en attente</div>
+          <div id="requestsPanelSubtitle" style="font-size:12px;color:var(--ink-soft);margin-top:1px;"></div>
+        </div>
+      </div>
+      <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
+    </div>
+    <!-- Onglets Admin / Mes demandes -->
+    <div id="requestsTabs" style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <button class="req-tab active" data-tab="admin" id="reqTabAdmin" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#194093;border-bottom:2px solid #194093;cursor:pointer;font-family:inherit;">Demandes reçues</button>
+      <button class="req-tab" data-tab="mine" id="reqTabMine" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:var(--ink-soft);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">Mes demandes</button>
+    </div>
+    <!-- Corps -->
+    <div id="requestsBody" style="flex:1;overflow-y:auto;"></div>
+    <!-- Footer admin -->
+    <div id="requestsFooter" style="display:none;padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+      <button id="btnAcceptAllRequests" class="copper" style="padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-check"></i> Tout accepter
+      </button>
+      <button id="btnRefuseAllRequests" style="padding:8px 18px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-x"></i> Tout refuser
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN PANNEAU DEMANDES ===== -->
 
 <!-- ── Modale Login ─────────────────────────────────────── -->
 <div id="authOverlay">
