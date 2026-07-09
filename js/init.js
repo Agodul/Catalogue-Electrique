@@ -1,6 +1,7 @@
 // ---------- Init ----------
   load();
   render();
+  showHome();
 
   // Afficher le splash uniquement au premier démarrage (pas au F5)
   var splash = document.getElementById('app-splash');
@@ -119,10 +120,7 @@
       }, 350);
     }, 600);
   })();
-  // Démarrer sur la page d'accueil si des produits existent
-  if(products.length > 0){
-    showHome();
-  }
+  // showHome() déjà appelé en début d'init
 
   // ═══════════════════════════════════════════════════════════════
   //  EXTENSION CHROME — Injection via localStorage
