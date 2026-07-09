@@ -169,27 +169,45 @@
 
       var item = document.createElement('div');
       item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;';
+
+      var btnVoir = document.createElement('button');
+      btnVoir.style.cssText = 'padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:inherit;';
+      btnVoir.innerHTML = '<i class="ti ti-eye" style="font-size:14px;"></i> Voir';
+      btnVoir.onclick = function(){
+        window._openPdfViewer(pdfUrl, docName);
+      };
+
+      var btnDl = document.createElement('a');
+      btnDl.style.cssText = 'padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0;';
+      btnDl.innerHTML = '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger';
+      // Télécharger via blob pour passer les headers auth
+      btnDl.href = '#';
+      btnDl.onclick = function(e){
+        e.preventDefault();
+        var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
+        delete h['Content-Type'];
+        fetch(pdfUrl, { headers: h })
+          .then(function(r){ return r.blob(); })
+          .then(function(blob){
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = docName;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+          })
+          .catch(function(){ window.open(pdfUrl, '_blank'); });
+      };
+
       item.innerHTML = '<div style="width:40px;height:40px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
         + '<i class="ti ti-file-type-pdf" style="font-size:22px;color:#E53E3E;"></i></div>'
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(docName)+'</div>'
         + '<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">PDF</div>'
-        + '</div>'
-        + '<a href="'+pdfUrl+'" target="_blank" style="padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0;">'
-        + '<i class="ti ti-eye" style="font-size:14px;"></i> Voir</a>'
-        + '<a href="'+pdfUrl+'" download="'+escapeHtml(docName)+'" style="padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0;">'
-        + '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger</a>';
+        + '</div>';
+      item.appendChild(btnVoir);
+      item.appendChild(btnDl);
       docList.appendChild(item);
-
-      // Iframe bloquée par CSP sur GitHub Pages (HTTP vs HTTPS)
-      // → bouton pour ouvrir dans un nouvel onglet
-      var openBtn = document.createElement('a');
-      openBtn.href = pdfUrl;
-      openBtn.target = '_blank';
-      openBtn.rel = 'noopener';
-      openBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:1.5px dashed var(--line);border-radius:10px;color:var(--ink-soft);font-size:13px;text-decoration:none;margin-top:4px;';
-      openBtn.innerHTML = '<i class="ti ti-external-link" style="font-size:18px;"></i> Ouvrir le PDF dans un nouvel onglet';
-      docList.appendChild(openBtn);
     } else {
       docList.innerHTML = '<div style="text-align:center;color:var(--ink-soft);padding:40px;font-size:14px;">Aucun document disponible</div>';
     }
@@ -209,6 +227,68 @@
     };
   }
   // ── Fin modale Documents ─────────────────────────────────────────
+
+  // ── PDF Viewer ───────────────────────────────────────────────────
+  window._openPdfViewer = function(pdfUrl, docName){
+    var viewer = document.getElementById('pdfViewerOverlay');
+    if(!viewer) return;
+    var iframe = document.getElementById('pdfViewerIframe');
+    var title  = document.getElementById('pdfViewerTitle');
+    var loader = document.getElementById('pdfViewerLoader');
+    var btnDl  = document.getElementById('pdfViewerDownload');
+
+    // Reset
+    if(title) title.textContent = docName || 'Document PDF';
+    if(iframe) iframe.src = '';
+    if(loader) loader.style.display = 'flex';
+    if(iframe) iframe.style.opacity = '0';
+
+    viewer.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    // Charger le PDF via blob (pour passer authHeaders)
+    var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
+    delete h['Content-Type'];
+    fetch(pdfUrl, { headers: h })
+      .then(function(r){
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.blob();
+      })
+      .then(function(blob){
+        var blobUrl = URL.createObjectURL(blob);
+        if(iframe){
+          iframe.onload = function(){
+            if(loader) loader.style.display = 'none';
+            iframe.style.opacity = '1';
+          };
+          iframe.src = blobUrl;
+          // Téléchargement : réutiliser le même blob
+          if(btnDl){
+            btnDl.onclick = function(){
+              var a = document.createElement('a');
+              a.href = blobUrl; a.download = docName || 'document.pdf';
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a);
+            };
+          }
+        }
+        // Cleanup blob après 5 min
+        setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 300000);
+      })
+      .catch(function(e){
+        if(loader) loader.innerHTML = '<div style="color:var(--warn);font-size:13px;">Erreur de chargement : '+e.message+'</div>';
+      });
+
+    function closePdfViewer(){
+      viewer.style.display = 'none';
+      if(iframe){ iframe.src = ''; iframe.style.opacity = '0'; }
+      document.body.classList.remove('modal-open');
+    }
+
+    document.getElementById('pdfViewerClose').onclick = closePdfViewer;
+    viewer.onclick = function(e){ if(e.target === viewer) closePdfViewer(); };
+  };
+  // ── Fin PDF Viewer ───────────────────────────────────────────────
 
   function closeView(){
     viewOverlay.classList.remove('open');

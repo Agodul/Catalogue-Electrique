@@ -935,5 +935,34 @@
   </div>
 </div>
 <!-- ===== FIN MODALE DOCUMENTS ===== -->
+
+<!-- ===== PDF VIEWER ===== -->
+<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10700;align-items:center;justify-content:center;padding:16px;">
+  <div id="pdfViewerModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:900px;height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4);">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <i class="ti ti-file-type-pdf" style="font-size:20px;color:#E53E3E;flex-shrink:0;"></i>
+        <span id="pdfViewerTitle" style="font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button id="pdfViewerDownload" style="padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;">
+          <i class="ti ti-download" style="font-size:14px;"></i> Télécharger
+        </button>
+        <button id="pdfViewerClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;line-height:1;">✕</button>
+      </div>
+    </div>
+    <!-- Loader -->
+    <div id="pdfViewerLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <i class="ti ti-loader-2" style="font-size:32px;color:var(--copper);animation:spin 1s linear infinite;"></i>
+        <span style="font-size:13px;color:var(--ink-soft);">Chargement du PDF…</span>
+      </div>
+    </div>
+    <!-- Iframe -->
+    <iframe id="pdfViewerIframe" style="flex:1;border:none;width:100%;opacity:0;transition:opacity .2s;" title="PDF Viewer"></iframe>
+  </div>
+</div>
+<!-- ===== FIN PDF VIEWER ===== -->
 </body>
 </html>
