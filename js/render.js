@@ -255,7 +255,8 @@
         return r.blob();
       })
       .then(function(blob){
-        var blobUrl = URL.createObjectURL(blob);
+        var pdfBlob = new Blob([blob], { type: 'application/pdf' });
+        var blobUrl = URL.createObjectURL(pdfBlob);
         if(iframe){
           iframe.onload = function(){
             if(loader) loader.style.display = 'none';
