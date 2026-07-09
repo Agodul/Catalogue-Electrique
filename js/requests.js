@@ -388,25 +388,32 @@
     document.body.classList.remove('modal-open');
   }
 
-  // ── Init listeners ────────────────────────────────────────────
-  document.getElementById('btnRequests').addEventListener('click', reqOpenPanel);
-  document.getElementById('requestsPanelClose').addEventListener('click', reqClosePanel);
-  document.getElementById('requestsOverlay').addEventListener('click', function(e){
-    if(e.target === this) reqClosePanel();
-  });
+  // ── Init listeners (différé, après DOM ready) ─────────────────
+  function reqInitListeners(){
+    var btnReqEl = document.getElementById('btnRequests');
+    if(btnReqEl) btnReqEl.addEventListener('click', reqOpenPanel);
 
-  // Onglets
-  document.querySelectorAll('.req-tab').forEach(function(tab){
-    tab.addEventListener('click', function(){
-      _reqPanelTab = tab.getAttribute('data-tab');
-      document.querySelectorAll('.req-tab').forEach(function(t){ t.classList.remove('active'); });
-      tab.classList.add('active');
-      reqRefreshPanel();
+    var panelClose = document.getElementById('requestsPanelClose');
+    if(panelClose) panelClose.addEventListener('click', reqClosePanel);
+
+    var overlay = document.getElementById('requestsOverlay');
+    if(overlay) overlay.addEventListener('click', function(e){
+      if(e.target === this) reqClosePanel();
     });
-  });
 
-  // Tout accepter / tout refuser
-  document.getElementById('btnAcceptAllRequests').addEventListener('click', async function(){
+    // Onglets
+    document.querySelectorAll('.req-tab').forEach(function(tab){
+      tab.addEventListener('click', function(){
+        _reqPanelTab = tab.getAttribute('data-tab');
+        document.querySelectorAll('.req-tab').forEach(function(t){ t.classList.remove('active'); });
+        tab.classList.add('active');
+        reqRefreshPanel();
+      });
+    });
+
+    // Tout accepter / tout refuser
+    var btnAccept = document.getElementById('btnAcceptAllRequests');
+    if(btnAccept) btnAccept.addEventListener('click', async function(){
     if(!confirm('Accepter toutes les demandes ?')) return;
     var sUrl = reqServerUrl();
     var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
@@ -423,7 +430,8 @@
     reqOpenPanel(); reqUpdateBadge();
   });
 
-  document.getElementById('btnRefuseAllRequests').addEventListener('click', async function(){
+    var btnRefuse = document.getElementById('btnRefuseAllRequests');
+    if(btnRefuse) btnRefuse.addEventListener('click', async function(){
     if(!confirm('Refuser toutes les demandes ?')) return;
     var sUrl = reqServerUrl();
     var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
@@ -439,6 +447,15 @@
     showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
     reqOpenPanel(); reqUpdateBadge();
   });
+
+  } // fin reqInitListeners
+
+  // Appeler après chargement DOM
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', reqInitListeners);
+  } else {
+    reqInitListeners();
+  }
 
   // Exposer pour démarrage depuis auth.js
   window._reqUpdateBadge  = reqUpdateBadge;
