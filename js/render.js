@@ -228,64 +228,101 @@
   }
   // ── Fin modale Documents ─────────────────────────────────────────
 
-  // ── PDF Viewer ───────────────────────────────────────────────────
-  window._openPdfViewer = function(pdfUrl, docName){
-    var viewer = document.getElementById('pdfViewerOverlay');
-    if(!viewer) return;
-    var iframe = document.getElementById('pdfViewerIframe');
-    var title  = document.getElementById('pdfViewerTitle');
-    var loader = document.getElementById('pdfViewerLoader');
-    var btnDl  = document.getElementById('pdfViewerDownload');
+  // ── PDF Viewer (PDF.js canvas) ────────────────────────────────────
+  var _pdfBlobUrl = null;
+  var _pdfDoc     = null;
+  var _pdfPage    = 1;
 
-    // Reset
-    if(title) title.textContent = docName || 'Document PDF';
-    if(iframe) iframe.src = '';
-    if(loader) loader.style.display = 'flex';
-    if(iframe) iframe.style.opacity = '0';
+  function _pdfRenderPage(pageNum){
+    var canvas  = document.getElementById('pdfViewerCanvas');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var pageEl  = document.getElementById('pdfViewerPage');
+    if(!canvas || !_pdfDoc) return;
+    _pdfDoc.getPage(pageNum).then(function(page){
+      var viewport = page.getViewport({ scale: 1 });
+      var container = document.getElementById('pdfViewerBody');
+      var scale = container ? (container.clientWidth - 32) / viewport.width : 1;
+      var scaledViewport = page.getViewport({ scale: scale });
+      canvas.width  = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport })
+        .promise.then(function(){
+          if(loader) loader.style.display = 'none';
+          canvas.style.opacity = '1';
+          if(pageEl) pageEl.textContent = pageNum + ' / ' + _pdfDoc.numPages;
+        });
+    });
+  }
+
+  window._openPdfViewer = function(pdfUrl, docName){
+    var viewer  = document.getElementById('pdfViewerOverlay');
+    var canvas  = document.getElementById('pdfViewerCanvas');
+    var title   = document.getElementById('pdfViewerTitle');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var btnDl   = document.getElementById('pdfViewerDownload');
+    var btnPrev = document.getElementById('pdfViewerPrev');
+    var btnNext = document.getElementById('pdfViewerNext');
+    if(!viewer) return;
+
+    if(title)  title.textContent = docName || 'Document PDF';
+    if(loader) { loader.style.display = 'flex'; loader.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><i class="ti ti-loader-2" style="font-size:32px;color:var(--copper);animation:spin 1s linear infinite;"></i><span style="font-size:13px;color:var(--ink-soft);">Chargement du PDF…</span></div>'; }
+    if(canvas) { canvas.width = 0; canvas.height = 0; canvas.style.opacity = '0'; }
+    _pdfDoc = null; _pdfPage = 1;
 
     viewer.style.display = 'flex';
     document.body.classList.add('modal-open');
 
-    // Charger le PDF via blob (pour passer authHeaders)
+    function loadPdfJs(cb){
+      if(window.pdfjsLib){ cb(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.onload = function(){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        cb();
+      };
+      document.head.appendChild(s);
+    }
+
     var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
     delete h['Content-Type'];
     fetch(pdfUrl, { headers: h })
-      .then(function(r){
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        return r.blob();
-      })
-      .then(function(blob){
-        var pdfBlob = new Blob([blob], { type: 'application/pdf' });
-        var blobUrl = URL.createObjectURL(pdfBlob);
-        if(iframe){
-          iframe.onload = function(){
-            if(loader) loader.style.display = 'none';
-            iframe.style.opacity = '1';
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(buffer){
+        if(_pdfBlobUrl) URL.revokeObjectURL(_pdfBlobUrl);
+        _pdfBlobUrl = URL.createObjectURL(new Blob([buffer], { type:'application/pdf' }));
+        if(btnDl){
+          btnDl.onclick = function(){
+            var a = document.createElement('a');
+            a.href = _pdfBlobUrl; a.download = docName || 'document.pdf';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
           };
-          iframe.src = blobUrl;
-          // Téléchargement : réutiliser le même blob
-          if(btnDl){
-            btnDl.onclick = function(){
-              var a = document.createElement('a');
-              a.href = blobUrl; a.download = docName || 'document.pdf';
-              document.body.appendChild(a); a.click();
-              document.body.removeChild(a);
-            };
-          }
         }
-        // Cleanup blob après 5 min
-        setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 300000);
+        loadPdfJs(function(){
+          pdfjsLib.getDocument({ data: buffer }).promise.then(function(pdf){
+            _pdfDoc = pdf;
+            var pageEl = document.getElementById('pdfViewerPage');
+            if(pageEl) pageEl.textContent = '1 / ' + pdf.numPages;
+            var navEl = document.getElementById('pdfViewerNav');
+            if(navEl) navEl.style.display = pdf.numPages > 1 ? 'flex' : 'none';
+            if(btnPrev) btnPrev.onclick = function(){
+              if(_pdfPage > 1){ _pdfPage--; _pdfRenderPage(_pdfPage); }
+            };
+            if(btnNext) btnNext.onclick = function(){
+              if(_pdfPage < _pdfDoc.numPages){ _pdfPage++; _pdfRenderPage(_pdfPage); }
+            };
+            _pdfRenderPage(1);
+          });
+        });
       })
       .catch(function(e){
-        if(loader) loader.innerHTML = '<div style="color:var(--warn);font-size:13px;">Erreur de chargement : '+e.message+'</div>';
+        if(loader) loader.innerHTML = '<div style="color:var(--warn);font-size:13px;padding:20px;">Erreur : '+e.message+'</div>';
       });
 
     function closePdfViewer(){
       viewer.style.display = 'none';
-      if(iframe){ iframe.src = ''; iframe.style.opacity = '0'; }
       document.body.classList.remove('modal-open');
     }
-
     document.getElementById('pdfViewerClose').onclick = closePdfViewer;
     viewer.onclick = function(e){ if(e.target === viewer) closePdfViewer(); };
   };
