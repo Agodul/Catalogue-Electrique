@@ -325,6 +325,12 @@ function applyAuthUI() {
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');
   if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';
+  // Ajouter/retirer classe has-propose sur viewModal pour décaler le i
+  var _viewModal = document.getElementById('viewModal');
+  if(_viewModal){
+    if(canPropose) _viewModal.classList.add('has-propose');
+    else _viewModal.classList.remove('has-propose');
+  }
 
   // Export catalogue
   var btnExport = document.getElementById('btnExportJSON');
