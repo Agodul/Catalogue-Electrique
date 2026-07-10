@@ -41,6 +41,7 @@ function authClearUser() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
 }
 
+
 function _defaultPermissions(isAdmin) {
   return {
     canEdit:        !!isAdmin,
@@ -311,8 +312,7 @@ function applyAuthUI() {
 
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
-  var _canProposeExplicit = isAdmin ? false : (!!perms.canPropose);
-  var canPropose = loggedIn && !canEdit && !!_sUrlReq && _canProposeExplicit;
+  var canPropose = loggedIn && !canEdit && !!_sUrlReq;
 
   // Bouton "Proposer un produit" dans le header (remplacement de btnAdd)
   var btnPropose = document.getElementById('btnProposeProduct');
@@ -338,7 +338,7 @@ function applyAuthUI() {
 
   // Exposer les permissions pour les autres modules
   window._userPerms = {
-    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn, canPropose
+    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn
   };
 
   updateAuthHeaderBtn(loggedIn, user);
@@ -455,9 +455,8 @@ function _renderUserList(container, users, isServer) {
   users.forEach(function(u) {
     var isSelf   = user && u.username === user.username;
     var isAdminU = u.isAdmin || u.username === 'admin';
-    var perms    = u.permissions || {};
-
-    // Badges permissions
+        var perms    = u.permissions || {};
+    if(_decodedU.canPropose) perms.canPropose = true;  // Badges permissions
     var permBadges = '';
     if (isAdminU) {
       permBadges = '<span style="font-size:10px;background:#EEF4FF;color:#194093;border-radius:4px;padding:1px 6px;margin-right:3px;">Admin complet</span>';
@@ -558,7 +557,6 @@ function openAddUserModal() {
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
-    ['canPropose',    'Proposer des produits et modifications'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
@@ -657,7 +655,6 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
-    ['canPropose',    'Proposer des produits et modifications'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
