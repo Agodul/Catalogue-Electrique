@@ -37,8 +37,8 @@
     /* Mobile : vidéo à 50% de la taille */
     @media (max-width: 480px){
       #app-splash video{
-        width:55%;
-        height:55%;
+        width:50%;
+        height:50%;
         top:50%;
         left:50%;
         transform:translate(-50%,-50%);
@@ -147,6 +147,14 @@
           <span class="mi-texts"><span class="mi-title">Comparer les offres</span><span class="mi-sub">Importer les fichiers fournisseurs</span></span>
         </button>
         <div class="hdr-menu-sep"></div>
+        <button class="hdr-menu-item" id="btnRequestsMenu" style="display:none;">
+          <span class="mi-icon" style="background:#EFF6FF;position:relative;">
+            <i class="ti ti-bell" style="color:#194093;"></i>
+            <span id="requestsBadgeMenu" style="display:none;position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:14px;"></span>
+          </span>
+          <span class="mi-texts"><span class="mi-title">Demandes en attente</span><span class="mi-sub">Modifications proposées</span></span>
+        </button>
+        <div class="hdr-menu-sep" id="reqMenuSep" style="display:none;"></div>
         <button class="hdr-menu-item" id="btnSettings">
           <span class="mi-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
           <span class="mi-texts"><span class="mi-title">Paramètres</span><span class="mi-sub">Icônes des familles, Serveur</span></span>

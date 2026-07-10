@@ -1003,6 +1003,8 @@
     .hdr-count-chip{ display:none; }
     .header-actions{ gap:5px; flex-shrink:0; }
     .header-actions button#btnAdd{ display:none; }
+    /* Sur mobile : bouton demandes masqué dans le header, dispo dans le menu hamburger */
+    #btnRequests{ display:none !important; }
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
 
     /* ── Infobulle ── */

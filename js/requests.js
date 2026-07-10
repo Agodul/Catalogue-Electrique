@@ -47,6 +47,12 @@
           badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
           badge.style.display = total > 0 ? '' : 'none';
         }
+      // Sync badge menu hamburger
+      var badgeMenu = document.getElementById('requestsBadgeMenu');
+      if(badgeMenu){
+        badgeMenu.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
+        badgeMenu.style.display = total > 0 ? '' : 'none';
+      }
       }
     } catch(e) {}
   }
@@ -392,6 +398,8 @@
   function reqInitListeners(){
     var btnReqEl = document.getElementById('btnRequests');
     if(btnReqEl) btnReqEl.addEventListener('click', reqOpenPanel);
+    var btnReqMenuEl = document.getElementById('btnRequestsMenu');
+    if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('show'); reqOpenPanel(); });
 
     var panelClose = document.getElementById('requestsPanelClose');
     if(panelClose) panelClose.addEventListener('click', reqClosePanel);
