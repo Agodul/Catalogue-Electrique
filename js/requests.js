@@ -299,25 +299,15 @@
       photoHtml = '<img src="' + escapeHtml(data.photo) + '" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;background:#f5f5f5;margin-bottom:10px;" onerror="this.style.display=&quot;none&quot;">';
     }
 
-    // Détail collapsible
-    var detailId = 'req-detail-' + refKey + '-' + userKey.replace(/[^a-z0-9]/gi,'');
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="var d=document.getElementById(&quot;' + detailId + '&quot;);d.style.display=d.style.display===&quot;none&quot;?&quot;block&quot;:&quot;none&quot;;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
-      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + refKey + '</div>'
+      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(item.ref) + '</div>'
       +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · ' + reqAt : '') + '</div>'
       +   '</div>'
       +   '<div style="display:flex;align-items:center;gap:8px;">'
       +     '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + (isNew ? '#DCFCE7' : '#FEF3C7') + ';color:' + (isNew ? '#065F46' : '#92400E') + ';font-weight:700;">' + (isNew ? 'Nouveau' : 'Modification') + '</span>'
-      +     '<i class="ti ti-chevron-down" style="font-size:14px;color:var(--ink-soft);"></i>'
-      +   '</div>'
-      + '</div>'
-      + '<div id="' + detailId + '" style="display:none;margin-top:10px;">'
-      +   photoHtml
-      +   diffHtml
-      +   '<div class="req-actions" style="margin-top:10px;">'
-      +     '<button class="req-btn-accept" data-req-accept="' + refKey + '" data-req-user="' + userKey + '"><i class="ti ti-check"></i> Accepter</button>'
-      +     '<button class="req-btn-refuse" data-req-refuse="' + refKey + '" data-req-user="' + userKey + '"><i class="ti ti-x"></i> Refuser</button>'
+      +     '<i class="ti ti-chevron-right" style="font-size:14px;color:var(--ink-soft);"></i>'
       +   '</div>'
       + '</div>'
       + '</div>';
