@@ -50,26 +50,13 @@
     });
   }
 
-  var filebarEl = document.getElementById('filebar');
-  var filebarStatusEl = document.getElementById('filebarStatus');
-  var btnConnectFile = document.getElementById('btnConnectFile');
-  var btnDisconnectFile = document.getElementById('btnDisconnectFile');
+  var filebarEl = null;
+  var filebarStatusEl = null;
+  var btnConnectFile = null;
+  var btnDisconnectFile = null;
 
-  function setFilebar(state, msg){
-    filebarEl.classList.remove('connected','error');
-    if(state) filebarEl.classList.add(state);
-    if(filebarStatusEl && msg) filebarStatusEl.textContent = msg;
-  }
-
-  function updateFilebarUI(connected){
-    if(connected){
-      btnConnectFile.textContent = 'Changer de fichier';
-      btnDisconnectFile.style.display = 'inline-block';
-    }else{
-      btnConnectFile.textContent = 'Choisir un fichier sur mon PC';
-      btnDisconnectFile.style.display = 'none';
-    }
-  }
+  function setFilebar(state, msg){ /* filebar supprimée */ }
+  function updateFilebarUI(connected){ /* filebar supprimée */ }
 
   function showToast(message, type, duration){
     duration = typeof duration === 'number' ? duration : 3000;
@@ -84,19 +71,10 @@
     }, duration);
   }
 
-  var tooltipBox = document.getElementById('filebarTooltipBox');
-  var tooltipWrap = document.getElementById('filebarTooltipWrap');
-  if(!fsSupported){
-    tooltipBox.textContent = 'Sauvegarde automatique sur fichier non disponible dans ce navigateur. Utilisez Chrome, Edge ou Brave (avec les protections de confidentialité désactivées pour ce fichier). Pour l\'instant, les données restent enregistrées dans ce navigateur (pensez à exporter).';
-    btnConnectFile.style.display = 'none';
-  } else {
-    tooltipBox.textContent = 'Cliquez « Choisir un fichier sur mon PC » pour activer la sauvegarde automatique. Sur Brave, si le bouton ne fonctionne pas, désactivez temporairement le Bouclier Brave (icône lion) pour ce fichier.';
-  }
-  // Le bouton ⓘ est toujours affiché dans le header
-  tooltipWrap.style.display = 'inline-flex';
+  /* tooltip filebar supprimé */
 
   // Déclenchement au clic (hover + tap mobile)
-  tooltipWrap.addEventListener('click', function(e){
+  if(false && tooltipWrap) tooltipWrap.addEventListener('click', function(e){
     e.stopPropagation();
     tooltipBox.classList.toggle('show');
   });
@@ -200,13 +178,13 @@
         setFilebar('connected', 'Connecté à « ' + handle.name + ' » (sauvegarde automatique active).');
       }else{
         setFilebar('', 'Fichier « ' + handle.name + ' » précédemment connecté — cliquez pour réautoriser l\'accès.');
-        btnConnectFile.textContent = 'Réautoriser « ' + handle.name + ' »';
-        btnConnectFile.onclick = async function(){
+        if(btnConnectFile) btnConnectFile.textContent = 'Réautoriser « ' + handle.name + ' »';
+        if(btnConnectFile) btnConnectFile.onclick = async function(){
           var ok = await verifyPermission(handle, true);
           if(ok){
             fileHandle = handle;
             updateFilebarUI(true);
-            btnConnectFile.onclick = connectFile;
+            if(btnConnectFile) btnConnectFile.onclick = connectFile;
             setFilebar('connected', 'Connecté à « ' + handle.name + ' » (sauvegarde automatique active).');
             await writeProductsToFile();
           }
@@ -215,8 +193,8 @@
     }catch(e){ /* no stored handle yet */ }
   }
 
-  btnConnectFile.addEventListener('click', connectFile);
-  btnDisconnectFile.addEventListener('click', disconnectFile);
+  if(btnConnectFile) btnConnectFile.addEventListener('click', connectFile);
+  if(btnDisconnectFile) btnDisconnectFile.addEventListener('click', disconnectFile);
 
   // ---------- Persistence ----------
   var FAMILY_ICONS_KEY = 'cat_family_icons';
