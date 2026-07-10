@@ -1461,6 +1461,42 @@
       }
     });
 
+    // Si l'user n'a pas canEdit mais peut importer (canExport) → soumettre via _req
+    var _xlsxUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+    var _xlsxPerms = window._userPerms || {};
+    var _xlsxCanEdit = _xlsxUser && (_xlsxUser.isAdmin || _xlsxPerms.canEdit);
+
+    if(!_xlsxCanEdit && typeof window.reqSubmit === 'function' && (added + updated) > 0){
+      // Collecter tous les produits modifiés/ajoutés et les soumettre comme demandes
+      var _toSubmit = [];
+      xlsxPendingData.forEach(function(item){
+        if(item.status === 'nochange') return;
+        if(item.status === 'new'){
+          _toSubmit.push({ payload: {
+            id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+            ref: item.ref, name: item.newName, brand: item.newBrand,
+            family: item.newFamily, series: item.newSeries, supplier: item.newSupplier,
+            price: item.newSellingPrice || item.newCataloguePrice || item.newPrice || '',
+            priceCatalogue: item.newCataloguePrice || '',
+            createdAt: Date.now()
+          }, existing: null });
+        } else {
+          var p = Object.assign({}, item.existing);
+          if(item.newCataloguePrice) p.priceCatalogue = item.newCataloguePrice;
+          if(item.newSellingPrice) p.price = item.newSellingPrice;
+          _toSubmit.push({ payload: p, existing: item.existing });
+        }
+      });
+      document.getElementById('xlsxImportOverlay').style.display = 'none';
+      xlsxPendingData = [];
+      Promise.all(_toSubmit.map(function(s){ return window.reqSubmit(s.payload, s.existing); }))
+        .then(function(results){
+          var ok = results.filter(Boolean).length;
+          showToast(ok + ' demande(s) soumise(s) — en attente de validation admin ✓', 'ok', 4000);
+        });
+      return;
+    }
+
     save(); render();
     document.getElementById('xlsxImportOverlay').style.display = 'none';
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
