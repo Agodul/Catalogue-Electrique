@@ -357,19 +357,17 @@ function applyAuthUI() {
 
   updateAuthHeaderBtn(loggedIn, user);
 
-  // Bouton demandes : visible si connecté + serveur configuré
-  var _btnReq     = document.getElementById('btnRequests');
+  // Bouton demandes dans le menu hamburger
   var _btnReqMenu = document.getElementById('btnRequestsMenu');
   var _reqMenuSep = document.getElementById('reqMenuSep');
   var _sUrl       = localStorage.getItem('cat_server_url') || '';
   var _showReq    = loggedIn && !!_sUrl;
-  if(_btnReq)     _btnReq.style.display     = _showReq ? '' : 'none';
   if(_btnReqMenu) _btnReqMenu.style.display = _showReq ? '' : 'none';
   if(_reqMenuSep) _reqMenuSep.style.display = _showReq ? '' : 'none';
   if(!loggedIn){
     var _badge     = document.getElementById('requestsBadge');
     var _badgeMenu = document.getElementById('requestsBadgeMenu');
-    if(_badge)     { _badge.style.display     = 'none'; _badge.textContent     = ''; }
+    if(_badge)     { _badge.style.display = 'none'; _badge.textContent = ''; }
     if(_badgeMenu) { _badgeMenu.style.display = 'none'; _badgeMenu.textContent = ''; }
   }
 

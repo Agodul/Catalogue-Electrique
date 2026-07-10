@@ -108,13 +108,11 @@
     <span class="hdr-count-chip" id="hdrCountChip" style="display:none;">0 produit</span>
     <span id="hdrUsername" style="display:none;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;"></span>
     <button id="btnAuthToggle" class="secondary hdr-menu-btn" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
-    <!-- Badge demandes en attente (admin) -->
-    <button id="btnRequests" class="secondary hdr-menu-btn" title="Demandes en attente" style="display:none;position:relative;">
-      <i class="ti ti-bell" aria-hidden="true"></i>
-      <span id="requestsBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;"></span>
-    </button>
+
     <div class="hdr-menu-wrap" id="hdrMenuWrap">
-      <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options">⋮</button>
+      <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options" style="position:relative;">⋮
+        <span id="requestsBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;"></span>
+      </button>
       <div class="hdr-menu" id="hdrMenu">
         <button class="hdr-menu-item" id="btnExport">
           <span class="mi-icon blue"><i class="ti ti-download" aria-hidden="true"></i></span>

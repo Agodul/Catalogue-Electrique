@@ -27,32 +27,25 @@
   // ── Badge notification ────────────────────────────────────────
   async function reqUpdateBadge(){
     var sUrl = reqServerUrl();
-    var btnReq = document.getElementById('btnRequests');
-    if(!sUrl || !reqIsAdmin()){ if(btnReq) btnReq.style.display = 'none'; return; }
+    if(!sUrl || !reqIsAdmin()) return;
     try {
       var h = Object.assign({}, reqHeaders());
       delete h['Content-Type'];
-      // Compter demandes données + docs
       var [rData, rDocs] = await Promise.all([
         fetch(sUrl + '/checkReq', { headers: h }),
         fetch(sUrl + '/checkDocsReq', { headers: h })
       ]);
       var dData = rData.ok ? await rData.json() : { count: 0 };
-      var dDocs = rDocs.ok  ? await rDocs.json()  : { count: 0 };
       var total = (dData.count || 0);
       var badge = document.getElementById('requestsBadge');
-      if(btnReq){
-        btnReq.style.display = '';
-        if(badge){
-          badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
-          badge.style.display = total > 0 ? '' : 'none';
-        }
-      // Sync badge menu hamburger
+      if(badge){
+        badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
+        badge.style.display = total > 0 ? '' : 'none';
+      }
       var badgeMenu = document.getElementById('requestsBadgeMenu');
       if(badgeMenu){
         badgeMenu.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
         badgeMenu.style.display = total > 0 ? '' : 'none';
-      }
       }
     } catch(e) {}
   }
@@ -400,8 +393,6 @@
 
   // ── Init listeners (différé, après DOM ready) ─────────────────
   function reqInitListeners(){
-    var btnReqEl = document.getElementById('btnRequests');
-    if(btnReqEl) btnReqEl.addEventListener('click', reqOpenPanel);
     var btnReqMenuEl = document.getElementById('btnRequestsMenu');
     if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('show'); reqOpenPanel(); });
 

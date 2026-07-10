@@ -937,7 +937,6 @@
     .header-actions{ gap:5px; flex-shrink:0; }
     .header-actions button#btnAdd{ display:none; }
     /* Sur mobile : certains boutons header masqués */
-    #btnRequests{ display:none !important; }
     #btnProposeProduct{ display:none !important; }
     #hdrUsername{ max-width:80px; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
 
