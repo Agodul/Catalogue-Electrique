@@ -2,77 +2,46 @@
 
 // ═══════════════════════════════════════════════════════════════
 //  MODULE DEMANDES (_req)
-//  Workflow : user non-admin soumet des modifications
-//             admin valide ou refuse
 // ═══════════════════════════════════════════════════════════════
 
   var _reqPollInterval = null;
-  var _reqPanelTab     = 'admin'; // 'admin' | 'mine'
+  var _reqPanelTab     = 'admin';
 
   // ── Helpers ───────────────────────────────────────────────────
-  function reqServerUrl(){
-    return localStorage.getItem('cat_server_url') || '';
-  }
-  function reqHeaders(){
-    return typeof window.authHeaders === 'function' ? window.authHeaders() : {};
-  }
-  function reqCurrentUser(){
-    return typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-  }
-  function reqIsAdmin(){
-    var u = reqCurrentUser();
-    return u && u.isAdmin;
-  }
+  function reqServerUrl(){ return localStorage.getItem('cat_server_url') || ''; }
+  function reqHeaders(){ return typeof window.authHeaders === 'function' ? window.authHeaders() : {}; }
+  function reqCurrentUser(){ return typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null; }
+  function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
   // ── Badge notification ────────────────────────────────────────
   async function reqUpdateBadge(){
     var sUrl = reqServerUrl();
     if(!sUrl || !reqIsAdmin()) return;
     try {
-      var h = Object.assign({}, reqHeaders());
-      delete h['Content-Type'];
-      var [rData, rDocs] = await Promise.all([
-        fetch(sUrl + '/checkReq', { headers: h }),
-        fetch(sUrl + '/checkDocsReq', { headers: h })
-      ]);
-      var dData = rData.ok ? await rData.json() : { count: 0 };
-      var total = (dData.count || 0);
-      var badge = document.getElementById('requestsBadge');
-      if(badge){
-        badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
-        badge.style.display = total > 0 ? '' : 'none';
-      }
-      var badgeMenu = document.getElementById('requestsBadgeMenu');
-      if(badgeMenu){
-        badgeMenu.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
-        badgeMenu.style.display = total > 0 ? '' : 'none';
-      }
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/checkReq', { headers: h });
+      var d = r.ok ? await r.json() : { count: 0 };
+      var total = d.count || 0;
+      ['requestsBadge','requestsBadgeMenu'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
+      });
     } catch(e) {}
   }
 
   // ── Polling ───────────────────────────────────────────────────
-  function reqStartPolling(){
-    reqStopPolling();
-    if(!reqServerUrl() || !reqIsAdmin()) return;
-    reqUpdateBadge();
-    _reqPollInterval = setInterval(reqUpdateBadge, 30000);
-  }
-  function reqStopPolling(){
-    if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; }
-  }
+  function reqStartPolling(){ reqStopPolling(); if(!reqServerUrl() || !reqIsAdmin()) return; reqUpdateBadge(); _reqPollInterval = setInterval(reqUpdateBadge, 30000); }
+  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
 
-  // ── Soumettre une demande (user non-admin) ────────────────────
+  // ── Soumettre une demande ─────────────────────────────────────
   window.reqSubmit = async function(payload, existingProduct){
-    var sUrl = reqServerUrl();
-    if(!sUrl) return false;
-    var user = reqCurrentUser();
-    if(!user) return false;
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
+    var user = reqCurrentUser(); if(!user) return false;
     var username = user.username || user.name || 'user';
     try {
       var h = reqHeaders();
-      // Envoyer la demande données
       var now = Date.now();
       var toSend = Object.assign({}, payload, {
         id:           payload.id || ('p_' + now + '_' + Math.random().toString(36).substr(2,6)),
@@ -83,117 +52,131 @@
         _reqAt:       now,
         _reqOriginal: existingProduct || null
       });
-      var r = await fetch(sUrl + '/pushDatasReq', {
-        method: 'POST',
-        headers: h,
-        body: JSON.stringify([toSend])
-      });
+      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
       return r.ok;
-    } catch(e) {
-      console.warn('reqSubmit:', e);
-      return false;
-    }
+    } catch(e) { console.warn('reqSubmit:', e); return false; }
   };
 
-  // ── Annuler une demande (user) ────────────────────────────────
+  // ── Annuler une demande ───────────────────────────────────────
   window.reqCancel = async function(ref){
-    var sUrl = reqServerUrl();
-    if(!sUrl) return false;
-    var user = reqCurrentUser();
-    if(!user) return false;
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
+    var user = reqCurrentUser(); if(!user) return false;
     var username = user.username || user.name || 'user';
     try {
-      var h = Object.assign({}, reqHeaders());
-      delete h['Content-Type'];
-      var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), {
-        method: 'DELETE', headers: h
-      });
-      // Supprimer aussi les docs de la demande
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), {
-        method: 'DELETE', headers: h
-      }).catch(function(){});
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h });
+      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
       return r.ok;
     } catch(e) { return false; }
   };
 
-  // ── Accepter une demande (admin) ─────────────────────────────
+  // ── Accepter une demande ──────────────────────────────────────
   window.reqAccept = async function(ref, user){
-    var sUrl = reqServerUrl();
-    if(!sUrl || !reqIsAdmin()) return false;
+    var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = reqHeaders();
       var hGet = Object.assign({}, h); delete hGet['Content-Type'];
-
-      // 1. Récupérer la demande
       var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
       if(!r.ok) return false;
       var d = await r.json();
       if(!d.items || !d.items.length) return false;
-      // L'API retourne {ref, user, data:{...}} — les vraies données sont dans .data
       var item = d.items[0].data || {};
-
-      // Nettoyer les champs _req avant de pousser
-      delete item._reqUser; delete item._reqAt; delete item._reqOriginal;
+      delete item._reqUser; delete item._reqAt; delete item._reqOriginal; delete item.user;
       item.updatedAt = Date.now();
-
-      // 2. Pousser vers le catalogue principal
-      var r2 = await fetch(sUrl + '/pushDatas', {
-        method: 'POST', headers: h,
-        body: JSON.stringify([item])
-      });
+      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
       if(!r2.ok) return false;
-
-      // 3. Récupérer et pousser les docs associés
-      var rDocs = await fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
-      if(rDocs.ok){
-        var dDocs = await rDocs.json();
-        if(dDocs.items && dDocs.items.length){
-          // Re-uploader chaque doc vers le catalogue principal
-          for(var i = 0; i < dDocs.items.length; i++){
-            var doc = dDocs.items[i];
-            // Récupérer le fichier binaire
-            var rFile = await fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
-            if(rFile.ok){
-              var blob = await rFile.blob();
-              var fd = new FormData();
-              fd.append('ref', ref);
-              fd.append('document', blob, doc.filename || 'document.pdf');
-              var hFd = Object.assign({}, reqHeaders()); delete hFd['Content-Type'];
-              await fetch(sUrl + '/pushDocs', { method: 'POST', headers: hFd, body: fd }).catch(function(){});
-            }
-          }
-        }
-      }
-
-      // 4. Supprimer la demande
-      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), {
-        method: 'DELETE', headers: hGet
-      });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), {
-        method: 'DELETE', headers: hGet
-      }).catch(function(){});
-
+      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet });
+      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
   };
 
-  // ── Refuser une demande (admin) ──────────────────────────────
+  // ── Refuser une demande ───────────────────────────────────────
   window.reqRefuse = async function(ref, user){
-    var sUrl = reqServerUrl();
-    if(!sUrl || !reqIsAdmin()) return false;
+    var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), {
-        method: 'DELETE', headers: h
-      });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), {
-        method: 'DELETE', headers: h
-      }).catch(function(){});
+      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h });
+      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
       return true;
     } catch(e) { return false; }
   };
 
-  // ── Charger les demandes (admin) ─────────────────────────────
+  // ── Modale détail demande ─────────────────────────────────────
+  function reqOpenDetail(item, user){
+    var data     = item.data || {};
+    var original = data._reqOriginal;
+    var isNew    = !original;
+    var overlay  = document.getElementById('reqDetailOverlay');
+    var title    = document.getElementById('reqDetailTitle');
+    var subtitle = document.getElementById('reqDetailSubtitle');
+    var body     = document.getElementById('reqDetailBody');
+    var btnAcc   = document.getElementById('reqDetailAccept');
+    var btnRef   = document.getElementById('reqDetailRefuse');
+    if(!overlay) return;
+
+    if(title)    title.textContent    = (isNew ? 'Nouveau produit : ' : 'Modification : ') + escapeHtml(item.ref);
+    if(subtitle) subtitle.textContent = 'Soumis par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+
+    var FIELDS = { name:'Nom', brand:'Marque', ref:'Référence', family:'Famille', series:'Série', supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue', leadTime:'Délai', url:'URL', desc:'Description' };
+    var html = '';
+
+    if(data.photo) html += '<div style="text-align:center;margin-bottom:16px;"><img src="' + escapeHtml(data.photo) + '" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+
+    if(isNew){
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:16px;">';
+      Object.keys(FIELDS).forEach(function(k){
+        if(k==='desc'||k==='url') return;
+        var v = data[k]; if(!v) return;
+        html += '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:2px;">' + FIELDS[k] + '</div><div style="font-size:13px;font-weight:600;color:var(--ink);">' + escapeHtml(String(v)) + '</div></div>';
+      });
+      html += '</div>';
+      if(data.desc) html += '<div style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;padding:10px;background:var(--paper);border-radius:8px;">' + escapeHtml(data.desc) + '</div>';
+      if(data.url)  html += '<a href="' + escapeHtml(data.url) + '" target="_blank" style="font-size:13px;color:#194093;">Ouvrir la page</a>';
+    } else {
+      html += '<div style="margin-bottom:16px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;">Modifications proposées</div>';
+      var hasDiff = false;
+      Object.keys(FIELDS).forEach(function(k){
+        var ov = String(original[k]||''); var nv = String(data[k]||'');
+        if(ov===nv) return;
+        hasDiff = true;
+        html += '<div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:4px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);"><span style="font-size:11px;font-weight:600;color:var(--ink-soft);">' + FIELDS[k] + '</span><span style="font-size:12px;color:#991B1B;text-decoration:line-through;">' + escapeHtml(ov||'—') + '</span><span style="font-size:12px;color:#065F46;font-weight:600;">' + escapeHtml(nv||'—') + '</span></div>';
+      });
+      if(!hasDiff) html += '<div style="font-size:13px;color:var(--ink-soft);">Aucune différence détectée</div>';
+      html += '</div><div style="padding:12px;background:var(--paper);border-radius:8px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;">État actuel</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">';
+      ['name','brand','family','series','supplier','price'].forEach(function(k){
+        if(!original[k]) return;
+        html += '<div><div style="font-size:10px;color:var(--ink-soft);">' + FIELDS[k] + '</div><div style="font-size:13px;font-weight:600;">' + escapeHtml(String(original[k])) + '</div></div>';
+      });
+      html += '</div></div>';
+    }
+
+    if(body) body.innerHTML = html;
+
+    if(btnAcc){ btnAcc.disabled=false; btnAcc.innerHTML='<i class="ti ti-check"></i> Accepter';
+      btnAcc.onclick = async function(){
+        btnAcc.disabled=true; btnAcc.textContent='…';
+        var ok = await window.reqAccept(item.ref, user);
+        if(ok){ overlay.style.display='none'; document.body.classList.remove('modal-open'); showToast('Demande acceptée ✓','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
+        else { btnAcc.disabled=false; btnAcc.innerHTML='<i class="ti ti-check"></i> Accepter'; }
+      };
+    }
+    if(btnRef){ btnRef.disabled=false; btnRef.innerHTML='<i class="ti ti-x"></i> Refuser';
+      btnRef.onclick = async function(){
+        btnRef.disabled=true;
+        var ok = await window.reqRefuse(item.ref, user);
+        if(ok){ overlay.style.display='none'; document.body.classList.remove('modal-open'); showToast('Demande refusée','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
+        else { btnRef.disabled=false; btnRef.innerHTML='<i class="ti ti-x"></i> Refuser'; }
+      };
+    }
+
+    document.getElementById('reqDetailClose').onclick = function(){ overlay.style.display='none'; document.body.classList.remove('modal-open'); };
+    overlay.onclick = function(e){ if(e.target===overlay){ overlay.style.display='none'; document.body.classList.remove('modal-open'); } };
+    overlay.style.display = 'flex';
+    document.body.classList.add('modal-open');
+  }
+
+  // ── Charger les demandes admin ────────────────────────────────
   async function reqLoadAdminList(){
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
@@ -225,15 +208,14 @@
 
       var html = '';
       Object.keys(byUser).forEach(function(u){
-        html += '<div style="padding:10px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);">'
-          + '<i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + ' demande(s)</div>';
+        html += '<div style="padding:10px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + ' demande(s)</div>';
         byUser[u].forEach(function(item){
           html += reqRenderAdminItem(item, u);
         });
       });
       body.innerHTML = html;
 
-      // Clic sur item → modale détail
+      // Clic → modale détail
       body.querySelectorAll('[data-req-detail]').forEach(function(el){
         el.addEventListener('click', function(){
           var ref  = el.getAttribute('data-req-detail');
@@ -248,57 +230,11 @@
   }
 
   function reqRenderAdminItem(item, user){
-    var data     = (item.data && item.data.data) || item.data || {};
-    var original = data._reqOriginal;
-    var reqAt    = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
-    var isNew    = !original;
-    var refKey   = escapeHtml(item.ref);
-    var userKey  = escapeHtml(user);
-
-    // Diff champs
-    var FIELDS = {
-      name:'Nom', brand:'Marque', family:'Famille', series:'Série',
-      supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue',
-      desc:'Description', url:'URL', leadTime:'Délai', available3DX:'3DX'
-    };
-    var diffHtml = '';
-    if(original){
-      Object.keys(FIELDS).forEach(function(k){
-        var ov = String(original[k] || '');
-        var nv = String(data[k] || '');
-        if(ov !== nv){
-          diffHtml += '<div class="req-diff-field">'
-            + '<span class="req-diff-label">' + FIELDS[k] + '</span>'
-            + '<span class="req-diff-old">' + escapeHtml(ov || '—') + '</span>'
-            + '<span class="req-diff-arrow"> → </span>'
-            + '<span class="req-diff-new">' + escapeHtml(nv || '—') + '</span>'
-            + '</div>';
-        }
-      });
-      if(!diffHtml) diffHtml = '<div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Aucune différence détectée</div>';
-    } else {
-      // Nouveau produit : afficher toutes les infos
-      Object.keys(FIELDS).forEach(function(k){
-        var v = String(data[k] || '');
-        if(v){
-          diffHtml += '<div class="req-diff-field">'
-            + '<span class="req-diff-label">' + FIELDS[k] + '</span>'
-            + '<span class="req-diff-new">' + escapeHtml(v) + '</span>'
-            + '</div>';
-        }
-      });
-      if(data.priceHistory && data.priceHistory.length){
-        diffHtml += '<div class="req-diff-field"><span class="req-diff-label">Historique prix</span>'
-          + '<span class="req-diff-new">' + data.priceHistory.map(function(h){ return h.price + ' (' + (h.date ? new Date(h.date).toLocaleDateString('fr-FR') : '') + ')'; }).join(', ') + '</span></div>';
-      }
-    }
-
-    // Photo si disponible
-    var photoHtml = '';
-    if(data.photo){
-      photoHtml = '<img src="' + escapeHtml(data.photo) + '" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;background:#f5f5f5;margin-bottom:10px;" onerror="this.style.display=&quot;none&quot;">';
-    }
-
+    var data   = item.data || {};
+    var reqAt  = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
+    var isNew  = !data._reqOriginal;
+    var refKey = escapeHtml(item.ref);
+    var userKey = escapeHtml(user);
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
@@ -313,7 +249,7 @@
       + '</div>';
   }
 
-  // ── Charger mes demandes (user) ───────────────────────────────
+  // ── Charger mes demandes ──────────────────────────────────────
   async function reqLoadMineList(){
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
@@ -335,19 +271,15 @@
         return;
       }
       var html = items.map(function(it){
-        var data = it.data || {};
+        var data  = it.data || {};
         var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
         return '<div class="req-item">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;">'
-          +   '<div>'
-          +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(it.ref) + '</div>'
-          +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div>'
-          +   '</div>'
+          +   '<div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(it.ref) + '</div>'
+          +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
           +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
           + '</div>'
-          + '<div class="req-actions">'
-          +   '<button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '"><i class="ti ti-trash"></i> Annuler</button>'
-          + '</div>'
+          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
       }).join('');
       body.innerHTML = html;
@@ -377,13 +309,9 @@
 
   function reqRefreshPanel(){
     var subtitle = document.getElementById('requestsPanelSubtitle');
-    // Afficher/masquer onglet admin
     var tabAdmin = document.getElementById('reqTabAdmin');
     if(tabAdmin) tabAdmin.style.display = reqIsAdmin() ? '' : 'none';
-
-    // Si non-admin, forcer onglet "mes demandes"
     if(!reqIsAdmin()) _reqPanelTab = 'mine';
-
     if(_reqPanelTab === 'admin'){
       reqLoadAdminList();
       if(subtitle) subtitle.textContent = 'Modifications proposées par les utilisateurs';
@@ -399,7 +327,7 @@
     document.body.classList.remove('modal-open');
   }
 
-  // ── Init listeners (différé, après DOM ready) ─────────────────
+  // ── Init listeners ────────────────────────────────────────────
   function reqInitListeners(){
     var btnReqMenuEl = document.getElementById('btnRequestsMenu');
     if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('show'); reqOpenPanel(); });
@@ -408,11 +336,8 @@
     if(panelClose) panelClose.addEventListener('click', reqClosePanel);
 
     var overlay = document.getElementById('requestsOverlay');
-    if(overlay) overlay.addEventListener('click', function(e){
-      if(e.target === this) reqClosePanel();
-    });
+    if(overlay) overlay.addEventListener('click', function(e){ if(e.target === this) reqClosePanel(); });
 
-    // Onglets
     document.querySelectorAll('.req-tab').forEach(function(tab){
       tab.addEventListener('click', function(){
         _reqPanelTab = tab.getAttribute('data-tab');
@@ -422,51 +347,47 @@
       });
     });
 
-    // Tout accepter / tout refuser
     var btnAccept = document.getElementById('btnAcceptAllRequests');
     if(btnAccept) btnAccept.addEventListener('click', async function(){
-    if(!confirm('Accepter toutes les demandes ?')) return;
-    var sUrl = reqServerUrl();
-    var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-    var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
-    if(!r.ok) return;
-    var d = await r.json();
-    var items = d.items || [];
-    for(var i = 0; i < items.length; i++){
-      var it = items[i];
-      var user = (it.data || {})._reqUser || it.user || '';
-      await window.reqAccept(it.ref, user);
-    }
-    showToast(items.length + ' demande(s) acceptée(s) ✓', 'ok', 3000);
-    reqOpenPanel(); reqUpdateBadge();
-  });
+      if(!confirm('Accepter toutes les demandes ?')) return;
+      var sUrl = reqServerUrl();
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
+      if(!r.ok) return;
+      var d = await r.json();
+      var items = d.items || [];
+      for(var i = 0; i < items.length; i++){
+        var it = items[i];
+        var user = (it.data || {})._reqUser || it.user || '';
+        await window.reqAccept(it.ref, user);
+      }
+      showToast(items.length + ' demande(s) acceptée(s) ✓', 'ok', 3000);
+      reqOpenPanel(); reqUpdateBadge();
+    });
 
     var btnRefuse = document.getElementById('btnRefuseAllRequests');
     if(btnRefuse) btnRefuse.addEventListener('click', async function(){
-    if(!confirm('Refuser toutes les demandes ?')) return;
-    var sUrl = reqServerUrl();
-    var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-    var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
-    if(!r.ok) return;
-    var d = await r.json();
-    var items = d.items || [];
-    for(var i = 0; i < items.length; i++){
-      var it = items[i];
-      var user = (it.data || {})._reqUser || it.user || '';
-      await window.reqRefuse(it.ref, user);
-    }
-    showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
-    reqOpenPanel(); reqUpdateBadge();
-  });
+      if(!confirm('Refuser toutes les demandes ?')) return;
+      var sUrl = reqServerUrl();
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
+      if(!r.ok) return;
+      var d = await r.json();
+      var items = d.items || [];
+      for(var i = 0; i < items.length; i++){
+        var it = items[i];
+        var user = (it.data || {})._reqUser || it.user || '';
+        await window.reqRefuse(it.ref, user);
+      }
+      showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
+      reqOpenPanel(); reqUpdateBadge();
+    });
+  }
 
-  } // fin reqInitListeners
-
-  // Appeler après chargement DOM
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', reqInitListeners);
   } else {
     reqInitListeners();
   }
 
-  // Exposer pour démarrage depuis auth.js
-  window._reqUpdateBadge  = reqUpdateBadge;
+  window._reqUpdateBadge = reqUpdateBadge;
