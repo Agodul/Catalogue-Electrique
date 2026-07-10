@@ -22,6 +22,25 @@
     return isNaN(n) ? null : n;
   }
 
+  // ── Boutons "Proposer" pour les non-admins ─────────────────────
+  var btnProposeProduct = document.getElementById('btnProposeProduct');
+  var btnFabPropose     = document.getElementById('btnFabPropose');
+  var vmProposeBtn      = document.getElementById('vmProposeBtn');
+
+  function openProposeModal(existingId){
+    // Ouvre la modale d'ajout/modification en mode "proposition"
+    openModal(existingId || null);
+    // Changer le titre et le bouton
+    var titleEl = document.getElementById('modalTitle');
+    var saveBtn = document.getElementById('btnSave');
+    if(titleEl) titleEl.textContent = existingId ? 'Proposer une modification' : 'Proposer un nouveau produit';
+    if(saveBtn) saveBtn.textContent = 'Soumettre la demande';
+  }
+
+  if(btnProposeProduct) btnProposeProduct.addEventListener('click', function(){ openProposeModal(null); });
+  if(btnFabPropose)     btnFabPropose.addEventListener('click',     function(){ openProposeModal(null); });
+  if(vmProposeBtn)      vmProposeBtn.addEventListener('click',      function(){ openProposeModal(viewingId); });
+
   document.getElementById('btnSave').addEventListener('click', function(){
     var brand = fBrand.value.trim();
     var ref = fRef.value.trim();
@@ -507,34 +526,44 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
+  // Refresh lazy pour les éléments qui peuvent ne pas exister au boot
+  function _refreshSettingsRefs(){
+    settingsFamilyPage    = settingsFamilyPage    || document.getElementById('settingsFamilyPage');
+    settingsServerPage    = settingsServerPage    || document.getElementById('settingsServerPage');
+    settingsUserPage      = settingsUserPage      || document.getElementById('settingsUserPage');
+  }
+
   function _getSettingsMainBody(){
     return document.getElementById('settingsMainBody') || document.querySelector('.settings-box > .settings-body');
   }
 
   function showSettingsMain(){
+    _refreshSettingsRefs();
     var b = _getSettingsMainBody(); if(b) b.style.display = '';
-    settingsFamilyPage.style.display = 'none';
-    settingsServerPage.style.display = 'none';
-    if(settingsUserPage) settingsUserPage.style.display = 'none';
+    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
+    if(settingsServerPage) settingsServerPage.style.display = 'none';
+    if(settingsUserPage)   settingsUserPage.style.display   = 'none';
   }
   function showSettingsFamilyPage(){
+    _refreshSettingsRefs();
     var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    settingsFamilyPage.style.display = 'flex';
-    settingsServerPage.style.display = 'none';
+    if(settingsFamilyPage) settingsFamilyPage.style.display = 'flex';
+    if(settingsServerPage) settingsServerPage.style.display = 'none';
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
+    _refreshSettingsRefs();
     var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    settingsFamilyPage.style.display = 'none';
-    settingsServerPage.style.display = 'none';
+    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
+    if(settingsServerPage) settingsServerPage.style.display = 'none';
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
+    _refreshSettingsRefs();
     var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    settingsFamilyPage.style.display = 'none';
-    settingsServerPage.style.display = 'flex';
-    serverUrlInput.value = serverUrl;
-
+    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
+    if(settingsServerPage){ settingsServerPage.style.display = 'flex'; }
+    if(serverUrlInput) serverUrlInput.value = serverUrl;
   }
 
   var btnOpenWhatsNew = document.getElementById('btnOpenWhatsNew');

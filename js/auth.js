@@ -309,6 +309,22 @@ function applyAuthUI() {
   var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
   if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 
+  // Boutons "Proposer" pour les non-admins connectés avec serveur configuré
+  var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
+  var canPropose = loggedIn && !isAdmin && !!_sUrlReq;
+
+  // Bouton "Proposer un produit" dans le header (remplacement de btnAdd)
+  var btnPropose = document.getElementById('btnProposeProduct');
+  if (btnPropose) btnPropose.style.display = canPropose ? '' : 'none';
+
+  // Bouton FAB "proposer" (remplacement de btnFabAdd)
+  var btnFabPropose = document.getElementById('btnFabPropose');
+  if (btnFabPropose) btnFabPropose.style.display = canPropose ? '' : 'none';
+
+  // Bouton "Proposer une modification" sur la fiche produit
+  var btnVmPropose = document.getElementById('vmProposeBtn');
+  if (btnVmPropose) btnVmPropose.style.display = canPropose ? '' : 'none';
+
   // Export catalogue
   var btnExport = document.getElementById('btnExportJSON');
   if (btnExport) btnExport.style.display = canExport ? '' : 'none';
