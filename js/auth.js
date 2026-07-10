@@ -144,6 +144,12 @@ async function authLogin(username, password) {
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
+      // Rafraîchir le rendu pour appliquer les permissions
+      if (typeof render === 'function') render();
+      if (typeof renderHome === 'function') renderHome();
+      if (typeof showHome === 'function') showHome();
+      // Démarrer le polling demandes si admin
+      if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
       // Sync serveur en arrière-plan uniquement
       if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
       if (typeof syncFromServer === 'function') setTimeout(function(){ syncFromServer(true); }, 300);
@@ -161,6 +167,11 @@ function authLogout() {
   authClearUser();
   applyAuthUI();
   showAuthToast('Déconnecté');
+  // Rafraîchir le rendu
+  if (typeof render === 'function') render();
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof showHome === 'function') showHome();
+  if (typeof window._reqStopPolling === 'function') window._reqStopPolling();
 }
 
 // ── Gestion utilisateurs serveur ─────────────────────────────────────────
