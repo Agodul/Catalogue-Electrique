@@ -332,11 +332,19 @@ function applyAuthUI() {
     else _viewModal.classList.remove('has-propose');
   }
 
-  // Export catalogue
-  var btnExport = document.getElementById('btnExportJSON');
-  if (btnExport) btnExport.style.display = canExport ? '' : 'none';
-  var btnExportXlsx = document.getElementById('btnExportXLSX');
-  if (btnExportXlsx) btnExportXlsx.style.display = canExport ? '' : 'none';
+  // Export/Import JSON — admin uniquement
+  ['btnExport','btnImport'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = isAdmin ? '' : 'none';
+  });
+  // Export/Import Excel — si permission canExport
+  ['btnExportXlsx','btnImportXlsx'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = canExport ? '' : 'none';
+  });
+  // Séparateur entre export et compare — cacher si pas canExport
+  var _menuSeps = document.querySelectorAll('.hdr-menu-sep');
+  // (les séparateurs restent visibles pour ne pas casser le layout)
 
   // Sync serveur manuelle
   var serverButtonsSection = document.getElementById('serverButtonsSection');
