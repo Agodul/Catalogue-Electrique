@@ -997,6 +997,7 @@
     /* Sur mobile : certains boutons header masqués */
     #btnRequests{ display:none !important; }
     #btnProposeProduct{ display:none !important; }
+    #hdrUsername{ display:none !important; }
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
 
     /* ── Infobulle ── */

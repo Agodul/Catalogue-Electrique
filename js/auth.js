@@ -372,12 +372,15 @@ function applyAuthUI() {
 function updateAuthHeaderBtn(loggedIn, user) {
   var btn = document.getElementById('btnAuthToggle');
   if (!btn) return;
+  var nameEl = document.getElementById('hdrUsername');
   if (loggedIn) {
     btn.title = 'Connecté : ' + (user ? user.displayName : '');
     btn.innerHTML = '<i class="ti ti-logout" aria-hidden="true"></i>';
+    if(nameEl){ nameEl.textContent = user ? (user.displayName || user.username || '') : ''; nameEl.style.display = ''; }
     btn.onclick = function() { authLogout(); };
   } else {
     btn.title = 'Se connecter';
+    if(nameEl){ nameEl.textContent = ''; nameEl.style.display = 'none'; }
     btn.innerHTML = '<i class="ti ti-login" aria-hidden="true"></i>';
     btn.onclick = function() { openAuthModal(); };
   }
