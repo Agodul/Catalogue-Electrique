@@ -919,7 +919,7 @@
     box-shadow:0 4px 14px rgba(28,26,23,.25);
     transition:opacity .2s ease, transform .2s ease, background .15s ease, visibility .2s;
   }
-  #btnFabAdd{
+  #btnFabAdd, #btnFabPropose{
     background:var(--copper);
     border:1px solid var(--copper);
     color:#fff;
@@ -1003,8 +1003,9 @@
     .hdr-count-chip{ display:none; }
     .header-actions{ gap:5px; flex-shrink:0; }
     .header-actions button#btnAdd{ display:none; }
-    /* Sur mobile : bouton demandes masqué dans le header, dispo dans le menu hamburger */
+    /* Sur mobile : certains boutons header masqués */
     #btnRequests{ display:none !important; }
+    #btnProposeProduct{ display:none !important; }
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
 
     /* ── Infobulle ── */
