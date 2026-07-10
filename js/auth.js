@@ -324,7 +324,7 @@ function applyAuthUI() {
 
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');
-  if (btnVmPropose) btnVmPropose.style.display = canPropose ? '' : 'none';
+  if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';
 
   // Export catalogue
   var btnExport = document.getElementById('btnExportJSON');
