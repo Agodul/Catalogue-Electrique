@@ -455,8 +455,7 @@ function _renderUserList(container, users, isServer) {
   users.forEach(function(u) {
     var isSelf   = user && u.username === user.username;
     var isAdminU = u.isAdmin || u.username === 'admin';
-        var perms    = u.permissions || {};
-    if(_decodedU.canPropose) perms.canPropose = true;  // Badges permissions
+    var perms    = u.permissions || {};  // Badges permissions
     var permBadges = '';
     if (isAdminU) {
       permBadges = '<span style="font-size:10px;background:#EEF4FF;color:#194093;border-radius:4px;padding:1px 6px;margin-right:3px;">Admin complet</span>';
