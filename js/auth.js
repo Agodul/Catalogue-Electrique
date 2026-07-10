@@ -309,9 +309,10 @@ function applyAuthUI() {
   var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
   if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 
-  // Boutons "Proposer" pour les non-admins connectés avec serveur configuré
+  // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
-  var canPropose = loggedIn && !isAdmin && !!_sUrlReq;
+  var _canProposeExplicit = isAdmin ? false : (!!perms.canPropose);
+  var canPropose = loggedIn && !canEdit && !!_sUrlReq && _canProposeExplicit;
 
   // Bouton "Proposer un produit" dans le header (remplacement de btnAdd)
   var btnPropose = document.getElementById('btnProposeProduct');
@@ -337,7 +338,7 @@ function applyAuthUI() {
 
   // Exposer les permissions pour les autres modules
   window._userPerms = {
-    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn
+    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn, canPropose
   };
 
   updateAuthHeaderBtn(loggedIn, user);
@@ -555,8 +556,9 @@ function _bindAddUserForm(isServer) {
 
 function openAddUserModal() {
   var PERM_LIST = [
-    ['canEdit',       'Cr\u00e9er et modifier des produits'],
+    ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
+    ['canPropose',    'Proposer des modifications (sans canEdit)'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
@@ -655,6 +657,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
+    ['canPropose',    'Proposer des modifications (sans canEdit)'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
