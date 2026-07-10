@@ -82,6 +82,7 @@
       // Envoyer la demande données
       var now = Date.now();
       var toSend = Object.assign({}, payload, {
+        id:           payload.id || ('p_' + now + '_' + Math.random().toString(36).substr(2,6)),
         user:         username,
         createdAt:    payload.createdAt || now,
         updatedAt:    now,
