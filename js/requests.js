@@ -233,25 +233,13 @@
       });
       body.innerHTML = html;
 
-      // Events
-      body.querySelectorAll('[data-req-accept]').forEach(function(btn){
-        btn.addEventListener('click', async function(){
-          var ref = btn.getAttribute('data-req-accept');
-          var user = btn.getAttribute('data-req-user');
-          btn.disabled = true; btn.textContent = '…';
-          var ok = await window.reqAccept(ref, user);
-          if(ok){ showToast('Demande acceptée ✓', 'ok', 2500); reqOpenPanel(); reqUpdateBadge(); }
-          else { showToast('Erreur lors de l\'acceptation', 'err', 3000); btn.disabled = false; }
-        });
-      });
-      body.querySelectorAll('[data-req-refuse]').forEach(function(btn){
-        btn.addEventListener('click', async function(){
-          var ref = btn.getAttribute('data-req-refuse');
-          var user = btn.getAttribute('data-req-user');
-          btn.disabled = true;
-          var ok = await window.reqRefuse(ref, user);
-          if(ok){ showToast('Demande refusée', 'ok', 2500); reqOpenPanel(); reqUpdateBadge(); }
-          else { showToast('Erreur', 'err', 3000); btn.disabled = false; }
+      // Clic sur item → modale détail
+      body.querySelectorAll('[data-req-detail]').forEach(function(el){
+        el.addEventListener('click', function(){
+          var ref  = el.getAttribute('data-req-detail');
+          var user = el.getAttribute('data-req-user-detail');
+          var matchItem = items.find(function(it){ return it.ref === ref; });
+          if(matchItem) reqOpenDetail(matchItem, user);
         });
       });
     } catch(e){
@@ -260,18 +248,21 @@
   }
 
   function reqRenderAdminItem(item, user){
-    var data = (item.data && item.data.data) || item.data || {};
+    var data     = (item.data && item.data.data) || item.data || {};
     var original = data._reqOriginal;
-    var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
-    var isNew = !original;
+    var reqAt    = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
+    var isNew    = !original;
+    var refKey   = escapeHtml(item.ref);
+    var userKey  = escapeHtml(user);
 
+    // Diff champs
+    var FIELDS = {
+      name:'Nom', brand:'Marque', family:'Famille', series:'Série',
+      supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue',
+      desc:'Description', url:'URL', leadTime:'Délai', available3DX:'3DX'
+    };
     var diffHtml = '';
     if(original){
-      var FIELDS = {
-        name:'Nom', brand:'Marque', family:'Famille', series:'Série',
-        supplier:'Fournisseur', price:'Prix', desc:'Description',
-        url:'URL', leadTime:'Délai', available3DX:'3DX'
-      };
       Object.keys(FIELDS).forEach(function(k){
         var ov = String(original[k] || '');
         var nv = String(data[k] || '');
@@ -284,23 +275,50 @@
             + '</div>';
         }
       });
+      if(!diffHtml) diffHtml = '<div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Aucune différence détectée</div>';
     } else {
-      diffHtml = '<div style="font-size:12px;color:#065F46;margin-top:4px;"><i class="ti ti-plus"></i> Nouveau produit</div>';
+      // Nouveau produit : afficher toutes les infos
+      Object.keys(FIELDS).forEach(function(k){
+        var v = String(data[k] || '');
+        if(v){
+          diffHtml += '<div class="req-diff-field">'
+            + '<span class="req-diff-label">' + FIELDS[k] + '</span>'
+            + '<span class="req-diff-new">' + escapeHtml(v) + '</span>'
+            + '</div>';
+        }
+      });
+      if(data.priceHistory && data.priceHistory.length){
+        diffHtml += '<div class="req-diff-field"><span class="req-diff-label">Historique prix</span>'
+          + '<span class="req-diff-new">' + data.priceHistory.map(function(h){ return h.price + ' (' + (h.date ? new Date(h.date).toLocaleDateString('fr-FR') : '') + ')'; }).join(', ') + '</span></div>';
+      }
     }
 
-    return '<div class="req-item">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;">'
+    // Photo si disponible
+    var photoHtml = '';
+    if(data.photo){
+      photoHtml = '<img src="' + escapeHtml(data.photo) + '" style="width:100%;max-height:180px;object-fit:contain;border-radius:8px;background:#f5f5f5;margin-bottom:10px;" onerror="this.style.display=&quot;none&quot;">';
+    }
+
+    // Détail collapsible
+    var detailId = 'req-detail-' + refKey + '-' + userKey.replace(/[^a-z0-9]/gi,'');
+    return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="var d=document.getElementById(&quot;' + detailId + '&quot;);d.style.display=d.style.display===&quot;none&quot;?&quot;block&quot;:&quot;none&quot;;">'
       +   '<div>'
-      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(item.ref) + '</div>'
+      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + refKey + '</div>'
       +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · ' + reqAt : '') + '</div>'
       +   '</div>'
-      +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + (isNew ? '#DCFCE7' : '#FEF3C7') + ';color:' + (isNew ? '#065F46' : '#92400E') + ';font-weight:700;">'
-      +     (isNew ? 'Nouveau' : 'Modification') + '</span>'
+      +   '<div style="display:flex;align-items:center;gap:8px;">'
+      +     '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + (isNew ? '#DCFCE7' : '#FEF3C7') + ';color:' + (isNew ? '#065F46' : '#92400E') + ';font-weight:700;">' + (isNew ? 'Nouveau' : 'Modification') + '</span>'
+      +     '<i class="ti ti-chevron-down" style="font-size:14px;color:var(--ink-soft);"></i>'
+      +   '</div>'
       + '</div>'
-      + diffHtml
-      + '<div class="req-actions">'
-      +   '<button class="req-btn-accept" data-req-accept="' + escapeHtml(item.ref) + '" data-req-user="' + escapeHtml(user) + '"><i class="ti ti-check"></i> Accepter</button>'
-      +   '<button class="req-btn-refuse" data-req-refuse="' + escapeHtml(item.ref) + '" data-req-user="' + escapeHtml(user) + '"><i class="ti ti-x"></i> Refuser</button>'
+      + '<div id="' + detailId + '" style="display:none;margin-top:10px;">'
+      +   photoHtml
+      +   diffHtml
+      +   '<div class="req-actions" style="margin-top:10px;">'
+      +     '<button class="req-btn-accept" data-req-accept="' + refKey + '" data-req-user="' + userKey + '"><i class="ti ti-check"></i> Accepter</button>'
+      +     '<button class="req-btn-refuse" data-req-refuse="' + refKey + '" data-req-user="' + userKey + '"><i class="ti ti-x"></i> Refuser</button>'
+      +   '</div>'
       + '</div>'
       + '</div>';
   }
