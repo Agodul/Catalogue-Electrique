@@ -76,10 +76,10 @@
   // Déclenchement au clic (hover + tap mobile)
   if(false && tooltipWrap) tooltipWrap.addEventListener('click', function(e){
     e.stopPropagation();
-    tooltipBox.classList.toggle('show');
+    if(typeof tooltipBox !== 'undefined' && tooltipBox) tooltipBox.classList.toggle('show');
   });
   document.addEventListener('click', function(){
-    tooltipBox.classList.remove('show');
+    if(typeof tooltipBox !== 'undefined' && tooltipBox) tooltipBox.classList.remove('show');
   });
 
   async function verifyPermission(handle, forWrite){
