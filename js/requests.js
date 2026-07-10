@@ -80,13 +80,17 @@
     try {
       var h = reqHeaders();
       // Envoyer la demande données
-      var toSend = Object.assign({}, payload, {
-        createdAt: payload.createdAt || Date.now(),
-        updatedAt: Date.now(),
-        _reqUser: username,
-        _reqAt:   Date.now(),
-        _reqOriginal: existingProduct || null
-      });
+      var toSend = {
+        ref:  payload.ref,
+        user: username,
+        data: Object.assign({}, payload, {
+          createdAt: payload.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          _reqUser:    username,
+          _reqAt:      Date.now(),
+          _reqOriginal: existingProduct || null
+        })
+      };
       var r = await fetch(sUrl + '/pushDatasReq', {
         method: 'POST',
         headers: h,
@@ -133,7 +137,8 @@
       if(!r.ok) return false;
       var d = await r.json();
       if(!d.items || !d.items.length) return false;
-      var item = d.items[0].data;
+      // L'API retourne {ref, user, data:{...}} — les vraies données sont dans .data
+      var item = (d.items[0].data && d.items[0].data.data) || d.items[0].data || {};
 
       // Nettoyer les champs _req avant de pousser
       delete item._reqUser; delete item._reqAt; delete item._reqOriginal;
@@ -220,7 +225,7 @@
       // Grouper par user
       var byUser = {};
       items.forEach(function(it){
-        var data = it.data || {};
+        var data = (it.data && it.data.data) || it.data || {};
         var u = data._reqUser || it.user || '?';
         if(!byUser[u]) byUser[u] = [];
         byUser[u].push({ ref: it.ref, data: data });
@@ -263,7 +268,7 @@
   }
 
   function reqRenderAdminItem(item, user){
-    var data = item.data;
+    var data = (item.data && item.data.data) || item.data || {};
     var original = data._reqOriginal;
     var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
     var isNew = !original;
@@ -330,7 +335,7 @@
         return;
       }
       var html = items.map(function(it){
-        var data = it.data || {};
+        var data = (it.data && it.data.data) || it.data || {};
         var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
         return '<div class="req-item">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;">'
