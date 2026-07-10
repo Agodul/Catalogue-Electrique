@@ -397,33 +397,22 @@
   }
 
   /* Bouton fermer mobile dans la vue produit */
-  .vm-close-btn{
-    display:none;
-    position:absolute; top:14px; left:14px;
-    width:30px; height:30px; border-radius:50%;
-    border:none; background:rgba(25,64,147,.75);
+  /* Boutons flottants de la fiche produit (✕, ⓘ, ✏️) */
+  .vm-close-btn, .vm-info-btn, #vmProposeBtn{
+    position:absolute;
+    width:34px; height:34px; border-radius:50%;
+    border:none; background:#194093;
     color:#fff; padding:0;
-    align-items:center; justify-content:center;
+    display:flex; align-items:center; justify-content:center;
     cursor:pointer; z-index:10;
     transition:background .15s;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
   }
+  .vm-close-btn{ top:12px; left:12px; display:none; }
+  .vm-info-btn{  top:12px; right:12px; font-size:15px; font-weight:700; font-style:normal; line-height:1; letter-spacing:0; user-select:none; }
+  #vmProposeBtn{ top:12px; right:54px; }
   .vm-close-btn svg{ width:16px; height:16px; display:block; }
-  .vm-close-btn:hover{ background:var(--copper-deep); }
-
-  /* Bouton ⓘ dans la modale de consultation */
-  .vm-info-btn{
-    position:absolute; top:14px; right:14px;
-    width:30px; height:30px; border-radius:50%;
-    border:none;
-    background:var(--copper);
-    color:#fff;
-    font-size:15px; font-weight:700; font-style:normal;
-    line-height:1; letter-spacing:0;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; z-index:10; padding:0; user-select:none;
-    transition:background .15s;
-  }
-  .vm-info-btn:hover{ background:var(--copper-deep); }
+  .vm-close-btn:hover, .vm-info-btn:hover, #vmProposeBtn:hover{ background:#122d7a; }
 
   /* Menu déroulant du ⓘ */
   .vm-info-menu{
@@ -1111,6 +1100,7 @@
     .vm-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-width:0; min-height:0; }
     .vm-close-btn{ display:flex; position:absolute; top:8px; left:8px; width:32px; height:32px; z-index:10; }
     .vm-info-btn{ position:absolute; top:8px; right:8px; width:32px; height:32px; font-size:12px; z-index:10; }
+    #vmProposeBtn{ position:absolute; top:8px; right:48px; width:32px; height:32px; font-size:14px; z-index:10; }
     .vm-meta{ grid-template-columns:1fr 1fr; gap:5px 8px; padding:8px 12px; }
     .vm-meta-item a{ font-size:11px ; }
     .vm-meta-item label{ font-size:9px; }
