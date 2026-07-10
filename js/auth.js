@@ -558,7 +558,7 @@ function openAddUserModal() {
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
-    ['canPropose',    'Proposer des modifications (sans canEdit)'],
+    ['canPropose',    'Proposer des produits et modifications'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
@@ -657,7 +657,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   var PERM_LIST = [
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
-    ['canPropose',    'Proposer des modifications (sans canEdit)'],
+    ['canPropose',    'Proposer des produits et modifications'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
@@ -713,6 +713,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
         permsNew[cb.getAttribute('data-perm')] = cb.checked;
       });
       permsNew.canViewDocs = true; // toujours autorisé
+
     }
 
     var data = { isAdmin: isAdminNew, permissions: permsNew };
