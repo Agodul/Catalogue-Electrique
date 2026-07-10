@@ -471,7 +471,7 @@ function _renderUserList(container, users, isServer) {
     } else {
       var permList = [
         ['canEdit','Éditer'],['canDelete','Supprimer'],['canViewDocs','Docs'],
-        ['canUploadDocs','Upload'],['canExport','Export'],['canSyncServer','Sync']
+        ['canExport','Export'],['canSyncServer','Data'],['canReq','Req']
       ];
       permList.forEach(function(p) {
         var active = !!perms[p[0]];
@@ -567,7 +567,8 @@ function openAddUserModal() {
     ['canDelete',     'Supprimer des produits'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Data serveur']
+    ['canSyncServer', 'Data serveur'],
+    ['canReq',         'Soumettre des demandes']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
@@ -664,7 +665,8 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canDelete',     'Supprimer des produits'],
     ['canViewDocs',   'Voir les documents PDF'],
     ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Data serveur']
+    ['canSyncServer', 'Data serveur'],
+    ['canReq',         'Soumettre des demandes']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
