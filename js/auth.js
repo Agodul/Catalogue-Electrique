@@ -566,9 +566,8 @@ function openAddUserModal() {
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
     ['canViewDocs',   'Voir les documents PDF'],
-    ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Synchronisation serveur']
+    ['canSyncServer', 'Data serveur']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
@@ -664,9 +663,8 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canEdit',       'Créer et modifier des produits'],
     ['canDelete',     'Supprimer des produits'],
     ['canViewDocs',   'Voir les documents PDF'],
-    ['canUploadDocs', 'Uploader des documents PDF'],
     ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Synchronisation serveur']
+    ['canSyncServer', 'Data serveur']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
