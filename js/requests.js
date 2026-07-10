@@ -308,14 +308,22 @@
   }
 
   function reqRefreshPanel(){
-    var subtitle = document.getElementById('requestsPanelSubtitle');
-    var tabAdmin = document.getElementById('reqTabAdmin');
-    if(tabAdmin) tabAdmin.style.display = reqIsAdmin() ? '' : 'none';
-    if(!reqIsAdmin()) _reqPanelTab = 'mine';
-    if(_reqPanelTab === 'admin'){
+    var subtitle  = document.getElementById('requestsPanelSubtitle');
+    var tabAdmin  = document.getElementById('reqTabAdmin');
+    var tabMine   = document.getElementById('reqTabMine');
+    var tabsDiv   = document.getElementById('requestsTabs');
+    var isAdmin   = reqIsAdmin();
+
+    // Admins : onglet unique "Demandes reçues", cacher "Mes demandes" et la barre d'onglets
+    if(isAdmin){
+      if(tabsDiv) tabsDiv.style.display = 'none';
+      _reqPanelTab = 'admin';
       reqLoadAdminList();
       if(subtitle) subtitle.textContent = 'Modifications proposées par les utilisateurs';
     } else {
+      if(tabsDiv) tabsDiv.style.display = '';
+      if(tabAdmin) tabAdmin.style.display = 'none';
+      _reqPanelTab = 'mine';
       reqLoadMineList();
       if(subtitle) subtitle.textContent = 'Vos modifications en attente de validation';
     }
