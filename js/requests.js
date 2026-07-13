@@ -14,7 +14,8 @@
   function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
   // ── Badge notification ────────────────────────────────────────
-  var _reqLastCount = 0;
+  var _reqLastCount   = 0;
+  var _reqLastCheckTs = 0;  // timestamp du dernier poll réussi (ms)
 
   function _reqNotifyAdmin(newCount){
     if(!reqIsAdmin()) return;
@@ -47,9 +48,29 @@
     if(!sUrl || !reqIsAdmin()) return;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/checkReq', { headers: h });
-      var d = r.ok ? await r.json() : { count: 0 };
-      var total = d.count || 0;
+      // Premier poll : pas de timestamp → compte tout
+      // Polls suivants : timestamp= pour ne compter que les nouvelles entrées
+      var tsParam = _reqLastCheckTs > 0 ? '?timestamp=' + _reqLastCheckTs : '';
+      var now = Date.now();
+      var [rData, rDocs] = await Promise.all([
+        fetch(sUrl + '/checkReq'     + tsParam, { headers: h }),
+        fetch(sUrl + '/checkDocsReq' + tsParam, { headers: h })
+      ]);
+      var dData = rData.ok ? await rData.json() : null;
+      var dDocs = rDocs.ok ? await rDocs.json() : null;
+      if(!dData && !dDocs) return; // serveur down, on ne met pas à jour
+      // Premier poll : total absolu ; polls suivants : delta (nouvelles depuis lastCheck)
+      var total;
+      if(_reqLastCheckTs === 0){
+        total = ((dData && dData.count) || 0) + ((dDocs && dDocs.refs) || 0);
+      } else {
+        // Des nouvelles demandes sont arrivées depuis le dernier check
+        var newData = (dData && dData.count) || 0;
+        var newDocs = (dDocs && dDocs.refs)  || 0;
+        // Si delta > 0, ajouter au total connu ; sinon garder le total actuel
+        total = _reqLastCount + newData + newDocs;
+      }
+      _reqLastCheckTs = now;
       ['requestsBadge','requestsBadgeMenu'].forEach(function(id){
         var el = document.getElementById(id);
         if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
@@ -67,7 +88,7 @@
     reqUpdateBadge();
     _reqPollInterval = setInterval(reqUpdateBadge, 30000);
   }
-  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } }
+  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCheckTs = 0; _reqLastCount = 0; }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
 

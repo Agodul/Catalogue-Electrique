@@ -569,11 +569,12 @@ function _bindAddUserForm(isServer) {
 
 function openAddUserModal() {
   var PERM_LIST = [
-    ['canEdit',       'Créer et modifier des produits'],
-    ['canDelete',     'Supprimer des produits'],
-    ['canViewDocs',   'Voir les documents PDF'],
-    ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Data serveur'],
+    ['canEdit',        'Créer et modifier des produits'],
+    ['canDelete',      'Supprimer des produits'],
+    ['canViewDocs',    'Voir les documents PDF'],
+    ['canUploadDocs',  'Envoyer des documents PDF'],
+    ['canExport',      'Exporter le catalogue'],
+    ['canSyncServer',  'Data serveur'],
     ['canReq',         'Soumettre des demandes']
   ];
 
@@ -667,11 +668,12 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   var safeDisplayValue = _escapeHtml(displayName || '');
 
   var PERM_LIST = [
-    ['canEdit',       'Créer et modifier des produits'],
-    ['canDelete',     'Supprimer des produits'],
-    ['canViewDocs',   'Voir les documents PDF'],
-    ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Data serveur'],
+    ['canEdit',        'Créer et modifier des produits'],
+    ['canDelete',      'Supprimer des produits'],
+    ['canViewDocs',    'Voir les documents PDF'],
+    ['canUploadDocs',  'Envoyer des documents PDF'],
+    ['canExport',      'Exporter le catalogue'],
+    ['canSyncServer',  'Data serveur'],
     ['canReq',         'Soumettre des demandes']
   ];
 
