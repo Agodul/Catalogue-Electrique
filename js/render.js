@@ -444,10 +444,13 @@
     document.body.classList.add('modal-open');
     fetchFn(
       function onBuffer(ab){
+        console.log('[PDF] onBuffer reçu, taille:', ab.byteLength);
         function loadLib(cb){
-          if(window.pdfjsLib){ cb(); return; }
+          if(window.pdfjsLib){ console.log('[PDF] pdfjsLib déjà chargé'); cb(); return; }
+          console.log('[PDF] chargement pdf.min.js...');
           var s=document.createElement('script'); s.src='/Catalogue-Electrique/js/pdf.min.js';
-          s.onload=function(){ pdfjsLib.GlobalWorkerOptions.workerSrc='/Catalogue-Electrique/js/pdf.worker.min.js'; cb(); };
+          s.onload=function(){ pdfjsLib.GlobalWorkerOptions.workerSrc='/Catalogue-Electrique/js/pdf.worker.min.js'; console.log('[PDF] pdfjsLib chargé'); cb(); };
+          s.onerror=function(e){ console.error('[PDF] erreur chargement pdfjsLib', e); if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;">Erreur chargement PDF.js</div>'; };
           document.head.appendChild(s);
         }
         if(window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
@@ -455,8 +458,10 @@
         var btnDl = document.getElementById('pdfViewerDownload');
         if(btnDl) btnDl.onclick=function(){ var a=document.createElement('a'); a.href=window._pdfBlobUrl; a.download=docName||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
         loadLib(function(){
+          console.log('[PDF] getDocument...');
           pdfjsLib.getDocument({data:ab,isEvalSupported:false,disableAutoFetch:true,disableStream:true}).promise
             .then(function(pdf){
+              console.log('[PDF] document chargé, pages:', pdf.numPages);
               _pdfDoc=pdf; _pdfPage=1;
               var navEl=document.getElementById('pdfViewerNav'); if(navEl) navEl.style.display='flex';
               var btnPrev=document.getElementById('pdfViewerPrev'); if(btnPrev) btnPrev.onclick=function(){ if(_pdfPage>1){_pdfPage--;_pdfRenderPage(_pdfPage);} };
@@ -466,10 +471,10 @@
               var btnZR=document.getElementById('pdfViewerZoomReset'); if(btnZR)  btnZR.onclick=function(){_pdfZoom=1;_pdfRenderPage(_pdfPage);};
               _pdfZoom=1; _pdfRenderPage(1);
             })
-            .catch(function(e){ if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;">Erreur PDF : '+e.message+'</div>'; });
+            .catch(function(e){ console.error('[PDF] getDocument error:', e); if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;">Erreur PDF : '+e.message+'</div>'; });
         });
       },
-      function onError(e){ if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+(e&&e.message||e)+'</div>'; }
+      function onError(e){ console.error('[PDF] onError:', e); if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+(e&&e.message||e)+'</div>'; }
     );
   };
 
