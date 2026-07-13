@@ -14,6 +14,34 @@
   function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
   // ── Badge notification ────────────────────────────────────────
+  var _reqLastCount = 0;
+
+  function _reqNotifyAdmin(newCount){
+    if(!reqIsAdmin()) return;
+    if(newCount <= _reqLastCount) return;
+    if(typeof Notification === 'undefined') return;
+    if(Notification.permission !== 'granted') return;
+    var diff = newCount - _reqLastCount;
+    try {
+      new Notification('Catalogue SPI — Nouvelle demande', {
+        body: diff === 1
+          ? 'Une nouvelle demande est en attente de validation.'
+          : diff + ' nouvelles demandes sont en attente de validation.',
+        icon: '/assets/icon-192.png',
+        tag: 'spi-req-badge',
+        renotify: true,
+        silent: false
+      });
+    } catch(e) {}
+  }
+
+  function _reqAskNotifPermission(){
+    if(typeof Notification === 'undefined') return;
+    if(Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  }
+
   async function reqUpdateBadge(){
     var sUrl = reqServerUrl();
     if(!sUrl || !reqIsAdmin()) return;
@@ -26,11 +54,19 @@
         var el = document.getElementById(id);
         if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
       });
+      _reqNotifyAdmin(total);
+      _reqLastCount = total;
     } catch(e) {}
   }
 
   // ── Polling ───────────────────────────────────────────────────
-  function reqStartPolling(){ reqStopPolling(); if(!reqServerUrl() || !reqIsAdmin()) return; reqUpdateBadge(); _reqPollInterval = setInterval(reqUpdateBadge, 30000); }
+  function reqStartPolling(){
+    reqStopPolling();
+    if(!reqServerUrl() || !reqIsAdmin()) return;
+    _reqAskNotifPermission();
+    reqUpdateBadge();
+    _reqPollInterval = setInterval(reqUpdateBadge, 30000);
+  }
   function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
@@ -252,7 +288,7 @@
     }
 
     document.getElementById('reqDetailClose').onclick = function(){ overlay.style.display='none'; document.body.classList.remove('modal-open'); };
-    overlay.onclick = function(e){ if(e.target===overlay){ overlay.style.display='none'; document.body.classList.remove('modal-open'); } };
+    overlay.onclick = null;
     overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
   }
