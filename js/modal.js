@@ -207,7 +207,7 @@
 
   document.getElementById('priceModalClose').addEventListener('click', closePriceModal);
   document.getElementById('priceModalCancel').addEventListener('click', closePriceModal);
-  priceModalOverlay.addEventListener('click', function(e){ if(e.target === priceModalOverlay) closePriceModal(); });
+  // clic extérieur bloqué — géré par _initModalEscape()
 
   // Ajouter un nouveau prix
   document.getElementById('priceModalAddBtn').addEventListener('click', function(){

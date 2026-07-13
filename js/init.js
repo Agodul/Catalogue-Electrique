@@ -190,3 +190,57 @@
   // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
   // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
+  // ── Gestionnaire centralisé Escape + blocage clic extérieur ──────
+  // Chaque entrée : [overlayId, closeBtnId ou nomFonction]
+  // La fermeture se fait toujours via le bouton close (réutilise la logique existante)
+  ;(function _initModalEscape(){
+    var MODALS = [
+      { overlay: 'pdfViewerOverlay',  close: 'pdfViewerClose'  },
+      { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: true },
+      { overlay: 'docOverlay',        close: 'docCloseBtn'      },
+      { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
+      { overlay: 'conflictOverlay',   close: 'conflictClose'    },
+      { overlay: 'whatsNewOverlay',   close: 'btnWNClose'       },
+      { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
+      { overlay: 'compareOverlay',    close: 'compareClose',    classList: true },
+      { overlay: 'iconPickerModal',   close: 'iconPickerClose', classList: true },
+    ];
+
+    function isVisible(el){
+      if(!el) return false;
+      var s = el.style.display;
+      // gère display:flex/block et classList .open/.show
+      if(s && s !== 'none') return true;
+      if(el.classList.contains('open') || el.classList.contains('show')) return true;
+      return false;
+    }
+
+    function triggerClose(closeId){
+      var btn = document.getElementById(closeId);
+      if(btn) btn.click();
+    }
+
+    // Escape : ferme la modale la plus haute (z-index) visible
+    document.addEventListener('keydown', function(e){
+      if(e.key !== 'Escape') return;
+      // Trier par z-index décroissant pour fermer la plus haute en premier
+      var visible = MODALS.filter(function(m){
+        return isVisible(document.getElementById(m.overlay));
+      }).sort(function(a, b){
+        var za = parseInt((document.getElementById(a.overlay)||{style:{}}).style.zIndex) || 0;
+        var zb = parseInt((document.getElementById(b.overlay)||{style:{}}).style.zIndex) || 0;
+        return zb - za;
+      });
+      if(visible.length > 0) triggerClose(visible[0].close);
+    });
+
+    // Bloquer le clic extérieur sur tous les overlays listés
+    MODALS.forEach(function(m){
+      var overlay = document.getElementById(m.overlay);
+      if(!overlay) return;
+      overlay.addEventListener('click', function(e){
+        // Bloquer — ne rien faire si on clique en dehors de la modale
+        e.stopPropagation();
+      });
+    });
+  })();

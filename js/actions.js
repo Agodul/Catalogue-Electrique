@@ -1630,9 +1630,7 @@
   if(btnWNClose) btnWNClose.addEventListener('click', closeWhatsNew);
 
   if(whatsNewOverlay){
-    whatsNewOverlay.addEventListener('click', function(e){
-      if(e.target === whatsNewOverlay) closeWhatsNew();
-    });
+    // clic extérieur bloqué — géré par _initModalEscape()
   }
 
   document.addEventListener('keydown', function(e){
@@ -2103,7 +2101,7 @@
       _pendingConflicts.forEach(function(c){ _conflictChoices[c.ref] = 'server'; });
       renderConflictList(); if(_selectedConflict) renderConflictDetail(_selectedConflict);
     });
-    if(overlay)   overlay.addEventListener('click', function(e){ if(e.target===overlay) closeConflictModal(); });
+    // clic extérieur bloqué — géré par _initModalEscape()
   })();
   // ── Bouton test modale conflits ────────────────────────────────────
   var btnTestConflict = document.getElementById('btnTestConflictModal');

@@ -299,9 +299,7 @@
       overlay.style.display = 'none';
       document.body.classList.remove('modal-open');
     };
-    overlay.onclick = function(e){
-      if(e.target === overlay){ overlay.style.display = 'none'; document.body.classList.remove('modal-open'); }
-    };
+    // clic extérieur bloqué — géré par _initModalEscape()
   }
   // ── Fin modale Documents ─────────────────────────────────────────
 
@@ -384,9 +382,7 @@
     viewingId = null;
   }
 
-  viewOverlay.addEventListener('click', function(e){
-    if(e.target===viewOverlay) closeView();
-  });
+  // clic extérieur bloqué — géré par _initModalEscape()
   document.addEventListener('keydown', function(e){
     if(e.key==='Escape' && viewOverlay.classList.contains('open')){ closeView(); }
   });
