@@ -235,10 +235,94 @@
       };
     }
 
+    // Bouton Modifier — visible pour admins uniquement
+    var btnEdit = document.getElementById('reqDetailEdit');
+    if(btnEdit){
+      btnEdit.style.display = reqIsAdmin() ? 'flex' : 'none';
+      btnEdit.onclick = function(){ _reqStartEditMode(item, user, data, original, isNew); };
+    }
+
     document.getElementById('reqDetailClose').onclick = function(){ overlay.style.display='none'; document.body.classList.remove('modal-open'); };
     overlay.onclick = function(e){ if(e.target===overlay){ overlay.style.display='none'; document.body.classList.remove('modal-open'); } };
     overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
+  }
+
+  // ── Mode édition inline dans la modale détail demande ──────────
+  function _reqStartEditMode(item, user, data, original, isNew){
+    var body = document.getElementById('reqDetailBody');
+    if(!body) return;
+    var p = isNew ? Object.assign({}, data) : Object.assign({}, original, data);
+    // Supprimer les clés internes de l'objet éditable
+    var EDIT_FIELDS = [
+      { key:'photo',           label:'Photo (URL)',     type:'text' },
+      { key:'name',            label:'Nom',             type:'text' },
+      { key:'brand',           label:'Marque',          type:'text' },
+      { key:'ref',             label:'Référence',       type:'text' },
+      { key:'family',          label:'Famille',         type:'text' },
+      { key:'series',          label:'Série',           type:'text' },
+      { key:'supplier',        label:'Fournisseur',     type:'text' },
+      { key:'leadTime',        label:'Délai',           type:'text' },
+      { key:'price',           label:'Prix',            type:'text' },
+      { key:'priceCatalogue',  label:'Prix catalogue',  type:'text' },
+      { key:'desc',            label:'Description',     type:'textarea' },
+      { key:'url',             label:'URL produit',     type:'text' }
+    ];
+
+    var rows = EDIT_FIELDS.map(function(f){
+      var val = escapeHtml(p[f.key] || '');
+      if(f.type === 'textarea'){
+        return '<div style="margin-bottom:12px;">'
+          + '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
+          + '<textarea data-key="' + f.key + '" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:Calibri,Arial,sans-serif;background:var(--paper);color:var(--ink);resize:vertical;box-sizing:border-box;">' + val + '</textarea>'
+          + '</div>';
+      }
+      return '<div style="margin-bottom:12px;">'
+        + '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
+        + '<input type="' + f.type + '" data-key="' + f.key + '" value="' + val + '" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:Calibri,Arial,sans-serif;background:var(--paper);color:var(--ink);box-sizing:border-box;">'
+        + '</div>';
+    }).join('');
+
+    body.innerHTML = '<div style="padding:4px 0 8px;font-size:12px;color:var(--ink-soft);margin-bottom:12px;">Modifiez les champs ci-dessous avant d\'accepter la demande.</div>'
+      + rows;
+
+    // Changer les boutons du footer
+    var btnAccept = document.getElementById('reqDetailAccept');
+    var btnEdit   = document.getElementById('reqDetailEdit');
+    var btnRefuse = document.getElementById('reqDetailRefuse');
+    if(btnEdit)  btnEdit.style.display = 'none';
+    if(btnRefuse) btnRefuse.innerHTML = '<i class="ti ti-arrow-left"></i> Annuler';
+
+    // Remplacer temporairement Refuser → Annuler
+    if(btnRefuse){
+      btnRefuse.innerHTML = '<i class="ti ti-arrow-left"></i> Annuler';
+      btnRefuse.onclick = function(){ reqOpenDetail(item, user); };
+    }
+
+    // Bouton Accepter → valider les modifs et accepter
+    if(btnAccept){
+      btnAccept.innerHTML = '<i class="ti ti-check"></i> Valider et accepter';
+      btnAccept.onclick = async function(){
+        // Collecter les valeurs éditées
+        var edited = {};
+        body.querySelectorAll('[data-key]').forEach(function(el){
+          edited[el.dataset.key] = el.value;
+        });
+        // Fusionner avec les données de la demande
+        var merged = Object.assign({}, data, edited);
+        // Nettoyer les clés internes pour ne pas les écraser
+        merged._reqUser     = data._reqUser;
+        merged._reqAt       = data._reqAt;
+        merged._reqOriginal = data._reqOriginal;
+        // Patcher l'item pour que reqAccept utilise les données modifiées
+        item.data = merged;
+        btnAccept.disabled = true; btnAccept.textContent = '…';
+        var ok = await window.reqAccept(item.ref, user);
+        var overlay = document.getElementById('reqDetailOverlay');
+        if(ok){ if(overlay){ overlay.style.display='none'; document.body.classList.remove('modal-open'); } showToast('Demande acceptée ✓','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
+        else { btnAccept.disabled=false; btnAccept.innerHTML='<i class="ti ti-check"></i> Valider et accepter'; }
+      };
+    }
   }
 
   // ── Charger les demandes admin ────────────────────────────────
