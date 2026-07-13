@@ -154,11 +154,49 @@
   }
 
   // ── Modale Documents ────────────────────────────────────────────
+  // Charge JSZip si besoin
+  function _loadJSZip(cb){
+    if(window.JSZip){ cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+  }
+
+  // Fetch un fichier PDF par ref, extrait du ZIP si nécessaire par nom de fichier
+  function _fetchPdfByName(sUrl, ref, filename, h, cb){
+    var url = sUrl + '/pullDocs?ref=' + encodeURIComponent(ref);
+    fetch(url, { headers: h })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+      .then(function(blob){
+        var ct = blob.type || '';
+        if(ct.indexOf('zip') !== -1 || ct.indexOf('octet') !== -1){
+          // Réponse ZIP → extraire le fichier par nom
+          _loadJSZip(function(){
+            blob.arrayBuffer().then(function(buf){
+              JSZip.loadAsync(buf).then(function(zip){
+                var target = null;
+                zip.forEach(function(path, f){
+                  if(path === filename || path.split('/').pop() === filename) target = f;
+                });
+                if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
+                if(target){ target.async('arraybuffer').then(function(ab){ cb(null, ab, filename); }); }
+                else cb(new Error('Fichier non trouvé dans le ZIP'));
+              }).catch(function(e){ cb(e); });
+            });
+          });
+        } else {
+          // PDF direct
+          blob.arrayBuffer().then(function(ab){ cb(null, ab, filename); }).catch(function(e){ cb(e); });
+        }
+      })
+      .catch(function(e){ cb(e); });
+  }
+
   function _docRenderItem(docList, file, sUrl){
     var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
     delete h['Content-Type'];
     var docName = file.filename || 'Document.pdf';
-    var pdfUrl  = sUrl + '/pullDocs?ref=' + encodeURIComponent(file.ref);
 
     var item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;';
@@ -172,23 +210,29 @@
     var btnVoir = document.createElement('button');
     btnVoir.style.cssText = 'padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:inherit;';
     btnVoir.innerHTML = '<i class="ti ti-eye" style="font-size:14px;"></i> Voir';
-    btnVoir.onclick = function(){ window._openPdfViewer(pdfUrl, docName); };
+    btnVoir.onclick = function(){
+      // Ouvrir le viewer avec un loader, puis injecter le bon buffer
+      window._openPdfViewerWithBuffer(docName, function(onBuffer, onError){
+        _fetchPdfByName(sUrl, file.ref, docName, h, function(err, ab){
+          if(err) onError(err); else onBuffer(ab);
+        });
+      });
+    };
 
     var btnDl = document.createElement('button');
     btnDl.style.cssText = 'padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:inherit;';
     btnDl.innerHTML = '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger';
     btnDl.onclick = function(){
-      fetch(pdfUrl, { headers: h })
-        .then(function(r){ return r.blob(); })
-        .then(function(blob){
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = docName;
-          document.body.appendChild(a); a.click();
-          document.body.removeChild(a);
-          setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-        })
-        .catch(function(){ window.open(pdfUrl, '_blank'); });
+      _fetchPdfByName(sUrl, file.ref, docName, h, function(err, ab){
+        if(err){ showToast('Erreur téléchargement : '+err.message, 'err', 4000); return; }
+        var blob = new Blob([ab], {type:'application/pdf'});
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href = url; a.download = docName;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+      });
     };
 
     item.appendChild(btnVoir);
@@ -349,6 +393,50 @@
       );
     });
   }
+
+  // Variante qui accepte un callback(onBuffer, onError) au lieu d'une URL
+  window._openPdfViewerWithBuffer = function(docName, fetchFn){
+    var viewer = document.getElementById('pdfViewerOverlay');
+    var loader = document.getElementById('pdfViewerLoader');
+    var canvas = document.getElementById('pdfViewerCanvas');
+    var title  = document.getElementById('pdfViewerTitle');
+    if(!viewer) return;
+    if(title) title.textContent = docName || 'Document PDF';
+    if(loader){ loader.style.display='flex'; loader.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;gap:12px;"><i class="ti ti-loader-2" style="font-size:32px;color:var(--copper);animation:spin 1s linear infinite;"></i><span style="font-size:13px;color:var(--ink-soft);">Chargement…</span></div>'; }
+    if(canvas) canvas.style.display='none';
+    _pdfDoc=null; _pdfPage=1;
+    viewer.style.display='flex';
+    document.body.classList.add('modal-open');
+    fetchFn(
+      function onBuffer(ab){
+        function loadLib(cb){
+          if(window.pdfjsLib){ cb(); return; }
+          var s=document.createElement('script'); s.src='/Catalogue-Electrique/js/pdf.min.js';
+          s.onload=function(){ pdfjsLib.GlobalWorkerOptions.workerSrc='/Catalogue-Electrique/js/pdf.worker.min.js'; cb(); };
+          document.head.appendChild(s);
+        }
+        if(window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
+        window._pdfBlobUrl = URL.createObjectURL(new Blob([ab],{type:'application/pdf'}));
+        var btnDl = document.getElementById('pdfViewerDownload');
+        if(btnDl) btnDl.onclick=function(){ var a=document.createElement('a'); a.href=window._pdfBlobUrl; a.download=docName||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+        loadLib(function(){
+          pdfjsLib.getDocument({data:ab,isEvalSupported:false,disableAutoFetch:true,disableStream:true}).promise
+            .then(function(pdf){
+              _pdfDoc=pdf; _pdfPage=1;
+              var navEl=document.getElementById('pdfViewerNav'); if(navEl) navEl.style.display='flex';
+              var btnPrev=document.getElementById('pdfViewerPrev'); if(btnPrev) btnPrev.onclick=function(){ if(_pdfPage>1){_pdfPage--;_pdfRenderPage(_pdfPage);} };
+              var btnNext=document.getElementById('pdfViewerNext'); if(btnNext) btnNext.onclick=function(){ if(_pdfPage<pdf.numPages){_pdfPage++;_pdfRenderPage(_pdfPage);} };
+              var btnZI=document.getElementById('pdfViewerZoomIn');    if(btnZI)  btnZI.onclick=function(){_pdfZoom=Math.min(_pdfZoom+0.25,4);_pdfRenderPage(_pdfPage);};
+              var btnZO=document.getElementById('pdfViewerZoomOut');   if(btnZO)  btnZO.onclick=function(){_pdfZoom=Math.max(_pdfZoom-0.25,0.5);_pdfRenderPage(_pdfPage);};
+              var btnZR=document.getElementById('pdfViewerZoomReset'); if(btnZR)  btnZR.onclick=function(){_pdfZoom=1;_pdfRenderPage(_pdfPage);};
+              _pdfZoom=1; _pdfRenderPage(1);
+            })
+            .catch(function(e){ if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;">Erreur PDF : '+e.message+'</div>'; });
+        });
+      },
+      function onError(e){ if(loader) loader.innerHTML='<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+(e&&e.message||e)+'</div>'; }
+    );
+  };
 
   window._openPdfViewer = function(pdfUrl, docName){
     var viewer  = document.getElementById('pdfViewerOverlay');
