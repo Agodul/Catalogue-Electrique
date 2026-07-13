@@ -477,7 +477,41 @@
     if(isAdmin && editingId){
       var pForPdf = products.find(function(x){ return x.id === editingId; });
       if(modalPdfSection) modalPdfSection.style.display = '';
-      if(pForPdf && pForPdf.hasDoc){
+
+      // Interroger le serveur pour la liste réelle des fichiers (nofile=true)
+      if(sUrl && pForPdf && pForPdf.ref){
+        var hList = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+        delete hList['Content-Type'];
+        if(modalPdfFilename) modalPdfFilename.textContent = 'Chargement…';
+        fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(d){
+            var files = d && d.items ? d.items : [];
+            if(files.length > 0){
+              // Mémoriser les uuids pour suppression unitaire
+              pForPdf._docFiles = files;
+              pForPdf.hasDoc = true;
+              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
+              if(modalPdfExisting) modalPdfExisting.style.display = '';
+              if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename;
+              if(modalPdfUpload) modalPdfUpload.style.display = 'none';
+            } else {
+              pForPdf.hasDoc = false;
+              pForPdf._docFiles = [];
+              if(modalPdfExisting) modalPdfExisting.style.display = 'none';
+              if(modalPdfUpload) modalPdfUpload.style.display = '';
+            }
+          })
+          .catch(function(){
+            // Fallback sur la donnée locale si serveur injoignable
+            if(pForPdf && pForPdf.hasDoc){
+              if(modalPdfExisting) modalPdfExisting.style.display = '';
+              if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
+            } else {
+              if(modalPdfUpload) modalPdfUpload.style.display = '';
+            }
+          });
+      } else if(pForPdf && pForPdf.hasDoc){
         if(modalPdfExisting) modalPdfExisting.style.display = '';
         if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
       } else {
@@ -517,11 +551,21 @@
           if(!pForPdf || !pForPdf.ref) return;
           var hDel = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
           delete hDel['Content-Type'];
-          fetch(sUrl + '/deleteDocs?ref=' + encodeURIComponent(pForPdf.ref), { method:'DELETE', headers: hDel })
-            .then(function(r){ if(!r.ok) return Promise.reject('HTTP ' + r.status); })
+          // Si on a les uuids (listing serveur), supprimer unitairement chaque fichier
+          // Sinon fallback sur deleteDocs?ref= (suppression en masse)
+          var files = pForPdf._docFiles || [];
+          var deletePromise;
+          if(files.length > 0){
+            deletePromise = Promise.all(files.map(function(f){
+              return fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(f.uuid), { method:'DELETE', headers: hDel });
+            }));
+          } else {
+            deletePromise = fetch(sUrl + '/deleteDocs?ref=' + encodeURIComponent(pForPdf.ref), { method:'DELETE', headers: hDel });
+          }
+          deletePromise
             .then(function(){
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-              if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; save(true); }
+              if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; products[idx2]._docFiles = []; save(true); }
               showToast('PDF supprimé ✓', 'ok', 2500);
               if(modalPdfExisting) modalPdfExisting.style.display = 'none';
               if(modalPdfUpload) modalPdfUpload.style.display = '';
