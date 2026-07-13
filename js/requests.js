@@ -71,16 +71,25 @@
   };
 
   // ── Accepter une demande ──────────────────────────────────────
-  window.reqAccept = async function(ref, user){
+  // overrideData : si fourni (édition admin), utiliser directement ces données
+  //                 au lieu de re-fetcher depuis le serveur
+  window.reqAccept = async function(ref, user, overrideData){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = reqHeaders();
       var hGet = Object.assign({}, h); delete hGet['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
-      if(!r.ok) return false;
-      var d = await r.json();
-      if(!d.items || !d.items.length) return false;
-      var item = d.items[0].data || {};
+      var item;
+      if(overrideData){
+        // Données déjà éditées côté admin — on les utilise directement
+        item = Object.assign({}, overrideData);
+      } else {
+        // Cas normal : récupérer depuis le serveur
+        var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
+        if(!r.ok) return false;
+        var d = await r.json();
+        if(!d.items || !d.items.length) return false;
+        item = d.items[0].data || {};
+      }
       delete item._reqUser; delete item._reqAt; delete item._reqOriginal; delete item.user;
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
@@ -310,14 +319,14 @@
         });
         // Fusionner avec les données de la demande
         var merged = Object.assign({}, data, edited);
-        // Nettoyer les clés internes pour ne pas les écraser
-        merged._reqUser     = data._reqUser;
-        merged._reqAt       = data._reqAt;
-        merged._reqOriginal = data._reqOriginal;
-        // Patcher l'item pour que reqAccept utilise les données modifiées
-        item.data = merged;
+        // Supprimer les clés internes avant d'envoyer au serveur
+        delete merged._reqUser;
+        delete merged._reqAt;
+        delete merged._reqOriginal;
+        delete merged.user;
         btnAccept.disabled = true; btnAccept.textContent = '…';
-        var ok = await window.reqAccept(item.ref, user);
+        // Passer les données éditées directement à reqAccept (3ème argument)
+        var ok = await window.reqAccept(item.ref, user, merged);
         var overlay = document.getElementById('reqDetailOverlay');
         if(ok){ if(overlay){ overlay.style.display='none'; document.body.classList.remove('modal-open'); } showToast('Demande acceptée ✓','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
         else { btnAccept.disabled=false; btnAccept.innerHTML='<i class="ti ti-check"></i> Valider et accepter'; }
