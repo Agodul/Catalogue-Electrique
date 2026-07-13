@@ -309,40 +309,68 @@
   var _pdfCurrentBlobUrl = null;
 
   function _openPdfIframe(ab, docName){
+    var overlay = document.getElementById('pdfViewerOverlay');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var frame   = document.getElementById('pdfViewerFrame');
     if(_pdfCurrentBlobUrl) URL.revokeObjectURL(_pdfCurrentBlobUrl);
     _pdfCurrentBlobUrl = URL.createObjectURL(new Blob([ab], { type: 'application/pdf' }));
-    window.open(_pdfCurrentBlobUrl, '_blank');
+    // Passer du loader à l'iframe
+    if(loader) loader.style.display = 'none';
+    if(frame){
+      frame.src = _pdfCurrentBlobUrl;
+      frame.style.display = 'block';
+    }
   }
 
-  function _pdfShowLoader(docName){
+  function _pdfClose(){
     var overlay = document.getElementById('pdfViewerOverlay');
-    var title   = document.getElementById('pdfViewerTitle');
-    var btnCl   = document.getElementById('pdfViewerClose');
-    if(title) title.textContent = docName || 'Ouverture…';
-    if(btnCl) btnCl.onclick = function(){ _pdfHideLoader(); };
-    if(overlay) overlay.style.display = 'flex';
-  }
-  function _pdfHideLoader(){
-    var overlay = document.getElementById('pdfViewerOverlay');
+    var frame   = document.getElementById('pdfViewerFrame');
+    var loader  = document.getElementById('pdfViewerLoader');
+    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    if(loader) loader.style.display = 'flex';
     if(overlay) overlay.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    if(_pdfCurrentBlobUrl){ URL.revokeObjectURL(_pdfCurrentBlobUrl); _pdfCurrentBlobUrl = null; }
   }
+
+  // Initialiser les listeners fermeture une seule fois
+  (function(){
+    var btnCl = document.getElementById('pdfViewerClose');
+    if(btnCl) btnCl.addEventListener('click', _pdfClose);
+  })();
 
   window._openPdfViewerWithBuffer = function(docName, fetchFn){
-    _pdfShowLoader(docName);
+    var overlay = document.getElementById('pdfViewerOverlay');
+    var title   = document.getElementById('pdfViewerTitle');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var frame   = document.getElementById('pdfViewerFrame');
+    if(title) title.textContent = docName || 'Document PDF';
+    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    if(loader) loader.style.display = 'flex';
+    if(overlay) overlay.style.display = 'flex';
+    document.body.classList.add('modal-open');
     fetchFn(
       function onBuffer(ab){ _openPdfIframe(ab, docName); },
-      function onError(e){ _pdfHideLoader(); showToast('Erreur PDF : '+(e&&e.message||e), 'err', 4000); }
+      function onError(e){ _pdfClose(); showToast('Erreur PDF : '+(e&&e.message||e), 'err', 4000); }
     );
   };
 
   window._openPdfViewer = function(pdfUrl, docName){
-    _pdfShowLoader(docName);
+    var overlay = document.getElementById('pdfViewerOverlay');
+    var title   = document.getElementById('pdfViewerTitle');
+    var loader  = document.getElementById('pdfViewerLoader');
+    var frame   = document.getElementById('pdfViewerFrame');
+    if(title) title.textContent = docName || 'Document PDF';
+    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    if(loader) loader.style.display = 'flex';
+    if(overlay) overlay.style.display = 'flex';
+    document.body.classList.add('modal-open');
     var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
     delete h['Content-Type'];
     fetch(pdfUrl, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
       .then(function(ab){ _openPdfIframe(ab, docName); })
-      .catch(function(e){ _pdfHideLoader(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
+      .catch(function(e){ _pdfClose(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
   };
   // ── Fin PDF Viewer ───────────────────────────────────────────────
   // ── Fin PDF Viewer ───────────────────────────────────────────────
