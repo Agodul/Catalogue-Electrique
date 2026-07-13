@@ -164,30 +164,33 @@
   }
 
   // Fetch un fichier PDF par ref, extrait du ZIP si nécessaire par nom de fichier
+  // Détecte si un ArrayBuffer est un ZIP via magic bytes (PK = 0x50 0x4B)
+  function _isZipBuffer(ab){
+    var view = new Uint8Array(ab, 0, 4);
+    return view[0] === 0x50 && view[1] === 0x4B;
+  }
+
   function _fetchPdfByName(sUrl, ref, filename, h, cb){
     var url = sUrl + '/pullDocs?ref=' + encodeURIComponent(ref);
     fetch(url, { headers: h })
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
-      .then(function(blob){
-        var ct = blob.type || '';
-        if(ct.indexOf('zip') !== -1 || ct.indexOf('octet') !== -1){
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(ab){
+        if(_isZipBuffer(ab)){
           // Réponse ZIP → extraire le fichier par nom
           _loadJSZip(function(){
-            blob.arrayBuffer().then(function(buf){
-              JSZip.loadAsync(buf).then(function(zip){
-                var target = null;
-                zip.forEach(function(path, f){
-                  if(path === filename || path.split('/').pop() === filename) target = f;
-                });
-                if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
-                if(target){ target.async('arraybuffer').then(function(ab){ cb(null, ab, filename); }); }
-                else cb(new Error('Fichier non trouvé dans le ZIP'));
-              }).catch(function(e){ cb(e); });
-            });
+            JSZip.loadAsync(ab).then(function(zip){
+              var target = null;
+              zip.forEach(function(path, f){
+                if(path === filename || path.split('/').pop() === filename) target = f;
+              });
+              if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
+              if(target){ target.async('arraybuffer').then(function(buf){ cb(null, buf, filename); }); }
+              else cb(new Error('Fichier non trouvé dans le ZIP'));
+            }).catch(function(e){ cb(e); });
           });
         } else {
           // PDF direct
-          blob.arrayBuffer().then(function(ab){ cb(null, ab, filename); }).catch(function(e){ cb(e); });
+          cb(null, ab, filename);
         }
       })
       .catch(function(e){ cb(e); });
@@ -482,10 +485,8 @@
     }
 
     fetch(pdfUrl, { headers: h })
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
-      .then(function(blob){
-        var contentType = blob.type || '';
-        // Si ZIP : extraire le premier PDF
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(rawBuf){
         function processPdfBuffer(buffer){
           if(_pdfBlobUrl) URL.revokeObjectURL(_pdfBlobUrl);
           _pdfBlobUrl = URL.createObjectURL(new Blob([buffer],{type:'application/pdf'}));
@@ -499,11 +500,11 @@
             .then(function(pdf){
               _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');
-              if(navEl) navEl.style.display = 'flex'; // toujours visible pour le zoom
+              if(navEl) navEl.style.display = 'flex';
               if(btnPrev) btnPrev.onclick = function(){ if(_pdfPage > 1){ _pdfPage--; _pdfRenderPage(_pdfPage); } };
               if(btnNext) btnNext.onclick = function(){ if(_pdfPage < pdf.numPages){ _pdfPage++; _pdfRenderPage(_pdfPage); } };
-              var btnZoomIn  = document.getElementById('pdfViewerZoomIn');
-              var btnZoomOut = document.getElementById('pdfViewerZoomOut');
+              var btnZoomIn    = document.getElementById('pdfViewerZoomIn');
+              var btnZoomOut   = document.getElementById('pdfViewerZoomOut');
               var btnZoomReset = document.getElementById('pdfViewerZoomReset');
               if(btnZoomIn)    btnZoomIn.onclick    = function(){ _pdfZoom = Math.min(_pdfZoom + 0.25, 4); _pdfRenderPage(_pdfPage); };
               if(btnZoomOut)   btnZoomOut.onclick   = function(){ _pdfZoom = Math.max(_pdfZoom - 0.25, 0.5); _pdfRenderPage(_pdfPage); };
@@ -516,36 +517,26 @@
             });
           });
         }
-        if(contentType.indexOf('zip') !== -1 || contentType.indexOf('octet') !== -1){
-          loadJSZip(function(){
-            blob.arrayBuffer().then(function(zipBuf){
-              JSZip.loadAsync(zipBuf).then(function(zip){
-                // Trouver le premier fichier PDF dans le zip
-                var pdfFile = null;
-                zip.forEach(function(path, file){
-                  if(!pdfFile && path.toLowerCase().endsWith('.pdf')) pdfFile = file;
-                });
-                if(!pdfFile){
-                  // Prendre le premier fichier si pas de .pdf
-                  zip.forEach(function(path, file){ if(!pdfFile) pdfFile = file; });
-                }
-                if(pdfFile){
-                  pdfFile.async('arraybuffer').then(processPdfBuffer);
-                } else {
-                  if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;">Aucun PDF trouvé dans le ZIP</div>';
-                }
+        if(_isZipBuffer(rawBuf)){
+          _loadJSZip(function(){
+            JSZip.loadAsync(rawBuf).then(function(zip){
+              var pdfFile = null;
+              zip.forEach(function(path, file){
+                if(!pdfFile && path.toLowerCase().endsWith('.pdf')) pdfFile = file;
               });
-            });
+              if(!pdfFile) zip.forEach(function(path, file){ if(!pdfFile) pdfFile = file; });
+              if(pdfFile){ pdfFile.async('arraybuffer').then(processPdfBuffer); }
+              else if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;">Aucun PDF dans le ZIP</div>';
+            }).catch(function(e){ if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;">Erreur ZIP : '+e.message+'</div>'; });
           });
         } else {
-          blob.arrayBuffer().then(processPdfBuffer);
+          processPdfBuffer(rawBuf);
         }
       })
       .catch(function(e){
         if(loader) loader.innerHTML = '<div style="color:var(--warn);padding:20px;font-size:13px;">Erreur : '+e.message+'</div>';
       });
 
-    // ── Goto page ─────────────────────────────────────────────────
     var gotoInput = document.getElementById('pdfViewerGotoInput');
     if(gotoInput){
       gotoInput.addEventListener('keydown', function(e){
