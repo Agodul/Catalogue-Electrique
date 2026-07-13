@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v312";
+const CACHE = "spi-catalogue-v313";
 
 const FILES = [
   "./",
@@ -17,10 +17,16 @@ const FILES = [
   "./js/requests.js",
   "./js/render.js",
   "./js/storage.js",
-  "./js/pdf.min.js",
-  "./js/pdf.worker.min.js",
   "./assets/splash.mp4",
   "./assets/splash-mobile.mp4"
+];
+
+// Origines à ne jamais intercepter (CDN, API externe)
+const PASSTHROUGH = [
+  'cdn.jsdelivr.net',
+  'cdnjs.cloudflare.com',
+  'spice-api.spiservices.fr',
+  'blob:'
 ];
 
 self.addEventListener("install", event => {
@@ -60,6 +66,13 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
+
+  // ── Bypass : CDN et API externe passent directement au réseau ───
+  const reqUrl = new URL(event.request.url);
+  if(PASSTHROUGH.some(function(h){ return event.request.url.startsWith('blob:') || reqUrl.hostname === h; })){
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   // ── Intercepter le share target ──────────────────────────────────
   if(url.pathname.endsWith("share-target")){
