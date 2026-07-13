@@ -170,13 +170,20 @@
     return view[0] === 0x50 && view[1] === 0x4B;
   }
 
+  // Cache des buffers PDF déjà téléchargés (clé = ref + filename)
+  var _pdfBufferCache = {};
+
   function _fetchPdfByName(sUrl, ref, filename, h, cb){
+    var cacheKey = ref + '::' + filename;
+    if(_pdfBufferCache[cacheKey]){
+      cb(null, _pdfBufferCache[cacheKey], filename);
+      return;
+    }
     var url = sUrl + '/pullDocs?ref=' + encodeURIComponent(ref);
     fetch(url, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
       .then(function(ab){
         if(_isZipBuffer(ab)){
-          // Réponse ZIP → extraire le fichier par nom
           _loadJSZip(function(){
             JSZip.loadAsync(ab).then(function(zip){
               var target = null;
@@ -184,12 +191,16 @@
                 if(path === filename || path.split('/').pop() === filename) target = f;
               });
               if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
-              if(target){ target.async('arraybuffer').then(function(buf){ cb(null, buf, filename); }); }
-              else cb(new Error('Fichier non trouvé dans le ZIP'));
+              if(target){
+                target.async('arraybuffer').then(function(buf){
+                  _pdfBufferCache[cacheKey] = buf;
+                  cb(null, buf, filename);
+                });
+              } else cb(new Error('Fichier non trouvé dans le ZIP'));
             }).catch(function(e){ cb(e); });
           });
         } else {
-          // PDF direct
+          _pdfBufferCache[cacheKey] = ab;
           cb(null, ab, filename);
         }
       })
