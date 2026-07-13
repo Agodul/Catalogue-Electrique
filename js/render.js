@@ -337,43 +337,87 @@
     }).catch(function(e){ console.error('render page', e); });
   }
 
+  // Cache textContent par page pour éviter refetch
+  var _pdfTextCache = {};
+
   function _pdfDrawTextLayer(page, vp, dpr, cssW, cssH){
+    // Supprimer l'ancienne couche highlight canvas
     var oldLayer = document.getElementById('pdfTextLayer');
     if(oldLayer) oldLayer.parentNode.removeChild(oldLayer);
 
-    var textLayerDiv = document.createElement('div');
-    textLayerDiv.id = 'pdfTextLayer';
-    // --scale-factor requis par PDF.js 3.x
-    var cssScale = vp.scale / dpr;
-    textLayerDiv.style.cssText = [
+    // Créer un canvas overlay pour les highlights (pixel-perfect)
+    var hlCanvas = document.createElement('canvas');
+    hlCanvas.id = 'pdfTextLayer';
+    hlCanvas.width  = vp.width;
+    hlCanvas.height = vp.height;
+    hlCanvas.style.cssText = [
       'position:absolute', 'top:0', 'left:0',
       'width:' + cssW + 'px', 'height:' + cssH + 'px',
-      'overflow:hidden', 'line-height:1', 'pointer-events:none',
-      '--scale-factor:' + cssScale
+      'pointer-events:none', 'opacity:0.45'
     ].join(';');
 
-    var canvas = document.getElementById('pdfViewerCanvas');
-    if(canvas && canvas.parentNode){
-      canvas.parentNode.style.position = 'relative';
-      canvas.parentNode.insertBefore(textLayerDiv, canvas.nextSibling);
+    var mainCanvas = document.getElementById('pdfViewerCanvas');
+    if(mainCanvas && mainCanvas.parentNode){
+      mainCanvas.parentNode.style.position = 'relative';
+      mainCanvas.parentNode.insertBefore(hlCanvas, mainCanvas.nextSibling);
     }
 
-    // Viewport CSS (sans dpr)
-    var vpCss = page.getViewport({ scale: cssScale });
+    // Stocker vp et dpr pour _pdfApplySearch
+    hlCanvas._vp  = vp;
+    hlCanvas._dpr = dpr;
 
-    page.getTextContent().then(function(tc){
-      var task = pdfjsLib.renderTextLayer({
-        textContentSource: tc,
-        container: textLayerDiv,
-        viewport: vpCss,
-        textDivs: []
+    // Charger le textContent (mis en cache par page)
+    var pageNum = page.pageNumber;
+    if(_pdfTextCache[pageNum]){
+      _pdfApplySearchCanvas(hlCanvas, _pdfTextCache[pageNum], page);
+    } else {
+      page.getTextContent().then(function(tc){
+        _pdfTextCache[pageNum] = tc;
+        _pdfApplySearchCanvas(hlCanvas, tc, page);
       });
-      var p = task.promise || (task.then ? task : null);
-      if(p){
-        p.then(function(){ _pdfApplySearch(textLayerDiv); })
-         .catch(function(e){ console.warn('TextLayer:', e); });
+    }
+  }
+
+  function _pdfApplySearchCanvas(hlCanvas, tc, page){
+    var ctx = hlCanvas.getContext('2d');
+    var vp  = hlCanvas._vp;
+    var dpr = hlCanvas._dpr;
+    ctx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+    if(!_highlightQuery || !tc) return;
+
+    var q = _highlightQuery.toLowerCase();
+    ctx.fillStyle = 'rgba(255, 200, 0, 1)';
+
+    tc.items.forEach(function(item){
+      if(!item.str || item.str.toLowerCase().indexOf(q) === -1) return;
+      // Transformer les coordonnées PDF → canvas pixels
+      var tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+      // tx = [scaleX, skewX, skewY, scaleY, x, y]
+      var x = tx[4];
+      var y = tx[5];
+      var w = item.width  * vp.scale;
+      var h = item.height * vp.scale;
+      if(h <= 0) h = Math.abs(tx[3]);
+      // Ajuster y (PDF origin bas-gauche, canvas haut-gauche)
+      ctx.fillRect(x, y - h, w, h);
+    });
+  }
+
+  // Appelé après chaque changement de query
+  function _pdfApplySearch(){
+    var hlCanvas = document.getElementById('pdfTextLayer');
+    if(!hlCanvas || !hlCanvas._vp) return;
+    var pageNum = _pdfPage;
+    if(!_pdfDoc) return;
+    _pdfDoc.getPage(pageNum).then(function(page){
+      var tc = _pdfTextCache[pageNum];
+      if(tc){
+        _pdfApplySearchCanvas(hlCanvas, tc, page);
       } else {
-        setTimeout(function(){ _pdfApplySearch(textLayerDiv); }, 300);
+        page.getTextContent().then(function(tc2){
+          _pdfTextCache[pageNum] = tc2;
+          _pdfApplySearchCanvas(hlCanvas, tc2, page);
+        });
       }
     });
   }
@@ -465,7 +509,7 @@
           pdfjsLib.getDocument({data:ab}).promise
             .then(function(pdf){
               console.log('[PDF] document chargé, pages:', pdf.numPages);
-              _pdfDoc=pdf; _pdfPage=1;
+              _pdfTextCache={}; _pdfDoc=pdf; _pdfPage=1;
               var navEl=document.getElementById('pdfViewerNav'); if(navEl) navEl.style.display='flex';
               var btnPrev=document.getElementById('pdfViewerPrev'); if(btnPrev) btnPrev.onclick=function(){ if(_pdfPage>1){_pdfPage--;_pdfRenderPage(_pdfPage);} };
               var btnNext=document.getElementById('pdfViewerNext'); if(btnNext) btnNext.onclick=function(){ if(_pdfPage<pdf.numPages){_pdfPage++;_pdfRenderPage(_pdfPage);} };
@@ -538,7 +582,7 @@
           loadLib(function(){
             pdfjsLib.getDocument({ data: buffer }).promise
             .then(function(pdf){
-              _pdfDoc = pdf; _pdfPage = 1;
+              _pdfTextCache={}; _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');
               if(navEl) navEl.style.display = 'flex';
               if(btnPrev) btnPrev.onclick = function(){ if(_pdfPage > 1){ _pdfPage--; _pdfRenderPage(_pdfPage); } };
