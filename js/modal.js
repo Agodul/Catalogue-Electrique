@@ -458,120 +458,111 @@
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
-    // ── Section PDF dans le formulaire (admin + modification uniquement) ──
+    // ── Section PDF multi-doc ────────────────────────────────────
     var sUrl = localStorage.getItem('cat_server_url');
-    var isAdmin = window._userPerms ? (window._userPerms.canUploadDocs || window._userPerms.isAdmin) : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
-    var modalPdfSection  = document.getElementById('modalPdfSection');
-    var modalPdfExisting = document.getElementById('modalPdfExisting');
-    var modalPdfUpload   = document.getElementById('modalPdfUpload');
-    var modalPdfFilename = document.getElementById('modalPdfFilename');
-    var modalPdfInput    = document.getElementById('modalPdfInput');
-    var modalPdfReplaceInput = document.getElementById('modalPdfReplaceInput');
-    var modalPdfReplaceBtn   = document.getElementById('modalPdfReplaceBtn');
-    var modalPdfRemoveBtn    = document.getElementById('modalPdfRemoveBtn');
+    var canUploadPdf = window._userPerms ? (window._userPerms.canUploadDocs || window._userPerms.isAdmin) : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
+    var modalPdfSection = document.getElementById('modalPdfSection');
+    var modalPdfList    = document.getElementById('modalPdfList');
+    var modalPdfUpload  = document.getElementById('modalPdfUpload');
+    var modalPdfInput   = document.getElementById('modalPdfInput');
 
     if(modalPdfSection) modalPdfSection.style.display = 'none';
-    if(modalPdfExisting) modalPdfExisting.style.display = 'none';
-    if(modalPdfUpload) modalPdfUpload.style.display = 'none';
 
-    if(isAdmin && editingId){
+    if(canUploadPdf && editingId){
       var pForPdf = products.find(function(x){ return x.id === editingId; });
-      if(modalPdfSection) modalPdfSection.style.display = '';
+      if(pForPdf){
+        if(modalPdfSection) modalPdfSection.style.display = '';
 
-      // Interroger le serveur pour la liste réelle des fichiers (nofile=true)
-      if(sUrl && pForPdf && pForPdf.ref){
-        var hList = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
-        delete hList['Content-Type'];
-        if(modalPdfFilename) modalPdfFilename.textContent = 'Chargement…';
-        fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
-          .then(function(r){ return r.ok ? r.json() : null; })
-          .then(function(d){
-            var files = d && d.items ? d.items : [];
-            if(files.length > 0){
-              // Mémoriser les uuids pour suppression unitaire
-              pForPdf._docFiles = files;
-              pForPdf.hasDoc = true;
-              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
-              if(modalPdfExisting) modalPdfExisting.style.display = '';
-              if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename;
-              if(modalPdfUpload) modalPdfUpload.style.display = 'none';
-            } else {
-              pForPdf.hasDoc = false;
-              pForPdf._docFiles = [];
-              if(modalPdfExisting) modalPdfExisting.style.display = 'none';
-              if(modalPdfUpload) modalPdfUpload.style.display = '';
-            }
-          })
-          .catch(function(){
-            // Fallback sur la donnée locale si serveur injoignable
-            if(pForPdf && pForPdf.hasDoc){
-              if(modalPdfExisting) modalPdfExisting.style.display = '';
-              if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
-            } else {
-              if(modalPdfUpload) modalPdfUpload.style.display = '';
-            }
+        function _pdfRenderList(files){
+          if(!modalPdfList) return;
+          if(!files || files.length === 0){
+            modalPdfList.innerHTML = '';
+            if(modalPdfUpload) modalPdfUpload.style.display = 'flex';
+            return;
+          }
+          if(modalPdfUpload) modalPdfUpload.style.display = 'flex';
+          modalPdfList.innerHTML = files.map(function(f){
+            return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
+              + '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>'
+              + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escapeHtml(f.filename)+'</span>'
+              + (f.uuid ? '<button data-uuid="'+_escapeHtml(f.uuid)+'" class="pdf-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>' : '')
+              + '</div>';
+          }).join('');
+          modalPdfList.querySelectorAll('.pdf-del-btn').forEach(function(btn){
+            btn.onclick = function(){ _pdfDeleteOne(btn.getAttribute('data-uuid')); };
           });
-      } else if(pForPdf && pForPdf.hasDoc){
-        if(modalPdfExisting) modalPdfExisting.style.display = '';
-        if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
-      } else {
-        if(modalPdfUpload) modalPdfUpload.style.display = '';
-      }
+        }
 
-      function doUploadPdf(file){
-        if(!file || !pForPdf || !pForPdf.ref) return;
-        if(!sUrl){ showToast('Serveur non configuré — impossible d\'envoyer le PDF', 'err', 4000); return; }
-        var fd = new FormData();
-        fd.append('ref', pForPdf.ref);
-        fd.append('document', file, file.name);
-        showToast('Envoi du PDF en cours…', 'ok', 3000);
-        (function(){ var h = typeof window.authHeaders==='function'?Object.assign({},window.authHeaders()):{}; delete h['Content-Type']; return fetch(sUrl + '/pushDocs', { method:'POST', headers: h, body: fd }); })()
-          .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
-          .then(function(data){
-            var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-            if(idx2 !== -1){
-              products[idx2].hasDoc = true;
-              products[idx2].docFilename = data.filename || file.name;
-              save(true);
-            }
-            showToast('PDF envoyé ✓', 'ok', 2500);
-            if(modalPdfUpload) modalPdfUpload.style.display = 'none';
-            if(modalPdfExisting) modalPdfExisting.style.display = '';
-            if(modalPdfFilename) modalPdfFilename.textContent = data.filename || file.name;
-          })
-          .catch(function(e){ showToast('Erreur envoi PDF : ' + e, 'err', 4000); });
-      }
-
-      if(modalPdfInput) modalPdfInput.onchange = function(){ doUploadPdf(this.files[0]); };
-      if(modalPdfReplaceInput) modalPdfReplaceInput.onchange = function(){ doUploadPdf(this.files[0]); };
-      if(modalPdfReplaceBtn) modalPdfReplaceBtn.onclick = function(){ if(modalPdfReplaceInput) modalPdfReplaceInput.click(); };
-
-      if(modalPdfRemoveBtn){
-        modalPdfRemoveBtn.onclick = function(){
-          if(!pForPdf || !pForPdf.ref) return;
+        function _pdfDeleteOne(uuid){
+          if(!uuid || !sUrl) return;
           var hDel = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
           delete hDel['Content-Type'];
-          // Si on a les uuids (listing serveur), supprimer unitairement chaque fichier
-          // Sinon fallback sur deleteDocs?ref= (suppression en masse)
-          var files = pForPdf._docFiles || [];
-          var deletePromise;
-          if(files.length > 0){
-            deletePromise = Promise.all(files.map(function(f){
-              return fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(f.uuid), { method:'DELETE', headers: hDel });
-            }));
-          } else {
-            deletePromise = fetch(sUrl + '/deleteDocs?ref=' + encodeURIComponent(pForPdf.ref), { method:'DELETE', headers: hDel });
-          }
-          deletePromise
+          fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(uuid), { method:'DELETE', headers: hDel })
+            .then(function(r){ if(!r.ok) return Promise.reject('HTTP '+r.status); })
             .then(function(){
+              pForPdf._docFiles = (pForPdf._docFiles || []).filter(function(f){ return f.uuid !== uuid; });
+              var hasAny = pForPdf._docFiles.length > 0;
+              pForPdf.hasDoc      = hasAny;
+              pForPdf.docFilename = hasAny ? pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ') : '';
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-              if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; products[idx2]._docFiles = []; save(true); }
-              showToast('PDF supprimé ✓', 'ok', 2500);
-              if(modalPdfExisting) modalPdfExisting.style.display = 'none';
-              if(modalPdfUpload) modalPdfUpload.style.display = '';
+              if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+              showToast('Fichier supprimé ✓', 'ok', 2000);
+              _pdfRenderList(pForPdf._docFiles);
             })
-            .catch(function(e){ showToast('Erreur suppression PDF : ' + e, 'err', 4000); });
-        };
+            .catch(function(e){ showToast('Erreur suppression : '+e, 'err', 4000); });
+        }
+
+        function _pdfUploadFiles(fileList){
+          if(!fileList || !fileList.length || !pForPdf || !pForPdf.ref) return;
+          if(!sUrl){ showToast('Serveur non configuré', 'err', 4000); return; }
+          var h = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete h['Content-Type'];
+          var arr = Array.from(fileList);
+          showToast('Envoi de '+arr.length+' fichier'+(arr.length>1?'s':'')+' en cours…', 'ok', 3000);
+          Promise.all(arr.map(function(file){
+            var fd = new FormData();
+            fd.append('ref', pForPdf.ref);
+            fd.append('document', file, file.name);
+            return fetch(sUrl + '/pushDocs', { method:'POST', headers: h, body: fd })
+              .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
+              .then(function(data){ return { uuid: data.uuid, filename: data.filename || file.name, ref: pForPdf.ref }; });
+          }))
+          .then(function(newFiles){
+            pForPdf._docFiles = (pForPdf._docFiles || []).concat(newFiles);
+            pForPdf.hasDoc = true;
+            pForPdf.docFilename = pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ');
+            var idx2 = products.findIndex(function(x){ return x.id === editingId; });
+            if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+            showToast(arr.length+' PDF envoyé'+(arr.length>1?'s':'')+' ✓', 'ok', 2500);
+            _pdfRenderList(pForPdf._docFiles);
+            if(modalPdfInput) modalPdfInput.value = '';
+          })
+          .catch(function(e){ showToast('Erreur envoi PDF : '+e, 'err', 4000); });
+        }
+
+        if(modalPdfInput) modalPdfInput.onchange = function(){ _pdfUploadFiles(this.files); };
+
+        // Charger la liste depuis le serveur
+        if(sUrl && pForPdf.ref){
+          var hList = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete hList['Content-Type'];
+          if(modalPdfList) modalPdfList.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:4px 0;">Chargement…</div>';
+          fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
+            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(d){
+              var files = d && d.items ? d.items : [];
+              pForPdf._docFiles = files;
+              pForPdf.hasDoc = files.length > 0;
+              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
+              _pdfRenderList(files);
+            })
+            .catch(function(){
+              var files = pForPdf._docFiles || (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
+              _pdfRenderList(files);
+            });
+        } else {
+          _pdfRenderList(pForPdf._docFiles || []);
+        }
       }
     }
     // ── Fin section PDF ──
