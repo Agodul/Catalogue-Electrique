@@ -462,7 +462,7 @@
         if(btnDl) btnDl.onclick=function(){ var a=document.createElement('a'); a.href=window._pdfBlobUrl; a.download=docName||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
         loadLib(function(){
           console.log('[PDF] getDocument...');
-          pdfjsLib.getDocument({data:ab,isEvalSupported:false,disableAutoFetch:true,disableStream:true}).promise
+          pdfjsLib.getDocument({data:ab}).promise
             .then(function(pdf){
               console.log('[PDF] document chargé, pages:', pdf.numPages);
               _pdfDoc=pdf; _pdfPage=1;
@@ -536,7 +536,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
           };
           loadLib(function(){
-            pdfjsLib.getDocument({ data: buffer, isEvalSupported: false, disableAutoFetch: true, disableStream: true }).promise
+            pdfjsLib.getDocument({ data: buffer }).promise
             .then(function(pdf){
               _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');
