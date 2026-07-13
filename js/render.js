@@ -592,10 +592,33 @@
       });
     }
 
-    // ── Recherche texte ───────────────────────────────────────────
-    var _searchMatches = []; // [{page, items}]
+    // Listeners search/close/goto gérés par _initPdfViewerListeners() ci-dessous
+  };
+  // ── Fin PDF Viewer ───────────────────────────────────────────────
+  // ── Fin PDF Viewer ───────────────────────────────────────────────
+
+  // ── Init unique des listeners PDF Viewer ─────────────────────────
+  (function _initPdfViewerListeners(){
+    var _searchMatches = [];
     var _searchIdx     = -1;
 
+    function closePdfViewer(){
+      var viewer = document.getElementById('pdfViewerOverlay');
+      if(viewer) viewer.style.display = 'none';
+      _highlightQuery = '';
+      _searchMatches = []; _searchIdx = -1;
+      document.body.classList.remove('modal-open');
+      // Retirer surlignages
+      var tl = document.getElementById('pdfTextLayer');
+      if(tl) tl.querySelectorAll('mark.pdf-hl').forEach(function(m){
+        m.parentNode.replaceChild(document.createTextNode(m.textContent), m);
+      });
+    }
+
+    var closeBtn = document.getElementById('pdfViewerClose');
+    if(closeBtn) closeBtn.addEventListener('click', closePdfViewer);
+
+    // Recherche
     var searchBar   = document.getElementById('pdfViewerSearchBar');
     var searchInput = document.getElementById('pdfViewerSearchInput');
     var searchCount = document.getElementById('pdfViewerSearchCount');
@@ -605,175 +628,80 @@
     var btnSrchClose= document.getElementById('pdfViewerSearchClose');
 
     function showSearchBar(){ if(searchBar){ searchBar.style.display='flex'; if(searchInput) searchInput.focus(); } }
-    function hideSearchBar(){ if(searchBar){ searchBar.style.display='none'; _searchMatches=[]; _searchIdx=-1; if(searchCount) searchCount.textContent=''; } }
+    function hideSearchBar(){
+      if(searchBar) searchBar.style.display='none';
+      _searchMatches=[]; _searchIdx=-1;
+      if(searchCount) searchCount.textContent='';
+      _highlightQuery='';
+      var tl=document.getElementById('pdfTextLayer');
+      if(tl) tl.querySelectorAll('mark.pdf-hl').forEach(function(m){
+        m.parentNode.replaceChild(document.createTextNode(m.textContent),m);
+      });
+    }
 
-    if(btnSrchOpen)  btnSrchOpen.onclick  = showSearchBar;
-    if(btnSrchClose) btnSrchClose.onclick = hideSearchBar;
+    if(btnSrchOpen)  btnSrchOpen.addEventListener('click', showSearchBar);
+    if(btnSrchClose) btnSrchClose.addEventListener('click', hideSearchBar);
+
+    function updateSearchCount(){
+      if(!searchCount) return;
+      if(_searchMatches.length===0){ searchCount.textContent='Aucun résultat'; return; }
+      searchCount.textContent=(_searchIdx+1)+' / '+_searchMatches.length;
+    }
 
     async function doSearch(query){
       _highlightQuery = query.trim();
       if(!_pdfDoc || !_highlightQuery){
-        _highlightQuery = '';
-        if(searchCount) searchCount.textContent = '';
-        // Supprimer overlay si vide
-        var oldOv = document.getElementById('pdfHighlightOverlay');
-        if(oldOv) oldOv.parentNode.removeChild(oldOv);
+        _highlightQuery='';
+        if(searchCount) searchCount.textContent='';
+        _pdfApplySearch();
         return;
       }
-      _searchMatches = [];
-      var q = _highlightQuery.toLowerCase();
-      for(var i = 1; i <= _pdfDoc.numPages; i++){
-        var page = await _pdfDoc.getPage(i);
-        var tc   = await page.getTextContent();
-        var text = tc.items.map(function(it){ return it.str; }).join(' ').toLowerCase();
-        if(text.indexOf(q) !== -1) _searchMatches.push(i);
+      _searchMatches=[];
+      var q=_highlightQuery.toLowerCase();
+      for(var i=1;i<=_pdfDoc.numPages;i++){
+        var page=await _pdfDoc.getPage(i);
+        var tc=await page.getTextContent();
+        var text=tc.items.map(function(it){return it.str;}).join(' ').toLowerCase();
+        if(text.indexOf(q)!==-1) _searchMatches.push(i);
       }
-      _searchIdx = _searchMatches.length > 0 ? 0 : -1;
+      _searchIdx=_searchMatches.length>0?0:-1;
       updateSearchCount();
-      if(_searchIdx >= 0){ _pdfPage = _searchMatches[0]; _pdfRenderPage(_pdfPage); }
-      else { _pdfApplySearch(); }
+      if(_searchIdx>=0){ _pdfPage=_searchMatches[0]; _pdfRenderPage(_pdfPage); }
+      else _pdfApplySearch();
     }
 
-    function updateSearchCount(){
-      if(!searchCount) return;
-      if(_searchMatches.length === 0){ searchCount.textContent = 'Aucun résultat'; return; }
-      searchCount.textContent = (_searchIdx+1) + ' / ' + _searchMatches.length;
-    }
-
-    if(btnSrchNext) btnSrchNext.onclick = function(){
-      if(_searchMatches.length === 0) return;
-      _searchIdx = (_searchIdx + 1) % _searchMatches.length;
-      _pdfPage = _searchMatches[_searchIdx];
-      _pdfRenderPage(_pdfPage);
-      updateSearchCount();
-    };
-    if(btnSrchPrev) btnSrchPrev.onclick = function(){
-      if(_searchMatches.length === 0) return;
-      _searchIdx = (_searchIdx - 1 + _searchMatches.length) % _searchMatches.length;
-      _pdfPage = _searchMatches[_searchIdx];
-      _pdfRenderPage(_pdfPage);
-      updateSearchCount();
-    };
+    if(btnSrchNext) btnSrchNext.addEventListener('click', function(){
+      if(!_searchMatches.length) return;
+      _searchIdx=(_searchIdx+1)%_searchMatches.length;
+      _pdfPage=_searchMatches[_searchIdx]; _pdfRenderPage(_pdfPage); updateSearchCount();
+    });
+    if(btnSrchPrev) btnSrchPrev.addEventListener('click', function(){
+      if(!_searchMatches.length) return;
+      _searchIdx=(_searchIdx-1+_searchMatches.length)%_searchMatches.length;
+      _pdfPage=_searchMatches[_searchIdx]; _pdfRenderPage(_pdfPage); updateSearchCount();
+    });
 
     var _searchDebounce;
     if(searchInput) searchInput.addEventListener('input', function(){
       clearTimeout(_searchDebounce);
-      _searchDebounce = setTimeout(function(){ doSearch(searchInput.value); }, 400);
+      _searchDebounce=setTimeout(function(){ doSearch(searchInput.value); }, 400);
     });
     if(searchInput) searchInput.addEventListener('keydown', function(e){
-      if(e.key === 'Enter') btnSrchNext && btnSrchNext.click();
-      if(e.key === 'Escape') hideSearchBar();
+      if(e.key==='Enter' && btnSrchNext) btnSrchNext.click();
+      if(e.key==='Escape') hideSearchBar();
     });
 
-    // ── Pan / drag + pinch zoom ───────────────────────────────────
-    var _pan  = { active: false, startX: 0, startY: 0, scrollX: 0, scrollY: 0 };
-    var _body = document.getElementById('pdfViewerBody');
-    var _canvas = document.getElementById('pdfViewerCanvas');
-
-    if(_body){
-      _body.style.cursor = 'grab';
-
-      // --- PAN SOURIS ---
-      function panStart(x, y){
-        _pan.active  = true;
-        _pan.startX  = x; _pan.startY  = y;
-        _pan.scrollX = _body.scrollLeft; _pan.scrollY = _body.scrollTop;
-        _body.style.cursor = 'grabbing';
-        _body.style.userSelect = 'none';
+    // Goto page
+    var gotoInput = document.getElementById('pdfViewerGotoInput');
+    if(gotoInput) gotoInput.addEventListener('keydown', function(e){
+      if(e.key==='Enter'){
+        var n=parseInt(gotoInput.value);
+        if(_pdfDoc && n>=1 && n<=_pdfDoc.numPages){ _pdfPage=n; _pdfRenderPage(_pdfPage); }
+        gotoInput.value=''; gotoInput.blur();
       }
-      function panMove(x, y){
-        if(!_pan.active) return;
-        _body.scrollLeft = _pan.scrollX - (x - _pan.startX);
-        _body.scrollTop  = _pan.scrollY - (y - _pan.startY);
-      }
-      function panEnd(){
-        _pan.active = false;
-        _body.style.cursor = 'grab';
-        _body.style.userSelect = '';
-      }
-      _body.addEventListener('mousedown',  function(e){ if(e.button===0) panStart(e.clientX, e.clientY); });
-      _body.addEventListener('mousemove',  function(e){ panMove(e.clientX, e.clientY); });
-      _body.addEventListener('mouseup',    panEnd);
-      _body.addEventListener('mouseleave', panEnd);
+    });
+  })();
 
-      // --- TOUCH : pan 1 doigt via scroll natif, pinch 2 doigts via CSS transform ---
-      var _pinch = { active: false, startDist: 0, startZoom: 1, centerX: 0, centerY: 0 };
-
-      function getTouchDist(e){
-        var dx = e.touches[0].clientX - e.touches[1].clientX;
-        var dy = e.touches[0].clientY - e.touches[1].clientY;
-        return Math.sqrt(dx*dx + dy*dy);
-      }
-
-      // Bloquer double-tap
-      var _lastTap = 0;
-      _body.addEventListener('touchend', function(e){
-        var now = Date.now();
-        if(now - _lastTap < 300 && e.changedTouches.length === 1){ e.preventDefault(); }
-        _lastTap = now;
-      }, { passive: false });
-
-      _body.addEventListener('touchstart', function(e){
-        if(e.touches.length === 2){
-          e.preventDefault();
-          _pinch.active    = true;
-          _pinch.startDist = getTouchDist(e);
-          _pinch.startZoom = _pdfZoom;
-          // Centre du pinch
-          _pinch.centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-          _pinch.centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        } else {
-          _pinch.active = false;
-        }
-      }, { passive: false });
-
-      _body.addEventListener('touchmove', function(e){
-        if(_pinch.active && e.touches.length === 2){
-          e.preventDefault();
-          var dist  = getTouchDist(e);
-          var ratio = dist / _pinch.startDist;
-          var newZoom = Math.min(4, Math.max(0.5, _pinch.startZoom * ratio));
-          // Appliquer en CSS transform pour fluidité — pas de re-render pendant le geste
-          if(_canvas){
-            _canvas.style.transformOrigin = 'center top';
-            _canvas.style.transform = 'scale(' + (newZoom / _pinch.startZoom) + ')';
-          }
-          // Mettre à jour l'affichage zoom
-          var zoomEl = document.getElementById('pdfViewerZoomLevel');
-          if(zoomEl) zoomEl.textContent = Math.round(newZoom * 100) + '%';
-          _pdfZoom = newZoom;
-        }
-      }, { passive: false });
-
-      _body.addEventListener('touchend', function(e){
-        if(_pinch.active && e.touches.length < 2){
-          _pinch.active = false;
-          // Re-render à la vraie résolution une fois le pinch terminé
-          if(_canvas){ _canvas.style.transform = ''; _canvas.style.transformOrigin = ''; }
-          _pdfRenderPage(_pdfPage);
-        }
-      }, { passive: true });
-
-      // Masquer les boutons zoom sur mobile
-      var isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      var zoomBtns = document.getElementById('pdfViewerZoomBtns');
-      if(isMobile && zoomBtns) zoomBtns.style.display = 'none';
-    }
-
-    function closePdfViewer(){
-      viewer.style.display = 'none';
-      _highlightQuery = '';
-      _searchMatches = []; _searchIdx = -1;
-      document.body.classList.remove('modal-open');
-      // Nettoyer les listeners pan
-      if(_body){
-        _body.replaceWith(_body.cloneNode(true));
-      }
-    }
-    document.getElementById('pdfViewerClose').onclick = closePdfViewer;
-    // Ne pas fermer en cliquant en dehors — uniquement via le bouton ✕
-  };
-  // ── Fin PDF Viewer ───────────────────────────────────────────────
 
   function closeView(){
     viewOverlay.classList.remove('open');
