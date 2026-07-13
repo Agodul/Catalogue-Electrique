@@ -1640,19 +1640,20 @@
   });
 
   // ---------- Loupe mobile ----------
-  var searchToggleBtn = document.getElementById('searchToggleBtn');
+  var searchToggleBtn = document.getElementById('searchToggleBtn') || { addEventListener: function(){} };
   var searchExpand    = document.getElementById('searchExpand');
   var searchInputMobile = document.getElementById('searchInputMobile');
   var searchCloseBtn  = document.getElementById('searchCloseBtn');
   if(searchToggleBtn){
     searchToggleBtn.addEventListener('click', function(){
       searchExpand.classList.add('open');
-      searchInputMobile.focus();
-      // Vider les filtres catégorie dès l'ouverture de la recherche
-      // pour ne pas rester coincé dans la dernière famille ouverte
+      // Vider les filtres catégorie dès l'ouverture
       if(familyFilterEl) familyFilterEl.value = '';
       if(brandFilterEl)  brandFilterEl.value  = '';
       if(seriesFilterEl) seriesFilterEl.value = '';
+      // Petit délai pour laisser la barre s'afficher avant le focus
+      // (évite le scroll brutal sur iOS)
+      setTimeout(function(){ searchInputMobile.focus(); }, 50);
     });
     searchCloseBtn.addEventListener('click', function(){
       searchExpand.classList.remove('open');
@@ -2181,3 +2182,100 @@
     if(!sUrl) return;
     if(typeof syncFromServer === 'function') syncFromServer(true);
   });
+  // ── Bottom Sheet Filtres Mobile ────────────────────────────────
+  ;(function _initFilterSheet(){
+    var sheet     = document.getElementById('filterSheet');
+    var overlay   = document.getElementById('filterSheetOverlay');
+    var btnOpen   = document.getElementById('btnFilterSheet');
+    var btnClose  = document.getElementById('filterSheetClose');
+    var btnApply  = document.getElementById('filterSheetApply');
+    var btnReset  = document.getElementById('filterSheetReset');
+    var inputSrch = document.getElementById('filterSheetSearch');
+    var selBrand  = document.getElementById('filterSheetBrand');
+    var selFamily = document.getElementById('filterSheetFamily');
+    var selSeries = document.getElementById('filterSheetSeries');
+    var badge     = document.getElementById('filterSheetBadge');
+
+    if(!sheet || !btnOpen) return;
+
+    // Synchroniser les options avec les selects existants
+    function syncOptions(){
+      ['Brand','Family','Series'].forEach(function(k){
+        var src = document.getElementById(k.toLowerCase()+'Filter');
+        var dst = document.getElementById('filterSheet'+k);
+        if(!src || !dst) return;
+        var cur = dst.value;
+        dst.innerHTML = src.innerHTML;
+        dst.value = src.value || cur;
+      });
+    }
+
+    function openSheet(){
+      syncOptions();
+      // Copier les valeurs actuelles
+      if(selBrand)  selBrand.value  = (brandFilterEl  && brandFilterEl.value)  || '';
+      if(selFamily) selFamily.value = (familyFilterEl && familyFilterEl.value) || '';
+      if(selSeries) selSeries.value = (seriesFilterEl && seriesFilterEl.value) || '';
+      if(inputSrch) inputSrch.value = (searchInputEl  && searchInputEl.value)  || '';
+
+      overlay.style.display = 'block';
+      sheet.classList.add('open');
+      document.body.classList.add('modal-open');
+      setTimeout(function(){ if(inputSrch) inputSrch.focus(); }, 300);
+    }
+
+    function closeSheet(){
+      sheet.classList.remove('open');
+      overlay.style.display = 'none';
+      document.body.classList.remove('modal-open');
+    }
+
+    function applyFilters(){
+      // Appliquer vers les selects principaux
+      if(brandFilterEl  && selBrand)  brandFilterEl.value  = selBrand.value;
+      if(familyFilterEl && selFamily) familyFilterEl.value = selFamily.value;
+      if(seriesFilterEl && selSeries) seriesFilterEl.value = selSeries.value;
+      if(searchInputEl  && inputSrch) searchInputEl.value  = inputSrch.value;
+      // Mettre à jour le badge
+      updateBadge();
+      closeSheet();
+      if(typeof render === 'function') render();
+    }
+
+    function resetFilters(){
+      if(selBrand)  selBrand.value  = '';
+      if(selFamily) selFamily.value = '';
+      if(selSeries) selSeries.value = '';
+      if(inputSrch) inputSrch.value = '';
+      if(brandFilterEl)  brandFilterEl.value  = '';
+      if(familyFilterEl) familyFilterEl.value = '';
+      if(seriesFilterEl) seriesFilterEl.value = '';
+      if(searchInputEl)  searchInputEl.value  = '';
+      updateBadge();
+      closeSheet();
+      if(typeof render === 'function') render();
+    }
+
+    function updateBadge(){
+      var count = 0;
+      if(brandFilterEl  && brandFilterEl.value)  count++;
+      if(familyFilterEl && familyFilterEl.value) count++;
+      if(seriesFilterEl && seriesFilterEl.value) count++;
+      if(searchInputEl  && searchInputEl.value)  count++;
+      if(badge){
+        badge.textContent = count || '';
+        badge.style.display = count > 0 ? '' : 'none';
+      }
+    }
+
+    btnOpen.addEventListener('click', openSheet);
+    if(btnClose)  btnClose.addEventListener('click', closeSheet);
+    if(btnApply)  btnApply.addEventListener('click', applyFilters);
+    if(btnReset)  btnReset.addEventListener('click', resetFilters);
+    if(overlay)   overlay.addEventListener('click', closeSheet);
+
+    // Appliquer en tapant Entrée dans la recherche
+    if(inputSrch) inputSrch.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') applyFilters();
+    });
+  })();

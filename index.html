@@ -486,11 +486,48 @@
       <i class="ti ti-arrows-sort sort-icon" aria-hidden="true" id="sortPriceIcon"></i>
       Prix
     </button>
+    <!-- Bouton filtres mobile uniquement -->
+    <button id="btnFilterSheet" class="filter-sheet-fab" title="Filtres" style="display:none;">
+      <i class="ti ti-adjustments-horizontal"></i>
+      <span id="filterSheetBadge" class="filter-sheet-badge" style="display:none;"></span>
+    </button>
 
   </div>
   <div class="search-expand" id="searchExpand">
     <input type="text" id="searchInputMobile" placeholder="Rechercher…">
     <button class="search-close-btn" id="searchCloseBtn" aria-label="Fermer">✕</button>
+  </div>
+
+  <!-- Bottom sheet filtres mobile -->
+  <div id="filterSheetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;"></div>
+  <div id="filterSheet" class="filter-sheet">
+    <div class="filter-sheet-handle"></div>
+    <div class="filter-sheet-header">
+      <span class="filter-sheet-title">Recherche et filtres</span>
+      <button id="filterSheetClose" class="filter-sheet-close">✕</button>
+    </div>
+    <div class="filter-sheet-body">
+      <div class="filter-sheet-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="filterSheetSearch" placeholder="Rechercher…" autocomplete="off">
+      </div>
+      <label class="filter-sheet-label">Marque</label>
+      <select id="filterSheetBrand" class="filter-sheet-select">
+        <option value="">Toutes les marques</option>
+      </select>
+      <label class="filter-sheet-label">Famille</label>
+      <select id="filterSheetFamily" class="filter-sheet-select">
+        <option value="">Toutes les familles</option>
+      </select>
+      <label class="filter-sheet-label">Série</label>
+      <select id="filterSheetSeries" class="filter-sheet-select">
+        <option value="">Toutes les séries</option>
+      </select>
+      <div class="filter-sheet-actions">
+        <button id="filterSheetReset" class="filter-sheet-btn-reset"><i class="ti ti-filter-off"></i> Réinitialiser</button>
+        <button id="filterSheetApply" class="filter-sheet-btn-apply">Appliquer</button>
+      </div>
+    </div>
   </div>
 
   <div class="group-toggle sans" id="groupToggle">
@@ -509,14 +546,6 @@
 
 
 <div class="fab-stack">
-  <div class="fab-search-box" id="fabSearchBox">
-    <input type="text" id="fabSearchInput" placeholder="Rechercher…" autocomplete="off">
-    <button class="fab-search-close" id="fabSearchClose" aria-label="Fermer">✕</button>
-  </div>
-  <button id="btnFabSearch" class="fab sans" aria-label="Rechercher" title="Rechercher" style="position:relative;">
-    <svg class="svg-lupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <svg class="svg-cross" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linecap="round" style="width:20px;height:20px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-  </button>
   <button id="btnFabPropose" class="fab sans" aria-label="Proposer un produit" title="Proposer un produit" style="display:none;">
     <i class="ti ti-edit" style="font-size:18px;"></i>
   </button>
