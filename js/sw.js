@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v313";
+const CACHE = "spi-catalogue-v314";
 
 const FILES = [
   "./",
@@ -68,8 +68,7 @@ self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
 
   // ── Bypass : CDN et API externe passent directement au réseau ───
-  const reqUrl = new URL(event.request.url);
-  if(PASSTHROUGH.some(function(h){ return event.request.url.startsWith('blob:') || reqUrl.hostname === h; })){
+  if(PASSTHROUGH.some(function(h){ return event.request.url.startsWith('blob:') || url.hostname === h; })){
     event.respondWith(fetch(event.request));
     return;
   }
