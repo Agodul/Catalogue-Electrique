@@ -309,7 +309,10 @@
     _pdfDoc.getPage(num).then(function(page){
       var dpr   = window.devicePixelRatio || 1;
       var vp0   = page.getViewport({ scale: 1 });
-      var baseScale = body ? Math.min((body.clientWidth - 40) / vp0.width, 2.5) : 1.5;
+      // Si clientWidth=0 (modale pas encore rendue), fallback sur offsetWidth ou 800
+      var bodyW = body ? (body.clientWidth || body.offsetWidth || 800) : 800;
+      var baseScale = Math.min((bodyW - 40) / vp0.width, 2.5);
+      if(baseScale <= 0) baseScale = 1.5;
       var scale = baseScale * _pdfZoom;
       var vp    = page.getViewport({ scale: scale * dpr });
       canvas.width  = vp.width;
