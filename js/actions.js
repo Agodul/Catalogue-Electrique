@@ -171,6 +171,13 @@
     if(homePage && !homePage.classList.contains('hidden') && searchInputEl.value.trim().length > 0){
       showCatalogueAll();
     }
+    // Dès qu'on tape une recherche, vider les filtres famille/marque/série
+    // pour ne pas rester coincé dans la dernière catégorie ouverte
+    if(searchInputEl.value.trim().length > 0){
+      if(familyFilterEl) familyFilterEl.value = '';
+      if(brandFilterEl)  brandFilterEl.value  = '';
+      if(seriesFilterEl) seriesFilterEl.value = '';
+    }
     render();
   });
   brandFilterEl.addEventListener('change', render);
@@ -1643,6 +1650,11 @@
     searchToggleBtn.addEventListener('click', function(){
       searchExpand.classList.add('open');
       searchInputMobile.focus();
+      // Vider les filtres catégorie dès l'ouverture de la recherche
+      // pour ne pas rester coincé dans la dernière famille ouverte
+      if(familyFilterEl) familyFilterEl.value = '';
+      if(brandFilterEl)  brandFilterEl.value  = '';
+      if(seriesFilterEl) seriesFilterEl.value = '';
     });
     searchCloseBtn.addEventListener('click', function(){
       searchExpand.classList.remove('open');
@@ -1656,6 +1668,12 @@
       var homePage = document.getElementById('homePage');
       if(homePage && !homePage.classList.contains('hidden') && searchInputMobile.value.trim().length > 0){
         showCatalogueAll();
+      }
+      // Dès qu'on tape une recherche, vider les filtres famille/marque/série
+      if(searchInputMobile.value.trim().length > 0){
+        if(familyFilterEl) familyFilterEl.value = '';
+        if(brandFilterEl)  brandFilterEl.value  = '';
+        if(seriesFilterEl) seriesFilterEl.value = '';
       }
       render();
     });
