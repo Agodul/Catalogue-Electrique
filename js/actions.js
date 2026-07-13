@@ -2163,3 +2163,21 @@
       }
     });
   };
+
+  // ── Sync automatique au retour dans l'app (mobile / changement d'onglet) ──
+  var _lastVisibleSync = 0;
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState !== 'visible') return;
+    var now = Date.now();
+    if(now - _lastVisibleSync < 10000) return; // min 10s entre deux syncs
+    _lastVisibleSync = now;
+    var sUrl = localStorage.getItem('cat_server_url');
+    if(!sUrl) return;
+    if(typeof syncFromServer === 'function') syncFromServer(true);
+  });
+
+  window.addEventListener('online', function(){
+    var sUrl = localStorage.getItem('cat_server_url');
+    if(!sUrl) return;
+    if(typeof syncFromServer === 'function') syncFromServer(true);
+  });

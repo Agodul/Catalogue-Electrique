@@ -542,6 +542,8 @@
             showToast('Impossible de supprimer sur le serveur (HTTP '+r.status+') — suppression annulée', 'err', 4000);
             return;
           }
+          // Forcer un re-sync complet sur tous les appareils au prochain check
+          localStorage.setItem('cat_server_last_sync', '0');
         }catch(e){
           showToast('Serveur inaccessible — suppression annulée', 'err', 4000);
           return;
