@@ -374,15 +374,25 @@
   window._pdfPreloadLib = _pdfPreloadLib;
 
   function _pdfDrawTextLayer(page, vp, dpr, cssW, cssH){
-    var old = document.getElementById('pdfTextLayer');
-    if(old) old.parentNode.removeChild(old);
+    var oldDiv = document.getElementById('pdfTextLayer');
+    if(oldDiv) oldDiv.parentNode.removeChild(oldDiv);
+
+    // vpCss = même viewport que le rendu canvas, mais sans le dpr
+    // C'est l'échelle CSS réelle que voient les éléments DOM
+    var cssScale = vp.scale / dpr;
+    var vpCss = page.getViewport({ scale: cssScale });
 
     var div = document.createElement('div');
     div.id = 'pdfTextLayer';
-    // scale CSS = vp.scale / dpr (le canvas est en pixels physiques, le div en CSS)
-    var s = vp.scale / dpr;
-    div.style.cssText = 'position:absolute;top:0;left:0;width:'+cssW+'px;height:'+cssH+'px;'
-      + 'overflow:hidden;line-height:1;pointer-events:none;--scale-factor:'+s+';opacity:1;';
+    div.style.cssText = [
+      'position:absolute', 'top:0', 'left:0',
+      'width:'  + cssW + 'px',
+      'height:' + cssH + 'px',
+      'overflow:hidden',
+      'line-height:1',
+      'pointer-events:none',
+      '--scale-factor:' + cssScale   // PDF.js 3.x utilise cette var pour les transforms
+    ].join(';');
 
     var mc = document.getElementById('pdfViewerCanvas');
     if(mc && mc.parentNode){
@@ -394,10 +404,11 @@
     function render(tc){
       _pdfTextCache[pageNum] = tc;
       try {
+        // Passer vpCss (sans dpr) à renderTextLayer — c'est ce qui aligne les spans
         var task = pdfjsLib.renderTextLayer({
           textContentSource: tc,
           container: div,
-          viewport: page.getViewport({ scale: s }),
+          viewport: vpCss,
           textDivs: []
         });
         var p = task && (task.promise || task);
