@@ -224,8 +224,11 @@
     var btnVoir = document.createElement('button');
     btnVoir.style.cssText = 'padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:inherit;';
     btnVoir.innerHTML = '<i class="ti ti-eye" style="font-size:14px;"></i> Voir';
+    // Précharger le buffer au survol (avant le clic)
+    btnVoir.addEventListener('mouseenter', function(){
+      _fetchPdfByName(sUrl, file.ref, docName, h, function(){}); // warm cache
+    }, { once: true });
     btnVoir.onclick = function(){
-      // Ouvrir le viewer avec un loader, puis injecter le bon buffer
       window._openPdfViewerWithBuffer(docName, function(onBuffer, onError){
         _fetchPdfByName(sUrl, file.ref, docName, h, function(err, ab){
           if(err) onError(err); else onBuffer(ab);
@@ -349,6 +352,26 @@
   }
 
   var _pdfTextCache = {};
+
+  // Précharger PDF.js en arrière-plan dès que le navigateur est idle
+  function _pdfPreloadLib(){
+    if(window.pdfjsLib) return;
+    var load = function(){
+      if(window.pdfjsLib) return;
+      var s = document.createElement('script');
+      s.src = '/Catalogue-Electrique/js/pdf.min.js';
+      s.onload = function(){
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/Catalogue-Electrique/js/pdf.worker.min.js';
+        // Précharger aussi le worker
+        var w = new Worker(pdfjsLib.GlobalWorkerOptions.workerSrc);
+        setTimeout(function(){ try{ w.terminate(); }catch(e){} }, 500);
+      };
+      document.head.appendChild(s);
+    };
+    if('requestIdleCallback' in window) requestIdleCallback(load, { timeout: 3000 });
+    else setTimeout(load, 2000);
+  }
+  window._pdfPreloadLib = _pdfPreloadLib;
 
   function _pdfDrawTextLayer(page, vp, dpr, cssW, cssH){
     var old = document.getElementById('pdfTextLayer');
@@ -504,7 +527,9 @@
         if(btnDl) btnDl.onclick=function(){ var a=document.createElement('a'); a.href=window._pdfBlobUrl; a.download=docName||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
         loadLib(function(){
           console.log('[PDF] getDocument...');
-          pdfjsLib.getDocument({data:ab}).promise
+          // Utiliser un Uint8Array pour éviter la copie mémoire
+          var u8 = new Uint8Array(ab);
+          pdfjsLib.getDocument({ data: u8, cMapPacked: true, disableRange: false, disableStream: false }).promise
             .then(function(pdf){
               console.log('[PDF] document chargé, pages:', pdf.numPages);
               _pdfTextCache={}; _pdfDoc=pdf; _pdfPage=1;
@@ -578,7 +603,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
           };
           loadLib(function(){
-            pdfjsLib.getDocument({ data: buffer }).promise
+            pdfjsLib.getDocument({ data: new Uint8Array(buffer), cMapPacked: true }).promise
             .then(function(pdf){
               _pdfTextCache={}; _pdfDoc = pdf; _pdfPage = 1;
               var navEl = document.getElementById('pdfViewerNav');

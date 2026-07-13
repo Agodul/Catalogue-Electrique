@@ -149,6 +149,7 @@ async function authLogin(username, password) {
       if (typeof render === 'function') render();
       if (typeof renderHome === 'function') renderHome();
       if (typeof showHome === 'function') showHome();
+      if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
       // Démarrer le polling demandes si admin
       if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
       // Sync serveur en arrière-plan uniquement
