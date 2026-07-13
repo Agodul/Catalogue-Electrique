@@ -474,27 +474,20 @@
         if(modalPdfSection) modalPdfSection.style.display = '';
 
         function _pdfRenderList(files){
-          // Re-lookup au cas où les refs ont changé entre le fetch et le rendu
-          var _list   = document.getElementById('modalPdfList');
-          var _upload = document.getElementById('modalPdfUpload');
-          if(!_list) return;
-          if(!files || files.length === 0){
-            _list.innerHTML = '';
-            if(_upload) _upload.style.display = 'flex';
-            return;
-          }
-          if(_upload) _upload.style.display = 'flex';
-          // Réassigner pour le reste de la fonction
-          modalPdfList   = _list;
-          modalPdfUpload = _upload;
-          modalPdfList.innerHTML = files.map(function(f){
+          var L = document.getElementById('modalPdfList');
+          var U = document.getElementById('modalPdfUpload');
+          if(!L) return;
+          L.innerHTML = '';
+          if(U) U.style.display = 'flex';
+          if(!files || files.length === 0) return;
+          L.innerHTML = files.map(function(f){
             return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
               + '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>'
-              + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escapeHtml(f.filename)+'</span>'
-              + (f.uuid ? '<button data-uuid="'+_escapeHtml(f.uuid)+'" class="pdf-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>' : '')
+              + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _escapeHtml(f.filename) + '</span>'
+              + (f.uuid ? '<button data-uuid="' + _escapeHtml(f.uuid) + '" class="pdf-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>' : '')
               + '</div>';
           }).join('');
-          modalPdfList.querySelectorAll('.pdf-del-btn').forEach(function(btn){
+          L.querySelectorAll('.pdf-del-btn').forEach(function(btn){
             btn.onclick = function(){ _pdfDeleteOne(btn.getAttribute('data-uuid')); };
           });
         }
@@ -552,24 +545,28 @@
         if(sUrl && pForPdf.ref){
           var hList = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
           delete hList['Content-Type'];
-          if(modalPdfList) modalPdfList.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:4px 0;">Chargement…</div>';
+          var _pdfListEl = document.getElementById('modalPdfList');
+          if(_pdfListEl) _pdfListEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:4px 0;">Chargement…</div>';
           fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
             .then(function(r){
-              if(!r.ok) return null;
-              return r.json().catch(function(){ return null; });
+              if(!r.ok){ console.warn('[PDF] pullDocs status:', r.status); return null; }
+              return r.json().catch(function(e){ console.warn('[PDF] json parse error:', e); return null; });
             })
             .then(function(d){
+              console.log('[PDF] pullDocs response:', d);
               var files = d && d.items ? d.items : [];
               pForPdf._docFiles = files;
               pForPdf.hasDoc = files.length > 0;
               pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
               _pdfRenderList(files);
             })
-            .catch(function(){
+            .catch(function(e){
+              console.warn('[PDF] fetch error:', e);
               var files = pForPdf._docFiles || (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
               _pdfRenderList(files);
             });
         } else {
+          console.log('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
           _pdfRenderList(pForPdf._docFiles || []);
         }
       }
