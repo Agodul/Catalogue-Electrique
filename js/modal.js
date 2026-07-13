@@ -474,13 +474,19 @@
         if(modalPdfSection) modalPdfSection.style.display = '';
 
         function _pdfRenderList(files){
-          if(!modalPdfList) return;
+          // Re-lookup au cas où les refs ont changé entre le fetch et le rendu
+          var _list   = document.getElementById('modalPdfList');
+          var _upload = document.getElementById('modalPdfUpload');
+          if(!_list) return;
           if(!files || files.length === 0){
-            modalPdfList.innerHTML = '';
-            if(modalPdfUpload) modalPdfUpload.style.display = 'flex';
+            _list.innerHTML = '';
+            if(_upload) _upload.style.display = 'flex';
             return;
           }
-          if(modalPdfUpload) modalPdfUpload.style.display = 'flex';
+          if(_upload) _upload.style.display = 'flex';
+          // Réassigner pour le reste de la fonction
+          modalPdfList   = _list;
+          modalPdfUpload = _upload;
           modalPdfList.innerHTML = files.map(function(f){
             return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
               + '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>'
@@ -548,7 +554,10 @@
           delete hList['Content-Type'];
           if(modalPdfList) modalPdfList.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:4px 0;">Chargement…</div>';
           fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
-            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(r){
+              if(!r.ok) return null;
+              return r.json().catch(function(){ return null; });
+            })
             .then(function(d){
               var files = d && d.items ? d.items : [];
               pForPdf._docFiles = files;
