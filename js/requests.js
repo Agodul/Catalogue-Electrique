@@ -108,51 +108,116 @@
     var original = data._reqOriginal;
     var isNew    = !original;
     var overlay  = document.getElementById('reqDetailOverlay');
-    var title    = document.getElementById('reqDetailTitle');
-    var subtitle = document.getElementById('reqDetailSubtitle');
-    var body     = document.getElementById('reqDetailBody');
-    var btnAcc   = document.getElementById('reqDetailAccept');
-    var btnRef   = document.getElementById('reqDetailRefuse');
     if(!overlay) return;
 
-    if(title)    title.textContent    = (isNew ? 'Nouveau produit : ' : 'Modification : ') + escapeHtml(item.ref);
-    if(subtitle) subtitle.textContent = 'Soumis par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+    // Remplir le titre
+    var titleEl = document.getElementById('reqDetailTitle');
+    var subtitleEl = document.getElementById('reqDetailSubtitle');
+    if(titleEl)    titleEl.textContent = (isNew ? 'Nouveau produit : ' : 'Modification : ') + escapeHtml(item.ref);
+    if(subtitleEl) subtitleEl.textContent = 'Soumis par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
 
-    var FIELDS = { name:'Nom', brand:'Marque', ref:'Référence', family:'Famille', series:'Série', supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue', leadTime:'Délai', url:'URL', desc:'Description' };
-    var html = '';
+    // Construire le corps avec le même HTML que openView
+    var body = document.getElementById('reqDetailBody');
+    if(!body) return;
 
-    if(data.photo) html += '<div style="text-align:center;margin-bottom:16px;"><img src="' + escapeHtml(data.photo) + '" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-
-    if(isNew){
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:16px;">';
-      Object.keys(FIELDS).forEach(function(k){
-        if(k==='desc'||k==='url') return;
-        var v = data[k]; if(!v) return;
-        html += '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:2px;">' + FIELDS[k] + '</div><div style="font-size:13px;font-weight:600;color:var(--ink);">' + escapeHtml(String(v)) + '</div></div>';
+    var p = isNew ? data : Object.assign({}, original, data, { _reqOriginal: original, _reqUser: data._reqUser, _reqAt: data._reqAt });
+    // Pour une modif : afficher les valeurs proposées
+    if(!isNew) {
+      Object.keys(data).forEach(function(k){
+        if(k !== '_reqOriginal' && k !== '_reqUser' && k !== '_reqAt') p[k] = data[k];
       });
-      html += '</div>';
-      if(data.desc) html += '<div style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;padding:10px;background:var(--paper);border-radius:8px;">' + escapeHtml(data.desc) + '</div>';
-      if(data.url)  html += '<a href="' + escapeHtml(data.url) + '" target="_blank" style="font-size:13px;color:#194093;">Ouvrir la page</a>';
-    } else {
-      html += '<div style="margin-bottom:16px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;">Modifications proposées</div>';
-      var hasDiff = false;
-      Object.keys(FIELDS).forEach(function(k){
-        var ov = String(original[k]||''); var nv = String(data[k]||'');
-        if(ov===nv) return;
-        hasDiff = true;
-        html += '<div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:4px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);"><span style="font-size:11px;font-weight:600;color:var(--ink-soft);">' + FIELDS[k] + '</span><span style="font-size:12px;color:#991B1B;text-decoration:line-through;">' + escapeHtml(ov||'—') + '</span><span style="font-size:12px;color:#065F46;font-weight:600;">' + escapeHtml(nv||'—') + '</span></div>';
-      });
-      if(!hasDiff) html += '<div style="font-size:13px;color:var(--ink-soft);">Aucune différence détectée</div>';
-      html += '</div><div style="padding:12px;background:var(--paper);border-radius:8px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;">État actuel</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">';
-      ['name','brand','family','series','supplier','price'].forEach(function(k){
-        if(!original[k]) return;
-        html += '<div><div style="font-size:10px;color:var(--ink-soft);">' + FIELDS[k] + '</div><div style="font-size:13px;font-weight:600;">' + escapeHtml(String(original[k])) + '</div></div>';
-      });
-      html += '</div></div>';
     }
 
-    if(body) body.innerHTML = html;
+    // Photo
+    var photoHtml = '';
+    if(p.photo){
+      photoHtml = '<div class="vm-photo" style="height:200px;border-radius:10px 10px 0 0;overflow:hidden;background:#eee;margin-bottom:16px;">'
+        + '<img src="' + escapeHtml(p.photo) + '" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
+        + '</div>';
+    }
 
+    // Référence + nom
+    var refHtml = '<div class="vm-ref" style="margin-bottom:4px;">' + escapeHtml((p.brand ? p.brand + ' — ' : '') + (p.ref || '')) + '</div>';
+    var nameHtml = '<div class="vm-name" style="margin-bottom:12px;">' + escapeHtml(p.name || '(Sans nom)') + '</div>';
+
+    // Méta
+    var metaItems = [];
+    if(p.brand)    metaItems.push(['MARQUE',       p.brand]);
+    if(p.ref)      metaItems.push(['RÉFÉRENCE',    p.ref]);
+    if(p.family)   metaItems.push(['FAMILLE',      p.family]);
+    if(p.series)   metaItems.push(['SÉRIE',        p.series]);
+    if(p.supplier) metaItems.push(['FOURNISSEUR',  p.supplier]);
+    if(p.leadTime) metaItems.push(['DÉLAI',        p.leadTime]);
+    if(p.url)      metaItems.push(['URL',          p.url]);
+
+    var metaHtml = '';
+    if(metaItems.length){
+      metaHtml = '<div class="vm-meta" style="margin-bottom:12px;">'
+        + metaItems.map(function(m){
+            var val = m[0] === 'URL'
+              ? '<a href="' + escapeHtml(m[1]) + '" target="_blank" style="color:var(--copper-deep)">Ouvrir la page</a>'
+              : '<span>' + escapeHtml(m[1]) + '</span>';
+            return '<div class="vm-meta-item"><label>' + escapeHtml(m[0]) + '</label>' + val + '</div>';
+          }).join('')
+        + '</div>';
+    }
+
+    // Description
+    var descHtml = p.desc ? '<div class="vm-desc" style="margin-bottom:12px;">' + escapeHtml(p.desc) + '</div>' : '';
+
+    // Prix
+    var priceHtml = '';
+    if(p.price){
+      var orig = p.priceCatalogue && p.priceCatalogue !== p.price ? p.priceCatalogue : '';
+      priceHtml = '<div class="vm-price-row"><div class="vm-price">'
+        + (orig ? '<span class="vm-price-original">' + escapeHtml(orig) + '</span>' : '')
+        + escapeHtml(p.price)
+        + '</div></div>';
+    }
+
+    // Historique prix
+    var histHtml = '';
+    if(p.priceHistory && p.priceHistory.length){
+      histHtml = '<div class="vm-price-history">'
+        + '<div style="font-size:13px;font-weight:700;margin:12px 0 8px;">Historique des prix</div>'
+        + p.priceHistory.map(function(h){
+            var d = h.date ? new Date(h.date).toLocaleDateString('fr-FR') : '';
+            return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid var(--line);">'
+              + '<span>' + escapeHtml(d || h.label || '') + '</span>'
+              + '<span>' + escapeHtml(h.price || '') + '</span>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+    }
+
+    // Diff (pour modification) 
+    var diffHtml = '';
+    if(!isNew && original){
+      var FIELDS = { name:'Nom', brand:'Marque', family:'Famille', series:'Série', supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue', desc:'Description', url:'URL', leadTime:'Délai' };
+      var diffs = [];
+      Object.keys(FIELDS).forEach(function(k){
+        var ov = String(original[k]||''); var nv = String(data[k]||'');
+        if(ov !== nv) diffs.push({ label: FIELDS[k], old: ov, new: nv });
+      });
+      if(diffs.length){
+        diffHtml = '<div style="margin-bottom:16px;padding:12px;background:#FEF3C7;border-radius:8px;border:1px solid #FDE68A;">'
+          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400E;margin-bottom:8px;">Modifications proposées</div>'
+          + diffs.map(function(d){
+              return '<div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:4px 8px;align-items:center;padding:4px 0;border-bottom:1px solid #FDE68A;">'
+                + '<span style="font-size:11px;font-weight:600;color:#92400E;">' + escapeHtml(d.label) + '</span>'
+                + '<span style="font-size:12px;color:#991B1B;text-decoration:line-through;">' + escapeHtml(d.old||'—') + '</span>'
+                + '<span style="font-size:12px;color:#065F46;font-weight:600;">' + escapeHtml(d.new||'—') + '</span>'
+                + '</div>';
+            }).join('')
+          + '</div>';
+      }
+    }
+
+    body.innerHTML = photoHtml + diffHtml + refHtml + nameHtml + metaHtml + descHtml + priceHtml + histHtml;
+
+    // Boutons footer
+    var btnAcc = document.getElementById('reqDetailAccept');
+    var btnRef = document.getElementById('reqDetailRefuse');
     if(btnAcc){ btnAcc.disabled=false; btnAcc.innerHTML='<i class="ti ti-check"></i> Accepter';
       btnAcc.onclick = async function(){
         btnAcc.disabled=true; btnAcc.textContent='…';
@@ -176,6 +241,7 @@
     document.body.classList.add('modal-open');
   }
 
+  // ── Charger les demandes admin ────────────────────────────────
   // ── Charger les demandes admin ────────────────────────────────
   async function reqLoadAdminList(){
     var sUrl = reqServerUrl();
