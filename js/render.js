@@ -309,118 +309,40 @@
   var _pdfCurrentBlobUrl = null;
 
   function _openPdfIframe(ab, docName){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var frame   = document.getElementById('pdfViewerFrame');
-    var loader  = document.getElementById('pdfViewerLoader');
-    var title   = document.getElementById('pdfViewerTitle');
-    var btnDl   = document.getElementById('pdfViewerDownload');
-    var btnCl   = document.getElementById('pdfViewerClose');
-    if(!overlay || !frame) return;
-
-    // Titre
-    if(title) title.textContent = docName || 'Document PDF';
-
-    // Blob URL du PDF
     if(_pdfCurrentBlobUrl) URL.revokeObjectURL(_pdfCurrentBlobUrl);
     _pdfCurrentBlobUrl = URL.createObjectURL(new Blob([ab], { type: 'application/pdf' }));
+    window.open(_pdfCurrentBlobUrl, '_blank');
+  }
 
-    // Loader
-    if(loader){
-      loader.style.display = 'flex';
-      loader.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;">'
-        + '<i class="ti ti-loader-2" style="font-size:32px;color:#fff;animation:spin 1s linear infinite;"></i>'
-        + '<span style="font-size:13px;color:rgba(255,255,255,.6);">Chargement…</span></div>';
-    }
-
-    // Viewer PDF.js officiel (CDN) avec le PDF en paramètre
-    var viewerUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/web/viewer.html'
-      + '?file=' + encodeURIComponent(_pdfCurrentBlobUrl);
-    frame.src = viewerUrl;
-    frame.onload = function(){ if(loader) loader.style.display = 'none'; };
-
-    // Téléchargement
-    if(btnDl) btnDl.onclick = function(){
-      var a = document.createElement('a');
-      a.href = _pdfCurrentBlobUrl; a.download = docName || 'document.pdf';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    };
-
-    // Fermeture
-    function close(){
-      overlay.style.display = 'none';
-      document.body.classList.remove('modal-open');
-      frame.src = 'about:blank';
-    }
-    if(btnCl) btnCl.onclick = close;
-    overlay.onclick = function(e){ if(e.target === overlay) close(); };
-
-    overlay.style.display = 'flex';
-    document.body.classList.add('modal-open');
+  function _pdfShowLoader(docName){
+    var overlay = document.getElementById('pdfViewerOverlay');
+    var title   = document.getElementById('pdfViewerTitle');
+    var btnCl   = document.getElementById('pdfViewerClose');
+    if(title) title.textContent = docName || 'Ouverture…';
+    if(btnCl) btnCl.onclick = function(){ _pdfHideLoader(); };
+    if(overlay) overlay.style.display = 'flex';
+  }
+  function _pdfHideLoader(){
+    var overlay = document.getElementById('pdfViewerOverlay');
+    if(overlay) overlay.style.display = 'none';
   }
 
   window._openPdfViewerWithBuffer = function(docName, fetchFn){
-    var loader  = document.getElementById('pdfViewerLoader');
-    var overlay = document.getElementById('pdfViewerOverlay');
-    if(overlay) overlay.style.display = 'flex';
-    document.body.classList.add('modal-open');
-    if(loader){
-      loader.style.display = 'flex';
-      loader.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;">'
-        + '<i class="ti ti-loader-2" style="font-size:32px;color:#fff;animation:spin 1s linear infinite;"></i>'
-        + '<span style="font-size:13px;color:rgba(255,255,255,.6);">Chargement…</span></div>';
-    }
+    _pdfShowLoader(docName);
     fetchFn(
-      function onBuffer(ab){ _openPdfIframe(ab, arguments[1] || ''); },
-      function onError(e){
-        if(loader) loader.innerHTML = '<div style="color:#f87171;padding:20px;font-size:13px;">Erreur : '+(e&&e.message||e)+'</div>';
-      }
+      function onBuffer(ab){ _openPdfIframe(ab, docName); },
+      function onError(e){ _pdfHideLoader(); showToast('Erreur PDF : '+(e&&e.message||e), 'err', 4000); }
     );
   };
 
   window._openPdfViewer = function(pdfUrl, docName){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var frame   = document.getElementById('pdfViewerFrame');
-    var loader  = document.getElementById('pdfViewerLoader');
-    var title   = document.getElementById('pdfViewerTitle');
-    var btnDl   = document.getElementById('pdfViewerDownload');
-    var btnCl   = document.getElementById('pdfViewerClose');
-    if(!overlay || !frame) return;
-
-    if(title) title.textContent = docName || 'Document PDF';
-    if(loader){
-      loader.style.display = 'flex';
-      loader.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;">'
-        + '<i class="ti ti-loader-2" style="font-size:32px;color:#fff;animation:spin 1s linear infinite;"></i>'
-        + '<span style="font-size:13px;color:rgba(255,255,255,.6);">Chargement…</span></div>';
-    }
-
-    // Fetch le PDF puis ouvrir via blob (auth header)
+    _pdfShowLoader(docName);
     var h = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
     delete h['Content-Type'];
     fetch(pdfUrl, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
       .then(function(ab){ _openPdfIframe(ab, docName); })
-      .catch(function(e){
-        if(loader) loader.innerHTML = '<div style="color:#f87171;padding:20px;font-size:13px;">Erreur : '+e.message+'</div>';
-      });
-
-    function close(){
-      overlay.style.display = 'none';
-      document.body.classList.remove('modal-open');
-      frame.src = 'about:blank';
-    }
-    if(btnCl) btnCl.onclick = close;
-    overlay.onclick = function(e){ if(e.target === overlay) close(); };
-
-    if(btnDl) btnDl.onclick = function(){
-      if(_pdfCurrentBlobUrl){
-        var a = document.createElement('a'); a.href = _pdfCurrentBlobUrl; a.download = docName||'document.pdf';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      }
-    };
-
-    overlay.style.display = 'flex';
-    document.body.classList.add('modal-open');
+      .catch(function(e){ _pdfHideLoader(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
   };
   // ── Fin PDF Viewer ───────────────────────────────────────────────
   // ── Fin PDF Viewer ───────────────────────────────────────────────

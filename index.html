@@ -1017,29 +1017,12 @@
 <!-- ===== FIN MODALE DOCUMENTS ===== -->
 
 <!-- ===== PDF VIEWER ===== -->
-<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;">
-  <div id="pdfViewerModal" style="background:#1a1a1a;border-radius:12px;width:100%;max-width:1000px;height:94vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#2a2a2a;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-        <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;flex-shrink:0;"></i>
-        <span id="pdfViewerTitle" style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-        <button id="pdfViewerDownload" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;">
-          <i class="ti ti-download" style="font-size:13px;"></i> Télécharger
-        </button>
-        <button id="pdfViewerClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:rgba(255,255,255,.6);padding:2px 8px;line-height:1;">✕</button>
-      </div>
-    </div>
-    <!-- Loader (visible pendant le chargement, caché quand l'iframe est prête) -->
-    <div id="pdfViewerLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);z-index:2;border-radius:12px;pointer-events:none;"></div>
-    <!-- iframe viewer PDF.js officiel -->
-    <iframe id="pdfViewerFrame"
-      style="flex:1;border:none;width:100%;background:#525659;"
-      allow="fullscreen"
-      title="Visualiseur PDF">
-    </iframe>
+<!-- Loader PDF (affiché pendant le téléchargement avant ouverture) -->
+<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10700;align-items:center;justify-content:center;">
+  <div style="background:#1a1a1a;border-radius:12px;padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+    <i class="ti ti-loader-2" style="font-size:36px;color:#fff;animation:spin 1s linear infinite;"></i>
+    <span id="pdfViewerTitle" style="font-size:13px;color:rgba(255,255,255,.7);max-width:260px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+    <button id="pdfViewerClose" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;">Annuler</button>
   </div>
 </div>
 <!-- ===== FIN PDF VIEWER ===== -->
