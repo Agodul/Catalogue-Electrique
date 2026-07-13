@@ -236,24 +236,7 @@
       });
     };
 
-    var btnDl = document.createElement('button');
-    btnDl.style.cssText = 'padding:7px 14px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:inherit;';
-    btnDl.innerHTML = '<i class="ti ti-download" style="font-size:14px;"></i> Télécharger';
-    btnDl.onclick = function(){
-      _fetchPdfByName(sUrl, file.ref, docName, h, function(err, ab){
-        if(err){ showToast('Erreur téléchargement : '+err.message, 'err', 4000); return; }
-        var blob = new Blob([ab], {type:'application/pdf'});
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement('a');
-        a.href = url; a.download = docName;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-      });
-    };
-
     item.appendChild(btnVoir);
-    item.appendChild(btnDl);
     docList.appendChild(item);
   }
 
