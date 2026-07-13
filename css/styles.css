@@ -2158,10 +2158,14 @@
     cursor: text;
     transform-origin: 0% 0%;
   }
-  #pdfTextLayer mark {
-    background: rgba(255, 200, 0, 0.55);
+  #pdfTextLayer mark,
+  #pdfTextLayer mark.pdf-hl {
+    background: rgba(255, 200, 0, 0.5);
     border-radius: 2px;
     color: transparent;
+    mix-blend-mode: multiply;
+    position: relative;
+    z-index: 1;
   }
   /* ===== PANNEAU DEMANDES ===== */
   .req-tab { transition: color .15s, border-color .15s; }

@@ -376,24 +376,56 @@
   }
 
   function _pdfApplySearch(textLayerDiv){
-    // Retirer anciens surlignages
     textLayerDiv = textLayerDiv || document.getElementById('pdfTextLayer');
     if(!textLayerDiv) return;
-    textLayerDiv.querySelectorAll('mark').forEach(function(m){
-      m.outerHTML = m.innerHTML;
+
+    // Retirer anciens surlignages
+    textLayerDiv.querySelectorAll('mark.pdf-hl').forEach(function(m){
+      var t = document.createTextNode(m.textContent);
+      m.parentNode.replaceChild(t, m);
     });
+    // Normaliser les nœuds texte fusionnés
+    textLayerDiv.normalize();
+
     if(!_highlightQuery) return;
 
-    var q = _highlightQuery.toLowerCase();
-    textLayerDiv.querySelectorAll('span').forEach(function(span){
-      if(!span.textContent) return;
-      var lc = span.textContent.toLowerCase();
-      if(lc.indexOf(q) === -1) return;
-      // Surligner avec <mark>
-      span.innerHTML = span.textContent.replace(
-        new RegExp('(' + q.replace(/[.*+?^${}()|\[\]\\]/g,'\\$&') + ')', 'gi'),
-        '<mark style="background:rgba(255,200,0,.6);color:inherit;border-radius:2px;padding:0;">$1</mark>'
-      );
+    var q    = _highlightQuery.trim();
+    var qRe  = new RegExp('(' + q.replace(/[.*+?^${}()|\[\]\\]/g,'\\$&') + ')', 'gi');
+
+    // Parcourir tous les nœuds texte dans le textLayer
+    var walker = document.createTreeWalker(textLayerDiv, NodeFilter.SHOW_TEXT, null, false);
+    var nodes  = [];
+    var node;
+    while((node = walker.nextNode())) nodes.push(node);
+
+    nodes.forEach(function(tn){
+      var text = tn.nodeValue;
+      if(!text || text.toLowerCase().indexOf(q.toLowerCase()) === -1) return;
+      // Créer un fragment avec les <mark> injectés
+      var frag = document.createDocumentFragment();
+      var last = 0;
+      var m;
+      qRe.lastIndex = 0;
+      while((m = qRe.exec(text)) !== null){
+        if(m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        var mark = document.createElement('mark');
+        mark.className = 'pdf-hl';
+        mark.textContent = m[1];
+        // Le texte PDF.js est transparent — on surligne via outline box
+        mark.style.cssText = [
+          'background:rgba(255,210,0,0.45)',
+          'color:transparent',
+          'border-radius:2px',
+          'padding:0 1px',
+          'margin:0 -1px',
+          'box-decoration-break:clone',
+          '-webkit-box-decoration-break:clone'
+        ].join(';');
+        frag.appendChild(mark);
+        last = m.index + m[1].length;
+      }
+      if(last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      tn.parentNode.replaceChild(frag, tn);
     });
   }
 
