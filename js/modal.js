@@ -515,7 +515,10 @@
       if(modalPdfRemoveBtn){
         modalPdfRemoveBtn.onclick = function(){
           if(!pForPdf || !pForPdf.ref) return;
-          fetch(sUrl + '/deleteDocs?id=' + encodeURIComponent(pForPdf.ref), { method:'DELETE' })
+          var hDel = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete hDel['Content-Type'];
+          fetch(sUrl + '/deleteDocs?ref=' + encodeURIComponent(pForPdf.ref), { method:'DELETE', headers: hDel })
+            .then(function(r){ if(!r.ok) return Promise.reject('HTTP ' + r.status); })
             .then(function(){
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
               if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; save(true); }
