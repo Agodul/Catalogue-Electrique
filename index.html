@@ -491,6 +491,11 @@
       <i class="ti ti-adjustments-horizontal"></i>
       <span id="filterSheetBadge" class="filter-sheet-badge" style="display:none;"></span>
     </button>
+    <!-- Barre de recherche mobile inline (visible sur mobile) -->
+    <div class="search-field-mobile" id="searchFieldMobile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInputMobile2" placeholder="Rechercher…" autocomplete="off">
+    </div>
 
   </div>
   <div class="search-expand" id="searchExpand">
@@ -507,10 +512,6 @@
       <button id="filterSheetClose" class="filter-sheet-close">✕</button>
     </div>
     <div class="filter-sheet-body">
-      <div class="filter-sheet-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="filterSheetSearch" placeholder="Rechercher…" autocomplete="off">
-      </div>
       <label class="filter-sheet-label">Marque</label>
       <select id="filterSheetBrand" class="filter-sheet-select">
         <option value="">Toutes les marques</option>

@@ -2190,7 +2190,6 @@
     var btnClose  = document.getElementById('filterSheetClose');
     var btnApply  = document.getElementById('filterSheetApply');
     var btnReset  = document.getElementById('filterSheetReset');
-    var inputSrch = document.getElementById('filterSheetSearch');
     var selBrand  = document.getElementById('filterSheetBrand');
     var selFamily = document.getElementById('filterSheetFamily');
     var selSeries = document.getElementById('filterSheetSeries');
@@ -2216,13 +2215,11 @@
       if(selBrand)  selBrand.value  = (brandFilterEl  && brandFilterEl.value)  || '';
       if(selFamily) selFamily.value = (familyFilterEl && familyFilterEl.value) || '';
       if(selSeries) selSeries.value = (seriesFilterEl && seriesFilterEl.value) || '';
-      if(inputSrch) inputSrch.value = (searchInputEl  && searchInputEl.value)  || '';
-
+  
       overlay.style.display = 'block';
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
-      setTimeout(function(){ if(inputSrch) inputSrch.focus(); }, 300);
-    }
+      }
 
     function closeSheet(){
       sheet.classList.remove('open');
@@ -2235,8 +2232,7 @@
       if(brandFilterEl  && selBrand)  brandFilterEl.value  = selBrand.value;
       if(familyFilterEl && selFamily) familyFilterEl.value = selFamily.value;
       if(seriesFilterEl && selSeries) seriesFilterEl.value = selSeries.value;
-      if(searchInputEl  && inputSrch) searchInputEl.value  = inputSrch.value;
-      // Mettre à jour le badge
+        // Mettre à jour le badge
       updateBadge();
       closeSheet();
       if(typeof render === 'function') render();
@@ -2246,8 +2242,7 @@
       if(selBrand)  selBrand.value  = '';
       if(selFamily) selFamily.value = '';
       if(selSeries) selSeries.value = '';
-      if(inputSrch) inputSrch.value = '';
-      if(brandFilterEl)  brandFilterEl.value  = '';
+        if(brandFilterEl)  brandFilterEl.value  = '';
       if(familyFilterEl) familyFilterEl.value = '';
       if(seriesFilterEl) seriesFilterEl.value = '';
       if(searchInputEl)  searchInputEl.value  = '';
@@ -2261,7 +2256,6 @@
       if(brandFilterEl  && brandFilterEl.value)  count++;
       if(familyFilterEl && familyFilterEl.value) count++;
       if(seriesFilterEl && seriesFilterEl.value) count++;
-      if(searchInputEl  && searchInputEl.value)  count++;
       if(badge){
         badge.textContent = count || '';
         badge.style.display = count > 0 ? '' : 'none';
@@ -2275,7 +2269,4 @@
     if(overlay)   overlay.addEventListener('click', closeSheet);
 
     // Appliquer en tapant Entrée dans la recherche
-    if(inputSrch) inputSrch.addEventListener('keydown', function(e){
-      if(e.key === 'Enter') applyFilters();
-    });
   })();

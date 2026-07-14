@@ -2263,24 +2263,9 @@
   color: var(--ink-soft); cursor: pointer; padding: 4px;
 }
 .filter-sheet-body {
-  padding: 4px 20px 20px;
+  padding: 4px 20px 24px;
   display: flex; flex-direction: column; gap: 8px;
 }
-.filter-sheet-search {
-  position: relative; margin-bottom: 4px;
-}
-.filter-sheet-search svg {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 16px; height: 16px; opacity: .45; pointer-events: none;
-}
-.filter-sheet-search input {
-  width: 100%; padding: 12px 14px 12px 38px;
-  border: 1.5px solid var(--line); border-radius: 10px;
-  background: var(--paper); color: var(--ink);
-  font-size: 16px; font-family: Calibri, Arial, sans-serif;
-  outline: none; box-sizing: border-box;
-}
-.filter-sheet-search input:focus { border-color: var(--copper); }
 .filter-sheet-label {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--ink-soft); margin-top: 4px;
@@ -2304,12 +2289,14 @@
   display: flex; align-items: center; gap: 6px;
 }
 .filter-sheet-btn-apply {
-  flex: 1; padding: 12px 16px;
+  flex: 1; padding: 14px 16px;
   border: none; border-radius: 10px;
-  background: var(--blue); color: #fff;
+  background: #194093; color: #fff;
   font-size: 15px; font-weight: 700;
   font-family: Calibri, Arial, sans-serif; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(25,64,147,.35);
 }
+.filter-sheet-btn-apply:active { background: #142f6e; }
 .filter-sheet-fab {
   display: none;
   position: relative;
@@ -2347,11 +2334,12 @@
     transform: translateY(0);
   }
 
-  /* Toolbar mobile : afficher uniquement le bouton filtres */
-  .filter-sheet-fab { display: flex !important; order: 1; }
-  .search-field { display: none !important; }
+  /* Toolbar mobile : recherche visible + bouton filtres */
+  .filter-sheet-fab { display: flex !important; order: 2; flex-shrink: 0; }
+  .search-field { display: flex !important; order: 1; flex: 1; min-width: 0; }
+  .search-field input { font-size: 16px; padding: 10px 14px 10px 36px; }
   select#brandFilter, select#familyFilter, select#seriesFilter,
   #btnResetFilters, #sortPriceBtn { display: none !important; }
   .search-toggle-btn { display: none !important; }
-  .toolbar { margin-bottom: 6px; }
+  .toolbar { flex-wrap: nowrap; margin-bottom: 6px; gap: 8px; align-items: center; }
 }
