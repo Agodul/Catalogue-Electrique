@@ -2296,23 +2296,24 @@
       setActive(bnHome);
     });
 
-    // ── Recherche ── ouvre la barre de recherche mobile en haut
+    // ── Recherche ── scroll vers le champ de recherche du catalogue
     bnSearch.addEventListener('click', function(){
-      // Aller sur le catalogue si on est sur home
       var home = document.getElementById('homePage');
       if(home && !home.classList.contains('hidden')){
         if(typeof showCatalogueAll === 'function') showCatalogueAll();
       }
-      // Ouvrir la barre de recherche fixe
-      var expand = document.getElementById('searchExpand');
-      var input  = document.getElementById('searchInputMobile');
-      if(expand){
-        expand.classList.add('open');
-        if(familyFilterEl) familyFilterEl.value = '';
-        if(brandFilterEl)  brandFilterEl.value  = '';
-        if(seriesFilterEl) seriesFilterEl.value = '';
-      }
-      setTimeout(function(){ if(input) input.focus(); }, 50);
+      // Vider les filtres catégorie
+      if(familyFilterEl) familyFilterEl.value = '';
+      if(brandFilterEl)  brandFilterEl.value  = '';
+      if(seriesFilterEl) seriesFilterEl.value = '';
+      // Focus sur le champ de recherche principal après rendu
+      setTimeout(function(){
+        var input = document.getElementById('searchInput');
+        if(input){
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(function(){ input.focus(); }, 200);
+        }
+      }, 50);
       setActive(bnSearch);
     });
 
