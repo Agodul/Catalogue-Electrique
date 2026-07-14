@@ -2278,25 +2278,22 @@
         if(msAuthSub) msAuthSub.textContent='Accéder aux fonctions admin';
       }
       // Sync visibilité items selon permissions
-      var pairs=[['msExport','btnExport'],['msImport','btnImport'],['msExportXlsx','btnExportXlsx'],
+      [['msExport','btnExport'],['msImport','btnImport'],['msExportXlsx','btnExportXlsx'],
        ['msImportXlsx','btnImportXlsx'],['msCleanDescs','btnCleanDescs'],['msCompare','btnCompare'],
-       ['msRequests','btnRequestsMenu']];
-      pairs.forEach(function(p){
+       ['msRequests','btnRequestsMenu']].forEach(function(p){
         var ms=document.getElementById(p[0]);
         var tgt=document.getElementById(p[1]);
         if(ms&&tgt) ms.style.display=tgt.style.display;
       });
-      // Cacher sections et séparateurs si tous leurs items sont cachés
+      // Cacher titres et séparateurs si tous leurs items sont cachés
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
       var dataIds=['msExport','msImport','msExportXlsx','msImportXlsx'];
       var toolIds=['msCompare','msCleanDescs'];
-      var seps=document.querySelectorAll('#menuSheet .menu-sheet-sep');
       var titles=document.querySelectorAll('#menuSheet .menu-sheet-section-title');
-      // Titre DONNÉES (index 0) et OUTILS (index 1)
+      var seps=document.querySelectorAll('#menuSheet .menu-sheet-sep');
       if(titles[0]) titles[0].style.display=allHidden(dataIds)?'none':'';
       if(titles[1]) titles[1].style.display=allHidden(toolIds)?'none':'';
-      // Séparateurs : cacher si les deux côtés sont vides
-      if(seps[0]) seps[0].style.display=(allHidden(['msRequests'])&&allHidden(dataIds))?'none':'';
+      if(seps[0]) seps[0].style.display=allHidden(['msRequests'])&&allHidden(dataIds)?'none':'';
       if(seps[1]) seps[1].style.display=allHidden(dataIds)?'none':'';
       if(seps[2]) seps[2].style.display=allHidden(toolIds)?'none':'';
     }
