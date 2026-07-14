@@ -22,25 +22,6 @@
     return isNaN(n) ? null : n;
   }
 
-  // ── Boutons "Proposer" pour les non-admins ─────────────────────
-  var btnProposeProduct = document.getElementById('btnProposeProduct');
-  var btnFabPropose     = document.getElementById('btnFabPropose');
-  var vmProposeBtn      = document.getElementById('vmProposeBtn');
-
-  function openProposeModal(existingId){
-    // Ouvre la modale d'ajout/modification en mode "proposition"
-    openModal(existingId || null);
-    // Changer le titre et le bouton
-    var titleEl = document.getElementById('modalTitle');
-    var saveBtn = document.getElementById('btnSave');
-    if(titleEl) titleEl.textContent = existingId ? 'Proposer une modification' : 'Proposer un nouveau produit';
-    if(saveBtn) saveBtn.textContent = 'Soumettre la demande';
-  }
-
-  if(btnProposeProduct) btnProposeProduct.addEventListener('click', function(){ openProposeModal(null); });
-  if(btnFabPropose)     btnFabPropose.addEventListener('click',     function(){ openProposeModal(null); });
-  if(vmProposeBtn)      vmProposeBtn.addEventListener('click',      function(){ openProposeModal(viewingId); });
-
   document.getElementById('btnSave').addEventListener('click', function(){
     var brand = fBrand.value.trim();
     var ref = fRef.value.trim();
@@ -100,8 +81,6 @@
           payload.priceHistory = history;
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
-        var _currentUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-        payload.updatedBy = _currentUser ? (_currentUser.username || _currentUser.name || 'admin') : 'inconnu';
         products[idx] = Object.assign({}, existing, payload);
         // Propager l'icône à tous les produits de la même famille
         if(familyVal && payload.familyIcon){
@@ -120,29 +99,9 @@
       }
       payload.createdAt = Date.now();
       payload.updatedAt = Date.now();
-      var _currentUser2 = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-      payload.updatedBy = _currentUser2 ? (_currentUser2.username || _currentUser2.name || 'admin') : 'inconnu';
       payload.priceHistory = initialHistory;
       products.push(payload);
     }
-    var _saveUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-    var _saveIsAdmin = _saveUser && _saveUser.isAdmin;
-    var _serverUrl = localStorage.getItem('cat_server_url') || '';
-
-    // Non-admin avec serveur configuré → soumettre une demande
-    if(!_saveIsAdmin && _serverUrl && typeof window.reqSubmit === 'function'){
-      var _existingProduct = editingId ? products.find(function(p){ return p.id === editingId; }) : null;
-      window.reqSubmit(payload, _existingProduct || null).then(function(ok){
-        if(ok){
-          showToast('Demande soumise — en attente de validation par un admin ✓', 'ok', 4000);
-          closeModal();
-        } else {
-          showToast('Erreur lors de la soumission de la demande', 'err', 3000);
-        }
-      });
-      return;
-    }
-
     // Animation 5 — flash vert sur le bouton enregistrer
     var btnSaveEl = document.getElementById('btnSave');
     btnSaveEl.classList.remove('save-anim');
@@ -170,13 +129,6 @@
     var homePage = document.getElementById('homePage');
     if(homePage && !homePage.classList.contains('hidden') && searchInputEl.value.trim().length > 0){
       showCatalogueAll();
-    }
-    // Dès qu'on tape une recherche, vider les filtres famille/marque/série
-    // pour ne pas rester coincé dans la dernière catégorie ouverte
-    if(searchInputEl.value.trim().length > 0){
-      if(familyFilterEl) familyFilterEl.value = '';
-      if(brandFilterEl)  brandFilterEl.value  = '';
-      if(seriesFilterEl) seriesFilterEl.value = '';
     }
     render();
   });
@@ -289,17 +241,9 @@
         doSyncCheck();
         syncDeletions();
         startSyncPolling();
-        // Démarrer le polling des demandes (admin uniquement)
-        if(typeof window._reqStartPolling === 'function') window._reqStartPolling();
       }, 1500);
       // Sync suppressions toutes les 5 minutes
       setInterval(syncDeletions, 5 * 60 * 1000);
-    }
-    // Afficher le bouton demandes pour les non-admins connectés (pour voir leurs propres demandes)
-    var _btnReqEl = document.getElementById('btnRequests');
-    var _curUserForReq = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-    if(_btnReqEl && _curUserForReq && serverUrl){
-      _btnReqEl.style.display = '';
     }
   }
 
@@ -454,10 +398,7 @@
             // Non connecté → serveur prioritaire, écrase le local silencieusement
             products[idx] = sp;
           } else {
-            // Admin → conflit seulement si le local est PLUS RÉCENT que le serveur
-            // (= l'admin a modifié en local après la dernière sync)
-            // Si le serveur est plus récent ou égal → c'est l'admin lui-même qui a pushé
-            // depuis un autre appareil → prendre le serveur silencieusement
+            // Admin → conflit si contenu différent (ignorer 60s après un push)
             var recentSave = _recentlySaved[sp.ref];
             var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
             if(!tooRecent){
@@ -471,21 +412,10 @@
                 return JSON.stringify(c, Object.keys(c).sort());
               }
               if(withoutServerFields(lp) !== withoutServerFields(sp)){
-                var spUpdated = sp.updatedAt || sp.createdAt || 0;
-                var lpUpdated = lp.updatedAt || lp.createdAt || 0;
-                if(spUpdated >= lpUpdated){
-                  // Serveur plus récent → c'est l'admin qui a pushé depuis un autre appareil
-                  // Prendre le serveur silencieusement
-                  products[idx] = sp;
-                  added++; // compter comme màj
-                } else {
-                  // Local plus récent → vrai conflit
-                  // Afficher qui a modifié côté serveur
-                  conflicts.push({ ref: sp.ref, local: lp, server: sp, updatedBy: sp.updatedBy || '?' });
-                }
+                conflicts.push({ ref: sp.ref, local: lp, server: sp });
               }
             }
-            // Local conservé par défaut si tooRecent
+            // Local conservé par défaut pour l'admin
           }
         }
       });
@@ -533,44 +463,30 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
-  // Refresh lazy pour les éléments qui peuvent ne pas exister au boot
-  function _refreshSettingsRefs(){
-    settingsFamilyPage    = settingsFamilyPage    || document.getElementById('settingsFamilyPage');
-    settingsServerPage    = settingsServerPage    || document.getElementById('settingsServerPage');
-    settingsUserPage      = settingsUserPage      || document.getElementById('settingsUserPage');
-  }
-
-  function _getSettingsMainBody(){
-    return document.getElementById('settingsMainBody') || document.querySelector('.settings-box > .settings-body');
-  }
-
   function showSettingsMain(){
-    _refreshSettingsRefs();
-    var b = _getSettingsMainBody(); if(b) b.style.display = '';
-    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
-    if(settingsServerPage) settingsServerPage.style.display = 'none';
-    if(settingsUserPage)   settingsUserPage.style.display   = 'none';
+    document.querySelector('.settings-body').style.display = '';
+    settingsFamilyPage.style.display = 'none';
+    settingsServerPage.style.display = 'none';
+    if(settingsUserPage) settingsUserPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
-    _refreshSettingsRefs();
-    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    if(settingsFamilyPage) settingsFamilyPage.style.display = 'flex';
-    if(settingsServerPage) settingsServerPage.style.display = 'none';
+    document.querySelector('.settings-body').style.display = 'none';
+    settingsFamilyPage.style.display = 'flex';
+    settingsServerPage.style.display = 'none';
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
-    _refreshSettingsRefs();
-    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
-    if(settingsServerPage) settingsServerPage.style.display = 'none';
+    document.querySelector('.settings-body').style.display = 'none';
+    settingsFamilyPage.style.display = 'none';
+    settingsServerPage.style.display = 'none';
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
-    _refreshSettingsRefs();
-    var b = _getSettingsMainBody(); if(b) b.style.display = 'none';
-    if(settingsFamilyPage) settingsFamilyPage.style.display = 'none';
-    if(settingsServerPage){ settingsServerPage.style.display = 'flex'; }
-    if(serverUrlInput) serverUrlInput.value = serverUrl;
+    document.querySelector('.settings-body').style.display = 'none';
+    settingsFamilyPage.style.display = 'none';
+    settingsServerPage.style.display = 'flex';
+    serverUrlInput.value = serverUrl;
+
   }
 
   var btnOpenWhatsNew = document.getElementById('btnOpenWhatsNew');
@@ -634,7 +550,7 @@
     var urlChanged = newUrl && newUrl !== serverUrl;
     serverUrl  = newUrl;
     saveServerConfig();
-    if(serverUrl){ startSyncPolling(); if(typeof window._reqStartPolling === 'function') window._reqStartPolling(); } else { stopSyncPolling(); if(typeof window._reqStopPolling === 'function') window._reqStopPolling(); }
+    if(serverUrl) startSyncPolling(); else stopSyncPolling();
 
     // Si nouvelle URL et pas connecté → ouvrir la fenêtre de login d'abord
     if(urlChanged && serverUrl && typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
@@ -1468,42 +1384,6 @@
       }
     });
 
-    // Si l'user n'a pas canEdit mais peut importer (canExport) → soumettre via _req
-    var _xlsxUser = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-    var _xlsxPerms = window._userPerms || {};
-    var _xlsxCanEdit = _xlsxUser && (_xlsxUser.isAdmin || _xlsxPerms.canEdit);
-
-    if(!_xlsxCanEdit && typeof window.reqSubmit === 'function' && (added + updated) > 0){
-      // Collecter tous les produits modifiés/ajoutés et les soumettre comme demandes
-      var _toSubmit = [];
-      xlsxPendingData.forEach(function(item){
-        if(item.status === 'nochange') return;
-        if(item.status === 'new'){
-          _toSubmit.push({ payload: {
-            id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
-            ref: item.ref, name: item.newName, brand: item.newBrand,
-            family: item.newFamily, series: item.newSeries, supplier: item.newSupplier,
-            price: item.newSellingPrice || item.newCataloguePrice || item.newPrice || '',
-            priceCatalogue: item.newCataloguePrice || '',
-            createdAt: Date.now()
-          }, existing: null });
-        } else {
-          var p = Object.assign({}, item.existing);
-          if(item.newCataloguePrice) p.priceCatalogue = item.newCataloguePrice;
-          if(item.newSellingPrice) p.price = item.newSellingPrice;
-          _toSubmit.push({ payload: p, existing: item.existing });
-        }
-      });
-      document.getElementById('xlsxImportOverlay').style.display = 'none';
-      xlsxPendingData = [];
-      Promise.all(_toSubmit.map(function(s){ return window.reqSubmit(s.payload, s.existing); }))
-        .then(function(results){
-          var ok = results.filter(Boolean).length;
-          showToast(ok + ' demande(s) soumise(s) — en attente de validation admin ✓', 'ok', 4000);
-        });
-      return;
-    }
-
     save(); render();
     document.getElementById('xlsxImportOverlay').style.display = 'none';
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
@@ -1630,7 +1510,9 @@
   if(btnWNClose) btnWNClose.addEventListener('click', closeWhatsNew);
 
   if(whatsNewOverlay){
-    // clic extérieur bloqué — géré par _initModalEscape()
+    whatsNewOverlay.addEventListener('click', function(e){
+      if(e.target === whatsNewOverlay) closeWhatsNew();
+    });
   }
 
   document.addEventListener('keydown', function(e){
@@ -1639,12 +1521,37 @@
     }
   });
 
-  // ---------- Loupe mobile (éléments supprimés du DOM — bloc neutralisé) ----------
+  // ---------- Loupe mobile ----------
+  var searchToggleBtn = document.getElementById('searchToggleBtn');
+  var searchExpand    = document.getElementById('searchExpand');
+  var searchInputMobile = document.getElementById('searchInputMobile');
+  var searchCloseBtn  = document.getElementById('searchCloseBtn');
+  if(searchToggleBtn){
+    searchToggleBtn.addEventListener('click', function(){
+      searchExpand.classList.add('open');
+      searchInputMobile.focus();
+    });
+    searchCloseBtn.addEventListener('click', function(){
+      searchExpand.classList.remove('open');
+      searchInputMobile.value = '';
+      searchInputEl.value = '';
+      render();
+    });
+    searchInputMobile.addEventListener('input', function(){
+      searchInputEl.value = searchInputMobile.value;
+      // Si on est sur la home et qu'on tape, basculer vers le catalogue
+      var homePage = document.getElementById('homePage');
+      if(homePage && !homePage.classList.contains('hidden') && searchInputMobile.value.trim().length > 0){
+        showCatalogueAll();
+      }
+      render();
+    });
+  }
 
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
   window.addEventListener('scroll', function(){
-    if(btnScrollTop) btnScrollTop.classList.toggle('show', window.scrollY > 400);
+    btnScrollTop.classList.toggle('show', window.scrollY > 400);
   });
   btnScrollTop.addEventListener('click', function(){
     window.scrollTo({top:0, behavior:'smooth'});
@@ -1692,16 +1599,15 @@
 
   function showHome(){
     if(window._setViewAll) window._setViewAll(false);
+    // Vider la recherche au retour à l'accueil
     var si = document.getElementById('searchInput');
-    if(si) si.value = '';
-    var _hp = document.getElementById('homePage');
-    var _cw = document.getElementById('catalogueWrap');
-    var _cc = document.getElementById('hdrCountChip');
-    if(_hp) _hp.classList.remove('hidden');
-    if(_cw) _cw.style.display = 'none';
-    if(_cc) _cc.style.display = 'none';
+    var sim = document.getElementById('searchInputMobile');
+    if(si)  si.value  = '';
+    if(sim) sim.value = '';
+    homePage.classList.remove('hidden');
+    catalogueWrap.style.display = 'none';
+    document.getElementById('hdrCountChip').style.display = 'none';
     renderHome();
-    document.dispatchEvent(new CustomEvent('spi_page_changed', { detail: 'home' }));
   }
 
   function showCatalogue(brandFilter, familyFilter){
@@ -1709,12 +1615,9 @@
     if(brandFilter || familyFilter){
       if(window._setViewAll) window._setViewAll(false);
     }
-    var _hp2 = document.getElementById('homePage');
-    var _cw2 = document.getElementById('catalogueWrap');
-    var _cc2 = document.getElementById('hdrCountChip');
-    if(_hp2) _hp2.classList.add('hidden');
-    if(_cw2) _cw2.style.display = '';
-    if(_cc2) _cc2.style.display = '';
+    homePage.classList.add('hidden');
+    catalogueWrap.style.display = '';
+    document.getElementById('hdrCountChip').style.display = '';
     // Utiliser getElementById directement pour éviter la collision de noms
     var famEl = document.getElementById('familyFilter');
     var brandEl = document.getElementById('brandFilter');
@@ -1722,7 +1625,6 @@
     if(brandEl && brandFilter) brandEl.value = brandFilter;
     render();
     window.scrollTo({ top: 0, behavior: 'instant' });
-    document.dispatchEvent(new CustomEvent('spi_page_changed', { detail: 'catalogue' }));
   }
 
   function showCatalogueAll(){
@@ -1964,7 +1866,7 @@
     overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
     document.getElementById('conflictSubtitle').textContent =
-      conflicts.length + ' produit(s) en conflit — votre version locale est plus récente que le serveur';
+      conflicts.length + ' produit(s) en conflit (modifié des deux côtés dans la même heure)';
     renderConflictList();
     if(conflicts.length > 0) selectConflict(conflicts[0].ref);
   }
@@ -1978,7 +1880,6 @@
       return '<div class="conflict-item'+(isSel?' selected':'')+'" data-ref="'+escapeHtml(c.ref)+'" style="cursor:pointer;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(c.ref)+'</div>'
         +'<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">'+escapeHtml((c.local.name||c.local.ref||''))+'</div>'
-        +(c.updatedBy ? '<div style="font-size:10px;color:var(--copper);margin-top:2px;">Serveur : '+escapeHtml(c.updatedBy)+'</div>' : '')
         +'<div style="margin-top:5px;display:flex;gap:4px;">'
         +'<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(choice==='local'?'#194093':'var(--surface-1)')+';color:'+(choice==='local'?'#fff':'var(--ink-soft)')+';">Local</span>'
         +'<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(choice==='server'?'#194093':'var(--surface-1)')+';color:'+(choice==='server'?'#fff':'var(--ink-soft)')+';">Serveur</span>'
@@ -2070,7 +1971,7 @@
       _pendingConflicts.forEach(function(c){ _conflictChoices[c.ref] = 'server'; });
       renderConflictList(); if(_selectedConflict) renderConflictDetail(_selectedConflict);
     });
-    // clic extérieur bloqué — géré par _initModalEscape()
+    if(overlay)   overlay.addEventListener('click', function(e){ if(e.target===overlay) closeConflictModal(); });
   })();
   // ── Bouton test modale conflits ────────────────────────────────────
   var btnTestConflict = document.getElementById('btnTestConflictModal');
@@ -2132,357 +2033,57 @@
       }
     });
   };
+  // ── Fermeture mutuelle des sheets ────────────────────────────
+  window._closeAllSheets = function(){
+    // Filter sheet
+    var fs = document.getElementById('filterSheet');
+    var fo = document.getElementById('filterSheetOverlay');
+    if(fs){ fs.classList.remove('open'); }
+    if(fo){ fo.style.display = 'none'; }
 
-  // ── Sync automatique au retour dans l'app (mobile / changement d'onglet) ──
-  var _lastVisibleSync = 0;
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState !== 'visible') return;
-    var now = Date.now();
-    if(now - _lastVisibleSync < 10000) return; // min 10s entre deux syncs
-    _lastVisibleSync = now;
-    var sUrl = localStorage.getItem('cat_server_url');
-    if(!sUrl) return;
-    if(typeof syncFromServer === 'function') syncFromServer(true);
-  });
+    // Menu sheet
+    var ms  = document.getElementById('menuSheet');
+    var mso = document.getElementById('menuSheetOverlay');
+    if(ms){ ms.classList.remove('open'); setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; }, 300); }
+    if(mso){ mso.style.display = 'none'; }
 
-  window.addEventListener('online', function(){
-    var sUrl = localStorage.getItem('cat_server_url');
-    if(!sUrl) return;
-    if(typeof syncFromServer === 'function') syncFromServer(true);
-  });
-  // ── Bottom Sheet Filtres Mobile ────────────────────────────────
-  window._initFilterSheet = function _initFilterSheet(){
-    var sheet     = document.getElementById('filterSheet');
-    var overlay   = document.getElementById('filterSheetOverlay');
-    var btnOpen   = document.getElementById('btnFilterSheet');
-    var btnClose  = document.getElementById('filterSheetClose');
-    var btnApply  = document.getElementById('filterSheetApply');
-    var btnReset  = document.getElementById('filterSheetReset');
-    var selBrand  = document.getElementById('filterSheetBrand');
-    var selFamily = document.getElementById('filterSheetFamily');
-    var selSeries = document.getElementById('filterSheetSeries');
-    var badge     = document.getElementById('filterSheetBadge');
-
-    if(!sheet || !btnOpen) return;
-
-    // Synchroniser les options avec les selects existants
-    function syncOptions(){
-      ['Brand','Family','Series'].forEach(function(k){
-        var src = document.getElementById(k.toLowerCase()+'Filter');
-        var dst = document.getElementById('filterSheet'+k);
-        if(!src || !dst) return;
-        var cur = dst.value;
-        dst.innerHTML = src.innerHTML;
-        dst.value = src.value || cur;
-      });
-    }
-
-    function openSheet(){
-      syncOptions();
-      // Copier les valeurs actuelles
-      if(selBrand)  selBrand.value  = (brandFilterEl  && brandFilterEl.value)  || '';
-      if(selFamily) selFamily.value = (familyFilterEl && familyFilterEl.value) || '';
-      if(selSeries) selSeries.value = (seriesFilterEl && seriesFilterEl.value) || '';
-  
-      overlay.style.display = 'block';
-      sheet.classList.add('open');
-      document.body.classList.add('modal-open');
-      }
-
-    function closeSheet(){
-      sheet.classList.remove('open');
-      overlay.style.display = 'none';
-      document.body.classList.remove('modal-open');
-    }
-
-    function applyFilters(){
-      // Appliquer vers les selects principaux
-      if(brandFilterEl  && selBrand)  brandFilterEl.value  = selBrand.value;
-      if(familyFilterEl && selFamily) familyFilterEl.value = selFamily.value;
-      if(seriesFilterEl && selSeries) seriesFilterEl.value = selSeries.value;
-        // Mettre à jour le badge
-      updateBadge();
-      closeSheet();
-      if(typeof render === 'function') render();
-    }
-
-    function resetFilters(){
-      if(selBrand)  selBrand.value  = '';
-      if(selFamily) selFamily.value = '';
-      if(selSeries) selSeries.value = '';
-        if(brandFilterEl)  brandFilterEl.value  = '';
-      if(familyFilterEl) familyFilterEl.value = '';
-      if(seriesFilterEl) seriesFilterEl.value = '';
-      if(searchInputEl)  searchInputEl.value  = '';
-      updateBadge();
-      closeSheet();
-      if(typeof render === 'function') render();
-    }
-
-    function updateBadge(){
-      var count = 0;
-      if(brandFilterEl  && brandFilterEl.value)  count++;
-      if(familyFilterEl && familyFilterEl.value) count++;
-      if(seriesFilterEl && seriesFilterEl.value) count++;
-      if(badge){
-        badge.textContent = count || '';
-        badge.style.display = count > 0 ? '' : 'none';
-      }
-    }
-
-    btnOpen.addEventListener('click', openSheet);
-    if(btnClose)  btnClose.addEventListener('click', closeSheet);
-    if(btnApply)  btnApply.addEventListener('click', applyFilters);
-    if(btnReset)  btnReset.addEventListener('click', resetFilters);
-    if(overlay)   overlay.addEventListener('click', closeSheet);
-
-    // Appliquer en tapant Entrée dans la recherche
+    document.body.classList.remove('modal-open');
   };
 
-  // ── Bottom Nav Bar ─────────────────────────────────────────────
-  window._initBottomNav = function(){
-    try {
-    var bnHome   = document.getElementById('bnHome');
-    var bnSearch = document.getElementById('bnSearch');
-    var bnFilter = document.getElementById('bnFilter');
-    var bnMenu   = document.getElementById('bnMenu');
-    var bnFilterBadge = document.getElementById('bnFilterBadge');
-
-    if(!bnHome) return;
-
-    function setActive(btn){
-      [bnHome, bnSearch, bnFilter, bnMenu].forEach(function(b){ if(b) b.classList.remove('active'); });
-      if(btn) btn.classList.add('active');
+  // Patch _initFilterSheet pour fermer les autres sheets à l'ouverture
+  var _origInitFilterSheet = window._initFilterSheet;
+  window._initFilterSheet = function(){
+    if(_origInitFilterSheet) _origInitFilterSheet();
+    var btn = document.getElementById('btnFilterSheet');
+    if(btn){
+      var _orig = btn.onclick;
+      btn.addEventListener('click', function(){
+        // Fermer le menu sheet si ouvert
+        var ms = document.getElementById('menuSheet');
+        var mso = document.getElementById('menuSheetOverlay');
+        if(ms && ms.classList.contains('open')){
+          ms.classList.remove('open');
+          if(mso) mso.style.display = 'none';
+          setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; }, 300);
+        }
+      }, true);
     }
-
-    bnHome.addEventListener('click', function(){
-      showHome();
-      setActive(bnHome);
-    });
-
-    bnSearch.addEventListener('click', function(){
-      var home = document.getElementById('homePage');
-      if(home && !home.classList.contains('hidden')) showCatalogueAll();
-      var bfEl = document.getElementById('familyFilter');
-      var bbEl = document.getElementById('brandFilter');
-      var bsEl = document.getElementById('seriesFilter');
-      if(bfEl) bfEl.value = '';
-      if(bbEl) bbEl.value = '';
-      if(bsEl) bsEl.value = '';
-      setTimeout(function(){
-        var input = document.getElementById('searchInput');
-        if(input){ window.scrollTo({top:0,behavior:'smooth'}); setTimeout(function(){ input.focus(); },200); }
-      }, 50);
-      setActive(bnSearch);
-    });
-
-    bnFilter.addEventListener('click', function(){
-      var home = document.getElementById('homePage');
-      if(home && !home.classList.contains('hidden')) showCatalogueAll();
-      var btn = document.getElementById('btnFilterSheet');
-      if(btn) btn.click();
-      setActive(bnFilter);
-    });
-
-    bnAuth.addEventListener('click', function(){
-      if(typeof window._openAccountSheet === 'function') window._openAccountSheet();
-    });
-
-
-
-    function updateFilterBadge(){
-      var bfEl = document.getElementById('familyFilter');
-      var bbEl = document.getElementById('brandFilter');
-      var bsEl = document.getElementById('seriesFilter');
-      var siEl = document.getElementById('searchInput');
-      var count = 0;
-      if(bbEl && bbEl.value) count++;
-      if(bfEl && bfEl.value) count++;
-      if(bsEl && bsEl.value) count++;
-      if(siEl && siEl.value) count++;
-      if(bnFilterBadge){ bnFilterBadge.textContent = count||''; bnFilterBadge.style.display = count>0 ? '':'none'; }
-      if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
-    }
-
-    ['brandFilter','familyFilter','seriesFilter'].forEach(function(id){
-      var el = document.getElementById(id);
-      if(el) el.addEventListener('change', updateFilterBadge);
-    });
-    var si = document.getElementById('searchInput');
-    if(si) si.addEventListener('input', updateFilterBadge);
-
-    setActive(bnHome);
-
-    document.addEventListener('spi_page_changed', function(e){
-      if(e.detail === 'home') setActive(bnHome);
-      else if(e.detail === 'catalogue'){
-        var bfEl = document.getElementById('familyFilter');
-        var bbEl = document.getElementById('brandFilter');
-        var bsEl = document.getElementById('seriesFilter');
-        var siEl = document.getElementById('searchInput');
-        var hasFilt = (bbEl&&bbEl.value)||(bfEl&&bfEl.value)||(bsEl&&bsEl.value)||(siEl&&siEl.value);
-        setActive(hasFilt ? bnFilter : null);
-      }
-    });
-    } catch(e){ console.error('[BottomNav] erreur init:', e); }
   };
 
-
-  // ── Menu Sheet Mobile ──────────────────────────────────────────
+  // Patch _initMenuSheet pour fermer les autres sheets à l'ouverture
+  var _origInitMenuSheet = window._initMenuSheet;
   window._initMenuSheet = function(){
-    var sheet   = document.getElementById('menuSheet');
-    var overlay = document.getElementById('menuSheetOverlay');
-    var bnMenu  = document.getElementById('bnMenu');
-    var btnClose= document.getElementById('menuSheetClose');
-    if(!sheet || !bnMenu) return;
-
-    function openSheet(){
-      overlay.style.display = 'block';
-      sheet.style.display = 'block';
-      // Forcer reflow pour l'animation
-      sheet.offsetHeight;
-      sheet.classList.add('open');
-      document.body.classList.add('modal-open');
-      updateMenuAuth();
+    if(_origInitMenuSheet) _origInitMenuSheet();
+    var btn = document.getElementById('bnMenu');
+    if(btn){
+      btn.addEventListener('click', function(){
+        // Fermer le filter sheet si ouvert
+        var fs = document.getElementById('filterSheet');
+        var fo = document.getElementById('filterSheetOverlay');
+        if(fs && fs.classList.contains('open')){
+          fs.classList.remove('open');
+          if(fo) fo.style.display = 'none';
+        }
+      }, true);
     }
-    function closeSheet(){
-      sheet.classList.remove('open');
-      overlay.style.display = 'none';
-      document.body.classList.remove('modal-open');
-      setTimeout(function(){ sheet.style.display = 'none'; }, 300);
-    }
-
-    bnMenu.addEventListener('click', openSheet);
-    if(btnClose) btnClose.addEventListener('click', closeSheet);
-    if(overlay)  overlay.addEventListener('click', closeSheet);
-
-    // ── Connexion / Déconnexion ──
-    function updateMenuAuth(){
-      var msAuth     = document.getElementById('msAuth');
-      var msAuthIcon = document.getElementById('msAuthIcon');
-      var msAuthLabel= document.getElementById('msAuthLabel');
-      var msAuthSub  = document.getElementById('msAuthSub');
-      var user = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-      if(user){
-        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-logout';
-        if(msAuthLabel) msAuthLabel.textContent= (user.displayName || user.username || 'Compte');
-        if(msAuthSub)   msAuthSub.textContent  = 'Appuyer pour se déconnecter';
-        var msReq = document.getElementById('msRequests');
-        if(msReq) msReq.style.display = '';
-      } else {
-        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-user';
-        if(msAuthLabel) msAuthLabel.textContent= 'Se connecter';
-        if(msAuthSub)   msAuthSub.textContent  = 'Accéder aux fonctions admin';
-        var msReq2 = document.getElementById('msRequests');
-        if(msReq2) msReq2.style.display = 'none';
-      }
-      // Badge demandes
-      var bnBadge = document.getElementById('bnMenuBadge');
-      var reqBadge= document.getElementById('requestsBadge');
-      if(bnBadge && reqBadge){
-        bnBadge.textContent = reqBadge.textContent;
-        bnBadge.style.display = reqBadge.style.display;
-      }
-    }
-    document.addEventListener('spi_auth_changed', updateMenuAuth);
-
-    // ── Délégation des actions ──
-    function ms(id, targetId){
-      var btn = document.getElementById(id);
-      var tgt = document.getElementById(targetId);
-      if(btn && tgt) btn.addEventListener('click', function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); });
-    }
-
-    // Auth
-    var msAuthBtn = document.getElementById('msAuth');
-    if(msAuthBtn) msAuthBtn.addEventListener('click', function(){
-      closeSheet();
-      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
-    });
-
-    ms('msRequests',  'btnRequestsMenu');
-    ms('msExport',    'btnExport');
-    ms('msImport',    'btnImport');
-    ms('msExportXlsx','btnExportXlsx');
-    ms('msImportXlsx','btnImportXlsx');
-    ms('msCompare',   'btnCompare');
-    ms('msCleanDescs','btnCleanDescs');
-    ms('msSettings',  'btnSettings');
-
-    // ── Appliquer les permissions sur les items du menu sheet ──
-    function applyMenuPerms(){
-      var perms = window._userPerms || {};
-      var isAdmin  = !!perms.isAdmin;
-      var loggedIn = !!perms.loggedIn;
-      var canExport= !!perms.canExport;
-
-      // Export/Import JSON — admin uniquement
-      ['msExport','msImport'].forEach(function(id){
-        var el = document.getElementById(id);
-        if(el) el.style.display = isAdmin ? '' : 'none';
-      });
-      // Export/Import Excel — canExport
-      ['msExportXlsx','msImportXlsx'].forEach(function(id){
-        var el = document.getElementById(id);
-        if(el) el.style.display = canExport ? '' : 'none';
-      });
-      // Comparer — canExport ou admin
-      var msComp = document.getElementById('msCompare');
-      if(msComp) msComp.style.display = (canExport || isAdmin) ? '' : 'none';
-      // Nettoyer — admin uniquement
-      var msClean = document.getElementById('msCleanDescs');
-      if(msClean) msClean.style.display = isAdmin ? '' : 'none';
-      // Séparateurs données — masquer si rien de visible
-      var msDataSep = document.querySelector('#menuSheet .menu-sheet-sep:nth-child(3)');
-      // Laisser les séparateurs visibles — l'affichage conditionnel des items suffit
-    }
-
-    document.addEventListener('spi_auth_changed', function(){
-      setTimeout(applyMenuPerms, 100);
-    });
-    // Init immédiate
-    applyMenuPerms();
-
-    // Sync visibilité items menu selon les boutons cibles (respecte applyAuthUI)
-    function syncMenuVisibility(){
-      var pairs = [
-        ['msExport',     'btnExport'],
-        ['msImport',     'btnImport'],
-        ['msExportXlsx', 'btnExportXlsx'],
-        ['msImportXlsx', 'btnImportXlsx'],
-        ['msCleanDescs', 'btnCleanDescs'],
-        ['msCompare',    'btnCompare'],
-        ['msRequests',   'btnRequestsMenu'],
-      ];
-      pairs.forEach(function(p){
-        var ms  = document.getElementById(p[0]);
-        var tgt = document.getElementById(p[1]);
-        if(ms && tgt) ms.style.display = tgt.style.display;
-      });
-      // Sections DATA et OUTILS : cacher si tous leurs items sont cachés
-      var dataItems = ['msExport','msImport','msExportXlsx','msImportXlsx'];
-      var toolItems = ['msCompare','msCleanDescs'];
-      function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el || el.style.display==='none'; }); }
-      // Titres de section — les retrouver par proximité
-      var sectionTitles = document.querySelectorAll('#menuSheet .menu-sheet-section-title');
-      if(sectionTitles[0]) sectionTitles[0].style.display = allHidden(dataItems) ? 'none' : '';
-      if(sectionTitles[1]) sectionTitles[1].style.display = allHidden(toolItems) ? 'none' : '';
-    }
-    // Appeler à l'ouverture et après chaque changement d'auth
-    var _origOpen = openSheet;
-    openSheet = function(){ _origOpen(); syncMenuVisibility(); };
-    document.addEventListener('spi_auth_changed', syncMenuVisibility);
-    setTimeout(syncMenuVisibility, 800);
-
-    // Badge sync
-    var observer = new MutationObserver(function(){
-      var bnBadge = document.getElementById('bnMenuBadge');
-      var reqBadge= document.getElementById('requestsBadge');
-      if(bnBadge && reqBadge){
-        bnBadge.textContent = reqBadge.textContent;
-        bnBadge.style.display = reqBadge.style.display;
-      }
-    });
-    var reqBadgeEl = document.getElementById('requestsBadge');
-    if(reqBadgeEl) observer.observe(reqBadgeEl, { childList:true, attributes:true, attributeFilter:['style'] });
   };
