@@ -244,3 +244,9 @@
       });
     });
   })();
+
+  // ── Initialiser la bottom nav et le bottom sheet après chargement complet ──
+  setTimeout(function(){
+    if(typeof window._initFilterSheet === 'function') window._initFilterSheet();
+    if(typeof window._initBottomNav   === 'function') window._initBottomNav();
+  }, 0);

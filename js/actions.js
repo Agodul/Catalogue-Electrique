@@ -2184,7 +2184,7 @@
     if(typeof syncFromServer === 'function') syncFromServer(true);
   });
   // ── Bottom Sheet Filtres Mobile ────────────────────────────────
-  ;(function _initFilterSheet(){
+  window._initFilterSheet = function _initFilterSheet(){
     var sheet     = document.getElementById('filterSheet');
     var overlay   = document.getElementById('filterSheetOverlay');
     var btnOpen   = document.getElementById('btnFilterSheet');
@@ -2270,121 +2270,106 @@
     if(overlay)   overlay.addEventListener('click', closeSheet);
 
     // Appliquer en tapant Entrée dans la recherche
-  })();
+  };
 
   // ── Bottom Nav Bar ─────────────────────────────────────────────
-  ;(function _initBottomNav(){
+  window._initBottomNav = function(){
     var bnHome   = document.getElementById('bnHome');
     var bnSearch = document.getElementById('bnSearch');
     var bnFilter = document.getElementById('bnFilter');
     var bnAuth   = document.getElementById('bnAuth');
-    var bnAuthIcon  = document.getElementById('bnAuthIcon');
-    var bnAuthLabel = document.getElementById('bnAuthLabel');
+    var bnAuthIcon    = document.getElementById('bnAuthIcon');
+    var bnAuthLabel   = document.getElementById('bnAuthLabel');
     var bnFilterBadge = document.getElementById('bnFilterBadge');
 
     if(!bnHome) return;
 
-    // ── Définir l'onglet actif ──
     function setActive(btn){
       [bnHome, bnSearch, bnFilter, bnAuth].forEach(function(b){ if(b) b.classList.remove('active'); });
       if(btn) btn.classList.add('active');
     }
 
-    // ── Accueil ──
     bnHome.addEventListener('click', function(){
-      if(typeof showHome === 'function') showHome();
+      showHome();
       setActive(bnHome);
     });
 
-    // ── Recherche ── scroll vers le champ de recherche du catalogue
     bnSearch.addEventListener('click', function(){
       var home = document.getElementById('homePage');
-      if(home && !home.classList.contains('hidden')){
-        if(typeof showCatalogueAll === 'function') showCatalogueAll();
-      }
-      // Vider les filtres catégorie
-      if(familyFilterEl) familyFilterEl.value = '';
-      if(brandFilterEl)  brandFilterEl.value  = '';
-      if(seriesFilterEl) seriesFilterEl.value = '';
-      // Focus sur le champ de recherche principal après rendu
+      if(home && !home.classList.contains('hidden')) showCatalogueAll();
+      var bfEl = document.getElementById('familyFilter');
+      var bbEl = document.getElementById('brandFilter');
+      var bsEl = document.getElementById('seriesFilter');
+      if(bfEl) bfEl.value = '';
+      if(bbEl) bbEl.value = '';
+      if(bsEl) bsEl.value = '';
       setTimeout(function(){
         var input = document.getElementById('searchInput');
-        if(input){
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          setTimeout(function(){ input.focus(); }, 200);
-        }
+        if(input){ window.scrollTo({top:0,behavior:'smooth'}); setTimeout(function(){ input.focus(); },200); }
       }, 50);
       setActive(bnSearch);
     });
 
-    // ── Filtres ── ouvre le bottom sheet
     bnFilter.addEventListener('click', function(){
       var home = document.getElementById('homePage');
-      if(home && !home.classList.contains('hidden')){
-        if(typeof showCatalogueAll === 'function') showCatalogueAll();
-      }
+      if(home && !home.classList.contains('hidden')) showCatalogueAll();
       var btn = document.getElementById('btnFilterSheet');
       if(btn) btn.click();
       setActive(bnFilter);
     });
 
-    // ── Auth ── login / logout
     bnAuth.addEventListener('click', function(){
       var btn = document.getElementById('btnAuthToggle');
       if(btn) btn.click();
     });
 
-    // ── Synchro état auth ──
     function updateAuthBtn(){
       var user = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
       if(user){
-        if(bnAuthIcon){ bnAuthIcon.className = 'ti ti-logout'; }
-        if(bnAuthLabel){ bnAuthLabel.textContent = (user.displayName || user.username || 'Compte').split(' ')[0]; }
+        if(bnAuthIcon) bnAuthIcon.className = 'ti ti-logout';
+        if(bnAuthLabel) bnAuthLabel.textContent = (user.displayName || user.username || 'Compte').split(' ')[0];
         bnAuth.classList.add('active');
       } else {
-        if(bnAuthIcon){ bnAuthIcon.className = 'ti ti-user'; }
-        if(bnAuthLabel){ bnAuthLabel.textContent = 'Connexion'; }
+        if(bnAuthIcon) bnAuthIcon.className = 'ti ti-user';
+        if(bnAuthLabel) bnAuthLabel.textContent = 'Connexion';
         bnAuth.classList.remove('active');
       }
     }
-    // Écouter les changements d'auth
     document.addEventListener('spi_auth_changed', updateAuthBtn);
-    // Init après chargement
-    setTimeout(updateAuthBtn, 500);
+    setTimeout(updateAuthBtn, 600);
 
-    // ── Badge filtres actifs ──
     function updateFilterBadge(){
+      var bfEl = document.getElementById('familyFilter');
+      var bbEl = document.getElementById('brandFilter');
+      var bsEl = document.getElementById('seriesFilter');
+      var siEl = document.getElementById('searchInput');
       var count = 0;
-      if(brandFilterEl  && brandFilterEl.value)  count++;
-      if(familyFilterEl && familyFilterEl.value) count++;
-      if(seriesFilterEl && seriesFilterEl.value) count++;
-      if(searchInputEl  && searchInputEl.value)  count++;
-      if(bnFilterBadge){
-        bnFilterBadge.textContent = count || '';
-        bnFilterBadge.style.display = count > 0 ? '' : 'none';
-      }
-      if(count > 0) bnFilter.classList.add('active');
-      else bnFilter.classList.remove('active');
+      if(bbEl && bbEl.value) count++;
+      if(bfEl && bfEl.value) count++;
+      if(bsEl && bsEl.value) count++;
+      if(siEl && siEl.value) count++;
+      if(bnFilterBadge){ bnFilterBadge.textContent = count||''; bnFilterBadge.style.display = count>0 ? '':'none'; }
+      if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
     }
 
-    // Observer les changements de filtre
-    if(brandFilterEl)  brandFilterEl.addEventListener('change', updateFilterBadge);
-    if(familyFilterEl) familyFilterEl.addEventListener('change', updateFilterBadge);
-    if(seriesFilterEl) seriesFilterEl.addEventListener('change', updateFilterBadge);
-    if(searchInputEl)  searchInputEl.addEventListener('input',  updateFilterBadge);
+    ['brandFilter','familyFilter','seriesFilter'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.addEventListener('change', updateFilterBadge);
+    });
+    var si = document.getElementById('searchInput');
+    if(si) si.addEventListener('input', updateFilterBadge);
 
-    // ── Active home par défaut ──
     setActive(bnHome);
 
-    // Suivre la page active
     document.addEventListener('spi_page_changed', function(e){
       if(e.detail === 'home') setActive(bnHome);
-      else if(e.detail === 'catalogue') {
-        var hasFilt = (brandFilterEl && brandFilterEl.value) ||
-                      (familyFilterEl && familyFilterEl.value) ||
-                      (seriesFilterEl && seriesFilterEl.value) ||
-                      (searchInputEl  && searchInputEl.value);
+      else if(e.detail === 'catalogue'){
+        var bfEl = document.getElementById('familyFilter');
+        var bbEl = document.getElementById('brandFilter');
+        var bsEl = document.getElementById('seriesFilter');
+        var siEl = document.getElementById('searchInput');
+        var hasFilt = (bbEl&&bbEl.value)||(bfEl&&bfEl.value)||(bsEl&&bsEl.value)||(siEl&&siEl.value);
         setActive(hasFilt ? bnFilter : null);
       }
     });
-  })();
+  };
