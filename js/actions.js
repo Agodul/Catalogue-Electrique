@@ -1639,49 +1639,12 @@
     }
   });
 
-  // ---------- Loupe mobile ----------
-  var searchToggleBtn = document.getElementById('searchToggleBtn') || { addEventListener: function(){} };
-  var searchExpand    = document.getElementById('searchExpand');
-  var searchInputMobile = document.getElementById('searchInputMobile');
-  var searchCloseBtn  = document.getElementById('searchCloseBtn');
-  if(searchToggleBtn){
-    searchToggleBtn.addEventListener('click', function(){
-      searchExpand.classList.add('open');
-      // Vider les filtres catégorie dès l'ouverture
-      if(familyFilterEl) familyFilterEl.value = '';
-      if(brandFilterEl)  brandFilterEl.value  = '';
-      if(seriesFilterEl) seriesFilterEl.value = '';
-      // Petit délai pour laisser la barre s'afficher avant le focus
-      // (évite le scroll brutal sur iOS)
-      setTimeout(function(){ searchInputMobile.focus(); }, 50);
-    });
-    searchCloseBtn.addEventListener('click', function(){
-      searchExpand.classList.remove('open');
-      searchInputMobile.value = '';
-      searchInputEl.value = '';
-      render();
-    });
-    searchInputMobile.addEventListener('input', function(){
-      searchInputEl.value = searchInputMobile.value;
-      // Si on est sur la home et qu'on tape, basculer vers le catalogue
-      var homePage = document.getElementById('homePage');
-      if(homePage && !homePage.classList.contains('hidden') && searchInputMobile.value.trim().length > 0){
-        showCatalogueAll();
-      }
-      // Dès qu'on tape une recherche, vider les filtres famille/marque/série
-      if(searchInputMobile.value.trim().length > 0){
-        if(familyFilterEl) familyFilterEl.value = '';
-        if(brandFilterEl)  brandFilterEl.value  = '';
-        if(seriesFilterEl) seriesFilterEl.value = '';
-      }
-      render();
-    });
-  }
+  // ---------- Loupe mobile (éléments supprimés du DOM — bloc neutralisé) ----------
 
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
   window.addEventListener('scroll', function(){
-    btnScrollTop.classList.toggle('show', window.scrollY > 400);
+    if(btnScrollTop) btnScrollTop.classList.toggle('show', window.scrollY > 400);
   });
   btnScrollTop.addEventListener('click', function(){
     window.scrollTo({top:0, behavior:'smooth'});
@@ -1730,12 +1693,13 @@
   function showHome(){
     if(window._setViewAll) window._setViewAll(false);
     var si = document.getElementById('searchInput');
-    var sim = document.getElementById('searchInputMobile');
-    if(si)  si.value  = '';
-    if(sim) sim.value = '';
-    homePage.classList.remove('hidden');
-    catalogueWrap.style.display = 'none';
-    document.getElementById('hdrCountChip').style.display = 'none';
+    if(si) si.value = '';
+    var _hp = document.getElementById('homePage');
+    var _cw = document.getElementById('catalogueWrap');
+    var _cc = document.getElementById('hdrCountChip');
+    if(_hp) _hp.classList.remove('hidden');
+    if(_cw) _cw.style.display = 'none';
+    if(_cc) _cc.style.display = 'none';
     renderHome();
     document.dispatchEvent(new CustomEvent('spi_page_changed', { detail: 'home' }));
   }
@@ -1745,9 +1709,12 @@
     if(brandFilter || familyFilter){
       if(window._setViewAll) window._setViewAll(false);
     }
-    homePage.classList.add('hidden');
-    catalogueWrap.style.display = '';
-    document.getElementById('hdrCountChip').style.display = '';
+    var _hp2 = document.getElementById('homePage');
+    var _cw2 = document.getElementById('catalogueWrap');
+    var _cc2 = document.getElementById('hdrCountChip');
+    if(_hp2) _hp2.classList.add('hidden');
+    if(_cw2) _cw2.style.display = '';
+    if(_cc2) _cc2.style.display = '';
     // Utiliser getElementById directement pour éviter la collision de noms
     var famEl = document.getElementById('familyFilter');
     var brandEl = document.getElementById('brandFilter');
@@ -2375,3 +2342,4 @@
     });
     } catch(e){ console.error('[BottomNav] erreur init:', e); }
   };
+
