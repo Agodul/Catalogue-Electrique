@@ -2321,11 +2321,12 @@
 }
 
 @media (max-width: 1024px) {
+  .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: 9600 !important; }
   .bottom-nav {
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    z-index: 9000;
+    z-index: 9500;
     background: var(--paper-card);
     border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom);
