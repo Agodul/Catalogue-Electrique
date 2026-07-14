@@ -2401,3 +2401,185 @@
   #btnAuthToggle { display: none !important; }
   .filter-sheet-fab { display: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM SHEET COMPTE MOBILE
+═══════════════════════════════════════════════════════════════ */
+.account-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 9300;
+  background: var(--paper-card);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.32,.72,0,1);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.account-sheet.open { transform: translateY(0); }
+
+.account-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 10px; flex-shrink: 0;
+}
+.account-sheet-body {
+  padding: 4px 16px 20px;
+  display: flex; flex-direction: column; gap: 0;
+  overflow-y: auto;
+}
+
+/* Profil utilisateur */
+.account-profile {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 4px 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.account-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #194093, #2563eb);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 20px; font-weight: 700;
+  flex-shrink: 0;
+}
+.account-username { font-size: 16px; font-weight: 700; color: var(--ink); }
+.account-role { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+/* Formulaire login inline */
+.account-login-form {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 8px 4px 4px;
+}
+.account-login-form label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 4px; display: block;
+}
+.account-login-form input {
+  width: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--ink);
+  font-size: 16px; font-family: Calibri, Arial, sans-serif;
+  outline: none; box-sizing: border-box;
+}
+.account-login-form input:focus { border-color: #194093; }
+.account-login-btn {
+  padding: 14px; border-radius: 10px; border: none;
+  background: #194093; color: #fff;
+  font-size: 15px; font-weight: 700;
+  font-family: Calibri, Arial, sans-serif; cursor: pointer;
+  margin-top: 4px;
+}
+.account-login-error {
+  color: #dc2626; font-size: 13px; text-align: center;
+  min-height: 18px;
+}
+
+/* Items menu */
+.account-menu-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 4px;
+  border: none; background: none; width: 100%;
+  text-align: left; cursor: pointer;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink); font-family: Calibri, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.account-menu-item:last-child { border-bottom: none; }
+.account-menu-item:active { background: rgba(0,0,0,.04); border-radius: 8px; }
+.account-menu-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.account-menu-title { font-size: 14px; font-weight: 600; }
+.account-menu-sub { font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+.account-menu-item.danger .account-menu-title { color: #dc2626; }
+.account-menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
+
+.account-logout-btn {
+  margin: 8px 4px 0;
+  padding: 13px; border-radius: 10px;
+  border: 1.5px solid #fecaca; background: #fef2f2;
+  color: #dc2626; font-size: 15px; font-weight: 700;
+  font-family: Calibri, Arial, sans-serif; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU SHEET MOBILE
+═══════════════════════════════════════════════════════════════ */
+.menu-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 9201;
+  background: var(--paper);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.32,.72,0,1);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: none;
+}
+.menu-sheet.open {
+  transform: translateY(0);
+  display: block;
+}
+.menu-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 8px;
+  position: sticky; top: 0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  z-index: 1;
+}
+.menu-sheet-body {
+  padding: 8px 0 16px;
+}
+.menu-sheet-section { padding: 4px 0; }
+.menu-sheet-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--ink-soft);
+  padding: 10px 20px 4px;
+}
+.menu-sheet-sep {
+  height: 1px; background: var(--line);
+  margin: 6px 0;
+}
+.menu-sheet-item {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 20px;
+  background: none; border: none; cursor: pointer;
+  text-align: left; font-family: Calibri, Arial, sans-serif;
+  transition: background .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-sheet-item:active { background: var(--paper-card); }
+.menu-sheet-item.danger .menu-sheet-title { color: #DC2626; }
+.menu-sheet-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.menu-sheet-texts { flex: 1; min-width: 0; }
+.menu-sheet-title {
+  display: block; font-size: 15px; font-weight: 600;
+  color: var(--ink); line-height: 1.2;
+}
+.menu-sheet-sub {
+  display: block; font-size: 12px; color: var(--ink-soft);
+  margin-top: 2px;
+}
+.menu-sheet-chevron {
+  font-size: 16px; color: var(--ink-soft); flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  /* Masquer les 3 petits points header sur mobile */
+  #hdrMenuWrap { display: none !important; }
+  #hdrUsername { display: none !important; }
+}
