@@ -2245,15 +2245,13 @@
     var bnHome   = document.getElementById('bnHome');
     var bnSearch = document.getElementById('bnSearch');
     var bnFilter = document.getElementById('bnFilter');
-    var bnAuth   = document.getElementById('bnAuth');
-    var bnAuthIcon    = document.getElementById('bnAuthIcon');
-    var bnAuthLabel   = document.getElementById('bnAuthLabel');
+    var bnMenu   = document.getElementById('bnMenu');
     var bnFilterBadge = document.getElementById('bnFilterBadge');
 
     if(!bnHome) return;
 
     function setActive(btn){
-      [bnHome, bnSearch, bnFilter, bnAuth].forEach(function(b){ if(b) b.classList.remove('active'); });
+      [bnHome, bnSearch, bnFilter, bnMenu].forEach(function(b){ if(b) b.classList.remove('active'); });
       if(btn) btn.classList.add('active');
     }
 
@@ -2287,24 +2285,10 @@
     });
 
     bnAuth.addEventListener('click', function(){
-      var btn = document.getElementById('btnAuthToggle');
-      if(btn) btn.click();
+      if(typeof window._openAccountSheet === 'function') window._openAccountSheet();
     });
 
-    function updateAuthBtn(){
-      var user = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
-      if(user){
-        if(bnAuthIcon) bnAuthIcon.className = 'ti ti-logout';
-        if(bnAuthLabel) bnAuthLabel.textContent = (user.displayName || user.username || 'Compte').split(' ')[0];
-        bnAuth.classList.add('active');
-      } else {
-        if(bnAuthIcon) bnAuthIcon.className = 'ti ti-user';
-        if(bnAuthLabel) bnAuthLabel.textContent = 'Connexion';
-        bnAuth.classList.remove('active');
-      }
-    }
-    document.addEventListener('spi_auth_changed', updateAuthBtn);
-    setTimeout(updateAuthBtn, 600);
+
 
     function updateFilterBadge(){
       var bfEl = document.getElementById('familyFilter');
@@ -2343,3 +2327,97 @@
     } catch(e){ console.error('[BottomNav] erreur init:', e); }
   };
 
+
+  // ── Menu Sheet Mobile ──────────────────────────────────────────
+  window._initMenuSheet = function(){
+    var sheet   = document.getElementById('menuSheet');
+    var overlay = document.getElementById('menuSheetOverlay');
+    var bnMenu  = document.getElementById('bnMenu');
+    var btnClose= document.getElementById('menuSheetClose');
+    if(!sheet || !bnMenu) return;
+
+    function openSheet(){
+      overlay.style.display = 'block';
+      sheet.style.display = 'block';
+      // Forcer reflow pour l'animation
+      sheet.offsetHeight;
+      sheet.classList.add('open');
+      document.body.classList.add('modal-open');
+      updateMenuAuth();
+    }
+    function closeSheet(){
+      sheet.classList.remove('open');
+      overlay.style.display = 'none';
+      document.body.classList.remove('modal-open');
+      setTimeout(function(){ sheet.style.display = 'none'; }, 300);
+    }
+
+    bnMenu.addEventListener('click', openSheet);
+    if(btnClose) btnClose.addEventListener('click', closeSheet);
+    if(overlay)  overlay.addEventListener('click', closeSheet);
+
+    // ── Connexion / Déconnexion ──
+    function updateMenuAuth(){
+      var msAuth     = document.getElementById('msAuth');
+      var msAuthIcon = document.getElementById('msAuthIcon');
+      var msAuthLabel= document.getElementById('msAuthLabel');
+      var msAuthSub  = document.getElementById('msAuthSub');
+      var user = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+      if(user){
+        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-logout';
+        if(msAuthLabel) msAuthLabel.textContent= (user.displayName || user.username || 'Compte');
+        if(msAuthSub)   msAuthSub.textContent  = 'Appuyer pour se déconnecter';
+        var msReq = document.getElementById('msRequests');
+        if(msReq) msReq.style.display = '';
+      } else {
+        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-user';
+        if(msAuthLabel) msAuthLabel.textContent= 'Se connecter';
+        if(msAuthSub)   msAuthSub.textContent  = 'Accéder aux fonctions admin';
+        var msReq2 = document.getElementById('msRequests');
+        if(msReq2) msReq2.style.display = 'none';
+      }
+      // Badge demandes
+      var bnBadge = document.getElementById('bnMenuBadge');
+      var reqBadge= document.getElementById('requestsBadge');
+      if(bnBadge && reqBadge){
+        bnBadge.textContent = reqBadge.textContent;
+        bnBadge.style.display = reqBadge.style.display;
+      }
+    }
+    document.addEventListener('spi_auth_changed', updateMenuAuth);
+
+    // ── Délégation des actions ──
+    function ms(id, targetId){
+      var btn = document.getElementById(id);
+      var tgt = document.getElementById(targetId);
+      if(btn && tgt) btn.addEventListener('click', function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); });
+    }
+
+    // Auth
+    var msAuthBtn = document.getElementById('msAuth');
+    if(msAuthBtn) msAuthBtn.addEventListener('click', function(){
+      closeSheet();
+      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
+    });
+
+    ms('msRequests',  'btnRequestsMenu');
+    ms('msExport',    'btnExport');
+    ms('msImport',    'btnImport');
+    ms('msExportXlsx','btnExportXlsx');
+    ms('msImportXlsx','btnImportXlsx');
+    ms('msCompare',   'btnCompare');
+    ms('msCleanDescs','btnCleanDescs');
+    ms('msSettings',  'btnSettings');
+
+    // Badge sync
+    var observer = new MutationObserver(function(){
+      var bnBadge = document.getElementById('bnMenuBadge');
+      var reqBadge= document.getElementById('requestsBadge');
+      if(bnBadge && reqBadge){
+        bnBadge.textContent = reqBadge.textContent;
+        bnBadge.style.display = reqBadge.style.display;
+      }
+    });
+    var reqBadgeEl = document.getElementById('requestsBadge');
+    if(reqBadgeEl) observer.observe(reqBadgeEl, { childList:true, attributes:true, attributeFilter:['style'] });
+  };
