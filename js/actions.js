@@ -2274,6 +2274,7 @@
 
   // ── Bottom Nav Bar ─────────────────────────────────────────────
   window._initBottomNav = function(){
+    try {
     var bnHome   = document.getElementById('bnHome');
     var bnSearch = document.getElementById('bnSearch');
     var bnFilter = document.getElementById('bnFilter');
@@ -2372,4 +2373,5 @@
         setActive(hasFilt ? bnFilter : null);
       }
     });
+    } catch(e){ console.error('[BottomNav] erreur init:', e); }
   };
