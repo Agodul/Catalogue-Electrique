@@ -149,7 +149,9 @@ async function authLogin(username, password) {
       if (typeof render === 'function') render();
       if (typeof renderHome === 'function') renderHome();
       if (typeof showHome === 'function') showHome();
+      document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
+      document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       // Démarrer le polling demandes si admin
       if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
       // Sync serveur en arrière-plan uniquement
