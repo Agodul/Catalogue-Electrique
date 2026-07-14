@@ -644,7 +644,7 @@
     }
   }
   var btnFabSearchEl = document.getElementById('btnFabSearch');
-  btnFabSearchEl.addEventListener('click', function(){
+  if(btnFabSearchEl) btnFabSearchEl.addEventListener('click', function(){
     if(fabSearchBox.classList.contains('open') && !fabSearchInput.value.trim()){
       fabSearchBox.classList.remove('open');
       btnFabSearchEl.classList.remove('search-open');
