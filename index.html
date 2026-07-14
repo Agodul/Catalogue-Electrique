@@ -1058,6 +1058,102 @@
   </div>
 </div>
 <!-- ===== FIN PDF VIEWER ===== -->
+<!-- ===== PAGE COMPTE MOBILE (bottom sheet) ===== -->
+<div id="accountSheetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;"></div>
+<div id="accountSheet" class="account-sheet">
+  <div class="filter-sheet-handle"></div>
+  <div class="account-sheet-header">
+    <span class="filter-sheet-title" id="accountSheetTitle">Mon compte</span>
+    <button id="accountSheetClose" class="filter-sheet-close">✕</button>
+  </div>
+  <div id="accountSheetBody" class="account-sheet-body"></div>
+</div>
+<!-- ===== FIN PAGE COMPTE MOBILE ===== -->
+
+<!-- ===== MENU SHEET MOBILE ===== -->
+<div id="menuSheetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;"></div>
+<div id="menuSheet" class="menu-sheet">
+  <div class="filter-sheet-handle"></div>
+  <div class="menu-sheet-header">
+    <span class="filter-sheet-title">Menu</span>
+    <button id="menuSheetClose" class="filter-sheet-close">✕</button>
+  </div>
+  <div class="menu-sheet-body">
+
+    <!-- Connexion -->
+    <div class="menu-sheet-section">
+      <button class="menu-sheet-item" id="msAuth">
+        <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-user" id="msAuthIcon" style="color:#194093;"></i></span>
+        <span class="menu-sheet-texts">
+          <span class="menu-sheet-title" id="msAuthLabel">Se connecter</span>
+          <span class="menu-sheet-sub" id="msAuthSub">Accéder aux fonctions admin</span>
+        </span>
+        <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+      </button>
+    </div>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Demandes (admin) -->
+    <button class="menu-sheet-item" id="msRequests" style="display:none;">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;position:relative;">
+        <i class="ti ti-bell" style="color:#194093;"></i>
+        <span id="msBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:14px;"></span>
+      </span>
+      <span class="menu-sheet-texts">
+        <span class="menu-sheet-title">Demandes en attente</span>
+        <span class="menu-sheet-sub">Modifications proposées</span>
+      </span>
+      <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Export / Import -->
+    <div class="menu-sheet-section-title">Données</div>
+    <button class="menu-sheet-item" id="msExport">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-download" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Exporter JSON</span><span class="menu-sheet-sub">Sauvegarde complète</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msImport">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer JSON</span><span class="menu-sheet-sub">Restaurer ou fusionner</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msExportXlsx">
+      <span class="menu-sheet-icon" style="background:#F0FDF4;"><i class="ti ti-file-spreadsheet" style="color:#16A34A;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Exporter Excel</span><span class="menu-sheet-sub">Envoi fabricant</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msImportXlsx">
+      <span class="menu-sheet-icon" style="background:#F0FDF4;"><i class="ti ti-file-import" style="color:#16A34A;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer Excel</span><span class="menu-sheet-sub">Mise à jour des prix</span></span>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Outils -->
+    <div class="menu-sheet-section-title">Outils</div>
+    <button class="menu-sheet-item" id="msCompare">
+      <span class="menu-sheet-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Comparer les offres</span><span class="menu-sheet-sub">Importer les fichiers fournisseurs</span></span>
+    </button>
+    <button class="menu-sheet-item danger" id="msCleanDescs">
+      <span class="menu-sheet-icon" style="background:#FEF2F2;"><i class="ti ti-eraser" style="color:#DC2626;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Nettoyer descriptions</span><span class="menu-sheet-sub">Supprimer les balises HTML</span></span>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Paramètres -->
+    <button class="menu-sheet-item" id="msSettings">
+      <span class="menu-sheet-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Paramètres</span><span class="menu-sheet-sub">Icônes des familles, Serveur</span></span>
+      <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+    </button>
+
+  </div>
+</div>
+<!-- ===== FIN MENU SHEET ===== -->
+
 <!-- ===== BOTTOM NAV BAR (mobile + tablette) ===== -->
 <nav id="bottomNav" class="bottom-nav">
   <button class="bottom-nav-item" id="bnHome">
@@ -1073,9 +1169,10 @@
     <span id="bnFilterLabel">Filtres</span>
     <span id="bnFilterBadge" class="bottom-nav-badge" style="display:none;"></span>
   </button>
-  <button class="bottom-nav-item" id="bnAuth">
-    <i class="ti ti-user" id="bnAuthIcon"></i>
-    <span id="bnAuthLabel">Connexion</span>
+  <button class="bottom-nav-item" id="bnMenu">
+    <i class="ti ti-dots" style="font-size:22px;"></i>
+    <span>Menu</span>
+    <span id="bnMenuBadge" class="bottom-nav-badge" style="display:none;"></span>
   </button>
 </nav>
 <!-- ===== FIN BOTTOM NAV ===== -->
