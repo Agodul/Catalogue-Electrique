@@ -1,6 +1,11 @@
 // ---------- Init ----------
   load();
   render();
+  // S'assurer que catalogueWrap est caché et homePage visible au démarrage
+  var _cw = document.getElementById('catalogueWrap');
+  var _hp = document.getElementById('homePage');
+  if(_cw) _cw.style.display = 'none';
+  if(_hp) _hp.classList.remove('hidden');
   showHome();
 
   // Afficher le splash uniquement au premier démarrage (pas au F5)
