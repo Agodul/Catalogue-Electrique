@@ -2087,3 +2087,232 @@
       }, true);
     }
   };
+
+  // ── Bottom Nav Bar ─────────────────────────────────────────────
+  window._initBottomNav = function(){
+    try {
+      var bnHome   = document.getElementById('bnHome');
+      var bnSearch = document.getElementById('bnSearch');
+      var bnFilter = document.getElementById('bnFilter');
+      var bnMenu   = document.getElementById('bnMenu');
+      var bnFilterBadge = document.getElementById('bnFilterBadge');
+      if(!bnHome) return;
+
+      function setActive(btn){
+        [bnHome,bnSearch,bnFilter,bnMenu].forEach(function(b){ if(b) b.classList.remove('active'); });
+        if(btn) btn.classList.add('active');
+      }
+
+      bnHome.addEventListener('click', function(){
+        showHome();
+        setActive(bnHome);
+      });
+
+      bnSearch.addEventListener('click', function(){
+        var home = document.getElementById('homePage');
+        if(home && !home.classList.contains('hidden')) showCatalogueAll();
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+        setTimeout(function(){
+          var input=document.getElementById('searchInput');
+          if(input){ window.scrollTo({top:0,behavior:'smooth'}); setTimeout(function(){ input.focus(); },200); }
+        },50);
+        setActive(bnSearch);
+      });
+
+      bnFilter.addEventListener('click', function(){
+        var home=document.getElementById('homePage');
+        if(home && !home.classList.contains('hidden')) showCatalogueAll();
+        var btn=document.getElementById('btnFilterSheet');
+        if(btn) btn.click();
+        setActive(bnFilter);
+      });
+
+      bnMenu.addEventListener('click', function(){
+        var sheet=document.getElementById('menuSheet');
+        var overlay=document.getElementById('menuSheetOverlay');
+        if(!sheet) return;
+        // Fermer le filter sheet
+        var fs=document.getElementById('filterSheet');
+        var fo=document.getElementById('filterSheetOverlay');
+        if(fs) fs.classList.remove('open');
+        if(fo) fo.style.display='none';
+        // Ouvrir le menu sheet
+        overlay.style.display='block';
+        sheet.style.display='block';
+        sheet.offsetHeight;
+        sheet.classList.add('open');
+        document.body.classList.add('modal-open');
+      });
+
+      function updateFilterBadge(){
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        var siEl=document.getElementById('searchInput');
+        var count=0;
+        if(bbEl&&bbEl.value) count++;
+        if(bfEl&&bfEl.value) count++;
+        if(bsEl&&bsEl.value) count++;
+        if(siEl&&siEl.value) count++;
+        if(bnFilterBadge){ bnFilterBadge.textContent=count||''; bnFilterBadge.style.display=count>0?'':'none'; }
+        if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
+      }
+
+      ['brandFilter','familyFilter','seriesFilter'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el) el.addEventListener('change', updateFilterBadge);
+      });
+      var si=document.getElementById('searchInput');
+      if(si) si.addEventListener('input', updateFilterBadge);
+
+      setActive(bnHome);
+
+      document.addEventListener('spi_page_changed', function(e){
+        if(e.detail==='home') setActive(bnHome);
+      });
+    } catch(e){ console.error('[BottomNav]', e); }
+  };
+
+  // ── Filter Sheet ───────────────────────────────────────────────
+  window._initFilterSheet = window._initFilterSheet || function(){
+    var sheet=document.getElementById('filterSheet');
+    var overlay=document.getElementById('filterSheetOverlay');
+    var btnOpen=document.getElementById('btnFilterSheet');
+    var btnClose=document.getElementById('filterSheetClose');
+    var btnApply=document.getElementById('filterSheetApply');
+    var btnReset=document.getElementById('filterSheetReset');
+    var selBrand=document.getElementById('filterSheetBrand');
+    var selFamily=document.getElementById('filterSheetFamily');
+    var selSeries=document.getElementById('filterSheetSeries');
+    var brandFilterEl=document.getElementById('brandFilter');
+    var familyFilterEl=document.getElementById('familyFilter');
+    var seriesFilterEl=document.getElementById('seriesFilter');
+    var searchInputEl=document.getElementById('searchInput');
+    if(!sheet||!btnOpen) return;
+
+    function syncOptions(){
+      [['Brand','brandFilter'],['Family','familyFilter'],['Series','seriesFilter']].forEach(function(p){
+        var src=document.getElementById(p[1]);
+        var dst=document.getElementById('filterSheet'+p[0].charAt(0).toUpperCase()+p[0].slice(1));
+        if(src&&dst){ dst.innerHTML=src.innerHTML; dst.value=src.value; }
+      });
+    }
+    function openSheet(){
+      // Fermer menu sheet si ouvert
+      var ms=document.getElementById('menuSheet');
+      var mso=document.getElementById('menuSheetOverlay');
+      if(ms&&ms.classList.contains('open')){ ms.classList.remove('open'); if(mso) mso.style.display='none'; setTimeout(function(){ ms.style.display='none'; },300); }
+      syncOptions();
+      if(selBrand) selBrand.value=(brandFilterEl&&brandFilterEl.value)||'';
+      if(selFamily) selFamily.value=(familyFilterEl&&familyFilterEl.value)||'';
+      if(selSeries) selSeries.value=(seriesFilterEl&&seriesFilterEl.value)||'';
+      overlay.style.display='block';
+      sheet.classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+    function closeSheet(){
+      sheet.classList.remove('open');
+      overlay.style.display='none';
+      document.body.classList.remove('modal-open');
+    }
+    function applyFilters(){
+      if(brandFilterEl&&selBrand) brandFilterEl.value=selBrand.value;
+      if(familyFilterEl&&selFamily) familyFilterEl.value=selFamily.value;
+      if(seriesFilterEl&&selSeries) seriesFilterEl.value=selSeries.value;
+      closeSheet();
+      if(typeof render==='function') render();
+    }
+    function resetFilters(){
+      if(selBrand) selBrand.value='';
+      if(selFamily) selFamily.value='';
+      if(selSeries) selSeries.value='';
+      if(brandFilterEl) brandFilterEl.value='';
+      if(familyFilterEl) familyFilterEl.value='';
+      if(seriesFilterEl) seriesFilterEl.value='';
+      if(searchInputEl) searchInputEl.value='';
+      closeSheet();
+      if(typeof render==='function') render();
+    }
+    btnOpen.addEventListener('click', openSheet);
+    if(btnClose) btnClose.addEventListener('click', closeSheet);
+    if(btnApply) btnApply.addEventListener('click', applyFilters);
+    if(btnReset) btnReset.addEventListener('click', resetFilters);
+    if(overlay) overlay.addEventListener('click', closeSheet);
+  };
+
+  // ── Menu Sheet ─────────────────────────────────────────────────
+  window._initMenuSheet = window._initMenuSheet || function(){
+    var sheet=document.getElementById('menuSheet');
+    var overlay=document.getElementById('menuSheetOverlay');
+    var btnClose=document.getElementById('menuSheetClose');
+    if(!sheet) return;
+
+    function closeSheet(){
+      sheet.classList.remove('open');
+      overlay.style.display='none';
+      document.body.classList.remove('modal-open');
+      setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; },300);
+    }
+    if(btnClose) btnClose.addEventListener('click', closeSheet);
+    if(overlay) overlay.addEventListener('click', closeSheet);
+
+    function updateMenuAuth(){
+      var msAuthIcon=document.getElementById('msAuthIcon');
+      var msAuthLabel=document.getElementById('msAuthLabel');
+      var msAuthSub=document.getElementById('msAuthSub');
+      var user=typeof authGetCurrentUser==='function'?authGetCurrentUser():null;
+      if(user){
+        if(msAuthIcon) msAuthIcon.className='ti ti-logout';
+        if(msAuthLabel) msAuthLabel.textContent=(user.displayName||user.username||'Compte');
+        if(msAuthSub) msAuthSub.textContent='Appuyer pour se déconnecter';
+      } else {
+        if(msAuthIcon) msAuthIcon.className='ti ti-user';
+        if(msAuthLabel) msAuthLabel.textContent='Se connecter';
+        if(msAuthSub) msAuthSub.textContent='Accéder aux fonctions admin';
+      }
+      // Sync visibilité items
+      [['msExport','btnExport'],['msImport','btnImport'],['msExportXlsx','btnExportXlsx'],
+       ['msImportXlsx','btnImportXlsx'],['msCleanDescs','btnCleanDescs'],['msCompare','btnCompare'],
+       ['msRequests','btnRequestsMenu']].forEach(function(p){
+        var ms=document.getElementById(p[0]);
+        var tgt=document.getElementById(p[1]);
+        if(ms&&tgt) ms.style.display=tgt.style.display;
+      });
+    }
+    document.addEventListener('spi_auth_changed', updateMenuAuth);
+    setTimeout(updateMenuAuth, 600);
+
+    // Auth click
+    var msAuthBtn=document.getElementById('msAuth');
+    if(msAuthBtn) msAuthBtn.addEventListener('click', function(){
+      closeSheet();
+      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); },320);
+    });
+
+    // Délégation boutons
+    function ms(id,targetId){
+      var btn=document.getElementById(id);
+      var tgt=document.getElementById(targetId);
+      if(btn&&tgt) btn.addEventListener('click',function(){ closeSheet(); setTimeout(function(){ tgt.click(); },320); });
+    }
+    ms('msRequests','btnRequestsMenu');
+    ms('msExport','btnExport');
+    ms('msImport','btnImport');
+    ms('msExportXlsx','btnExportXlsx');
+    ms('msImportXlsx','btnImportXlsx');
+    ms('msCompare','btnCompare');
+    ms('msCleanDescs','btnCleanDescs');
+    ms('msSettings','btnSettings');
+
+    // Badge sync
+    var reqBadgeEl=document.getElementById('requestsBadge');
+    if(reqBadgeEl) new MutationObserver(function(){
+      var bnBadge=document.getElementById('bnMenuBadge');
+      if(bnBadge){ bnBadge.textContent=reqBadgeEl.textContent; bnBadge.style.display=reqBadgeEl.style.display; }
+    }).observe(reqBadgeEl,{childList:true,attributes:true,attributeFilter:['style']});
+  };
