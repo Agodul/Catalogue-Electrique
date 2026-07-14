@@ -2409,6 +2409,71 @@
     ms('msCleanDescs','btnCleanDescs');
     ms('msSettings',  'btnSettings');
 
+    // ── Appliquer les permissions sur les items du menu sheet ──
+    function applyMenuPerms(){
+      var perms = window._userPerms || {};
+      var isAdmin  = !!perms.isAdmin;
+      var loggedIn = !!perms.loggedIn;
+      var canExport= !!perms.canExport;
+
+      // Export/Import JSON — admin uniquement
+      ['msExport','msImport'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.style.display = isAdmin ? '' : 'none';
+      });
+      // Export/Import Excel — canExport
+      ['msExportXlsx','msImportXlsx'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.style.display = canExport ? '' : 'none';
+      });
+      // Comparer — canExport ou admin
+      var msComp = document.getElementById('msCompare');
+      if(msComp) msComp.style.display = (canExport || isAdmin) ? '' : 'none';
+      // Nettoyer — admin uniquement
+      var msClean = document.getElementById('msCleanDescs');
+      if(msClean) msClean.style.display = isAdmin ? '' : 'none';
+      // Séparateurs données — masquer si rien de visible
+      var msDataSep = document.querySelector('#menuSheet .menu-sheet-sep:nth-child(3)');
+      // Laisser les séparateurs visibles — l'affichage conditionnel des items suffit
+    }
+
+    document.addEventListener('spi_auth_changed', function(){
+      setTimeout(applyMenuPerms, 100);
+    });
+    // Init immédiate
+    applyMenuPerms();
+
+    // Sync visibilité items menu selon les boutons cibles (respecte applyAuthUI)
+    function syncMenuVisibility(){
+      var pairs = [
+        ['msExport',     'btnExport'],
+        ['msImport',     'btnImport'],
+        ['msExportXlsx', 'btnExportXlsx'],
+        ['msImportXlsx', 'btnImportXlsx'],
+        ['msCleanDescs', 'btnCleanDescs'],
+        ['msCompare',    'btnCompare'],
+        ['msRequests',   'btnRequestsMenu'],
+      ];
+      pairs.forEach(function(p){
+        var ms  = document.getElementById(p[0]);
+        var tgt = document.getElementById(p[1]);
+        if(ms && tgt) ms.style.display = tgt.style.display;
+      });
+      // Sections DATA et OUTILS : cacher si tous leurs items sont cachés
+      var dataItems = ['msExport','msImport','msExportXlsx','msImportXlsx'];
+      var toolItems = ['msCompare','msCleanDescs'];
+      function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el || el.style.display==='none'; }); }
+      // Titres de section — les retrouver par proximité
+      var sectionTitles = document.querySelectorAll('#menuSheet .menu-sheet-section-title');
+      if(sectionTitles[0]) sectionTitles[0].style.display = allHidden(dataItems) ? 'none' : '';
+      if(sectionTitles[1]) sectionTitles[1].style.display = allHidden(toolItems) ? 'none' : '';
+    }
+    // Appeler à l'ouverture et après chaque changement d'auth
+    var _origOpen = openSheet;
+    openSheet = function(){ _origOpen(); syncMenuVisibility(); };
+    document.addEventListener('spi_auth_changed', syncMenuVisibility);
+    setTimeout(syncMenuVisibility, 800);
+
     // Badge sync
     var observer = new MutationObserver(function(){
       var bnBadge = document.getElementById('bnMenuBadge');
