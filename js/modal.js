@@ -35,6 +35,10 @@
   var f3dAvailable      = document.getElementById('f3dAvailable');
   var f3dLink           = document.getElementById('f3dLink');
   var f3dLinkRow        = document.getElementById('f3dLinkRow');
+  var fTags             = document.getElementById('fTags');
+  var familyIconRow     = document.getElementById('familyIconRow');
+  var familyIconPreviewI= document.getElementById('familyIconPreviewI');
+  var selectedFamilyIcon= 'ti-package';
 
   photoPreview.addEventListener('click', function(){
     var img = photoPreview.querySelector('img');
@@ -706,7 +710,7 @@
   var sellingPriceZoneEl = document.getElementById('sellingPriceZone');
   var fSellingPrice      = document.getElementById('fSellingPrice');
   var sellingPriceHint   = document.getElementById('sellingPriceHint');
-  var fTags              = document.getElementById('fTags');
+  // fTags déclaré en haut du fichier
   // f3dAvailable, f3dLink, f3dLinkRow déclarés en haut du fichier
 
   function updateSellingPriceHint(){
