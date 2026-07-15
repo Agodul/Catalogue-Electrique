@@ -2085,6 +2085,11 @@
 
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
+        // Fermer le filter sheet si ouvert
+        var _fs = document.getElementById('filterSheet');
+        var _fo = document.getElementById('filterSheetOverlay');
+        if(_fs) _fs.classList.remove('open');
+        if(_fo) _fo.style.display = 'none';
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
