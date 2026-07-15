@@ -2195,17 +2195,24 @@
   }
 
 .filter-sheet {
-  position: fixed;
-  bottom: calc(60px + env(safe-area-inset-bottom));
-  left: 0; right: 0;
-  z-index: 9600;
-  background: var(--paper-card);
-  border-radius: 20px 20px 0 0;
-  padding-bottom: 16px;
-  transform: translateY(calc(100% + 60px + env(safe-area-inset-bottom)));
-  transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: calc(85vh - 60px);
-  overflow-y: auto;
+  display: none;
+}
+@media (max-width: 1024px) {
+  .filter-sheet {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 9600;
+    background: var(--paper-card);
+    margin-bottom: calc(56px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    padding-bottom: 16px;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,.72,0,1);
+    max-height: 75vh;
+    overflow-y: auto;
+  }
 }
 .filter-sheet.open { transform: translateY(0); }
 
@@ -2497,6 +2504,7 @@
 }
 
 .menu-sheet {
+<<<<<<< HEAD
   position: fixed;
   bottom: calc(60px + env(safe-area-inset-bottom));
   left: 0; right: 0;
@@ -2508,7 +2516,25 @@
   transition: transform .3s cubic-bezier(.32,.72,0,1);
   max-height: calc(85vh - 60px);
   overflow-y: auto;
+=======
+>>>>>>> 3f21aa0b304df5346d8850f1cd741fe92c98da42
   display: none;
+}
+@media (max-width: 1024px) {
+  .menu-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 9600;
+    background: var(--paper-card);
+    border-radius: 20px 20px 0 0;
+    padding-bottom: 16px;
+    margin-bottom: calc(56px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,.72,0,1);
+    max-height: 75vh;
+    overflow-y: auto;
+  }
 }
 .menu-sheet.open {
   transform: translateY(0);
@@ -2570,4 +2596,13 @@
   /* Masquer les 3 petits points header sur mobile */
   #hdrMenuWrap { display: none !important; }
   #hdrUsername { display: none !important; }
+}
+
+/* Éléments mobiles cachés sur desktop */
+@media (min-width: 1025px) {
+  #floatingSearch, #floatingSearchOverlay { display: none !important; }
+  #btnFilterSheet { display: none !important; }
+  #filterSheet, #filterSheetOverlay { display: none !important; }
+  #menuSheet, #menuSheetOverlay { display: none !important; }
+  #bottomNav { display: none !important; }
 }

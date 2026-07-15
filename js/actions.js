@@ -2085,6 +2085,11 @@
 
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
+        // Fermer le filter sheet si ouvert
+        var _fs = document.getElementById('filterSheet');
+        var _fo = document.getElementById('filterSheetOverlay');
+        if(_fs) _fs.classList.remove('open');
+        if(_fo) _fo.style.display = 'none';
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2093,17 +2098,29 @@
         var fsi = document.getElementById('floatingSearchInput');
         var si  = document.getElementById('searchInput');
         if(fs && fsi){
+          // Fermer le filter sheet avant de cacher la nav (sinon il devient visible)
+          var _fsh = document.getElementById('filterSheet');
+          if(_fsh) _fsh.classList.remove('open');
+          if(_fo) _fo.style.display = 'none';
+          document.body.classList.remove('modal-open');
+
           if(fso) fso.style.display = 'block';
           fs.style.display = 'block';
+          fs.style.transform = '';
+          fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
           // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
-          setTimeout(function(){ fsi.focus(); }, 50);
+          setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
         setActive(bnSearch);
       });
 
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
+        // Fermer le floating search si ouvert
+        var fs=document.getElementById('floatingSearch');
+        var fsi=document.getElementById('floatingSearchInput');
+        if(fs && fs.style.display!=='none'){ fs.style.display='none'; if(fsi) fsi.blur(); }
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2145,10 +2162,53 @@
       var floatClose   = document.getElementById('floatingSearchClose');
       var mainInput    = document.getElementById('searchInput');
 
+      var _bottomNav = document.getElementById('bottomNav');
+
       function closeFloatingSearch(){
-        if(floatSearch)  floatSearch.style.display  = 'none';
+        if(floatSearch){
+          floatSearch.style.display   = 'none';
+          floatSearch.style.transform = '';
+          floatSearch.style.marginBottom = '';
+        }
         if(floatOverlay) floatOverlay.style.display = 'none';
         if(floatInput)   floatInput.blur();
+        // Reset position floating search
+        floatSearch.style.bottom = '0';
+        floatSearch.style.marginBottom = '0';
+        // Vider les filtres et reset searchInput
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        var si=document.getElementById('searchInput');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+        if(si) si.value='';
+        if(typeof render==='function') render();
+      }
+
+      // Repositionner au-dessus du clavier via visualViewport
+      function _updateFloatPos(){
+        if(!floatSearch || floatSearch.style.display === 'none') return;
+        if(window.visualViewport){
+          var vv = window.visualViewport;
+          var keyboardH = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+          if(keyboardH > 50){
+            // Clavier ouvert : coller juste au-dessus du clavier
+            floatSearch.style.bottom = keyboardH + 'px';
+            floatSearch.style.transform = '';
+            floatSearch.style.marginBottom = '0';
+          } else {
+            // Clavier fermé : positionner au-dessus de la bottom nav
+            floatSearch.style.bottom = '0';
+            floatSearch.style.transform = '';
+            floatSearch.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
+          }
+        }
+      }
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize', _updateFloatPos);
+        window.visualViewport.addEventListener('scroll', _updateFloatPos);
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);

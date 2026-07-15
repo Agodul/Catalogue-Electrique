@@ -32,6 +32,13 @@
   var photoPreview     = document.getElementById('photoPreview');
   var imgPreviewOverlay = document.getElementById('imgPreviewOverlay');
   var imgPreviewImg     = document.getElementById('imgPreviewImg');
+  var f3dAvailable      = document.getElementById('f3dAvailable');
+  var f3dLink           = document.getElementById('f3dLink');
+  var f3dLinkRow        = document.getElementById('f3dLinkRow');
+  var fTags             = document.getElementById('fTags');
+  var familyIconRow     = document.getElementById('familyIconRow');
+  var familyIconPreviewI= document.getElementById('familyIconPreviewI');
+  var selectedFamilyIcon= 'ti-package';
 
   photoPreview.addEventListener('click', function(){
     var img = photoPreview.querySelector('img');
@@ -553,7 +560,6 @@
               return r.json().catch(function(e){ console.warn('[PDF] json parse error:', e); return null; });
             })
             .then(function(d){
-              console.log('[PDF] pullDocs response:', d);
               var files = d && d.items ? d.items : [];
               pForPdf._docFiles = files;
               pForPdf.hasDoc = files.length > 0;
@@ -631,6 +637,9 @@
   var fabSearchBox   = document.getElementById('fabSearchBox');
   var fabSearchInput = document.getElementById('fabSearchInput');
   var fabSearchClose = document.getElementById('fabSearchClose');
+  if(!fabSearchBox){ fabSearchBox = { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } } }; }
+  if(!fabSearchInput){ fabSearchInput = { value:'', addEventListener:function(){}, focus:function(){} }; }
+  if(!fabSearchClose){ fabSearchClose = { addEventListener:function(){} }; }
 
 
   function switchToCatalogueIfHome(){
@@ -643,7 +652,7 @@
       if(hdrCountChip) hdrCountChip.style.display = '';
     }
   }
-  var btnFabSearchEl = document.getElementById('btnFabSearch');
+  var btnFabSearchEl = document.getElementById('btnFabSearch') || { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } }, addEventListener:function(){} };
   if(btnFabSearchEl) btnFabSearchEl.addEventListener('click', function(){
     if(fabSearchBox.classList.contains('open') && !fabSearchInput.value.trim()){
       fabSearchBox.classList.remove('open');
@@ -703,10 +712,8 @@
   var sellingPriceZoneEl = document.getElementById('sellingPriceZone');
   var fSellingPrice      = document.getElementById('fSellingPrice');
   var sellingPriceHint   = document.getElementById('sellingPriceHint');
-  var fTags              = document.getElementById('fTags');
-  var f3dAvailable       = document.getElementById('f3dAvailable');
-  var f3dLink            = document.getElementById('f3dLink');
-  var f3dLinkRow         = document.getElementById('f3dLinkRow');
+  // fTags déclaré en haut du fichier
+  // f3dAvailable, f3dLink, f3dLinkRow déclarés en haut du fichier
 
   function updateSellingPriceHint(){
     if(!sellingPriceZoneEl || sellingPriceZoneEl.style.display === 'none') return;

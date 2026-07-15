@@ -365,7 +365,11 @@
     viewingId = null;
   }
 
-  // clic extérieur bloqué — géré par _initModalEscape()
+  // Clic extérieur : fermer uniquement sur desktop (pas mobile/tablette)
+  viewOverlay.addEventListener('click', function(e){
+    if(e.target === viewOverlay && window.innerWidth > 1024) closeView();
+  });
+
   document.addEventListener('keydown', function(e){
     if(e.key==='Escape' && viewOverlay.classList.contains('open')){ closeView(); }
   });
