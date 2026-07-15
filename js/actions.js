@@ -2110,8 +2110,6 @@
           fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
           // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
-          // Garder la bottom nav visible — le floating search se positionnera au-dessus du clavier
-          fs.style.marginBottom = '0';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
         setActive(bnSearch);
@@ -2201,10 +2199,10 @@
             floatSearch.style.transform = '';
             floatSearch.style.marginBottom = '0';
           } else {
-            // Clavier fermé : position normale au-dessus de la nav
+            // Clavier fermé : positionner au-dessus de la bottom nav
             floatSearch.style.bottom = '0';
             floatSearch.style.transform = '';
-            floatSearch.style.marginBottom = '0';
+            floatSearch.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
           }
         }
       }
