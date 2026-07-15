@@ -2504,20 +2504,6 @@
 }
 
 .menu-sheet {
-<<<<<<< HEAD
-  position: fixed;
-  bottom: calc(60px + env(safe-area-inset-bottom));
-  left: 0; right: 0;
-  z-index: 9600;
-  background: var(--paper-card);
-  border-radius: 20px 20px 0 0;
-  padding-bottom: 16px;
-  transform: translateY(calc(100% + 60px + env(safe-area-inset-bottom)));
-  transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: calc(85vh - 60px);
-  overflow-y: auto;
-=======
->>>>>>> 3f21aa0b304df5346d8850f1cd741fe92c98da42
   display: none;
 }
 @media (max-width: 1024px) {
