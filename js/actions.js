@@ -2149,10 +2149,34 @@
       var floatClose   = document.getElementById('floatingSearchClose');
       var mainInput    = document.getElementById('searchInput');
 
+      var _bottomNav = document.getElementById('bottomNav');
+
       function closeFloatingSearch(){
         if(floatSearch)  floatSearch.style.display  = 'none';
         if(floatOverlay) floatOverlay.style.display = 'none';
         if(floatInput)   floatInput.blur();
+        // Réafficher la bottom nav
+        if(_bottomNav) _bottomNav.style.display = '';
+      }
+
+      // Cacher la bottom nav + positionner au-dessus du clavier via visualViewport
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize', function(){
+          var vv = window.visualViewport;
+          var keyboardH = window.innerHeight - (vv.offsetTop + vv.height);
+          var isOpen = floatSearch && floatSearch.style.display !== 'none';
+          if(isOpen){
+            // Cacher la nav quand le clavier est ouvert
+            if(_bottomNav) _bottomNav.style.display = keyboardH > 80 ? 'none' : '';
+            // Positionner la barre juste au-dessus du clavier
+            if(floatSearch){
+              floatSearch.style.bottom    = Math.max(keyboardH, 0) + 'px';
+              floatSearch.style.marginBottom = '0';
+            }
+          } else {
+            if(_bottomNav) _bottomNav.style.display = '';
+          }
+        });
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
