@@ -2196,14 +2196,15 @@
 
 .filter-sheet {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  left: 0; right: 0;
   z-index: 9600;
   background: var(--paper-card);
   border-radius: 20px 20px 0 0;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
-  transform: translateY(100%);
+  padding-bottom: 16px;
+  transform: translateY(calc(100% + 60px + env(safe-area-inset-bottom)));
   transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: 85vh;
+  max-height: calc(85vh - 60px);
   overflow-y: auto;
 }
 .filter-sheet.open { transform: translateY(0); }
@@ -2497,14 +2498,15 @@
 
 .menu-sheet {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 9201;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  left: 0; right: 0;
+  z-index: 9600;
   background: var(--paper);
   border-radius: 20px 20px 0 0;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
-  transform: translateY(100%);
+  padding-bottom: 16px;
+  transform: translateY(calc(100% + 60px + env(safe-area-inset-bottom)));
   transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: 85vh;
+  max-height: calc(85vh - 60px);
   overflow-y: auto;
   display: none;
 }

@@ -2135,6 +2135,7 @@
         document.body.classList.add('modal-open');
         // Sync permissions à chaque ouverture
         if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
+        setActive(bnMenu);
       });
 
       // Floating search logic
@@ -2283,6 +2284,9 @@
       if(overlay) overlay.style.display='none';
       document.body.classList.remove('modal-open');
       setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; }, 300);
+      // Retirer l'état actif du bouton Menu
+      var bnMenu = document.getElementById('bnMenu');
+      if(bnMenu) bnMenu.classList.remove('active');
     }
 
     // Fermeture : bouton ✕
