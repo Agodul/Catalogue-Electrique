@@ -46,10 +46,11 @@
     imgPreviewImg.src = img.src;
     imgPreviewOverlay.classList.add('show');
   });
-  imgPreviewOverlay.addEventListener('click', function(){
-    imgPreviewOverlay.classList.remove('show');
-    imgPreviewImg.src = '';
-  });
+ viewOverlay.addEventListener("click", function (e) {
+    if (e.target === viewOverlay) {
+        viewOverlay.style.display = "none";
+    }
+});
   // Fermer avec Escape
   document.addEventListener('keydown', function(e){
     if(e.key === 'Escape') imgPreviewOverlay.classList.remove('show');
