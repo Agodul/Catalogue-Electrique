@@ -32,6 +32,9 @@
   var photoPreview     = document.getElementById('photoPreview');
   var imgPreviewOverlay = document.getElementById('imgPreviewOverlay');
   var imgPreviewImg     = document.getElementById('imgPreviewImg');
+  var f3dAvailable      = document.getElementById('f3dAvailable');
+  var f3dLink           = document.getElementById('f3dLink');
+  var f3dLinkRow        = document.getElementById('f3dLinkRow');
 
   photoPreview.addEventListener('click', function(){
     var img = photoPreview.querySelector('img');
@@ -704,9 +707,7 @@
   var fSellingPrice      = document.getElementById('fSellingPrice');
   var sellingPriceHint   = document.getElementById('sellingPriceHint');
   var fTags              = document.getElementById('fTags');
-  var f3dAvailable       = document.getElementById('f3dAvailable');
-  var f3dLink            = document.getElementById('f3dLink');
-  var f3dLinkRow         = document.getElementById('f3dLinkRow');
+  // f3dAvailable, f3dLink, f3dLinkRow déclarés en haut du fichier
 
   function updateSellingPriceHint(){
     if(!sellingPriceZoneEl || sellingPriceZoneEl.style.display === 'none') return;
