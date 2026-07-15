@@ -2098,13 +2098,20 @@
         var fsi = document.getElementById('floatingSearchInput');
         var si  = document.getElementById('searchInput');
         if(fs && fsi){
+          // Fermer le filter sheet avant de cacher la nav (sinon il devient visible)
+          var _fsh = document.getElementById('filterSheet');
+          if(_fsh) _fsh.classList.remove('open');
+          if(_fo) _fo.style.display = 'none';
+          document.body.classList.remove('modal-open');
+
           if(fso) fso.style.display = 'block';
           fs.style.display = 'block';
+          fs.style.transform = '';
+          fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
           // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
-          // Cacher la bottom nav pendant la recherche
-          var _bn = document.getElementById('bottomNav');
-          if(_bn) _bn.style.display = 'none';
+          // Garder la bottom nav visible — le floating search se positionnera au-dessus du clavier
+          fs.style.marginBottom = '0';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
         setActive(bnSearch);
@@ -2167,9 +2174,9 @@
         }
         if(floatOverlay) floatOverlay.style.display = 'none';
         if(floatInput)   floatInput.blur();
-        // Réafficher la bottom nav
-        var _bn = document.getElementById('bottomNav');
-        if(_bn) _bn.style.display = '';
+        // Reset position floating search
+        floatSearch.style.bottom = '0';
+        floatSearch.style.marginBottom = '0';
         // Vider les filtres et reset searchInput
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2188,14 +2195,17 @@
         if(window.visualViewport){
           var vv = window.visualViewport;
           var keyboardH = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-          // Sur iOS : translateY vers le haut de la hauteur du clavier
-          floatSearch.style.transform = keyboardH > 50
-            ? 'translateY(-' + keyboardH + 'px)'
-            : 'translateY(0)';
-          floatSearch.style.bottom = '0';
-          floatSearch.style.marginBottom = keyboardH > 50
-            ? '0'
-            : 'calc(56px + env(safe-area-inset-bottom))';
+          if(keyboardH > 50){
+            // Clavier ouvert : coller juste au-dessus du clavier
+            floatSearch.style.bottom = keyboardH + 'px';
+            floatSearch.style.transform = '';
+            floatSearch.style.marginBottom = '0';
+          } else {
+            // Clavier fermé : position normale au-dessus de la nav
+            floatSearch.style.bottom = '0';
+            floatSearch.style.transform = '';
+            floatSearch.style.marginBottom = '0';
+          }
         }
       }
       if(window.visualViewport){
