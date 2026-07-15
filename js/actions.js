@@ -2345,7 +2345,7 @@
     if(btnClose) btnClose.onclick = closeSheet;
 
     // Fermeture : overlay
-  
+    if(overlay) overlay.onclick = closeSheet;
 
     function updateMenuAuth(){
       var p = window._userPerms || {};
