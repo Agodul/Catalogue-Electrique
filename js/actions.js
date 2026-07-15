@@ -2097,7 +2097,7 @@
           fs.style.display = 'block';
           // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
-          setTimeout(function(){ fsi.focus(); }, 50);
+          setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
         setActive(bnSearch);
       });
@@ -2159,24 +2159,25 @@
         if(_bottomNav) _bottomNav.style.display = '';
       }
 
-      // Cacher la bottom nav + positionner au-dessus du clavier via visualViewport
-      if(window.visualViewport){
-        window.visualViewport.addEventListener('resize', function(){
+      // Repositionner au-dessus du clavier via visualViewport
+      function _updateFloatPos(){
+        if(!floatSearch || floatSearch.style.display === 'none') return;
+        if(window.visualViewport){
           var vv = window.visualViewport;
-          var keyboardH = window.innerHeight - (vv.offsetTop + vv.height);
-          var isOpen = floatSearch && floatSearch.style.display !== 'none';
-          if(isOpen){
-            // Cacher la nav quand le clavier est ouvert
-            if(_bottomNav) _bottomNav.style.display = keyboardH > 80 ? 'none' : '';
-            // Positionner la barre juste au-dessus du clavier
-            if(floatSearch){
-              floatSearch.style.bottom    = Math.max(keyboardH, 0) + 'px';
-              floatSearch.style.marginBottom = '0';
-            }
-          } else {
-            if(_bottomNav) _bottomNav.style.display = '';
-          }
-        });
+          var keyboardH = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+          // Sur iOS : translateY vers le haut de la hauteur du clavier
+          floatSearch.style.transform = keyboardH > 50
+            ? 'translateY(-' + keyboardH + 'px)'
+            : 'translateY(0)';
+          floatSearch.style.bottom = '0';
+          floatSearch.style.marginBottom = keyboardH > 50
+            ? '0'
+            : 'calc(56px + env(safe-area-inset-bottom))';
+        }
+      }
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize', _updateFloatPos);
+        window.visualViewport.addEventListener('scroll', _updateFloatPos);
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
