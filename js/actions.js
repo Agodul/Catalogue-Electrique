@@ -2301,28 +2301,40 @@
     if(overlay) overlay.addEventListener('click', closeSheet);
 
     function updateMenuAuth(){
-      var msAuthIcon=document.getElementById('msAuthIcon');
-      var msAuthLabel=document.getElementById('msAuthLabel');
-      var msAuthSub=document.getElementById('msAuthSub');
-      var user=typeof authGetCurrentUser==='function'?authGetCurrentUser():null;
-      if(user){
-        if(msAuthIcon) msAuthIcon.className='ti ti-logout';
-        if(msAuthLabel) msAuthLabel.textContent=(user.displayName||user.username||'Compte');
-        if(msAuthSub) msAuthSub.textContent='Appuyer pour se déconnecter';
+      // Lire les permissions directement depuis _userPerms (source de vérité)
+      var p = window._userPerms || {};
+      var loggedIn   = !!p.loggedIn;
+      var isAdmin    = !!p.isAdmin;
+      var canExport  = !!p.canExport;
+      var canEdit    = !!p.canEdit;
+      var sUrl       = localStorage.getItem('cat_server_url') || '';
+
+      // Auth button
+      var msAuthIcon  = document.getElementById('msAuthIcon');
+      var msAuthLabel = document.getElementById('msAuthLabel');
+      var msAuthSub   = document.getElementById('msAuthSub');
+      var user = typeof authGetCurrentUser==='function' ? authGetCurrentUser() : null;
+      if(loggedIn && user){
+        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-logout';
+        if(msAuthLabel) msAuthLabel.textContent = (user.displayName||user.username||'Compte');
+        if(msAuthSub)   msAuthSub.textContent   = 'Appuyer pour se déconnecter';
       } else {
-        if(msAuthIcon) msAuthIcon.className='ti ti-user';
-        if(msAuthLabel) msAuthLabel.textContent='Se connecter';
-        if(msAuthSub) msAuthSub.textContent='Accéder aux fonctions admin';
+        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-user';
+        if(msAuthLabel) msAuthLabel.textContent = 'Se connecter';
+        if(msAuthSub)   msAuthSub.textContent   = 'Accéder aux fonctions admin';
       }
-      // Sync visibilité items selon permissions
-      [['msExport','btnExport'],['msImport','btnImport'],['msExportXlsx','btnExportXlsx'],
-       ['msImportXlsx','btnImportXlsx'],['msCleanDescs','btnCleanDescs'],['msCompare','btnCompare'],
-       ['msRequests','btnRequestsMenu']].forEach(function(p){
-        var ms=document.getElementById(p[0]);
-        var tgt=document.getElementById(p[1]);
-        if(ms&&tgt) ms.style.display=tgt.style.display;
-      });
-      // Cacher titres et séparateurs si tous leurs items sont cachés
+
+      // Visibilité items selon permissions
+      function show(id, visible){ var el=document.getElementById(id); if(el) el.style.display=visible?'':'none'; }
+      show('msExport',     loggedIn && (canExport || isAdmin));
+      show('msImport',     loggedIn && (canExport || isAdmin));
+      show('msExportXlsx', loggedIn && (canExport || isAdmin));
+      show('msImportXlsx', loggedIn && (canExport || isAdmin));
+      show('msCleanDescs', isAdmin);
+      show('msCompare',    true); // visible pour tous
+      show('msRequests',   isAdmin && !!sUrl);
+
+      // Cacher titres et séparateurs si sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
       var dataIds=['msExport','msImport','msExportXlsx','msImportXlsx'];
       var toolIds=['msCompare','msCleanDescs'];
