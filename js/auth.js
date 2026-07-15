@@ -151,7 +151,6 @@ async function authLogin(username, password) {
       if (typeof showHome === 'function') showHome();
       document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
-      document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       // Démarrer le polling demandes si admin
       if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
       // Sync serveur en arrière-plan uniquement
@@ -803,6 +802,8 @@ function openChangePasswordModal() {
 
 function initAuth() {
   applyAuthUI();
+  // Notifier les composants (bottom nav, menu sheet) après applyAuthUI
+  setTimeout(function(){ document.dispatchEvent(new CustomEvent('spi_auth_changed')); }, 300);
 
   // Bouton "Se connecter"
   async function doLogin() {

@@ -1070,6 +1070,20 @@
 </div>
 <!-- ===== FIN PAGE COMPTE MOBILE ===== -->
 
+<!-- ===== FLOATING SEARCH (mobile) ===== -->
+<div id="floatingSearchOverlay" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.3);"></div>
+<div id="floatingSearch" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9801;background:var(--paper-card);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.15);border-radius:16px 16px 0 0;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="flex:1;position:relative;">
+      <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;opacity:.45;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="floatingSearchInput" type="text" placeholder="Rechercher…" autocomplete="off"
+        style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:Calibri,Arial,sans-serif;outline:none;box-sizing:border-box;">
+    </div>
+    <button id="floatingSearchClose" style="background:none;border:none;font-size:15px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:Calibri,Arial,sans-serif;white-space:nowrap;">Annuler</button>
+  </div>
+</div>
+<!-- ===== FIN FLOATING SEARCH ===== -->
+
 <!-- ===== MENU SHEET MOBILE ===== -->
 <div id="menuSheetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;"></div>
 <div id="menuSheet" class="menu-sheet">

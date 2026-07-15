@@ -2298,8 +2298,7 @@
 
   /* Toolbar mobile : recherche visible + bouton filtres */
   .filter-sheet-fab { display: flex !important; order: 2; flex-shrink: 0; }
-  .search-field { display: flex !important; order: 1; flex: 1; min-width: 0; }
-  .search-field input { font-size: 16px; padding: 10px 14px 10px 36px; }
+  .search-field { display: none !important; }
   select#brandFilter, select#familyFilter, select#seriesFilter,
   #btnResetFilters, #sortPriceBtn { display: none !important; }
   .search-toggle-btn { display: none !important; }

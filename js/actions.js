@@ -2111,16 +2111,18 @@
       bnSearch.addEventListener('click', function(){
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
-        var bfEl=document.getElementById('familyFilter');
-        var bbEl=document.getElementById('brandFilter');
-        var bsEl=document.getElementById('seriesFilter');
-        if(bfEl) bfEl.value='';
-        if(bbEl) bbEl.value='';
-        if(bsEl) bsEl.value='';
-        setTimeout(function(){
-          var input=document.getElementById('searchInput');
-          if(input){ window.scrollTo({top:0,behavior:'smooth'}); setTimeout(function(){ input.focus(); },200); }
-        },50);
+        // Ouvrir le floating search au-dessus du clavier
+        var fso = document.getElementById('floatingSearchOverlay');
+        var fs  = document.getElementById('floatingSearch');
+        var fsi = document.getElementById('floatingSearchInput');
+        var si  = document.getElementById('searchInput');
+        if(fs && fsi){
+          if(fso) fso.style.display = 'block';
+          fs.style.display = 'block';
+          // Pré-remplir avec la valeur actuelle
+          if(si) fsi.value = si.value || '';
+          setTimeout(function(){ fsi.focus(); }, 50);
+        }
         setActive(bnSearch);
       });
 
@@ -2149,6 +2151,41 @@
         document.body.classList.add('modal-open');
         // Sync permissions à chaque ouverture
         if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
+      });
+
+      // Floating search logic
+      var floatOverlay = document.getElementById('floatingSearchOverlay');
+      var floatSearch  = document.getElementById('floatingSearch');
+      var floatInput   = document.getElementById('floatingSearchInput');
+      var floatClose   = document.getElementById('floatingSearchClose');
+      var mainInput    = document.getElementById('searchInput');
+
+      function closeFloatingSearch(){
+        if(floatSearch)  floatSearch.style.display  = 'none';
+        if(floatOverlay) floatOverlay.style.display = 'none';
+        if(floatInput)   floatInput.blur();
+      }
+
+      if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
+      if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearch);
+
+      if(floatInput) floatInput.addEventListener('input', function(){
+        // Propager vers le vrai searchInput
+        if(mainInput){
+          mainInput.value = floatInput.value;
+          mainInput.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        // Vider les filtres catégorie
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+      });
+
+      if(floatInput) floatInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') closeFloatingSearch();
       });
 
       function updateFilterBadge(){
