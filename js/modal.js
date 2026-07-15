@@ -48,7 +48,6 @@
   });
   imgPreviewOverlay.addEventListener('click', function(){
     imgPreviewOverlay.classList.remove('show');
-    viewOverlay.style.display = "none";
     imgPreviewImg.src = '';
   });
   // Fermer avec Escape
