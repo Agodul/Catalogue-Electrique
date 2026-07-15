@@ -2197,7 +2197,7 @@
 .filter-sheet {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  z-index: 8001;
+  z-index: 9600;
   background: var(--paper-card);
   border-radius: 20px 20px 0 0;
   padding-bottom: calc(80px + env(safe-area-inset-bottom));

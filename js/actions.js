@@ -2066,12 +2066,25 @@
         if(btn) btn.classList.add('active');
       }
 
+      function closeMenuSheet(){
+        var ms=document.getElementById('menuSheet');
+        var mso=document.getElementById('menuSheetOverlay');
+        if(ms&&ms.classList.contains('open')){
+          ms.classList.remove('open');
+          if(mso) mso.style.display='none';
+          document.body.classList.remove('modal-open');
+          setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; },300);
+        }
+      }
+
       bnHome.addEventListener('click', function(){
+        closeMenuSheet();
         showHome();
         setActive(bnHome);
       });
 
       bnSearch.addEventListener('click', function(){
+        closeMenuSheet();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2090,6 +2103,7 @@
       });
 
       bnFilter.addEventListener('click', function(){
+        closeMenuSheet();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
