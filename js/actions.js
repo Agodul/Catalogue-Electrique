@@ -2111,8 +2111,8 @@
       bnFilter.addEventListener('click', function(){
         var home=document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
-        var btn=document.getElementById('btnFilterSheet');
-        if(btn) btn.click();
+        // Appeler openSheet directement (btnFilterSheet peut être caché)
+        if(typeof window._openFilterSheet === 'function') window._openFilterSheet();
         setActive(bnFilter);
       });
 
@@ -2133,6 +2133,7 @@
         document.body.classList.add('modal-open');
         // Sync permissions à chaque ouverture
         if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
+        setActive(bnMenu);
       });
 
       // Floating search logic
@@ -2236,6 +2237,7 @@
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
     }
+    window._openFilterSheet = openSheet;
     function closeSheet(){
       sheet.classList.remove('open');
       overlay.style.display='none';
