@@ -2103,7 +2103,11 @@
           fs.style.display = 'block';
           // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
-          setTimeout(function(){ fsi.focus(); }, 50);
+          setTimeout(function(){
+            fsi.focus();
+            // Repositionner dès l'ouverture du clavier
+            setTimeout(_positionAboveKeyboard, 300);
+          }, 50);
         }
         setActive(bnSearch);
       });
@@ -2111,8 +2115,8 @@
       bnFilter.addEventListener('click', function(){
         var home=document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
-        // Appeler openSheet directement (btnFilterSheet peut être caché)
-        if(typeof window._openFilterSheet === 'function') window._openFilterSheet();
+        var btn=document.getElementById('btnFilterSheet');
+        if(btn) btn.click();
         setActive(bnFilter);
       });
 
@@ -2133,7 +2137,6 @@
         document.body.classList.add('modal-open');
         // Sync permissions à chaque ouverture
         if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
-        setActive(bnMenu);
       });
 
       // Floating search logic
@@ -2143,22 +2146,48 @@
       var floatClose   = document.getElementById('floatingSearchClose');
       var mainInput    = document.getElementById('searchInput');
 
+      // Repositionner au-dessus du clavier via visualViewport
+      function _positionAboveKeyboard(){
+        if(!floatSearch || floatSearch.style.display === 'none') return;
+        if(window.visualViewport){
+          var vv = window.visualViewport;
+          var bottom = window.innerHeight - (vv.offsetTop + vv.height);
+          floatSearch.style.bottom  = Math.max(bottom, 0) + 'px';
+          floatSearch.style.position = 'fixed';
+        }
+      }
+
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize', _positionAboveKeyboard);
+        window.visualViewport.addEventListener('scroll', _positionAboveKeyboard);
+      }
+
       function closeFloatingSearch(){
-        if(floatSearch)  floatSearch.style.display  = 'none';
+        if(floatSearch){
+          floatSearch.style.display = 'none';
+          floatSearch.style.bottom  = '0px';
+        }
         if(floatOverlay) floatOverlay.style.display = 'none';
         if(floatInput)   floatInput.blur();
+        // Remettre les filtres à jour
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+        if(mainInput) mainInput.value = '';
+        if(typeof render === 'function') render();
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
       if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearch);
 
       if(floatInput) floatInput.addEventListener('input', function(){
-        // Propager vers le vrai searchInput
         if(mainInput){
           mainInput.value = floatInput.value;
           mainInput.dispatchEvent(new Event('input', {bubbles:true}));
         }
-        // Vider les filtres catégorie
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
         var bsEl=document.getElementById('seriesFilter');
@@ -2168,7 +2197,7 @@
       });
 
       if(floatInput) floatInput.addEventListener('keydown', function(e){
-        if(e.key === 'Enter') closeFloatingSearch();
+        if(e.key === 'Enter'){ closeFloatingSearch(); }
       });
 
       function updateFilterBadge(){
@@ -2237,7 +2266,6 @@
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
     }
-    window._openFilterSheet = openSheet;
     function closeSheet(){
       sheet.classList.remove('open');
       overlay.style.display='none';
