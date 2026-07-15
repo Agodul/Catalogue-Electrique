@@ -2050,25 +2050,6 @@
     document.body.classList.remove('modal-open');
   };
 
-  // Patch _initFilterSheet pour fermer les autres sheets à l'ouverture
-  var _origInitFilterSheet = window._initFilterSheet;
-  window._initFilterSheet = function(){
-    if(_origInitFilterSheet) _origInitFilterSheet();
-    var btn = document.getElementById('btnFilterSheet');
-    if(btn){
-      var _orig = btn.onclick;
-      btn.addEventListener('click', function(){
-        // Fermer le menu sheet si ouvert
-        var ms = document.getElementById('menuSheet');
-        var mso = document.getElementById('menuSheetOverlay');
-        if(ms && ms.classList.contains('open')){
-          ms.classList.remove('open');
-          if(mso) mso.style.display = 'none';
-          setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; }, 300);
-        }
-      }, true);
-    }
-  };
 
   // ── Bottom Nav Bar ─────────────────────────────────────────────
   window._initBottomNav = function(){
@@ -2207,7 +2188,7 @@
   };
 
   // ── Filter Sheet ───────────────────────────────────────────────
-  window._initFilterSheet = window._initFilterSheet || function(){
+  window._initFilterSheet = function(){
     var sheet=document.getElementById('filterSheet');
     var overlay=document.getElementById('filterSheetOverlay');
     var btnOpen=document.getElementById('btnFilterSheet');
@@ -2266,6 +2247,7 @@
       closeSheet();
       if(typeof render==='function') render();
     }
+    window._openFilterSheet = openSheet;
     btnOpen.addEventListener('click', openSheet);
     if(btnClose) btnClose.addEventListener('click', closeSheet);
     if(btnApply) btnApply.addEventListener('click', applyFilters);
