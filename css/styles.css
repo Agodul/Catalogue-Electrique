@@ -2316,7 +2316,7 @@
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    z-index: 9500;
+    z-index: 9999;
     background: var(--paper-card);
     border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom);
