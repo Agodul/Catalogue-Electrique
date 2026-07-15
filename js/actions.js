@@ -2070,24 +2070,6 @@
     }
   };
 
-  // Patch _initMenuSheet pour fermer les autres sheets à l'ouverture
-  var _origInitMenuSheet = window._initMenuSheet;
-  window._initMenuSheet = function(){
-    if(_origInitMenuSheet) _origInitMenuSheet();
-    var btn = document.getElementById('bnMenu');
-    if(btn){
-      btn.addEventListener('click', function(){
-        // Fermer le filter sheet si ouvert
-        var fs = document.getElementById('filterSheet');
-        var fo = document.getElementById('filterSheetOverlay');
-        if(fs && fs.classList.contains('open')){
-          fs.classList.remove('open');
-          if(fo) fo.style.display = 'none';
-        }
-      }, true);
-    }
-  };
-
   // ── Bottom Nav Bar ─────────────────────────────────────────────
   window._initBottomNav = function(){
     try {
@@ -2285,97 +2267,101 @@
   };
 
   // ── Menu Sheet ─────────────────────────────────────────────────
-  window._initMenuSheet = window._initMenuSheet || function(){
-    var sheet=document.getElementById('menuSheet');
-    var overlay=document.getElementById('menuSheetOverlay');
-    var btnClose=document.getElementById('menuSheetClose');
+
+  // ── Menu Sheet (version unique et définitive) ─────────────────
+  window._initMenuSheet = function(){
+    var sheet   = document.getElementById('menuSheet');
+    var overlay = document.getElementById('menuSheetOverlay');
+    var btnClose= document.getElementById('menuSheetClose');
     if(!sheet) return;
 
     function closeSheet(){
       sheet.classList.remove('open');
-      overlay.style.display='none';
+      if(overlay) overlay.style.display='none';
       document.body.classList.remove('modal-open');
-      setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; },300);
+      setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; }, 300);
     }
-    if(btnClose) btnClose.addEventListener('click', closeSheet);
-    if(overlay) overlay.addEventListener('click', closeSheet);
+
+    // Fermeture : bouton ✕
+    if(btnClose) btnClose.onclick = closeSheet;
+
+    // Fermeture : overlay
+    if(overlay) overlay.onclick = closeSheet;
 
     function updateMenuAuth(){
-      // Lire les permissions directement depuis _userPerms (source de vérité)
       var p = window._userPerms || {};
-      var loggedIn   = !!p.loggedIn;
-      var isAdmin    = !!p.isAdmin;
-      var canExport  = !!p.canExport;
-      var canEdit    = !!p.canEdit;
-      var sUrl       = localStorage.getItem('cat_server_url') || '';
+      var loggedIn  = !!p.loggedIn;
+      var isAdmin   = !!p.isAdmin;
+      var canExport = !!p.canExport;
+      var sUrl      = localStorage.getItem('cat_server_url') || '';
+      var user      = typeof authGetCurrentUser==='function' ? authGetCurrentUser() : null;
 
-      // Auth button
+      // Auth label
       var msAuthIcon  = document.getElementById('msAuthIcon');
       var msAuthLabel = document.getElementById('msAuthLabel');
       var msAuthSub   = document.getElementById('msAuthSub');
-      var user = typeof authGetCurrentUser==='function' ? authGetCurrentUser() : null;
       if(loggedIn && user){
-        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-logout';
+        if(msAuthIcon)  msAuthIcon.className   = 'ti ti-logout';
         if(msAuthLabel) msAuthLabel.textContent = (user.displayName||user.username||'Compte');
         if(msAuthSub)   msAuthSub.textContent   = 'Appuyer pour se déconnecter';
       } else {
-        if(msAuthIcon)  msAuthIcon.className  = 'ti ti-user';
+        if(msAuthIcon)  msAuthIcon.className   = 'ti ti-user';
         if(msAuthLabel) msAuthLabel.textContent = 'Se connecter';
         if(msAuthSub)   msAuthSub.textContent   = 'Accéder aux fonctions admin';
       }
 
-      // Visibilité items selon permissions
-      function show(id, visible){ var el=document.getElementById(id); if(el) el.style.display=visible?'':'none'; }
-      show('msExport',     loggedIn && (canExport || isAdmin));
-      show('msImport',     loggedIn && (canExport || isAdmin));
-      show('msExportXlsx', loggedIn && (canExport || isAdmin));
-      show('msImportXlsx', loggedIn && (canExport || isAdmin));
+      // Visibilité selon permissions
+      function show(id, v){ var el=document.getElementById(id); if(el) el.style.display=v?'':'none'; }
+      show('msExport',     loggedIn && (canExport||isAdmin));
+      show('msImport',     loggedIn && (canExport||isAdmin));
+      show('msExportXlsx', loggedIn && (canExport||isAdmin));
+      show('msImportXlsx', loggedIn && (canExport||isAdmin));
       show('msCleanDescs', isAdmin);
-      show('msCompare',    true); // visible pour tous
+      show('msCompare',    true);
       show('msRequests',   isAdmin && !!sUrl);
 
-      // Cacher titres et séparateurs si sections vides
+      // Cacher sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
       var dataIds=['msExport','msImport','msExportXlsx','msImportXlsx'];
       var toolIds=['msCompare','msCleanDescs'];
-      var titles=document.querySelectorAll('#menuSheet .menu-sheet-section-title');
-      var seps=document.querySelectorAll('#menuSheet .menu-sheet-sep');
-      if(titles[0]) titles[0].style.display=allHidden(dataIds)?'none':'';
-      if(titles[1]) titles[1].style.display=allHidden(toolIds)?'none':'';
-      if(seps[0]) seps[0].style.display=allHidden(['msRequests'])&&allHidden(dataIds)?'none':'';
-      if(seps[1]) seps[1].style.display=allHidden(dataIds)?'none':'';
-      if(seps[2]) seps[2].style.display=allHidden(toolIds)?'none':'';
+      var titles = document.querySelectorAll('#menuSheet .menu-sheet-section-title');
+      var seps   = document.querySelectorAll('#menuSheet .menu-sheet-sep');
+      if(titles[0]) titles[0].style.display = allHidden(dataIds) ? 'none' : '';
+      if(titles[1]) titles[1].style.display = allHidden(toolIds) ? 'none' : '';
+      if(seps[0]) seps[0].style.display = allHidden(['msRequests'])&&allHidden(dataIds) ? 'none' : '';
+      if(seps[1]) seps[1].style.display = allHidden(dataIds) ? 'none' : '';
+      if(seps[2]) seps[2].style.display = allHidden(toolIds)  ? 'none' : '';
     }
+
     window._syncMenuAuth = updateMenuAuth;
     document.addEventListener('spi_auth_changed', updateMenuAuth);
-    setTimeout(updateMenuAuth, 600);
 
     // Auth click
-    var msAuthBtn=document.getElementById('msAuth');
-    if(msAuthBtn) msAuthBtn.addEventListener('click', function(){
+    var msAuthBtn = document.getElementById('msAuth');
+    if(msAuthBtn) msAuthBtn.onclick = function(){
       closeSheet();
-      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); },320);
-    });
+      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
+    };
 
     // Délégation boutons
-    function ms(id,targetId){
+    function ms(id, targetId){
       var btn=document.getElementById(id);
       var tgt=document.getElementById(targetId);
-      if(btn&&tgt) btn.addEventListener('click',function(){ closeSheet(); setTimeout(function(){ tgt.click(); },320); });
+      if(btn&&tgt) btn.onclick = function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
     }
-    ms('msRequests','btnRequestsMenu');
-    ms('msExport','btnExport');
-    ms('msImport','btnImport');
+    ms('msRequests',  'btnRequestsMenu');
+    ms('msExport',    'btnExport');
+    ms('msImport',    'btnImport');
     ms('msExportXlsx','btnExportXlsx');
     ms('msImportXlsx','btnImportXlsx');
-    ms('msCompare','btnCompare');
+    ms('msCompare',   'btnCompare');
     ms('msCleanDescs','btnCleanDescs');
-    ms('msSettings','btnSettings');
+    ms('msSettings',  'btnSettings');
 
-    // Badge sync
-    var reqBadgeEl=document.getElementById('requestsBadge');
+    // Badge demandes
+    var reqBadgeEl = document.getElementById('requestsBadge');
     if(reqBadgeEl) new MutationObserver(function(){
-      var bnBadge=document.getElementById('bnMenuBadge');
+      var bnBadge = document.getElementById('bnMenuBadge');
       if(bnBadge){ bnBadge.textContent=reqBadgeEl.textContent; bnBadge.style.display=reqBadgeEl.style.display; }
-    }).observe(reqBadgeEl,{childList:true,attributes:true,attributeFilter:['style']});
+    }).observe(reqBadgeEl, {childList:true, attributes:true, attributeFilter:['style']});
   };
