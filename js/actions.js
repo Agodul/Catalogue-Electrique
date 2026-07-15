@@ -2104,6 +2104,10 @@
 
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
+        // Fermer le floating search si ouvert
+        var fs=document.getElementById('floatingSearch');
+        var fsi=document.getElementById('floatingSearchInput');
+        if(fs && fs.style.display!=='none'){ fs.style.display='none'; if(fsi) fsi.blur(); }
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
