@@ -201,7 +201,7 @@
   ;(function _initModalEscape(){
     var MODALS = [
       { overlay: 'pdfViewerOverlay',  close: 'pdfViewerClose'  },
-      { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: true },
+      { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: false },
       { overlay: 'docOverlay',        close: 'docCloseBtn'      },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
       { overlay: 'conflictOverlay',   close: 'conflictClose'    },
