@@ -2501,7 +2501,7 @@
   bottom: calc(60px + env(safe-area-inset-bottom));
   left: 0; right: 0;
   z-index: 9600;
-  background: var(--paper);
+  background: var(--paper-card);
   border-radius: 20px 20px 0 0;
   padding-bottom: 16px;
   transform: translateY(calc(100% + 60px + env(safe-area-inset-bottom)));
