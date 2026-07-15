@@ -1694,7 +1694,7 @@
   document.getElementById('brandmarkLogo').addEventListener('click', function(){
     // Fermer la fiche produit : retirer la classe 'open' sur l'overlay
     var viewOverlayEl = document.getElementById('viewOverlay');
-    if(viewOverlayEl) viewOverlayEl.classList.remove('open');
+    if(viewOverlayEl) viewOverlayEl.classList.remove('');
     // Fermer la modale d'édition
     var overlayEl = document.getElementById('overlay');
     if(overlayEl) overlayEl.classList.remove('open');
