@@ -638,6 +638,9 @@
   var fabSearchBox   = document.getElementById('fabSearchBox');
   var fabSearchInput = document.getElementById('fabSearchInput');
   var fabSearchClose = document.getElementById('fabSearchClose');
+  if(!fabSearchBox){ fabSearchBox = { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } } }; }
+  if(!fabSearchInput){ fabSearchInput = { value:'', addEventListener:function(){}, focus:function(){} }; }
+  if(!fabSearchClose){ fabSearchClose = { addEventListener:function(){} }; }
 
 
   function switchToCatalogueIfHome(){
@@ -650,7 +653,7 @@
       if(hdrCountChip) hdrCountChip.style.display = '';
     }
   }
-  var btnFabSearchEl = document.getElementById('btnFabSearch');
+  var btnFabSearchEl = document.getElementById('btnFabSearch') || { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } }, addEventListener:function(){} };
   if(btnFabSearchEl) btnFabSearchEl.addEventListener('click', function(){
     if(fabSearchBox.classList.contains('open') && !fabSearchInput.value.trim()){
       fabSearchBox.classList.remove('open');
