@@ -559,14 +559,6 @@
               if(!r.ok){ console.warn('[PDF] pullDocs status:', r.status); return null; }
               return r.json().catch(function(e){ console.warn('[PDF] json parse error:', e); return null; });
             })
-            .then(function(d){
-              console.log('[PDF] pullDocs response:', d);
-              var files = d && d.items ? d.items : [];
-              pForPdf._docFiles = files;
-              pForPdf.hasDoc = files.length > 0;
-              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
-              _pdfRenderList(files);
-            })
             .catch(function(e){
               console.warn('[PDF] fetch error:', e);
               var files = pForPdf._docFiles || (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
