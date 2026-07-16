@@ -66,7 +66,7 @@
       tags: fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean),
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
-      essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
+      Standard: document.getElementById('Standard') ? document.getElementById('Standard').checked : false,
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
       photo: fPhoto.value.trim()
