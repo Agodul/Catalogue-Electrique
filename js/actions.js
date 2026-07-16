@@ -2083,7 +2083,8 @@
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
-        if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom=''; fSearch.style.bottom='0'; }
+        _lastKeyboardH = 0;
+        if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom='0'; fSearch.style.bottom='0'; }
         if(fOverlay) fOverlay.style.display='none';
         if(fInput) fInput.blur();
       }
@@ -2118,9 +2119,10 @@
           if(fso) fso.style.display = 'block';
           fs.style.display = 'block';
           fs.style.transform = '';
-          fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
+          fs.style.marginBottom = '0';
+          fs.style.bottom = 'calc(56px + env(safe-area-inset-bottom))';
           if(si) fsi.value = si.value || '';
-          setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
+          setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 150); setTimeout(_updateFloatPos, 600); }, 50);
         }
         setActive(bnSearch);
       });
@@ -2170,10 +2172,11 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
+        _lastKeyboardH = 0;
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
-          floatSearch.style.marginBottom = '';
+          floatSearch.style.marginBottom = '0';
           floatSearch.style.bottom       = '0';
         }
         if(floatOverlay) floatOverlay.style.display = 'none';
@@ -2195,21 +2198,30 @@
       }
 
       // Repositionner au-dessus du clavier via visualViewport
+      // On utilise UNIQUEMENT bottom (jamais margin-bottom) pour éviter
+      // les sauts causés par les fluctuations de hauteur de la barre de suggestions iOS.
+      var _navH = 56; // hauteur bottom nav en px (hors safe-area)
+      var _lastKeyboardH = 0;
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
         if(window.visualViewport){
           var vv = window.visualViewport;
-          var keyboardH = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-          if(keyboardH > 50){
-            // Clavier ouvert : coller juste au-dessus du clavier
+          var rawH = window.innerHeight - vv.height - vv.offsetTop;
+          var keyboardH = Math.max(0, rawH);
+          // Seuil élevé (150px) pour ignorer les micro-fluctuations de la barre de suggestions
+          var kbOpen = keyboardH > 150;
+          // Anti-flicker : ne changer que si la variation est significative (>20px)
+          if(Math.abs(keyboardH - _lastKeyboardH) < 20 && _lastKeyboardH > 150) return;
+          _lastKeyboardH = keyboardH;
+          floatSearch.style.marginBottom = '0';
+          floatSearch.style.transform = '';
+          if(kbOpen){
+            // Clavier ouvert : bottom = hauteur clavier (colle au-dessus du clavier)
             floatSearch.style.bottom = keyboardH + 'px';
-            floatSearch.style.transform = '';
-            floatSearch.style.marginBottom = '0';
           } else {
-            // Clavier fermé : positionner au-dessus de la bottom nav
-            floatSearch.style.bottom = '0';
-            floatSearch.style.transform = '';
-            floatSearch.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
+            // Clavier fermé : bottom = hauteur nav + safe-area
+            floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
+            _lastKeyboardH = 0;
           }
         }
       }
