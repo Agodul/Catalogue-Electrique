@@ -35,6 +35,7 @@
   var f3dAvailable      = document.getElementById('f3dAvailable');
   var f3dLink           = document.getElementById('f3dLink');
   var f3dLinkRow        = document.getElementById('f3dLinkRow');
+  var fEssential        = document.getElementById('fEssential');
   var fTags             = document.getElementById('fTags');
   var familyIconRow     = document.getElementById('familyIconRow');
   var familyIconPreviewI= document.getElementById('familyIconPreviewI');
@@ -266,6 +267,7 @@
     f3dAvailable.checked = false;
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
+    if(fEssential) fEssential.checked = false;
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
     clearPhotoGallery();
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
@@ -440,6 +442,7 @@
         f3dAvailable.checked = !!p.available3DX;
         f3dLink.value = p.available3DXLink || '';
         update3dLinkVisibility();
+        if(fEssential) fEssential.checked = !!p.essential;
         fPrice.value = p.price||''; fPhoto.value = p.photo||'';
         updatePhotoPreview();
         renderPriceHistory(p);
@@ -572,6 +575,7 @@
               _pdfRenderList(files);
             });
         } else {
+          console.log('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
           _pdfRenderList(pForPdf._docFiles || []);
         }
       }
