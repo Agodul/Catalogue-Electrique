@@ -2298,7 +2298,7 @@
   #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
 
   /* Panneau latéral demandes : hauteur complète → soustraire la nav */
-  #requestsPanel { height: calc(100dvh - var(--nav-h, 56px)) !important; }
+  #requestsPanel { height: 100dvh !important; padding-bottom: var(--nav-h, 56px) !important; box-sizing: border-box; }
 
   /* priceModalOverlay et reqDetailOverlay : inline style, on utilise padding-bottom */
   #priceModalOverlay { padding-bottom: var(--nav-h, 56px) !important; }

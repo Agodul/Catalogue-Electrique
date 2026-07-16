@@ -2102,7 +2102,7 @@
 
       function closeFloatingSearchNow(){
         // Ferme visuellement sans reset (changement d'onglet nav)
-        if(_navEl) _navEl.style.pointerEvents = '';
+        if(_navEl) _navEl.style.visibility = '';
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2144,7 +2144,8 @@
           fs.style.marginBottom = '0';
           fs.style.bottom = 'calc(56px + env(safe-area-inset-bottom))';
           // Désactiver les clics sur la nav pendant que la recherche est ouverte (évite les faux taps iOS)
-          if(_navEl) _navEl.style.pointerEvents = 'none';
+          // Sur iOS : cacher la nav pour éviter les faux taps lors du resize viewport
+          if(_isIOS && _navEl) _navEl.style.visibility = 'hidden';
           if(si) fsi.value = si.value || '';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 150); setTimeout(_updateFloatPos, 600); }, 50);
         }
@@ -2196,7 +2197,7 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
-        if(_navEl) _navEl.style.pointerEvents = '';
+        if(_navEl) _navEl.style.visibility = '';
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2209,7 +2210,7 @@
 
       // Ferme + remet à zéro (croix / overlay / annuler)
       function closeFloatingSearch(){
-        if(_navEl) _navEl.style.pointerEvents = '';
+        if(_navEl) _navEl.style.visibility = '';
         closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2222,59 +2223,27 @@
         if(typeof render==='function') render();
       }
 
-      // ── Gestion clavier iOS PWA standalone ──────────────────────────
-      // En PWA iOS : window.innerHeight fixe, visualViewport.height se réduit
-      // Hauteur clavier = window.innerHeight - visualViewport.height
+      // ── Gestion clavier iOS : approche simple et fiable ─────────────
+      // Sur iOS PWA, toute tentative de repositionner la nav avec JS
+      // cause des conflits de touch events. Solution : cacher la nav
+      // quand le floating search est actif, la réafficher à la fermeture.
       var _navH  = 56;
       var _navEl = document.getElementById('bottomNav');
       var _isIOS = document.body.classList.contains('ios');
-      var _isPWA = window.navigator.standalone === true;
-
-      function _getKeyboardH(){
-        if(!window.visualViewport) return 0;
-        var vv  = window.visualViewport;
-        // En PWA iOS standalone : offsetTop reste 0, on compare avec innerHeight
-        // En Safari normal : offsetTop peut varier
-        var kbH = window.innerHeight - vv.height;
-        if(!_isPWA) kbH -= vv.offsetTop;
-        return Math.max(0, kbH);
-      }
 
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
-        var keyboardH = _getKeyboardH();
-        var kbOpen    = keyboardH > 80; // seuil plus bas pour PWA
+        if(!window.visualViewport) return;
+        var vv = window.visualViewport;
+        var kbH = Math.max(0, window.innerHeight - vv.height);
         floatSearch.style.marginBottom = '0';
         floatSearch.style.transform    = '';
-        if(kbOpen){
-          // Coller la zone au-dessus du clavier
-          floatSearch.style.bottom = keyboardH + 'px';
-        } else {
-          // Clavier fermé : au-dessus de la nav
-          floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
-        }
-      }
-
-      function _fixNavIOS(){
-        if(!_isIOS || !_navEl) return;
-        var keyboardH = _getKeyboardH();
-        if(keyboardH > 80){
-          // Utiliser bottom au lieu de translateY
-          // translateY décale visuellement mais les zones de touch restent en bas → mauvais tap
-          _navEl.style.bottom = keyboardH + 'px';
-        } else {
-          _navEl.style.bottom = '';
-        }
-      }
-
-      function _onViewportChange(){
-        _fixNavIOS();
-        _updateFloatPos();
+        floatSearch.style.bottom = kbH > 50 ? kbH + 'px' : 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
       }
 
       if(window.visualViewport){
-        window.visualViewport.addEventListener('resize', _onViewportChange);
-        window.visualViewport.addEventListener('scroll', _onViewportChange);
+        window.visualViewport.addEventListener('resize', _updateFloatPos);
+        window.visualViewport.addEventListener('scroll', _updateFloatPos);
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
@@ -2327,7 +2296,7 @@
       });
 
       // ── Fix iOS : bottom nav reste en bas quand le clavier s'ouvre ──
-      // Gestion clavier iOS : voir _onViewportChange dans la section floating search
+
 
     } catch(e){ console.error('[BottomNav]', e); }
   };
