@@ -2078,19 +2078,34 @@
         }
       }
 
+      function closeFloatingSearchNow(){
+        var fSearch=document.getElementById('floatingSearch');
+        var fOverlay=document.getElementById('floatingSearchOverlay');
+        var fInput=document.getElementById('floatingSearchInput');
+        if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom=''; fSearch.style.bottom='0'; }
+        if(fOverlay) fOverlay.style.display='none';
+        if(fInput) fInput.blur();
+      }
+
+      function closeFilterSheetNow(){
+        var fs=document.getElementById('filterSheet');
+        var fo=document.getElementById('filterSheetOverlay');
+        if(fs) fs.classList.remove('open');
+        if(fo) fo.style.display='none';
+        document.body.classList.remove('modal-open');
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
+        closeFloatingSearchNow();
+        closeFilterSheetNow();
         showHome();
         setActive(bnHome);
       });
 
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
-        // Fermer le filter sheet si ouvert
-        var _fs = document.getElementById('filterSheet');
-        var _fo = document.getElementById('filterSheetOverlay');
-        if(_fs) _fs.classList.remove('open');
-        if(_fo) _fo.style.display = 'none';
+        closeFilterSheetNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2099,17 +2114,10 @@
         var fsi = document.getElementById('floatingSearchInput');
         var si  = document.getElementById('searchInput');
         if(fs && fsi){
-          // Fermer le filter sheet avant de cacher la nav (sinon il devient visible)
-          var _fsh = document.getElementById('filterSheet');
-          if(_fsh) _fsh.classList.remove('open');
-          if(_fo) _fo.style.display = 'none';
-          document.body.classList.remove('modal-open');
-
           if(fso) fso.style.display = 'block';
           fs.style.display = 'block';
           fs.style.transform = '';
           fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
-          // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
@@ -2118,10 +2126,7 @@
 
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
-        // Fermer le floating search si ouvert
-        var fs=document.getElementById('floatingSearch');
-        var fsi=document.getElementById('floatingSearchInput');
-        if(fs && fs.style.display!=='none'){ fs.style.display='none'; if(fsi) fsi.blur(); }
+        closeFloatingSearchNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2140,11 +2145,8 @@
         var sheet=document.getElementById('menuSheet');
         var overlay=document.getElementById('menuSheetOverlay');
         if(!sheet) return;
-        // Fermer le filter sheet
-        var fs=document.getElementById('filterSheet');
-        var fo=document.getElementById('filterSheetOverlay');
-        if(fs) fs.classList.remove('open');
-        if(fo) fo.style.display='none';
+        closeFloatingSearchNow();
+        closeFilterSheetNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
