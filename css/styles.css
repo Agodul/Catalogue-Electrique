@@ -12,9 +12,10 @@
   }
   *{box-sizing:border-box;}
   html{
-    /* Évite le rebond/zoom iOS et la zone blanche au clavier */
     -webkit-text-size-adjust:100%;
-    height:-webkit-fill-available;
+    /* Hauteur fixe sur iOS PWA : empêche le recalcul quand le clavier s'ouvre */
+    height:100%;
+    overflow:hidden;
   }
   body{
     margin:0;
@@ -22,9 +23,10 @@
     color:var(--ink);
     font-family: 'Calibri','Carlito',Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    /* iOS : le body prend exactement la hauteur visible, clavier compris */
-    min-height:100dvh;
-    min-height:-webkit-fill-available;
+    /* Hauteur fixe : la nav fixed reste en bas même avec le clavier */
+    height:100%;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
   }
 
   /* ===== HEADER ===== */
@@ -1801,7 +1803,7 @@
     .auth-box{ max-height:-webkit-fill-available; }
     #authOverlay{ min-height:-webkit-fill-available; }
     /* Pousser le contenu vers le haut quand le clavier s'ouvre */
-    body{ overflow-y:scroll; -webkit-overflow-scrolling:touch; }
+    body{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
   }
 
   /* ============================================================
