@@ -934,10 +934,10 @@
       display:flex; flex-direction:column;
       border-radius:16px 16px 16px 16px;
       width:100%; max-width:100%;
-      max-height:88vh;
+      max-height:calc(88vh - var(--nav-h, 56px));
       box-shadow:0 -4px 24px rgba(0,0,0,.18);
       overflow:hidden;
-      margin: 10px 10px 40px 10px;
+      margin: 10px 10px var(--nav-h, 56px) 10px;
     }
     .vm-inner{ display:flex; flex-direction:column; flex:1; overflow:hidden; min-height:0; }
     .vm-photo{
@@ -973,7 +973,8 @@
     .modal{
       border-radius:16px 16px 0 0;
       max-width:100%; width:100%;
-      max-height:92vh; flex-direction:column;
+      max-height:calc(92vh - var(--nav-h, 56px)); flex-direction:column;
+      margin-bottom: var(--nav-h, 56px);
     }
     .modal-head{ padding:12px 14px 10px; border-radius:16px 16px 0 0; flex-shrink:0; }
     .modal-head h3{ font-size:15px; }
@@ -1260,7 +1261,7 @@
     padding:9px 20px;
   }
   @media (max-width:640px){
-    #whatsNewOverlay{ padding:0; align-items:flex-end; justify-content:center; }
+    #whatsNewOverlay{ padding:0 0 var(--nav-h, 56px) 0; align-items:flex-end; justify-content:center; }
     #whatsNewModal{
       border-radius:16px 16px 0 0;
       max-height:75vh;
@@ -1732,9 +1733,9 @@
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
-    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:92dvh; }
+    #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
     /* settings-box : centrée avec 4 coins arrondis, pas de bottom sheet */
-    .settings-box{ width:calc(100% - 24px); max-width:100%; max-height:82dvh; }
+    .settings-box{ width:calc(100% - 24px); max-width:100%; max-height:calc(82dvh - var(--nav-h, 0px)); }
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
@@ -1932,7 +1933,7 @@
       padding-top:60px;
     }
     #conflictModal{
-      max-height:calc(100vh - 70px);
+      max-height:calc(100vh - 70px - var(--nav-h, 56px));
       border-radius:14px;
       display:flex;
       flex-direction:column;
@@ -2177,10 +2178,11 @@
     border-radius: 20px 20px 0 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 95vh !important;
+    max-height: calc(95vh - var(--nav-h, 56px)) !important;
     transform: translateY(100%);
     transition: transform .35s cubic-bezier(.32,.72,0,1);
     padding-bottom: env(safe-area-inset-bottom);
+    margin-bottom: var(--nav-h, 56px);
   }
   #viewOverlay.open #viewModal {
     transform: translateY(0);
@@ -2199,6 +2201,7 @@
 }
 
 @media (max-width: 1024px) {
+  :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
   .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: 9600 !important; }
   .bottom-nav {
     display: flex;
@@ -2278,6 +2281,29 @@
   /* Masquer boutons header dupliqués par la bottom nav */
   #btnAuthToggle { display: none !important; }
   .filter-sheet-fab { display: none !important; }
+
+  /* ── Correction overlays coupés par la bottom nav ────────── */
+  /* Overlays centrés : padding-bottom pour décaler le contenu vers le haut */
+  #compareOverlay,
+  #settingsOverlay,
+  #authOverlay,
+  #conflictOverlay,
+  #iconPickerModal,
+  #docOverlay,
+  #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
+
+  /* Panneau latéral demandes : hauteur complète → soustraire la nav */
+  #requestsPanel { height: calc(100dvh - var(--nav-h, 56px)) !important; }
+
+  /* priceModalOverlay et reqDetailOverlay : inline style, on utilise padding-bottom */
+  #priceModalOverlay { padding-bottom: var(--nav-h, 56px) !important; }
+  #reqDetailOverlay  { padding-bottom: var(--nav-h, 56px) !important; }
+
+  /* xlsxImportOverlay */
+  #xlsxImportOverlay { padding-bottom: var(--nav-h, 56px) !important; }
+
+  /* .settings-box centrée → déjà corrigée via l'overlay parent, mais sécurité */
+  .settings-box { max-height: calc(82dvh - var(--nav-h, 0px)); }
 }
 
 .account-sheet {
