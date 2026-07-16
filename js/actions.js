@@ -2119,10 +2119,21 @@
         document.body.classList.remove('modal-open');
       }
 
+      function closeViewNow(){
+        var vo=document.getElementById('viewOverlay');
+        if(vo && vo.classList.contains('open')){
+          vo.classList.remove('open');
+          document.body.classList.remove('modal-open');
+          // Réinitialiser viewingId via la fonction exposée si dispo
+          if(window._viewingId !== undefined) window._viewingId = null;
+        }
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeViewNow();
         showHome();
         setActive(bnHome);
       });
@@ -2130,6 +2141,7 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
+        closeViewNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2152,6 +2164,7 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
+        closeViewNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2172,6 +2185,7 @@
         if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeViewNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
