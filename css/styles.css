@@ -979,14 +979,16 @@
     .modal-head{ padding:12px 14px 10px; border-radius:16px 16px 0 0; flex-shrink:0; }
     .modal-head h3{ font-size:15px; }
     .modal-body{ padding:10px 14px 4px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
-    .modal-foot{ padding:10px 14px 20px; flex-wrap:wrap; gap:8px; flex-shrink:0; }
+    .modal-foot{ padding:10px 14px 12px; flex-wrap:wrap; gap:6px; flex-shrink:0; }
+    .modal-foot .left-foot{ width:100%; font-size:10px; order:-1; }
+    .modal-foot > div:last-child{ width:100%; gap:6px; }
     .field-row{ grid-template-columns:1fr; gap:0; }
     .field{ margin-bottom:10px; }
     .field label{ font-size:11px; }
     .field input, .field textarea{ font-size:14px; padding:8px 10px; }
     .tab-btn{ font-size:12px; padding:7px; }
-    #btnSave{ flex:1; }
-    #btnCancel{ flex:1; }
+    #btnSave{ flex:1; font-size:13px; padding:10px 8px; }
+    #btnCancel{ flex:1; font-size:13px; padding:10px 8px; }
 
     /* ── Filebar ── */
     .filebar{ padding:7px 10px; gap:5px; flex-wrap:wrap; justify-content:center; }
@@ -1012,6 +1014,11 @@
 
     /* Contenu */
     .wrap{ padding:8px 8px 90px; }
+
+    /* Modal-foot très petit écran */
+    .modal-foot{ padding:8px 10px 10px; gap:5px; }
+    #btnSave{ font-size:12px; padding:8px 6px; }
+    #btnCancel{ font-size:12px; padding:8px 6px; }
 
     /* Toolbar 2 lignes compacte ≤380px */
     select#brandFilter{
