@@ -71,6 +71,27 @@
       priceCatalogue: cataloguePrice || '',
       photo: fPhoto.value.trim()
     };
+
+    // ── Mode proposition : envoyer au serveur via reqSubmit ──
+    if(window._proposeMode && typeof window.reqSubmit === 'function'){
+      (async function(){
+        var btnSave = document.getElementById('btnSave');
+        if(btnSave){ btnSave.disabled = true; btnSave.style.opacity = '0.5'; }
+        var original = window._proposeOriginal || null;
+        if(original) payload.ref = original.ref; // garder la ref originale pour la modif
+        var ok = await window.reqSubmit(payload, original);
+        if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
+        if(ok){
+          showToast('Demande envoyée ✓', 'ok', 3000);
+          if(typeof requestCloseModal === 'function') requestCloseModal();
+          else document.getElementById('modalOverlay').classList.remove('open');
+        } else {
+          showToast('Erreur lors de l\'envoi', 'warn', 3000);
+        }
+      })();
+      return;
+    }
+
     if(editingId){
       var idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){

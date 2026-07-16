@@ -45,6 +45,7 @@
     var p = products.find(function(x){return x.id===id;});
     if(!p) return;
     viewingId = id;
+    window._viewingId = id; // exposé pour requests.js
     vmInfoMenu.classList.remove('open');
 
     // Photo
@@ -363,6 +364,7 @@
     vmInfoMenu.classList.remove('open');
     document.body.classList.remove('modal-open');
     viewingId = null;
+    window._viewingId = null;
   }
 
   // Clic extérieur : fermer uniquement sur desktop (pas mobile/tablette)

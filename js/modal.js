@@ -597,6 +597,15 @@
               fPrice.value.trim() || fPhoto.value.trim());
   }
   function requestCloseModal(){
+    // Réinitialiser le mode proposition
+    if(window._proposeMode){
+      window._proposeMode = false;
+      window._proposeOriginal = null;
+      var title = document.getElementById('modalTitle');
+      var btnSave = document.getElementById('btnSave');
+      if(title) title.textContent = editingId ? 'Modifier le produit' : 'Ajouter un produit';
+      if(btnSave) btnSave.textContent = 'Enregistrer';
+    }
     if(!hasUnsavedInput()){
      closeModal();
     return;
@@ -633,6 +642,21 @@
       closeModal();
     });
   }
+  // Exposer openModal globalement pour requests.js
+  window._openModal = openModal;
+
+  // Mode proposition : ouvrir la modale avec un flag pour que btnSave envoie une requête
+  window._openProposeModal = function(id){
+    window._proposeMode = true;
+    window._proposeOriginal = id ? (products.find(function(p){ return p.id===id; }) || null) : null;
+    openModal(id || null);
+    // Changer le titre et le bouton
+    var title = document.getElementById('modalTitle');
+    var btnSave = document.getElementById('btnSave');
+    if(title) title.textContent = id ? 'Proposer une modification' : 'Proposer un produit';
+    if(btnSave) btnSave.textContent = 'Envoyer la demande';
+  };
+
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });
 

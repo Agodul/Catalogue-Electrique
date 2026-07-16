@@ -556,6 +556,21 @@
     var btnReqMenuEl = document.getElementById('btnRequestsMenu');
     if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('show'); reqOpenPanel(); });
 
+    // ── Boutons "Proposer un produit" ──
+    ['btnProposeProduct','btnFabPropose'].forEach(function(id){
+      var btn = document.getElementById(id);
+      if(btn) btn.addEventListener('click', function(){
+        if(typeof window._openProposeModal === 'function') window._openProposeModal(null);
+      });
+    });
+
+    // ── Bouton "Proposer une modification" (fiche produit) ──
+    var vmProposeBtn = document.getElementById('vmProposeBtn');
+    if(vmProposeBtn) vmProposeBtn.addEventListener('click', function(){
+      var productId = window._viewingId || null;
+      if(typeof window._openProposeModal === 'function') window._openProposeModal(productId);
+    });
+
     var panelClose = document.getElementById('requestsPanelClose');
     if(panelClose) panelClose.addEventListener('click', reqClosePanel);
 
