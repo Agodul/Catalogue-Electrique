@@ -2445,4 +2445,44 @@
   pointer-events:none; z-index:2;
   letter-spacing:.03em;
   box-shadow:0 1px 4px rgba(0,0,0,.18);
+  white-space:nowrap;
+  line-height:1.2;
+}
+
+/* Tablette grande 769-1024px */
+@media(min-width:769px) and (max-width:1024px){
+  .essential-badge{
+    font-size:10px;
+    padding:2px 7px;
+    bottom:7px; left:7px;
+  }
+}
+
+/* Tablette petite 541-768px */
+@media(min-width:541px) and (max-width:768px){
+  .essential-badge{
+    font-size:9px;
+    padding:2px 6px;
+    bottom:6px; left:6px;
+  }
+}
+
+/* Mobile ≤640px : 3 colonnes (~110px/carte) — badge très compact */
+@media(max-width:640px){
+  .essential-badge{
+    font-size:8px;
+    padding:2px 5px;
+    bottom:5px; left:5px;
+    border-radius:12px;
+    letter-spacing:0;
+  }
+}
+
+/* Mobile ≤380px : 2 colonnes (~160px/carte) — un peu plus de place */
+@media(max-width:380px){
+  .essential-badge{
+    font-size:8.5px;
+    padding:2px 5px;
+    bottom:5px; left:5px;
+  }
 }
