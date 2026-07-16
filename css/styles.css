@@ -2213,6 +2213,7 @@
     padding-bottom: env(safe-area-inset-bottom);
     box-shadow: 0 -2px 16px rgba(0,0,0,.08);
     align-items: stretch;
+    will-change: transform;
   }
 
   .bottom-nav-item {

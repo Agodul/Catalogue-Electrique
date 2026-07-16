@@ -2262,6 +2262,20 @@
       document.addEventListener('spi_page_changed', function(e){
         if(e.detail==='home') setActive(bnHome);
       });
+
+      // ── Fix iOS : bottom nav reste en bas quand le clavier s'ouvre ──
+      if(window.visualViewport && document.body.classList.contains('ios')){
+        var _nav = document.getElementById('bottomNav');
+        function _fixNavIOS(){
+          if(!_nav) return;
+          var vv = window.visualViewport;
+          var offsetY = window.innerHeight - vv.height - vv.offsetTop;
+          _nav.style.transform = offsetY > 0 ? 'translateY(-' + offsetY + 'px)' : '';
+        }
+        window.visualViewport.addEventListener('resize', _fixNavIOS);
+        window.visualViewport.addEventListener('scroll', _fixNavIOS);
+      }
+
     } catch(e){ console.error('[BottomNav]', e); }
   };
 
