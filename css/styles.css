@@ -721,10 +721,10 @@
   }
 
   /* ===== FILE SYNC BAR ===== */
-  .toast{
+    .toast{
     position:fixed;
     left:50%;
-    bottom:28px;
+    bottom:75px;
     transform:translateX(-50%) translateY(16px);
     background:var(--paper-card);
     color:var(--ink);
@@ -737,7 +737,7 @@
     font-weight:500;
     opacity:0;
     visibility:hidden;
-    transition:opacity .2s ease, transform .2s ease, visibility .2s;
+    transition:opacity .2s ease-in-out, transform .2s ease, visibility .2s;
     z-index:220;
     pointer-events:none;
     white-space:nowrap;
@@ -751,18 +751,18 @@
     transform:translateX(-50%) translateY(0);
   }
   .toast.ok{
-    background:#F0FDF4;
-    color:#166534;
-    border-color:#BBF7D0;
+    background:#194093;
+    color:#ffffff;
+    border-color:#92a7d3;
   }
   .toast.err{
-    background:#FEF2F2;
-    color:#991B1B;
-    border-color:#FECACA;
+    background:#991b1b;
+    color:#ffffff;
+    border-color:#ff9b9b;
   }
   .toast.warn{
-    background:#FFFBEB;
-    color:#92400E;
+    background:#92400e;
+    color:#ffffff;
     border-color:#FDE68A;
   }
   .toast.info{
@@ -770,7 +770,7 @@
     color:var(--ink);
     border-color:var(--line);
   }
-
+  
   /* Loupe mobile — cachée par défaut sur desktop */
 
   .fab-stack{
