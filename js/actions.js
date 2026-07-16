@@ -2102,7 +2102,6 @@
 
       function closeFloatingSearchNow(){
         // Ferme visuellement sans reset (changement d'onglet nav)
-        if(_navEl) _navEl.style.visibility = '';
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2144,8 +2143,6 @@
           fs.style.marginBottom = '0';
           fs.style.bottom = 'calc(56px + env(safe-area-inset-bottom))';
           // Désactiver les clics sur la nav pendant que la recherche est ouverte (évite les faux taps iOS)
-          // Sur iOS : cacher la nav pour éviter les faux taps lors du resize viewport
-          if(_isIOS && _navEl) _navEl.style.visibility = 'hidden';
           if(si) fsi.value = si.value || '';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 150); setTimeout(_updateFloatPos, 600); }, 50);
         }
@@ -2197,7 +2194,6 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
-        if(_navEl) _navEl.style.visibility = '';
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2210,7 +2206,6 @@
 
       // Ferme + remet à zéro (croix / overlay / annuler)
       function closeFloatingSearch(){
-        if(_navEl) _navEl.style.visibility = '';
         closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2227,9 +2222,7 @@
       // Sur iOS PWA, toute tentative de repositionner la nav avec JS
       // cause des conflits de touch events. Solution : cacher la nav
       // quand le floating search est actif, la réafficher à la fermeture.
-      var _navH  = 56;
-      var _navEl = document.getElementById('bottomNav');
-      var _isIOS = document.body.classList.contains('ios');
+      var _navH = 56;
 
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
