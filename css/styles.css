@@ -33,7 +33,7 @@
     padding:0 28px;
     height:70px;
     background:#fafbff;
-    display:flex;
+    display:none;
     align-items:center;
     justify-content:space-between;
     gap:20px;
@@ -2417,11 +2417,11 @@
 @media (max-width: 1024px) {
   /* Masquer les 3 petits points header sur mobile */
   #hdrMenuWrap { display: none !important; }
-  #hdrUsername { display: none !important; }
 }
 
 /* Éléments mobiles cachés sur desktop */
 @media (min-width: 1025px) {
+  header { display: flex !important; }
   .toolbar { display: flex !important; }
   #floatingSearch, #floatingSearchOverlay { display: none !important; }
   #btnFilterSheet { display: none !important; }
