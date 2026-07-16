@@ -2118,22 +2118,10 @@
         document.body.classList.remove('modal-open');
       }
 
-      function closeRequestsPanelNow(){
-        var ro=document.getElementById('requestsOverlay');
-        if(ro && ro.style.display!=='none'){ ro.style.display='none'; document.body.classList.remove('modal-open'); }
-      }
-
-      function closeViewNow(){
-        var vo=document.getElementById('viewOverlay');
-        if(vo && vo.classList.contains('open')){ vo.classList.remove('open'); document.body.classList.remove('modal-open'); if(window._viewingId!==undefined) window._viewingId=null; }
-      }
-
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeViewNow();
-        closeRequestsPanelNow();
         showHome();
         setActive(bnHome);
       });
@@ -2141,8 +2129,6 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
-        closeViewNow();
-        closeRequestsPanelNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2166,8 +2152,6 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
-        closeViewNow();
-        closeRequestsPanelNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2188,8 +2172,6 @@
         if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeViewNow();
-        closeRequestsPanelNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
@@ -2236,25 +2218,32 @@
         if(typeof render==='function') render();
       }
 
-      // ── Gestion clavier iOS : approche simple et fiable ─────────────
-      // Sur iOS PWA, toute tentative de repositionner la nav avec JS
-      // cause des conflits de touch events. Solution : cacher la nav
-      // quand le floating search est actif, la réafficher à la fermeture.
+      // ── Positionnement zone de recherche iOS ─────────────────────
+      // On écoute uniquement resize (ouverture/fermeture clavier)
+      // PAS scroll (ferait bouger la zone quand l'utilisateur scrolle)
       var _navH = 56;
 
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
-        if(!window.visualViewport) return;
-        var vv = window.visualViewport;
-        var kbH = Math.max(0, window.innerHeight - vv.height);
         floatSearch.style.marginBottom = '0';
         floatSearch.style.transform    = '';
-        floatSearch.style.bottom = kbH > 50 ? kbH + 'px' : 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
+        if(window.visualViewport){
+          var vv  = window.visualViewport;
+          // Hauteur clavier = différence entre innerHeight et hauteur visible
+          var kbH = Math.max(0, window.innerHeight - vv.height);
+          if(kbH > 50){
+            floatSearch.style.bottom = kbH + 'px';
+          } else {
+            floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
+          }
+        } else {
+          floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
+        }
       }
 
       if(window.visualViewport){
+        // resize uniquement : scroll ferait bouger la zone quand l'utilisateur scrolle la page
         window.visualViewport.addEventListener('resize', _updateFloatPos);
-        window.visualViewport.addEventListener('scroll', _updateFloatPos);
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
