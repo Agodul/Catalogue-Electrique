@@ -2217,26 +2217,35 @@
         if(typeof render==='function') render();
       }
 
-      // ── Gestion clavier iOS : source unique de vérité ──────────────
-      var _navH = 56;
+      // ── Gestion clavier iOS PWA standalone ──────────────────────────
+      // En PWA iOS : window.innerHeight fixe, visualViewport.height se réduit
+      // Hauteur clavier = window.innerHeight - visualViewport.height
+      var _navH  = 56;
       var _navEl = document.getElementById('bottomNav');
       var _isIOS = document.body.classList.contains('ios');
+      var _isPWA = window.navigator.standalone === true;
 
       function _getKeyboardH(){
         if(!window.visualViewport) return 0;
-        var vv = window.visualViewport;
-        return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        var vv  = window.visualViewport;
+        // En PWA iOS standalone : offsetTop reste 0, on compare avec innerHeight
+        // En Safari normal : offsetTop peut varier
+        var kbH = window.innerHeight - vv.height;
+        if(!_isPWA) kbH -= vv.offsetTop;
+        return Math.max(0, kbH);
       }
 
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
         var keyboardH = _getKeyboardH();
-        var kbOpen = keyboardH > 150;
+        var kbOpen    = keyboardH > 80; // seuil plus bas pour PWA
         floatSearch.style.marginBottom = '0';
-        floatSearch.style.transform = '';
+        floatSearch.style.transform    = '';
         if(kbOpen){
+          // Coller la zone au-dessus du clavier
           floatSearch.style.bottom = keyboardH + 'px';
         } else {
+          // Clavier fermé : au-dessus de la nav
           floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
         }
       }
@@ -2244,7 +2253,12 @@
       function _fixNavIOS(){
         if(!_isIOS || !_navEl) return;
         var keyboardH = _getKeyboardH();
-        _navEl.style.transform = keyboardH > 0 ? 'translateY(-' + keyboardH + 'px)' : '';
+        if(keyboardH > 80){
+          // Remonter la nav pour qu'elle reste visible au-dessus du clavier
+          _navEl.style.transform = 'translateY(-' + keyboardH + 'px)';
+        } else {
+          _navEl.style.transform = '';
+        }
       }
 
       function _onViewportChange(){
@@ -2307,7 +2321,7 @@
       });
 
       // ── Fix iOS : bottom nav reste en bas quand le clavier s'ouvre ──
-      // _fixNavIOS géré dans _onViewportChange (floating search section)
+      // Gestion clavier iOS : voir _onViewportChange dans la section floating search
 
     } catch(e){ console.error('[BottomNav]', e); }
   };
