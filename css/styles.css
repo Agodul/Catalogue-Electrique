@@ -33,7 +33,7 @@
     padding:0 28px;
     height:70px;
     background:#fafbff;
-    display:flex;
+    display:none;
     align-items:center;
     justify-content:space-between;
     gap:20px;
@@ -2422,6 +2422,7 @@
 
 /* Éléments mobiles cachés sur desktop */
 @media (min-width: 1025px) {
+  header { display: flex !important; }
   #floatingSearch, #floatingSearchOverlay { display: none !important; }
   #btnFilterSheet { display: none !important; }
   #filterSheet, #filterSheetOverlay { display: none !important; }
