@@ -2079,6 +2079,7 @@
       }
 
       function closeFloatingSearchNow(){
+        // Ferme visuellement sans reset (changement d'onglet nav)
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2167,18 +2168,21 @@
 
       var _bottomNav = document.getElementById('bottomNav');
 
-      function closeFloatingSearch(){
+      // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
+      function closeFloatingSearchOnly(){
         if(floatSearch){
-          floatSearch.style.display   = 'none';
-          floatSearch.style.transform = '';
+          floatSearch.style.display      = 'none';
+          floatSearch.style.transform    = '';
           floatSearch.style.marginBottom = '';
+          floatSearch.style.bottom       = '0';
         }
         if(floatOverlay) floatOverlay.style.display = 'none';
         if(floatInput)   floatInput.blur();
-        // Reset position floating search
-        floatSearch.style.bottom = '0';
-        floatSearch.style.marginBottom = '0';
-        // Vider les filtres et reset searchInput
+      }
+
+      // Ferme + remet à zéro (croix / overlay / annuler)
+      function closeFloatingSearch(){
+        closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
         var bsEl=document.getElementById('seriesFilter');
@@ -2233,7 +2237,7 @@
       });
 
       if(floatInput) floatInput.addEventListener('keydown', function(e){
-        if(e.key === 'Enter') closeFloatingSearch();
+        if(e.key === 'Enter') closeFloatingSearchOnly();
       });
 
       function updateFilterBadge(){
