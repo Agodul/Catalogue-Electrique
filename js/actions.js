@@ -2102,6 +2102,7 @@
 
       function closeFloatingSearchNow(){
         // Ferme visuellement sans reset (changement d'onglet nav)
+        if(_navEl) _navEl.style.pointerEvents = '';
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2142,6 +2143,8 @@
           fs.style.transform = '';
           fs.style.marginBottom = '0';
           fs.style.bottom = 'calc(56px + env(safe-area-inset-bottom))';
+          // Désactiver les clics sur la nav pendant que la recherche est ouverte (évite les faux taps iOS)
+          if(_navEl) _navEl.style.pointerEvents = 'none';
           if(si) fsi.value = si.value || '';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 150); setTimeout(_updateFloatPos, 600); }, 50);
         }
@@ -2193,6 +2196,7 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
+        if(_navEl) _navEl.style.pointerEvents = '';
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2205,6 +2209,7 @@
 
       // Ferme + remet à zéro (croix / overlay / annuler)
       function closeFloatingSearch(){
+        if(_navEl) _navEl.style.pointerEvents = '';
         closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
