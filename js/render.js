@@ -150,6 +150,66 @@
     if(_vmDel)    _vmDel.style.display    = _canDelete ? '' : 'none';
 
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
+
+    // ── Section Suggestions ────────────────────────────────────────
+    var sugSection = document.getElementById('vmSuggestionsSection');
+    var sugToggle  = document.getElementById('vmSuggestionsToggle');
+    var sugLabel   = document.getElementById('vmSuggestionsToggleLabel');
+    var sugTrack   = document.getElementById('vmSuggestionsTrack');
+    var sugCarousel= document.getElementById('vmSuggestionsCarousel');
+    var sugRefs    = Array.isArray(p.suggestions) && p.suggestions.length ? p.suggestions : [];
+
+    if(sugSection){
+      if(sugRefs.length){
+        sugSection.style.display = '';
+        // Réinitialiser l'état du toggle
+        if(sugCarousel) sugCarousel.style.display = 'none';
+        if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
+
+        // Construire le carrousel
+        if(sugTrack){
+          var prods = window.products || [];
+          sugTrack.innerHTML = sugRefs.map(function(ref){
+            var sp = prods.find(function(x){ return x.ref === ref; });
+            if(!sp) return ''; // produit supprimé
+            var photoHtml = sp.photo
+              ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.style.display=\'none\'">'
+              : '<div class="sug-card-nophoto"><i class="ti ti-photo-off"></i></div>';
+            return '<div class="sug-card" data-id="'+escapeHtml(sp.id)+'">'+
+              '<div class="sug-card-photo">'+photoHtml+'</div>'+
+              '<div class="sug-card-body">'+
+                '<div class="sug-card-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                '<div class="sug-card-name">'+escapeHtml((sp.name||'').substring(0,50))+'</div>'+
+              '</div>'+
+            '</div>';
+          }).join('');
+
+          // Rendre les cartes cliquables
+          sugTrack.querySelectorAll('.sug-card[data-id]').forEach(function(card){
+            card.addEventListener('click', function(){
+              var pid = card.getAttribute('data-id');
+              if(pid && typeof openView === 'function') openView(pid);
+            });
+          });
+        }
+
+        // Toggle afficher/masquer
+        if(sugToggle){
+          var _togHandler = function(){
+            var visible = sugCarousel && sugCarousel.style.display !== 'none';
+            if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
+            if(sugLabel) sugLabel.textContent = visible
+              ? 'Afficher les suggestions (' + sugRefs.length + ')'
+              : 'Masquer les suggestions';
+          };
+          sugToggle.onclick = _togHandler;
+        }
+      } else {
+        sugSection.style.display = 'none';
+      }
+    }
+    // ── Fin Suggestions ────────────────────────────────────────────
+
     viewOverlay.classList.add('open');
     document.body.classList.add('modal-open');
   }

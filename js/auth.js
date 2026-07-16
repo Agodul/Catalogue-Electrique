@@ -324,6 +324,10 @@ function applyAuthUI() {
   var btnFabPropose = document.getElementById('btnFabPropose');
   if (btnFabPropose) btnFabPropose.style.display = canPropose ? '' : 'none';
 
+  // Champ suggestions : visible uniquement pour canEdit/admin
+  var fSuggestionsRow = document.getElementById('fSuggestionsRow');
+  if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
+
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');
   if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';

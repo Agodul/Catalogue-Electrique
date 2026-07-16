@@ -588,6 +588,18 @@
         </button>
       </div>
 
+      <!-- ===== SECTION SUGGESTIONS ===== -->
+      <div id="vmSuggestionsSection" style="display:none;margin-top:14px;">
+        <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:100%;">
+          <i class="ti ti-bulb" style="font-size:17px;"></i>
+          <span id="vmSuggestionsToggleLabel">Afficher les suggestions</span>
+        </button>
+        <div id="vmSuggestionsCarousel" style="display:none;margin-top:10px;">
+          <div class="sug-carousel" id="vmSuggestionsTrack"></div>
+        </div>
+      </div>
+      <!-- ===== FIN SECTION SUGGESTIONS ===== -->
+
           <!-- ===== SECTION PDF ===== -->
           <div id="vmPdfSection" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -693,6 +705,17 @@
         <label for="f3dLink">Lien 3DEXPERIENCE</label>
         <input type="url" id="f3dLink" placeholder="https://...">
       </div>
+
+      <!-- ===== CHAMP SUGGESTIONS ===== -->
+      <div class="field" id="fSuggestionsRow">
+        <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 10)</span></label>
+        <div class="sug-autocomplete-wrap" style="position:relative;">
+          <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
+          <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
+        </div>
+        <div class="sug-chips" id="fSuggestionsChips"></div>
+      </div>
+      <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
 
       <div class="tabs">
         <button class="tab-btn active" data-tab="auto">Extraction automatique</button>

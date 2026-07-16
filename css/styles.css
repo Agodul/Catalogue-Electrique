@@ -2493,3 +2493,71 @@
     bottom:5px; left:5px;
   }
 }
+
+/* ── Suggestions : chips dans le formulaire ──────────────────── */
+.sug-chips{
+  display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;
+}
+.sug-chip{
+  display:inline-flex; align-items:center; gap:5px;
+  background:var(--paper-card); border:1px solid var(--copper);
+  color:var(--copper-deep); border-radius:20px;
+  font-size:12px; font-weight:600; padding:3px 10px;
+}
+.sug-chip-del{
+  background:none; border:none; cursor:pointer;
+  color:var(--copper); font-size:13px; line-height:1;
+  padding:0 0 0 2px; margin:0;
+}
+.sug-chip-del:hover{ color:var(--warn); }
+
+/* ── Suggestions : carrousel fiche produit ───────────────────── */
+.sug-carousel{
+  display:flex; gap:10px;
+  overflow-x:auto; padding:4px 2px 8px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.sug-card{
+  flex:0 0 120px; width:120px;
+  background:var(--paper-card); border:1px solid var(--line);
+  border-radius:10px; overflow:hidden; cursor:pointer;
+  transition:box-shadow .15s, transform .15s;
+  display:flex; flex-direction:column;
+}
+.sug-card:hover{
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+  transform:translateY(-2px);
+}
+.sug-card-photo{
+  width:100%; aspect-ratio:1/1;
+  background:#DDE2E8; display:flex;
+  align-items:center; justify-content:center; overflow:hidden;
+}
+.sug-card-photo img{
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.sug-card-nophoto{
+  font-size:28px; color:#CBD5E1;
+}
+.sug-card-body{
+  padding:6px 7px 8px; flex:1;
+}
+.sug-card-ref{
+  font-size:9.5px; font-weight:700;
+  color:var(--copper-deep); letter-spacing:.04em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sug-card-name{
+  font-size:10px; color:var(--ink);
+  margin-top:2px; line-height:1.3;
+  display:-webkit-box; -webkit-line-clamp:2;
+  -webkit-box-orient:vertical; overflow:hidden;
+}
+
+/* ── Responsive carrousel ────────────────────────────────────── */
+@media(max-width:640px){
+  .sug-card{ flex:0 0 100px; width:100px; }
+  .sug-card-ref{ font-size:9px; }
+  .sug-card-name{ font-size:9.5px; }
+}
