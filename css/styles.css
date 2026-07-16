@@ -2427,7 +2427,13 @@
   #menuSheet, #menuSheetOverlay { display: none !important; }
   #bottomNav { display: none !important; }
 }
-
+  .search-field{ order:1; max-width:160px; flex-shrink:1; }
+  select#brandFilter{ order:2; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
+  select#familyFilter{ order:3; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
+  select#seriesFilter{ order:4; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0; }
+  #btnResetFilters{ order:5; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  
 /* ── Badge Essentiel ─────────────────────────────────────── */
 .essential-badge{
   position:absolute; bottom:8px; left:8px;
