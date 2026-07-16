@@ -2118,10 +2118,22 @@
         document.body.classList.remove('modal-open');
       }
 
+      function closeRequestsPanelNow(){
+        var ro=document.getElementById('requestsOverlay');
+        if(ro && ro.style.display!=='none'){ ro.style.display='none'; document.body.classList.remove('modal-open'); }
+      }
+
+      function closeViewNow(){
+        var vo=document.getElementById('viewOverlay');
+        if(vo && vo.classList.contains('open')){ vo.classList.remove('open'); document.body.classList.remove('modal-open'); if(window._viewingId!==undefined) window._viewingId=null; }
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeViewNow();
+        closeRequestsPanelNow();
         showHome();
         setActive(bnHome);
       });
@@ -2129,6 +2141,8 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
+        closeViewNow();
+        closeRequestsPanelNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2152,6 +2166,8 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
+        closeViewNow();
+        closeRequestsPanelNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2172,6 +2188,8 @@
         if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeViewNow();
+        closeRequestsPanelNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
