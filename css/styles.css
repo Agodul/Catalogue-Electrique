@@ -2095,6 +2095,7 @@
     left: 0; right: 0;
     z-index: 9600;
     background: var(--paper-card);
+    border-top: 1.5px solid var(--line);
     margin-bottom: calc(56px + env(safe-area-inset-bottom));
     border-radius: 20px 20px 0 0;
     padding-bottom: 16px;
@@ -2356,6 +2357,7 @@
     left: 0; right: 0;
     z-index: 9600;
     background: var(--paper-card);
+    border-top: 1.5px solid var(--line);
     border-radius: 20px 20px 0 0;
     padding-bottom: 16px;
     margin-bottom: calc(56px + env(safe-area-inset-bottom));
@@ -2373,7 +2375,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px 8px;
   position: sticky; top: 0;
-  background: var(--paper);
+  background: var(--paper-card);
   border-bottom: 1px solid var(--line);
   z-index: 1;
 }
