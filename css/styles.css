@@ -140,7 +140,7 @@
   .wrap{ max-width:1180px; margin:0 auto; padding:28px 32px 80px; }
 
   .toolbar{
-    display:flex; gap:10px; align-items:center; flex-wrap:nowrap;
+    display:none; gap:10px; align-items:center; flex-wrap:nowrap;
     margin-bottom:22px;
   }
   .search-field{
@@ -2423,6 +2423,7 @@
 /* Éléments mobiles cachés sur desktop */
 @media (min-width: 1025px) {
   header { display: flex !important; }
+  .toolbar { display: flex !important; }
   #floatingSearch, #floatingSearchOverlay { display: none !important; }
   #btnFilterSheet { display: none !important; }
   #filterSheet, #filterSheetOverlay { display: none !important; }
