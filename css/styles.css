@@ -33,7 +33,7 @@
     padding:0 28px;
     height:70px;
     background:#fafbff;
-    display:none;
+    display:flex;
     align-items:center;
     justify-content:space-between;
     gap:20px;
