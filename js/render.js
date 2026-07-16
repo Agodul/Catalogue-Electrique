@@ -12,6 +12,7 @@
   var vmCloseBtn   = document.getElementById('vmCloseBtn');
   var vmInfoMenu   = document.getElementById('vmInfoMenu');
   var viewingId    = null;
+  var _viewHistory = []; // pile pour retour suggestion → parent
 
   function buildPriceHistoryReadonly(product){
     if(!product || !Array.isArray(product.priceHistory) || product.priceHistory.length === 0) return '';
@@ -184,11 +185,14 @@
             '</div>';
           }).join('');
 
-          // Rendre les cartes cliquables
+          // Clic sur une suggestion → empile la fiche courante et ouvre la suggestion
           sugTrack.querySelectorAll('.sug-card[data-id]').forEach(function(card){
             card.addEventListener('click', function(){
               var pid = card.getAttribute('data-id');
-              if(pid && typeof openView === 'function') openView(pid);
+              if(pid){
+                _viewHistory.push(id); // mémoriser la fiche parente
+                openView(pid);
+              }
             });
           });
         }
@@ -420,6 +424,12 @@
 
 
   function closeView(){
+    // Si on vient d'une suggestion, retourner sur la fiche parente
+    if(_viewHistory.length > 0){
+      var parentId = _viewHistory.pop();
+      openView(parentId);
+      return;
+    }
     viewOverlay.classList.remove('open');
     vmInfoMenu.classList.remove('open');
     document.body.classList.remove('modal-open');
