@@ -13,6 +13,7 @@
   var vmInfoMenu   = document.getElementById('vmInfoMenu');
   var viewingId    = null;
   var _viewHistory = []; // pile pour retour suggestion → parent
+  var _sugOpen     = false; // mémorise si le carrousel suggestions est ouvert
 
   function buildPriceHistoryReadonly(product){
     if(!product || !Array.isArray(product.priceHistory) || product.priceHistory.length === 0) return '';
@@ -164,8 +165,12 @@
       if(sugRefs.length){
         sugSection.style.display = '';
         // Réinitialiser l'état du toggle
-        if(sugCarousel) sugCarousel.style.display = 'none';
-        if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
+        // Restaurer l'état ouvert si on revient d'une suggestion, sinon fermer
+        var _restoreOpen = _viewHistory.length > 0 ? _sugOpen : false;
+        if(sugCarousel) sugCarousel.style.display = _restoreOpen ? '' : 'none';
+        if(sugLabel) sugLabel.textContent = _restoreOpen
+          ? 'Masquer les suggestions'
+          : 'Afficher les suggestions (' + sugRefs.length + ')';
 
         // Construire le carrousel
         if(sugTrack){
@@ -191,6 +196,7 @@
               var pid = card.getAttribute('data-id');
               if(pid){
                 _viewHistory.push(id); // mémoriser la fiche parente
+                // _sugOpen reste inchangé pour que le carrousel reste ouvert au retour
                 openView(pid);
               }
             });
@@ -199,14 +205,14 @@
 
         // Toggle afficher/masquer
         if(sugToggle){
-          var _togHandler = function(){
+          sugToggle.onclick = function(){
             var visible = sugCarousel && sugCarousel.style.display !== 'none';
-            if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
-            if(sugLabel) sugLabel.textContent = visible
-              ? 'Afficher les suggestions (' + sugRefs.length + ')'
-              : 'Masquer les suggestions';
+            _sugOpen = !visible; // mémoriser l'état
+            if(sugCarousel) sugCarousel.style.display = _sugOpen ? '' : 'none';
+            if(sugLabel) sugLabel.textContent = _sugOpen
+              ? 'Masquer les suggestions'
+              : 'Afficher les suggestions (' + sugRefs.length + ')';
           };
-          sugToggle.onclick = _togHandler;
         }
       } else {
         sugSection.style.display = 'none';
@@ -435,6 +441,7 @@
     document.body.classList.remove('modal-open');
     viewingId = null;
     window._viewingId = null;
+    _sugOpen = false; // reset état carrousel
   }
 
   // Clic extérieur : fermer uniquement sur desktop (pas mobile/tablette)
