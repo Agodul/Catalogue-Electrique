@@ -91,14 +91,13 @@
     }).join('');
     vmMeta.style.display = metaItems.length ? '' : 'none';
 
-    // Description avec troncature JS sur mobile
+    // Description avec troncature + "Voir plus" / "Voir moins" (mobile et desktop)
     var fullDesc = p.desc || '';
     var isMobile = window.innerWidth <= 640;
-    var CHAR_LIMIT = 160;
+    var CHAR_LIMIT = isMobile ? 160 : 300;
     vmDesc.style.display = fullDesc ? '' : 'none';
 
-    if(isMobile && fullDesc.length > CHAR_LIMIT){
-      // Afficher tronqué avec "Voir plus" inline
+    if(fullDesc.length > CHAR_LIMIT){
       var truncated = fullDesc.slice(0, fullDesc.lastIndexOf(' ', CHAR_LIMIT) || CHAR_LIMIT);
       var _shortText = truncated;
       var _fullText  = fullDesc;

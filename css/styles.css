@@ -1174,16 +1174,13 @@
   /* ── Voir plus / moins inline dans la description ── */
   /* Voir plus/moins — masqué sur desktop, affiché par JS sur mobile */
   .vm-desc-toggle{
-    display:none;
+    display:inline;
     color:var(--copper);
     font-weight:600;
     cursor:pointer;
     white-space:nowrap;
   }
-  @media (max-width:640px){
-    .vm-desc-toggle{ display:inline; }
-    .vm-desc-toggle:hover{ text-decoration:underline; }
-  }
+  .vm-desc-toggle:hover{ text-decoration:underline; }
 
   
   #whatsNewOverlay{
