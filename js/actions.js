@@ -2468,7 +2468,7 @@
       } else {
         if(msAuthIcon)  msAuthIcon.className   = 'ti ti-user';
         if(msAuthLabel) msAuthLabel.textContent = 'Se connecter';
-        if(msAuthSub)   msAuthSub.textContent   = 'Accéder aux fonctions admin';
+        if(msAuthSub)   msAuthSub.textContent   = 'Accès réservé';
       }
 
       // Visibilité selon permissions
