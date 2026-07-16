@@ -724,7 +724,7 @@
     .toast{
     position:fixed;
     left:50%;
-    bottom:75px;
+    bottom:90px;
     transform:translateX(-50%) translateY(16px);
     background:var(--paper-card);
     color:var(--ink);
@@ -770,7 +770,7 @@
     color:var(--ink);
     border-color:var(--line);
   }
-  
+
   /* Loupe mobile — cachée par défaut sur desktop */
 
   .fab-stack{
