@@ -2254,10 +2254,11 @@
         if(!_isIOS || !_navEl) return;
         var keyboardH = _getKeyboardH();
         if(keyboardH > 80){
-          // Remonter la nav pour qu'elle reste visible au-dessus du clavier
-          _navEl.style.transform = 'translateY(-' + keyboardH + 'px)';
+          // Utiliser bottom au lieu de translateY
+          // translateY décale visuellement mais les zones de touch restent en bas → mauvais tap
+          _navEl.style.bottom = keyboardH + 'px';
         } else {
-          _navEl.style.transform = '';
+          _navEl.style.bottom = '';
         }
       }
 
