@@ -2077,19 +2077,34 @@
         }
       }
 
+      function closeFloatingSearch(){
+        var fSearch=document.getElementById('floatingSearch');
+        var fOverlay=document.getElementById('floatingSearchOverlay');
+        var fInput=document.getElementById('floatingSearchInput');
+        if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom=''; fSearch.style.bottom='0'; }
+        if(fOverlay) fOverlay.style.display='none';
+        if(fInput) fInput.blur();
+      }
+
+      function closeFilterSheet(){
+        var fs=document.getElementById('filterSheet');
+        var fo=document.getElementById('filterSheetOverlay');
+        if(fs) fs.classList.remove('open');
+        if(fo) fo.style.display='none';
+        document.body.classList.remove('modal-open');
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
+        closeFloatingSearch();
+        closeFilterSheet();
         showHome();
         setActive(bnHome);
       });
 
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
-        // Fermer le filter sheet si ouvert
-        var _fs = document.getElementById('filterSheet');
-        var _fo = document.getElementById('filterSheetOverlay');
-        if(_fs) _fs.classList.remove('open');
-        if(_fo) _fo.style.display = 'none';
+        closeFilterSheet();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2098,17 +2113,10 @@
         var fsi = document.getElementById('floatingSearchInput');
         var si  = document.getElementById('searchInput');
         if(fs && fsi){
-          // Fermer le filter sheet avant de cacher la nav (sinon il devient visible)
-          var _fsh = document.getElementById('filterSheet');
-          if(_fsh) _fsh.classList.remove('open');
-          if(_fo) _fo.style.display = 'none';
-          document.body.classList.remove('modal-open');
-
           if(fso) fso.style.display = 'block';
           fs.style.display = 'block';
           fs.style.transform = '';
           fs.style.marginBottom = 'calc(56px + env(safe-area-inset-bottom))';
-          // Pré-remplir avec la valeur actuelle
           if(si) fsi.value = si.value || '';
           setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 100); setTimeout(_updateFloatPos, 500); }, 50);
         }
@@ -2117,10 +2125,7 @@
 
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
-        // Fermer le floating search si ouvert
-        var fs=document.getElementById('floatingSearch');
-        var fsi=document.getElementById('floatingSearchInput');
-        if(fs && fs.style.display!=='none'){ fs.style.display='none'; if(fsi) fsi.blur(); }
+        closeFloatingSearch();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2139,11 +2144,8 @@
         var sheet=document.getElementById('menuSheet');
         var overlay=document.getElementById('menuSheetOverlay');
         if(!sheet) return;
-        // Fermer le filter sheet
-        var fs=document.getElementById('filterSheet');
-        var fo=document.getElementById('filterSheetOverlay');
-        if(fs) fs.classList.remove('open');
-        if(fo) fo.style.display='none';
+        closeFloatingSearch();
+        closeFilterSheet();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
@@ -2164,17 +2166,8 @@
 
       var _bottomNav = document.getElementById('bottomNav');
 
-      function closeFloatingSearch(){
-        if(floatSearch){
-          floatSearch.style.display   = 'none';
-          floatSearch.style.transform = '';
-          floatSearch.style.marginBottom = '';
-        }
-        if(floatOverlay) floatOverlay.style.display = 'none';
-        if(floatInput)   floatInput.blur();
-        // Reset position floating search
-        floatSearch.style.bottom = '0';
-        floatSearch.style.marginBottom = '0';
+      function closeFloatingSearchAndReset(){
+        closeFloatingSearch();
         // Vider les filtres et reset searchInput
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2211,8 +2204,8 @@
         window.visualViewport.addEventListener('scroll', _updateFloatPos);
       }
 
-      if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
-      if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearch);
+      if(floatClose)   floatClose.addEventListener('click', closeFloatingSearchAndReset);
+      if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearchAndReset);
 
       if(floatInput) floatInput.addEventListener('input', function(){
         // Propager vers le vrai searchInput
@@ -2230,7 +2223,7 @@
       });
 
       if(floatInput) floatInput.addEventListener('keydown', function(e){
-        if(e.key === 'Enter') closeFloatingSearch();
+        if(e.key === 'Enter') closeFloatingSearchAndReset();
       });
 
       function updateFilterBadge(){
