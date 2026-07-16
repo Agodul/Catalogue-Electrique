@@ -2312,22 +2312,67 @@
     var searchInputEl=document.getElementById('searchInput');
     if(!sheet||!btnOpen) return;
 
-    function syncOptions(){
-      [['Brand','brandFilter'],['Family','familyFilter'],['Series','seriesFilter']].forEach(function(p){
-        var src=document.getElementById(p[1]);
-        var dst=document.getElementById('filterSheet'+p[0].charAt(0).toUpperCase()+p[0].slice(1));
-        if(src&&dst){ dst.innerHTML=src.innerHTML; dst.value=src.value; }
+    // ── Cascade mobile : recalcule les options en fonction des sélections ──
+    function buildCascadeOptions(currentBrand, currentFamily, currentSeries){
+      var prods = window.products || [];
+
+      // 1. Marques disponibles selon famille + série actives
+      var brandsInScope = {};
+      prods.forEach(function(p){
+        var mf = !currentFamily || (p.family||'')===currentFamily;
+        var ms = !currentSeries || (p.series||'')===currentSeries;
+        if(mf && ms && p.brand) brandsInScope[p.brand]=true;
       });
+      var allBrands = Object.keys(brandsInScope).sort();
+      if(selBrand){
+        selBrand.innerHTML = '<option value="">Toutes les marques</option>'
+          + allBrands.map(function(b){ return '<option value="'+_esc(b)+'">'+_esc(b)+'</option>'; }).join('');
+        selBrand.value = allBrands.indexOf(currentBrand)!==-1 ? currentBrand : '';
+      }
+      var effectiveBrand = selBrand ? selBrand.value : '';
+
+      // 2. Familles disponibles selon marque + série actives
+      var familiesInScope = {};
+      prods.forEach(function(p){
+        var mb = !effectiveBrand || (p.brand||'')===effectiveBrand;
+        var ms = !currentSeries  || (p.series||'')===currentSeries;
+        if(mb && ms && p.family) familiesInScope[p.family]=true;
+      });
+      var allFamilies = Object.keys(familiesInScope).sort();
+      if(selFamily){
+        selFamily.innerHTML = '<option value="">Toutes les familles</option>'
+          + allFamilies.map(function(f){ return '<option value="'+_esc(f)+'">'+_esc(f)+'</option>'; }).join('');
+        selFamily.value = allFamilies.indexOf(currentFamily)!==-1 ? currentFamily : '';
+      }
+      var effectiveFamily = selFamily ? selFamily.value : '';
+
+      // 3. Séries disponibles selon marque + famille actives
+      var seriesInScope = {};
+      prods.forEach(function(p){
+        var mb = !effectiveBrand  || (p.brand||'')===effectiveBrand;
+        var mf = !effectiveFamily || (p.family||'')===effectiveFamily;
+        if(mb && mf && p.series) seriesInScope[p.series]=true;
+      });
+      var allSeries = Object.keys(seriesInScope).sort();
+      if(selSeries){
+        selSeries.innerHTML = '<option value="">Toutes les séries</option>'
+          + allSeries.map(function(s){ return '<option value="'+_esc(s)+'">'+_esc(s)+'</option>'; }).join('');
+        selSeries.value = allSeries.indexOf(currentSeries)!==-1 ? currentSeries : '';
+      }
     }
+    function _esc(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
     function openSheet(){
       // Fermer menu sheet si ouvert
       var ms=document.getElementById('menuSheet');
       var mso=document.getElementById('menuSheetOverlay');
       if(ms&&ms.classList.contains('open')){ ms.classList.remove('open'); if(mso) mso.style.display='none'; setTimeout(function(){ ms.style.display='none'; },300); }
-      syncOptions();
-      if(selBrand) selBrand.value=(brandFilterEl&&brandFilterEl.value)||'';
-      if(selFamily) selFamily.value=(familyFilterEl&&familyFilterEl.value)||'';
-      if(selSeries) selSeries.value=(seriesFilterEl&&seriesFilterEl.value)||'';
+      // Construire les options en cascade depuis les valeurs desktop actuelles
+      buildCascadeOptions(
+        (brandFilterEl&&brandFilterEl.value)||'',
+        (familyFilterEl&&familyFilterEl.value)||'',
+        (seriesFilterEl&&seriesFilterEl.value)||''
+      );
       overlay.style.display='block';
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
@@ -2355,6 +2400,16 @@
       closeSheet();
       if(typeof render==='function') render();
     }
+    // Cascade en temps réel à chaque changement dans le sheet
+    if(selBrand) selBrand.addEventListener('change', function(){
+      buildCascadeOptions(selBrand.value, selFamily?selFamily.value:'', selSeries?selSeries.value:'');
+    });
+    if(selFamily) selFamily.addEventListener('change', function(){
+      buildCascadeOptions(selBrand?selBrand.value:'', selFamily.value, selSeries?selSeries.value:'');
+    });
+    if(selSeries) selSeries.addEventListener('change', function(){
+      buildCascadeOptions(selBrand?selBrand.value:'', selFamily?selFamily.value:'', selSeries.value);
+    });
     window._openFilterSheet = openSheet;
     btnOpen.addEventListener('click', openSheet);
     if(btnClose) btnClose.addEventListener('click', closeSheet);
