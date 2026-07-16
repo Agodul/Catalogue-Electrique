@@ -2105,7 +2105,6 @@
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
-        _lastKeyboardH = 0;
         if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom='0'; fSearch.style.bottom='0'; }
         if(fOverlay) fOverlay.style.display='none';
         if(fInput) fInput.blur();
@@ -2119,21 +2118,10 @@
         document.body.classList.remove('modal-open');
       }
 
-      function closeViewNow(){
-        var vo=document.getElementById('viewOverlay');
-        if(vo && vo.classList.contains('open')){
-          vo.classList.remove('open');
-          document.body.classList.remove('modal-open');
-          // Réinitialiser viewingId via la fonction exposée si dispo
-          if(window._viewingId !== undefined) window._viewingId = null;
-        }
-      }
-
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeViewNow();
         showHome();
         setActive(bnHome);
       });
@@ -2141,7 +2129,6 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
-        closeViewNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir le floating search au-dessus du clavier
@@ -2164,7 +2151,6 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
-        closeViewNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2185,7 +2171,6 @@
         if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeViewNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
@@ -2208,7 +2193,6 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
-        _lastKeyboardH = 0;
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2233,37 +2217,44 @@
         if(typeof render==='function') render();
       }
 
-      // Repositionner au-dessus du clavier via visualViewport
-      // On utilise UNIQUEMENT bottom (jamais margin-bottom) pour éviter
-      // les sauts causés par les fluctuations de hauteur de la barre de suggestions iOS.
-      var _navH = 56; // hauteur bottom nav en px (hors safe-area)
-      var _lastKeyboardH = 0;
+      // ── Gestion clavier iOS : source unique de vérité ──────────────
+      var _navH = 56;
+      var _navEl = document.getElementById('bottomNav');
+      var _isIOS = document.body.classList.contains('ios');
+
+      function _getKeyboardH(){
+        if(!window.visualViewport) return 0;
+        var vv = window.visualViewport;
+        return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      }
+
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
-        if(window.visualViewport){
-          var vv = window.visualViewport;
-          var rawH = window.innerHeight - vv.height - vv.offsetTop;
-          var keyboardH = Math.max(0, rawH);
-          // Seuil élevé (150px) pour ignorer les micro-fluctuations de la barre de suggestions
-          var kbOpen = keyboardH > 150;
-          // Anti-flicker : ne changer que si la variation est significative (>20px)
-          if(Math.abs(keyboardH - _lastKeyboardH) < 20 && _lastKeyboardH > 150) return;
-          _lastKeyboardH = keyboardH;
-          floatSearch.style.marginBottom = '0';
-          floatSearch.style.transform = '';
-          if(kbOpen){
-            // Clavier ouvert : bottom = hauteur clavier (colle au-dessus du clavier)
-            floatSearch.style.bottom = keyboardH + 'px';
-          } else {
-            // Clavier fermé : bottom = hauteur nav + safe-area
-            floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
-            _lastKeyboardH = 0;
-          }
+        var keyboardH = _getKeyboardH();
+        var kbOpen = keyboardH > 150;
+        floatSearch.style.marginBottom = '0';
+        floatSearch.style.transform = '';
+        if(kbOpen){
+          floatSearch.style.bottom = keyboardH + 'px';
+        } else {
+          floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
         }
       }
+
+      function _fixNavIOS(){
+        if(!_isIOS || !_navEl) return;
+        var keyboardH = _getKeyboardH();
+        _navEl.style.transform = keyboardH > 0 ? 'translateY(-' + keyboardH + 'px)' : '';
+      }
+
+      function _onViewportChange(){
+        _fixNavIOS();
+        _updateFloatPos();
+      }
+
       if(window.visualViewport){
-        window.visualViewport.addEventListener('resize', _updateFloatPos);
-        window.visualViewport.addEventListener('scroll', _updateFloatPos);
+        window.visualViewport.addEventListener('resize', _onViewportChange);
+        window.visualViewport.addEventListener('scroll', _onViewportChange);
       }
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
@@ -2316,17 +2307,7 @@
       });
 
       // ── Fix iOS : bottom nav reste en bas quand le clavier s'ouvre ──
-      if(window.visualViewport && document.body.classList.contains('ios')){
-        var _nav = document.getElementById('bottomNav');
-        function _fixNavIOS(){
-          if(!_nav) return;
-          var vv = window.visualViewport;
-          var offsetY = window.innerHeight - vv.height - vv.offsetTop;
-          _nav.style.transform = offsetY > 0 ? 'translateY(-' + offsetY + 'px)' : '';
-        }
-        window.visualViewport.addEventListener('resize', _fixNavIOS);
-        window.visualViewport.addEventListener('scroll', _fixNavIOS);
-      }
+      // _fixNavIOS géré dans _onViewportChange (floating search section)
 
     } catch(e){ console.error('[BottomNav]', e); }
   };
