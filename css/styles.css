@@ -2287,6 +2287,9 @@
   #btnAuthToggle { display: none !important; }
   .filter-sheet-fab { display: none !important; }
 
+  /* Bottom nav au-dessus de tous les panneaux y compris requestsOverlay (z-index:10800) */
+  #bottomNav { z-index: 10900 !important; }
+
   /* ── Correction overlays coupés par la bottom nav ────────── */
   /* Overlays centrés : padding-bottom pour décaler le contenu vers le haut */
   #compareOverlay,
@@ -2298,7 +2301,7 @@
   #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
 
   /* Panneau latéral demandes : hauteur complète → soustraire la nav */
-  #requestsPanel { height: 100dvh !important; padding-bottom: var(--nav-h, 56px) !important; box-sizing: border-box; }
+  #requestsPanel { height: 100dvh !important; padding-bottom: var(--nav-h, 56px); box-sizing: border-box; }
 
   /* priceModalOverlay et reqDetailOverlay : inline style, on utilise padding-bottom */
   #priceModalOverlay { padding-bottom: var(--nav-h, 56px) !important; }
