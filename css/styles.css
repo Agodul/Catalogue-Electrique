@@ -2618,3 +2618,7 @@
   .sug-card-ref{ font-size:9px; }
   .sug-card-name{ font-size:9.5px; }
 }
+
+.vm-actions-row{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+.vm-actions-row > div{ flex:1; min-width:0; }
+.vm-actions-row > div button{ width:100%; box-sizing:border-box; }
