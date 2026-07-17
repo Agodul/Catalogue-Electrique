@@ -685,8 +685,9 @@
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
           || (p.family||'').toLowerCase().indexOf(q) !== -1
-          || (p.brand||'').toLowerCase().indexOf(q) !== -1;
-    }).slice(0, 8);
+          || (p.brand||'').toLowerCase().indexOf(q) !== -1
+          || (p.series||'').toLowerCase().indexOf(q) !== -1;
+    });
     if(!results.length){ fSuggestionsDrop.style.display='none'; return; }
     fSuggestionsDrop.innerHTML = results.map(function(p){
       var thumb = p.photo

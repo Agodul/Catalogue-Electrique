@@ -1442,6 +1442,11 @@
 
   /* ── Autocomplete custom (iOS fix) ── */
   .autocomplete-wrap{ position:relative; }
+  #fSuggestionsDrop.autocomplete-suggestions{
+    max-height: 320px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .autocomplete-suggestions{
     display:none;
     position:absolute;
