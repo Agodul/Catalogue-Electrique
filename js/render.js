@@ -205,7 +205,7 @@
             if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
             if(sugLabel) sugLabel.textContent = visible
               ? 'Afficher les suggestions (' + sugRefs.length + ')'
-              : 'Masquer les suggestions';
+              : 'Masquer suggestions';
             // Scroller jusqu'aux suggestions quand on les ouvre
             if(!visible && sugSection){
               setTimeout(function(){
