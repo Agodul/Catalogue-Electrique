@@ -2273,6 +2273,16 @@
         _closeMobileSearchBar(false);
       });
 
+      // Fermer le clavier quand on touche le contenu de la page (scroll, tap sur catalogue)
+      // Le clavier se ferme via blur sur l'input
+      document.addEventListener('touchstart', function(e){
+        if(!_mobileSearchInput || !_mobileSearchBar || _mobileSearchBar.style.display === 'none') return;
+        // Si le touch est en dehors de la barre de recherche → blur (ferme le clavier)
+        if(!_mobileSearchBar.contains(e.target)){
+          _mobileSearchInput.blur();
+        }
+      }, { passive: true });
+
       window._openMobileSearchBar  = _openMobileSearchBar;
       window._closeMobileSearchBar = _closeMobileSearchBar;
 

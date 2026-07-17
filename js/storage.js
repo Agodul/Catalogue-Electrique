@@ -574,7 +574,7 @@
       });
       // Rebinder les clics sur les nouvelles cartes
       grid.querySelectorAll('[data-view]').forEach(function(card){
-        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
+        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ if(typeof window._closeMobileSearchBar==='function') window._closeMobileSearchBar(false); openView(card.getAttribute('data-view')); }); }
       });
       var moreBtn = document.getElementById('lazyMore');
       if(_lazyItems.length === 0){
@@ -600,6 +600,7 @@
     // Clic sur la carte → ouvre la vue de consultation
     contentEl.querySelectorAll('[data-view]').forEach(function(card){
       card.addEventListener('click', function(e){
+        if(typeof window._closeMobileSearchBar==='function') window._closeMobileSearchBar(false);
         openView(card.getAttribute('data-view'));
       });
     });
