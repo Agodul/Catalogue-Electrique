@@ -2617,3 +2617,41 @@
   .sug-card-ref{ font-size:9px; }
   .sug-card-name{ font-size:9.5px; }
 }
+
+/* ── Layout fixe mobile : header + nav fixes, contenu scrollable ── */
+@media (max-width: 1024px) {
+  html, body {
+    height: 100%;
+    overflow: hidden; /* empêche le scroll du body */
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    flex-shrink: 0; /* header fixe en hauteur */
+  }
+  #mobileSearchBar {
+    flex-shrink: 0;
+  }
+  #appContent {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* padding-bottom pour ne pas être caché par la nav */
+    padding-bottom: var(--nav-h, calc(56px + env(safe-area-inset-bottom)));
+  }
+  #bottomNav {
+    flex-shrink: 0;
+    /* plus besoin de position:fixed sur mobile — le flex gère le positionnement */
+    position: relative;
+    bottom: auto;
+  }
+}
+
+/* Sur desktop : comportement normal, appContent sans contrainte */
+@media (min-width: 1025px) {
+  #appContent {
+    display: contents; /* transparent pour le layout desktop */
+  }
+}

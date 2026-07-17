@@ -584,8 +584,9 @@
       }
     };
 
-    // Auto-load au scroll
-    if(_lazyScrollHandler) window.removeEventListener('scroll', _lazyScrollHandler, true);
+    // Auto-load au scroll — écouter appContent (mobile) ou window (desktop)
+    var _scrollEl = document.getElementById('appContent') || window;
+    if(_lazyScrollHandler) _scrollEl.removeEventListener('scroll', _lazyScrollHandler, true);
     if(_lazyItems.length > 0){
       _lazyScrollHandler = function(){
         var el = document.getElementById('lazyMore');
@@ -593,7 +594,7 @@
         var rect = el.getBoundingClientRect();
         if(rect.top < window.innerHeight + 200){ window._loadMoreCards(); }
       };
-      window.addEventListener('scroll', _lazyScrollHandler, true);
+      _scrollEl.addEventListener('scroll', _lazyScrollHandler, true);
     }
 
     // Clic sur la carte → ouvre la vue de consultation

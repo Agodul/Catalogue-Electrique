@@ -1573,11 +1573,15 @@
 
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
-  window.addEventListener('scroll', function(){
-    btnScrollTop.classList.toggle('show', window.scrollY > 400);
+  // Écouter scroll sur appContent (mobile) ou window (desktop)
+  var _appContent = document.getElementById('appContent');
+  var _scrollTarget = _appContent || window;
+  _scrollTarget.addEventListener('scroll', function(){
+    var _scrollY = _appContent ? _appContent.scrollTop : window.scrollY;
+    btnScrollTop.classList.toggle('show', _scrollY > 400);
   });
   btnScrollTop.addEventListener('click', function(){
-    window.scrollTo({top:0, behavior:'smooth'});
+    var _acEl2=document.getElementById('appContent'); if(_acEl2) _acEl2.scrollTo({top:0,behavior:'smooth'}); else window.scrollTo({top:0,behavior:'smooth'});
   });
 
   // ---------- Page d'accueil ----------
@@ -2231,7 +2235,9 @@
             _mobileSearchInput.value = si ? si.value : '';
             _mobileSearchClear && (_mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none');
             // Scroll en haut puis focus — clavier s'ouvre naturellement
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            // Scroller le conteneur appContent (pas window) sur mobile
+            var _ac = document.getElementById('appContent');
+            if(_ac) _ac.scrollTop = 0; else window.scrollTo({ top: 0, behavior: 'instant' });
             setTimeout(function(){ _mobileSearchInput.focus(); }, 80);
           }
         }
