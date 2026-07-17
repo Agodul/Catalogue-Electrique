@@ -2130,11 +2130,15 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
-        closeViewNow();
-        closeRequestsPanelNow();
+        // Fermer la fiche produit si ouverte
+        var _vo=document.getElementById('viewOverlay');
+        if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
+        // Fermer le panneau demandes si ouvert
+        var _ro=document.getElementById('requestsOverlay');
+        if(_ro&&_ro.style.display!=='none'){_ro.style.display='none';document.body.classList.remove('modal-open');}
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
-        // Ouvrir la barre de recherche mobile sticky (plus de floating search sur mobile)
+        // Ouvrir la barre de recherche mobile sticky
         if(typeof _openMobileSearchBar === 'function') _openMobileSearchBar();
         setActive(bnSearch);
       });
