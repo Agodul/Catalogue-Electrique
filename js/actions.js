@@ -58,17 +58,41 @@
       family: familyVal,
       familyIcon: familyVal ? (familyIcons[familyVal] || selectedFamilyIcon || getFamilyIcon(familyVal)) : '',
       series: fSeries.value.trim(),
-      supplier: fSupplier.value.trim(),
+      supplier:  fSupplier.value.trim(),
+      leadTime:  document.getElementById('fLeadTime') ? (document.getElementById('fLeadTime').value||'').trim() : '',
       url: fUrl.value.trim(),
       name: fName.value.trim(),
       desc: stripHtml(fDesc.value.trim()),
       tags: fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean),
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
+      essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
+      suggestions: typeof window._getSugRefs === 'function' ? window._getSugRefs() : [],
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
       photo: fPhoto.value.trim()
     };
+
+    // ── Mode proposition : envoyer au serveur via reqSubmit ──
+    if(window._proposeMode && typeof window.reqSubmit === 'function'){
+      (async function(){
+        var btnSave = document.getElementById('btnSave');
+        if(btnSave){ btnSave.disabled = true; btnSave.style.opacity = '0.5'; }
+        var original = window._proposeOriginal || null;
+        if(original) payload.ref = original.ref; // garder la ref originale pour la modif
+        var ok = await window.reqSubmit(payload, original);
+        if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
+        if(ok){
+          showToast('Demande envoyée ✓', 'ok', 3000);
+          if(typeof requestCloseModal === 'function') requestCloseModal();
+          else document.getElementById('modalOverlay').classList.remove('open');
+        } else {
+          showToast('Erreur lors de l\'envoi', 'warn', 3000);
+        }
+      })();
+      return;
+    }
+
     if(editingId){
       var idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){
@@ -237,12 +261,16 @@
     updateServerSubtitle();
     if(serverUrl){
       setTimeout(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
         doSyncCheck();
         syncDeletions();
         startSyncPolling();
       }, 1500);
-      // Sync suppressions toutes les 5 minutes
-      setInterval(syncDeletions, 5 * 60 * 1000);
+      // Sync suppressions toutes les 5 minutes (si connecté)
+      setInterval(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+        syncDeletions();
+      }, 5 * 60 * 1000);
     }
   }
 
@@ -271,6 +299,7 @@
   // Sync complète pour détecter les suppressions côté serveur
   async function syncDeletions(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var getHeaders = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
       delete getHeaders['Content-Type'];
@@ -301,6 +330,7 @@
 
   async function doSyncCheck(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
@@ -319,6 +349,7 @@
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     _syncInterval = setInterval(doSyncCheck, 15000);
   }
 
@@ -505,6 +536,8 @@
   btnOpenFamilyIcons.addEventListener('click', function(){ showSettingsFamilyPage(); });
   var btnOpenUserSettings = document.getElementById('btnOpenUserSettings');
   if(btnOpenUserSettings) btnOpenUserSettings.addEventListener('click', function(){ showSettingsUserPage(); });
+
+  // Bouton Mon compte géré dans auth.js
   var btnUserPageBack = document.getElementById('btnUserPageBack');
   if(btnUserPageBack) btnUserPageBack.addEventListener('click', function(){ showSettingsMain(); });
   btnOpenFamilyIcons.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
@@ -645,7 +678,9 @@
     try{
       var r = await fetch(url+'/pushDatas', {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers: typeof window.authHeaders === 'function'
+          ? window.authHeaders()
+          : {'Content-Type':'application/json'},
         body: JSON.stringify(products)
       });
       if(!r.ok) throw new Error('HTTP '+r.status);
@@ -1545,11 +1580,15 @@
 
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
-  window.addEventListener('scroll', function(){
-    btnScrollTop.classList.toggle('show', window.scrollY > 400);
+  // Écouter scroll sur appContent (mobile) ou window (desktop)
+  var _appContent = document.getElementById('appContent');
+  var _scrollTarget = _appContent || window;
+  _scrollTarget.addEventListener('scroll', function(){
+    var _scrollY = _appContent ? _appContent.scrollTop : window.scrollY;
+    btnScrollTop.classList.toggle('show', _scrollY > 400);
   });
   btnScrollTop.addEventListener('click', function(){
-    window.scrollTo({top:0, behavior:'smooth'});
+    var _acEl2=document.getElementById('appContent'); if(_acEl2) _acEl2.scrollTo({top:0,behavior:'smooth'}); else window.scrollTo({top:0,behavior:'smooth'});
   });
 
   // ---------- Page d'accueil ----------
@@ -1594,6 +1633,11 @@
 
   function showHome(){
     if(window._setViewAll) window._setViewAll(false);
+    // Vider la recherche au retour à l'accueil
+    var si = document.getElementById('searchInput');
+    var sim = document.getElementById('searchInputMobile');
+    if(si)  si.value  = '';
+    if(sim) sim.value = '';
     homePage.classList.remove('hidden');
     catalogueWrap.style.display = 'none';
     document.getElementById('hdrCountChip').style.display = 'none';
@@ -1608,12 +1652,11 @@
     homePage.classList.add('hidden');
     catalogueWrap.style.display = '';
     document.getElementById('hdrCountChip').style.display = '';
-    if(familyFilter){
-      familyFilterEl.value = familyFilter;
-    }
-    if(brandFilter){
-      brandFilterEl.value = brandFilter;
-    }
+    // Utiliser getElementById directement pour éviter la collision de noms
+    var famEl = document.getElementById('familyFilter');
+    var brandEl = document.getElementById('brandFilter');
+    if(famEl && familyFilter) famEl.value = familyFilter;
+    if(brandEl && brandFilter) brandEl.value = brandFilter;
     render();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
@@ -1658,7 +1701,7 @@
       familyCounts[f] = (familyCounts[f]||0) + 1;
     });
     var families = Object.keys(familyCounts).sort(function(a,b){
-      return familyCounts[b] - familyCounts[a];
+      return a.localeCompare(b, 'fr', { sensitivity: 'base' });
     });
 
     if(families.length === 0){
@@ -2023,4 +2066,523 @@
         alert('La modale de conflits sera disponible après le prochain déploiement complet.');
       }
     });
+  };
+  // ── Fermeture mutuelle des sheets ────────────────────────────
+  window._closeAllSheets = function(){
+    // Filter sheet
+    var fs = document.getElementById('filterSheet');
+    var fo = document.getElementById('filterSheetOverlay');
+    if(fs){ fs.classList.remove('open'); }
+    if(fo){ fo.style.display = 'none'; }
+
+    // Menu sheet
+    var ms  = document.getElementById('menuSheet');
+    var mso = document.getElementById('menuSheetOverlay');
+    if(ms){ ms.classList.remove('open'); setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; }, 300); }
+    if(mso){ mso.style.display = 'none'; }
+
+    document.body.classList.remove('modal-open');
+  };
+
+
+  // ── Bottom Nav Bar ─────────────────────────────────────────────
+  window._initBottomNav = function(){
+    try {
+      var bnHome   = document.getElementById('bnHome');
+      var bnSearch = document.getElementById('bnSearch');
+      var bnFilter = document.getElementById('bnFilter');
+      var bnMenu   = document.getElementById('bnMenu');
+      var bnFilterBadge = document.getElementById('bnFilterBadge');
+      if(!bnHome) return;
+
+      function setActive(btn){
+        [bnHome,bnSearch,bnFilter,bnMenu].forEach(function(b){ if(b) b.classList.remove('active'); });
+        if(btn) btn.classList.add('active');
+      }
+
+      function closeMenuSheet(){
+        var ms=document.getElementById('menuSheet');
+        var mso=document.getElementById('menuSheetOverlay');
+        if(ms&&ms.classList.contains('open')){
+          ms.classList.remove('open');
+          if(mso) mso.style.display='none';
+          document.body.classList.remove('modal-open');
+          setTimeout(function(){ if(!ms.classList.contains('open')) ms.style.display='none'; },300);
+        }
+      }
+
+      function closeFloatingSearchNow(){
+        // Ferme visuellement sans reset (changement d'onglet nav)
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(false);
+        var fSearch=document.getElementById('floatingSearch');
+        var fOverlay=document.getElementById('floatingSearchOverlay');
+        var fInput=document.getElementById('floatingSearchInput');
+        if(fSearch){ fSearch.style.display='none'; fSearch.style.transform=''; fSearch.style.marginBottom='0'; fSearch.style.bottom='0'; }
+        if(fOverlay) fOverlay.style.display='none';
+        if(fInput) fInput.blur();
+      }
+
+      function closeFilterSheetNow(){
+        var fs=document.getElementById('filterSheet');
+        var fo=document.getElementById('filterSheetOverlay');
+        if(fs) fs.classList.remove('open');
+        if(fo) fo.style.display='none';
+        document.body.classList.remove('modal-open');
+      }
+
+      function closeSettingsNow(){
+        var so=document.getElementById('settingsOverlay');
+        if(so) so.classList.remove('show');
+      }
+
+      bnHome.addEventListener('click', function(){
+        closeMenuSheet();
+        closeFloatingSearchNow();
+        closeFilterSheetNow();
+        closeSettingsNow();
+        showHome();
+        setActive(bnHome);
+        // Remonter en haut de page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        var ac = document.getElementById('appContent');
+        if(ac) ac.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      bnSearch.addEventListener('click', function(){
+        closeMenuSheet();
+        closeFilterSheetNow();
+        closeSettingsNow();
+        // Fermer la fiche produit si ouverte
+        var _vo=document.getElementById('viewOverlay');
+        if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
+        // Fermer le panneau demandes si ouvert
+        var _ro=document.getElementById('requestsOverlay');
+        if(_ro&&_ro.style.display!=='none'){_ro.style.display='none';document.body.classList.remove('modal-open');}
+        var home = document.getElementById('homePage');
+        if(home && !home.classList.contains('hidden')) showCatalogueAll();
+        // Ouvrir la barre de recherche mobile sticky
+        if(typeof _openMobileSearchBar === 'function') _openMobileSearchBar();
+        setActive(bnSearch);
+      });
+
+      bnFilter.addEventListener('click', function(){
+        closeMenuSheet();
+        closeFloatingSearchNow();
+        closeSettingsNow();
+        var home=document.getElementById('homePage');
+        var wasHome = home && !home.classList.contains('hidden');
+        if(wasHome){
+          showCatalogueAll();
+          // Ouvrir le sheet après le rendu du catalogue
+          setTimeout(function(){
+            if(typeof window._openFilterSheet === 'function') window._openFilterSheet();
+          }, 50);
+        } else {
+          if(typeof window._openFilterSheet === 'function') window._openFilterSheet();
+        }
+        setActive(bnFilter);
+      });
+
+      bnMenu.addEventListener('click', function(){
+        var sheet=document.getElementById('menuSheet');
+        var overlay=document.getElementById('menuSheetOverlay');
+        if(!sheet) return;
+        closeFloatingSearchNow();
+        closeFilterSheetNow();
+        closeSettingsNow();
+        // Ouvrir le menu sheet
+        overlay.style.display='block';
+        sheet.style.display='block';
+        sheet.offsetHeight;
+        sheet.classList.add('open');
+        document.body.classList.add('modal-open');
+        // Sync permissions à chaque ouverture
+        if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
+        setActive(bnMenu);
+      });
+
+      // Floating search logic
+      var floatOverlay = document.getElementById('floatingSearchOverlay');
+      var floatSearch  = document.getElementById('floatingSearch');
+      var floatInput   = document.getElementById('floatingSearchInput');
+      var floatClose   = document.getElementById('floatingSearchClose');
+      var mainInput    = document.getElementById('searchInput');
+
+      var _bottomNav = document.getElementById('bottomNav');
+
+      // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
+      function closeFloatingSearchOnly(){
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(false);
+        if(floatSearch){
+          floatSearch.style.display      = 'none';
+          floatSearch.style.transform    = '';
+          floatSearch.style.marginBottom = '0';
+          floatSearch.style.bottom       = '0';
+        }
+        if(floatOverlay) floatOverlay.style.display = 'none';
+        if(floatInput)   floatInput.blur();
+      }
+
+      // Ferme + remet à zéro (croix / overlay / annuler)
+      function closeFloatingSearch(){
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(true);
+        closeFloatingSearchOnly();
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        var si=document.getElementById('searchInput');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+        if(si) si.value='';
+        if(typeof render==='function') render();
+      }
+
+      // ── Positionnement zone de recherche iOS ─────────────────────
+      // On écoute uniquement resize (ouverture/fermeture clavier)
+      // PAS scroll (ferait bouger la zone quand l'utilisateur scrolle)
+      // ── Barre de recherche mobile sticky ─────────────────────────
+      var _mobileSearchBar   = document.getElementById('mobileSearchBar');
+      var _mobileSearchInput = document.getElementById('mobileSearchInput');
+      var _mobileSearchClear = document.getElementById('mobileSearchClear');
+      var _mobileSearchCancel= document.getElementById('mobileSearchCancel');
+
+      function _openMobileSearchBar(){
+        var si = document.getElementById('searchInput');
+        if(_mobileSearchBar){
+          _mobileSearchBar.style.display = 'block';
+          if(_mobileSearchInput){
+            _mobileSearchInput.value = si ? si.value : '';
+            _mobileSearchClear && (_mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none');
+            // Scroll en haut puis focus — clavier s'ouvre naturellement
+            // Scroller le conteneur appContent (pas window) sur mobile
+            var _ac = document.getElementById('appContent');
+            if(_ac) _ac.scrollTop = 0; else window.scrollTo({ top: 0, behavior: 'instant' });
+            setTimeout(function(){ _mobileSearchInput.focus(); }, 80);
+          }
+        }
+      }
+
+      function _closeMobileSearchBar(doReset){
+        if(_mobileSearchBar) _mobileSearchBar.style.display = 'none';
+        if(_mobileSearchInput) _mobileSearchInput.blur();
+        if(doReset){
+          if(_mobileSearchInput) _mobileSearchInput.value = '';
+          var si = document.getElementById('searchInput');
+          if(si){ si.value = ''; if(typeof render==='function') render(); }
+        }
+      }
+
+      if(_mobileSearchInput){
+        _mobileSearchInput.addEventListener('input', function(){
+          var si = document.getElementById('searchInput');
+          if(si){ si.value = _mobileSearchInput.value; if(typeof render==='function') render(); }
+          if(_mobileSearchClear) _mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none';
+        });
+        _mobileSearchInput.addEventListener('keydown', function(e){
+          if(e.key === 'Enter'){ _mobileSearchInput.blur(); }
+        });
+      }
+      if(_mobileSearchClear) _mobileSearchClear.addEventListener('click', function(){
+        if(_mobileSearchInput){ _mobileSearchInput.value = ''; _mobileSearchInput.focus(); }
+        var si = document.getElementById('searchInput');
+        if(si){ si.value = ''; if(typeof render==='function') render(); }
+        if(_mobileSearchClear) _mobileSearchClear.style.display = 'none';
+      });
+      if(_mobileSearchCancel) _mobileSearchCancel.addEventListener('click', function(){
+        _closeMobileSearchBar(false);
+      });
+
+      // Fermer le clavier quand on touche le contenu de la page (scroll, tap sur catalogue)
+      // Le clavier se ferme via blur sur l'input
+      document.addEventListener('touchstart', function(e){
+        if(!_mobileSearchInput || !_mobileSearchBar || _mobileSearchBar.style.display === 'none') return;
+        // Si le touch est en dehors de la barre de recherche → blur (ferme le clavier)
+        if(!_mobileSearchBar.contains(e.target)){
+          _mobileSearchInput.blur();
+        }
+      }, { passive: true });
+
+      window._openMobileSearchBar  = _openMobileSearchBar;
+      window._closeMobileSearchBar = _closeMobileSearchBar;
+
+      if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
+      if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearch);
+
+      if(floatInput) floatInput.addEventListener('input', function(){
+        // Propager vers le vrai searchInput
+        if(mainInput){
+          mainInput.value = floatInput.value;
+          mainInput.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        // Vider les filtres catégorie
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        if(bfEl) bfEl.value='';
+        if(bbEl) bbEl.value='';
+        if(bsEl) bsEl.value='';
+      });
+
+      if(floatInput) floatInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') closeFloatingSearchOnly();
+      });
+
+      function updateFilterBadge(){
+        var bfEl=document.getElementById('familyFilter');
+        var bbEl=document.getElementById('brandFilter');
+        var bsEl=document.getElementById('seriesFilter');
+        var siEl=document.getElementById('searchInput');
+        var count=0;
+        if(bbEl&&bbEl.value) count++;
+        if(bfEl&&bfEl.value) count++;
+        if(bsEl&&bsEl.value) count++;
+        if(siEl&&siEl.value) count++;
+        if(bnFilterBadge){ bnFilterBadge.textContent=count||''; bnFilterBadge.style.display=count>0?'':'none'; }
+        if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
+      }
+
+      ['brandFilter','familyFilter','seriesFilter'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el) el.addEventListener('change', updateFilterBadge);
+      });
+      var si=document.getElementById('searchInput');
+      if(si) si.addEventListener('input', updateFilterBadge);
+
+      setActive(bnHome);
+
+      document.addEventListener('spi_page_changed', function(e){
+        if(e.detail==='home') setActive(bnHome);
+      });
+
+      // ── Fix iOS : bottom nav reste en bas quand le clavier s'ouvre ──
+
+
+    } catch(e){ console.error('[BottomNav]', e); }
+  };
+
+  // ── Filter Sheet ───────────────────────────────────────────────
+  window._initFilterSheet = function(){
+    var sheet=document.getElementById('filterSheet');
+    var overlay=document.getElementById('filterSheetOverlay');
+    var btnOpen=document.getElementById('btnFilterSheet');
+    var btnClose=document.getElementById('filterSheetClose');
+    var btnApply=document.getElementById('filterSheetApply');
+    var btnReset=document.getElementById('filterSheetReset');
+    var selBrand=document.getElementById('filterSheetBrand');
+    var selFamily=document.getElementById('filterSheetFamily');
+    var selSeries=document.getElementById('filterSheetSeries');
+    var brandFilterEl=document.getElementById('brandFilter');
+    var familyFilterEl=document.getElementById('familyFilter');
+    var seriesFilterEl=document.getElementById('seriesFilter');
+    var searchInputEl=document.getElementById('searchInput');
+    if(!sheet||!btnOpen) return;
+
+    // ── Cascade mobile : recalcule les options en fonction des sélections ──
+    function buildCascadeOptions(currentBrand, currentFamily, currentSeries){
+      var prods = window.products || [];
+
+      // 1. Marques disponibles selon famille + série actives
+      var brandsInScope = {};
+      prods.forEach(function(p){
+        var mf = !currentFamily || (p.family||'')===currentFamily;
+        var ms = !currentSeries || (p.series||'')===currentSeries;
+        if(mf && ms && p.brand) brandsInScope[p.brand]=true;
+      });
+      var allBrands = Object.keys(brandsInScope).sort();
+      if(selBrand){
+        selBrand.innerHTML = '<option value="">Toutes les marques</option>'
+          + allBrands.map(function(b){ return '<option value="'+_esc(b)+'">'+_esc(b)+'</option>'; }).join('');
+        selBrand.value = allBrands.indexOf(currentBrand)!==-1 ? currentBrand : '';
+      }
+      var effectiveBrand = selBrand ? selBrand.value : '';
+
+      // 2. Familles disponibles selon marque + série actives
+      var familiesInScope = {};
+      prods.forEach(function(p){
+        var mb = !effectiveBrand || (p.brand||'')===effectiveBrand;
+        var ms = !currentSeries  || (p.series||'')===currentSeries;
+        if(mb && ms && p.family) familiesInScope[p.family]=true;
+      });
+      var allFamilies = Object.keys(familiesInScope).sort();
+      if(selFamily){
+        selFamily.innerHTML = '<option value="">Toutes les familles</option>'
+          + allFamilies.map(function(f){ return '<option value="'+_esc(f)+'">'+_esc(f)+'</option>'; }).join('');
+        selFamily.value = allFamilies.indexOf(currentFamily)!==-1 ? currentFamily : '';
+      }
+      var effectiveFamily = selFamily ? selFamily.value : '';
+
+      // 3. Séries disponibles selon marque + famille actives
+      var seriesInScope = {};
+      prods.forEach(function(p){
+        var mb = !effectiveBrand  || (p.brand||'')===effectiveBrand;
+        var mf = !effectiveFamily || (p.family||'')===effectiveFamily;
+        if(mb && mf && p.series) seriesInScope[p.series]=true;
+      });
+      var allSeries = Object.keys(seriesInScope).sort();
+      if(selSeries){
+        selSeries.innerHTML = '<option value="">Toutes les séries</option>'
+          + allSeries.map(function(s){ return '<option value="'+_esc(s)+'">'+_esc(s)+'</option>'; }).join('');
+        selSeries.value = allSeries.indexOf(currentSeries)!==-1 ? currentSeries : '';
+      }
+    }
+    function _esc(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+    function openSheet(){
+      // Fermer menu sheet si ouvert
+      var ms=document.getElementById('menuSheet');
+      var mso=document.getElementById('menuSheetOverlay');
+      if(ms&&ms.classList.contains('open')){ ms.classList.remove('open'); if(mso) mso.style.display='none'; setTimeout(function(){ ms.style.display='none'; },300); }
+      // Construire les options en cascade depuis les valeurs desktop actuelles
+      buildCascadeOptions(
+        (brandFilterEl&&brandFilterEl.value)||'',
+        (familyFilterEl&&familyFilterEl.value)||'',
+        (seriesFilterEl&&seriesFilterEl.value)||''
+      );
+      overlay.style.display='block';
+      sheet.classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+    function closeSheet(){
+      sheet.classList.remove('open');
+      overlay.style.display='none';
+      document.body.classList.remove('modal-open');
+    }
+    function applyFilters(){
+      if(brandFilterEl&&selBrand) brandFilterEl.value=selBrand.value;
+      if(familyFilterEl&&selFamily) familyFilterEl.value=selFamily.value;
+      if(seriesFilterEl&&selSeries) seriesFilterEl.value=selSeries.value;
+      closeSheet();
+      if(typeof render==='function') render();
+    }
+    function resetFilters(){
+      if(selBrand) selBrand.value='';
+      if(selFamily) selFamily.value='';
+      if(selSeries) selSeries.value='';
+      if(brandFilterEl) brandFilterEl.value='';
+      if(familyFilterEl) familyFilterEl.value='';
+      if(seriesFilterEl) seriesFilterEl.value='';
+      if(searchInputEl) searchInputEl.value='';
+      closeSheet();
+      if(typeof render==='function') render();
+    }
+    // Cascade en temps réel à chaque changement dans le sheet
+    if(selBrand) selBrand.addEventListener('change', function(){
+      buildCascadeOptions(selBrand.value, selFamily?selFamily.value:'', selSeries?selSeries.value:'');
+    });
+    if(selFamily) selFamily.addEventListener('change', function(){
+      buildCascadeOptions(selBrand?selBrand.value:'', selFamily.value, selSeries?selSeries.value:'');
+    });
+    if(selSeries) selSeries.addEventListener('change', function(){
+      buildCascadeOptions(selBrand?selBrand.value:'', selFamily?selFamily.value:'', selSeries.value);
+    });
+    window._openFilterSheet = openSheet;
+    btnOpen.addEventListener('click', openSheet);
+    if(btnClose) btnClose.addEventListener('click', closeSheet);
+    if(btnApply) btnApply.addEventListener('click', applyFilters);
+    if(btnReset) btnReset.addEventListener('click', resetFilters);
+    if(overlay) overlay.addEventListener('click', closeSheet);
+  };
+
+  // ── Menu Sheet ─────────────────────────────────────────────────
+
+  // ── Menu Sheet (version unique et définitive) ─────────────────
+  window._initMenuSheet = function(){
+    var sheet   = document.getElementById('menuSheet');
+    var overlay = document.getElementById('menuSheetOverlay');
+    var btnClose= document.getElementById('menuSheetClose');
+    if(!sheet) return;
+
+    function closeSheet(){
+      sheet.classList.remove('open');
+      if(overlay) overlay.style.display='none';
+      document.body.classList.remove('modal-open');
+      setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; }, 300);
+      // Retirer l'état actif du bouton Menu
+      var bnMenu = document.getElementById('bnMenu');
+      if(bnMenu) bnMenu.classList.remove('active');
+    }
+
+    // Fermeture : bouton ✕
+    if(btnClose) btnClose.onclick = closeSheet;
+
+    // Fermeture : overlay
+    if(overlay) overlay.onclick = closeSheet;
+
+    function updateMenuAuth(){
+      var p = window._userPerms || {};
+      var loggedIn  = !!p.loggedIn;
+      var isAdmin   = !!p.isAdmin;
+      var canExport = !!p.canExport;
+      var sUrl      = localStorage.getItem('cat_server_url') || '';
+      var user      = typeof authGetCurrentUser==='function' ? authGetCurrentUser() : null;
+
+      // Auth label
+      var msAuthIcon  = document.getElementById('msAuthIcon');
+      var msAuthLabel = document.getElementById('msAuthLabel');
+      var msAuthSub   = document.getElementById('msAuthSub');
+      if(loggedIn && user){
+        if(msAuthIcon)  msAuthIcon.className   = 'ti ti-logout';
+        if(msAuthLabel) msAuthLabel.textContent = (user.displayName||user.username||'Compte');
+        if(msAuthSub)   msAuthSub.textContent   = 'Appuyer pour se déconnecter';
+      } else {
+        if(msAuthIcon)  msAuthIcon.className   = 'ti ti-user';
+        if(msAuthLabel) msAuthLabel.textContent = 'Se connecter';
+        if(msAuthSub)   msAuthSub.textContent   = 'Accès réservé';
+      }
+
+      // Visibilité selon permissions
+      function show(id, v){ var el=document.getElementById(id); if(el) el.style.display=v?'':'none'; }
+      show('msExport',     loggedIn && (canExport||isAdmin));
+      show('msImport',     loggedIn && (canExport||isAdmin));
+      show('msExportXlsx', loggedIn && (canExport||isAdmin));
+      show('msImportXlsx', loggedIn && (canExport||isAdmin));
+      show('msCleanDescs', isAdmin);
+      show('msCompare',    true);
+      show('msRequests',   isAdmin && !!sUrl);
+
+      // Cacher sections vides
+      function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
+      var dataIds=['msExport','msImport','msExportXlsx','msImportXlsx'];
+      var toolIds=['msCompare','msCleanDescs'];
+      var titles = document.querySelectorAll('#menuSheet .menu-sheet-section-title');
+      var seps   = document.querySelectorAll('#menuSheet .menu-sheet-sep');
+      if(titles[0]) titles[0].style.display = allHidden(dataIds) ? 'none' : '';
+      if(titles[1]) titles[1].style.display = allHidden(toolIds) ? 'none' : '';
+      if(seps[0]) seps[0].style.display = allHidden(['msRequests'])&&allHidden(dataIds) ? 'none' : '';
+      if(seps[1]) seps[1].style.display = allHidden(dataIds) ? 'none' : '';
+      if(seps[2]) seps[2].style.display = allHidden(toolIds)  ? 'none' : '';
+    }
+
+    window._syncMenuAuth = updateMenuAuth;
+    document.addEventListener('spi_auth_changed', updateMenuAuth);
+
+    // Auth click
+    var msAuthBtn = document.getElementById('msAuth');
+    if(msAuthBtn) msAuthBtn.onclick = function(){
+      closeSheet();
+      setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
+    };
+
+    // Délégation boutons
+    function ms(id, targetId){
+      var btn=document.getElementById(id);
+      var tgt=document.getElementById(targetId);
+      if(btn&&tgt) btn.onclick = function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
+    }
+    ms('msRequests',  'btnRequestsMenu');
+    ms('msExport',    'btnExport');
+    ms('msImport',    'btnImport');
+    ms('msExportXlsx','btnExportXlsx');
+    ms('msImportXlsx','btnImportXlsx');
+    ms('msCompare',   'btnCompare');
+    ms('msCleanDescs','btnCleanDescs');
+    ms('msSettings',  'btnSettings');
+
+    // Badge demandes
+    var reqBadgeEl = document.getElementById('requestsBadge');
+    if(reqBadgeEl) new MutationObserver(function(){
+      var bnBadge = document.getElementById('bnMenuBadge');
+      if(bnBadge){ bnBadge.textContent=reqBadgeEl.textContent; bnBadge.style.display=reqBadgeEl.style.display; }
+    }).observe(reqBadgeEl, {childList:true, attributes:true, attributeFilter:['style']});
   };

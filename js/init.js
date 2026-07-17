@@ -1,6 +1,35 @@
 // ---------- Init ----------
   load();
   render();
+  // S'assurer que catalogueWrap est caché et homePage visible au démarrage
+  var _cw = document.getElementById('catalogueWrap');
+  var _hp = document.getElementById('homePage');
+  if(_cw) _cw.style.display = 'none';
+  if(_hp) _hp.classList.remove('hidden');
+  showHome();
+
+  // Afficher le splash uniquement au premier démarrage (pas au F5)
+  var splash = document.getElementById('app-splash');
+  if(splash){
+    var isFirstLoad = !sessionStorage.getItem('app_started');
+    if(isFirstLoad){
+      sessionStorage.setItem('app_started', '1');
+      // La vidéo se ferme seule à la fin via onended
+      // Fallback si la vidéo ne démarre pas (3s max)
+      setTimeout(function(){
+        if(document.getElementById('app-splash')){
+          splash.classList.add('hide');
+          document.body.classList.remove('splash-active');
+          setTimeout(function(){
+            if(splash.parentNode) splash.parentNode.removeChild(splash);
+          }, 400);
+        }
+      }, 5000);
+    } else {
+      // F5 ou rechargement → supprimer immédiatement
+      if(splash.parentNode) splash.parentNode.removeChild(splash);
+    }
+  }
 
   // Restaurer "Voir tout le catalogue" si actif avant F5
   if(sessionStorage.getItem('cat_view_all') === '1'){
@@ -96,10 +125,7 @@
       }, 350);
     }, 600);
   })();
-  // Démarrer sur la page d'accueil si des produits existent
-  if(products.length > 0){
-    showHome();
-  }
+  // showHome() déjà appelé en début d'init
 
   // ═══════════════════════════════════════════════════════════════
   //  EXTENSION CHROME — Injection via localStorage
@@ -169,3 +195,63 @@
   // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
   // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
+  // ── Gestionnaire centralisé Escape + blocage clic extérieur ──────
+  // Chaque entrée : [overlayId, closeBtnId ou nomFonction]
+  // La fermeture se fait toujours via le bouton close (réutilise la logique existante)
+  ;(function _initModalEscape(){
+    var MODALS = [
+      { overlay: 'pdfViewerOverlay',  close: 'pdfViewerClose'  },
+      { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: true },
+      { overlay: 'docOverlay',        close: 'docCloseBtn'      },
+      { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
+      { overlay: 'conflictOverlay',   close: 'conflictClose'    },
+      { overlay: 'whatsNewOverlay',   close: 'btnWNClose'       },
+      { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
+      { overlay: 'compareOverlay',    close: 'compareClose',    classList: true },
+      { overlay: 'iconPickerModal',   close: 'iconPickerClose', classList: true },
+    ];
+
+    function isVisible(el){
+      if(!el) return false;
+      var s = el.style.display;
+      // gère display:flex/block et classList .open/.show
+      if(s && s !== 'none') return true;
+      if(el.classList.contains('open') || el.classList.contains('show')) return true;
+      return false;
+    }
+
+    function triggerClose(closeId){
+      var btn = document.getElementById(closeId);
+      if(btn) btn.click();
+    }
+
+    // Escape : ferme la modale la plus haute (z-index) visible
+    document.addEventListener('keydown', function(e){
+      if(e.key !== 'Escape') return;
+      // Trier par z-index décroissant pour fermer la plus haute en premier
+      var visible = MODALS.filter(function(m){
+        return isVisible(document.getElementById(m.overlay));
+      }).sort(function(a, b){
+        var za = parseInt((document.getElementById(a.overlay)||{style:{}}).style.zIndex) || 0;
+        var zb = parseInt((document.getElementById(b.overlay)||{style:{}}).style.zIndex) || 0;
+        return zb - za;
+      });
+      if(visible.length > 0) triggerClose(visible[0].close);
+    });
+
+    // Bloquer le clic extérieur sur tous les overlays listés
+    MODALS.forEach(function(m){
+      var overlay = document.getElementById(m.overlay);
+      if(!overlay) return;
+      overlay.addEventListener('click', function(e){
+        // Bloquer — ne rien faire si on clique en dehors de la modale
+        e.stopPropagation();
+      });
+    });
+  })();
+
+  // ── Initialiser la bottom nav et le bottom sheet ──
+  if(typeof window._initFilterSheet === 'function') window._initFilterSheet();
+  if(typeof window._initBottomNav   === 'function') window._initBottomNav();
+  if(typeof window._initMenuSheet   === 'function') window._initMenuSheet();
+

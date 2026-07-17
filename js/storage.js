@@ -50,26 +50,13 @@
     });
   }
 
-  var filebarEl = document.getElementById('filebar');
-  var filebarStatusEl = document.getElementById('filebarStatus');
-  var btnConnectFile = document.getElementById('btnConnectFile');
-  var btnDisconnectFile = document.getElementById('btnDisconnectFile');
+  var filebarEl = null;
+  var filebarStatusEl = null;
+  var btnConnectFile = null;
+  var btnDisconnectFile = null;
 
-  function setFilebar(state, msg){
-    filebarEl.classList.remove('connected','error');
-    if(state) filebarEl.classList.add(state);
-    if(filebarStatusEl && msg) filebarStatusEl.textContent = msg;
-  }
-
-  function updateFilebarUI(connected){
-    if(connected){
-      btnConnectFile.textContent = 'Changer de fichier';
-      btnDisconnectFile.style.display = 'inline-block';
-    }else{
-      btnConnectFile.textContent = 'Choisir un fichier sur mon PC';
-      btnDisconnectFile.style.display = 'none';
-    }
-  }
+  function setFilebar(state, msg){ /* filebar supprimée */ }
+  function updateFilebarUI(connected){ /* filebar supprimée */ }
 
   function showToast(message, type, duration){
     duration = typeof duration === 'number' ? duration : 3000;
@@ -84,24 +71,15 @@
     }, duration);
   }
 
-  var tooltipBox = document.getElementById('filebarTooltipBox');
-  var tooltipWrap = document.getElementById('filebarTooltipWrap');
-  if(!fsSupported){
-    tooltipBox.textContent = 'Sauvegarde automatique sur fichier non disponible dans ce navigateur. Utilisez Chrome, Edge ou Brave (avec les protections de confidentialité désactivées pour ce fichier). Pour l\'instant, les données restent enregistrées dans ce navigateur (pensez à exporter).';
-    btnConnectFile.style.display = 'none';
-  } else {
-    tooltipBox.textContent = 'Cliquez « Choisir un fichier sur mon PC » pour activer la sauvegarde automatique. Sur Brave, si le bouton ne fonctionne pas, désactivez temporairement le Bouclier Brave (icône lion) pour ce fichier.';
-  }
-  // Le bouton ⓘ est toujours affiché dans le header
-  tooltipWrap.style.display = 'inline-flex';
+  /* tooltip filebar supprimé */
 
   // Déclenchement au clic (hover + tap mobile)
-  tooltipWrap.addEventListener('click', function(e){
+  if(false && tooltipWrap) tooltipWrap.addEventListener('click', function(e){
     e.stopPropagation();
-    tooltipBox.classList.toggle('show');
+    if(typeof tooltipBox !== 'undefined' && tooltipBox) tooltipBox.classList.toggle('show');
   });
   document.addEventListener('click', function(){
-    tooltipBox.classList.remove('show');
+    if(typeof tooltipBox !== 'undefined' && tooltipBox) tooltipBox.classList.remove('show');
   });
 
   async function verifyPermission(handle, forWrite){
@@ -200,13 +178,13 @@
         setFilebar('connected', 'Connecté à « ' + handle.name + ' » (sauvegarde automatique active).');
       }else{
         setFilebar('', 'Fichier « ' + handle.name + ' » précédemment connecté — cliquez pour réautoriser l\'accès.');
-        btnConnectFile.textContent = 'Réautoriser « ' + handle.name + ' »';
-        btnConnectFile.onclick = async function(){
+        if(btnConnectFile) btnConnectFile.textContent = 'Réautoriser « ' + handle.name + ' »';
+        if(btnConnectFile) btnConnectFile.onclick = async function(){
           var ok = await verifyPermission(handle, true);
           if(ok){
             fileHandle = handle;
             updateFilebarUI(true);
-            btnConnectFile.onclick = connectFile;
+            if(btnConnectFile) btnConnectFile.onclick = connectFile;
             setFilebar('connected', 'Connecté à « ' + handle.name + ' » (sauvegarde automatique active).');
             await writeProductsToFile();
           }
@@ -215,8 +193,8 @@
     }catch(e){ /* no stored handle yet */ }
   }
 
-  btnConnectFile.addEventListener('click', connectFile);
-  btnDisconnectFile.addEventListener('click', disconnectFile);
+  if(btnConnectFile) btnConnectFile.addEventListener('click', connectFile);
+  if(btnDisconnectFile) btnDisconnectFile.addEventListener('click', disconnectFile);
 
   // ---------- Persistence ----------
   var FAMILY_ICONS_KEY = 'cat_family_icons';
@@ -294,6 +272,7 @@
   var familyListEl = null; // remplacé par autocomplete custom
   var seriesListEl = null; // remplacé par autocomplete custom
   var groupBy = 'brand'; // 'brand' | 'family' | 'series'
+  var _lazyItems = []; // persistant entre renders et _loadMoreCards
   var viewAll = sessionStorage.getItem('cat_view_all') === '1'; // persisté sur F5
   window._getProducts = function(){ return products; };
   window._setViewAll = function(v){
@@ -518,7 +497,7 @@
 
     var hasSearch = !!normalizeSearch(searchInputEl.value);
     var html = '';
-    var _lazyItems = []; // produits à afficher progressivement
+    _lazyItems = []; // produits à afficher progressivement
 
     if(hasSearch || viewAll){
       // ── Mode recherche ou "Voir tout" : liste plate ──
@@ -540,7 +519,7 @@
       var totalRendered = 0;
       g.order.forEach(function(groupName){
         var items = g.groups[groupName];
-        html += '<div class="brand-group">';
+        html += '<div class="brand-group" data-group="'+escapeHtml(groupName)+'">';
         html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
         html += '<div class="grid">';
         items.forEach(function(p){
@@ -548,8 +527,8 @@
             html += renderCard(p);
             totalRendered++;
           } else {
-            // Stocker pour lazy load
-            _lazyItems.push(p);
+            // Stocker pour lazy load avec le groupe d'appartenance
+            _lazyItems.push({ p: p, group: groupName });
           }
         });
         html += '</div></div>';
@@ -563,17 +542,39 @@
     // ── Lazy load : charger plus de cartes au clic ou au scroll ──
     var _lazyOffset = 40;
     window._loadMoreCards = function(){
-      var grid = document.getElementById('lazyGrid') || contentEl.querySelector('.brand-group:last-of-type .grid');
+      // En mode recherche/viewAll : lazyGrid existe
+      // En mode normal (groupement) : utiliser le conteneur principal
+      var grid = document.getElementById('lazyGrid');
+      if(!grid){
+        // Mode groupement : utiliser #content et récupérer le dernier groupe
+        var mainContent = document.getElementById('content');
+        if(mainContent){
+          var allGroups = mainContent.querySelectorAll('.brand-group .grid');
+          if(allGroups.length > 0) grid = allGroups[allGroups.length - 1];
+        }
+      }
       if(!grid) return;
       var batch = _lazyItems.slice(0, 40);
       _lazyItems = _lazyItems.slice(40);
       var frag = document.createDocumentFragment();
       var tmp = document.createElement('div');
-      batch.forEach(function(p){ tmp.innerHTML = renderCard(p); frag.appendChild(tmp.firstChild); });
-      grid.appendChild(frag);
+      // Les items peuvent être des produits directs ou des objets {p, group}
+      batch.forEach(function(item){
+        var p = item.p || item;
+        var group = item.group;
+        var targetGrid = grid;
+        if(group){
+          // Trouver le groupe correspondant
+          var groupEl = contentEl.querySelector('.brand-group[data-group="'+group+'"] .grid');
+          if(groupEl) targetGrid = groupEl;
+        }
+        tmp.innerHTML = renderCard(p);
+        var card = tmp.firstChild;
+        targetGrid.appendChild(card);
+      });
       // Rebinder les clics sur les nouvelles cartes
       grid.querySelectorAll('[data-view]').forEach(function(card){
-        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
+        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ if(typeof window._closeMobileSearchBar==='function') window._closeMobileSearchBar(false); openView(card.getAttribute('data-view')); }); }
       });
       var moreBtn = document.getElementById('lazyMore');
       if(_lazyItems.length === 0){
@@ -583,8 +584,9 @@
       }
     };
 
-    // Auto-load au scroll
-    if(_lazyScrollHandler) window.removeEventListener('scroll', _lazyScrollHandler, true);
+    // Auto-load au scroll — écouter appContent (mobile) ou window (desktop)
+    var _scrollEl = document.getElementById('appContent') || window;
+    if(_lazyScrollHandler) _scrollEl.removeEventListener('scroll', _lazyScrollHandler, true);
     if(_lazyItems.length > 0){
       _lazyScrollHandler = function(){
         var el = document.getElementById('lazyMore');
@@ -592,12 +594,13 @@
         var rect = el.getBoundingClientRect();
         if(rect.top < window.innerHeight + 200){ window._loadMoreCards(); }
       };
-      window.addEventListener('scroll', _lazyScrollHandler, true);
+      _scrollEl.addEventListener('scroll', _lazyScrollHandler, true);
     }
 
     // Clic sur la carte → ouvre la vue de consultation
     contentEl.querySelectorAll('[data-view]').forEach(function(card){
       card.addEventListener('click', function(e){
+        if(typeof window._closeMobileSearchBar==='function') window._closeMobileSearchBar(false);
         openView(card.getAttribute('data-view'));
       });
     });

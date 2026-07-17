@@ -8,20 +8,6 @@
 var AUTH_SESSION_KEY = "cat_auth_user";   // sessionStorage : { token, user }
 var AUTH_SERVER_KEY  = "cat_server_url";  // localStorage : URL serveur
 
-// Compte admin de secours (fallback hors ligne)
-var AUTH_ADMIN_FALLBACK = {
-  username:    "admin",
-  displayName: "Administrateur",
-  isAdmin:     true,
-  credential: {
-    salt: "6013d7f3f4f34ef0974632754e6d1386",
-    hash: "70144e1536f3d16f5f218de0f16647f2205f4bd31d5bdb9ef9791c3c43da4506"
-  }
-};
-
-var AUTH_ADMIN_KEY  = "cat_auth_admin";
-var AUTH_USERS_KEY  = "cat_auth_users";
-
 // ── Helpers session ──────────────────────────────────────────────────────
 
 function _authGetSession() {
@@ -55,18 +41,6 @@ function authClearUser() {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
 }
 
-function authSetUser(account) {
-  // Fallback local (hors ligne)
-  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
-    token: null,
-    user: {
-      username:    account.username,
-      displayName: account.displayName,
-      isAdmin:     !!account.isAdmin,
-      permissions: account.permissions || _defaultPermissions(account.isAdmin)
-    }
-  }));
-}
 
 function _defaultPermissions(isAdmin) {
   return {
@@ -152,51 +126,11 @@ setInterval(function() {
 
 // ── Authentification locale (fallback hors ligne) ────────────────────────
 
-function authGetAdminCredential() {
-  try {
-    var raw = localStorage.getItem(AUTH_ADMIN_KEY);
-    if (raw) return JSON.parse(raw);
-    return AUTH_ADMIN_FALLBACK.credential || null;
-  } catch(e) { return AUTH_ADMIN_FALLBACK.credential || null; }
-}
-
-function authGetAllAccounts() {
-  var adminEntry = Object.assign({}, AUTH_ADMIN_FALLBACK, {
-    credential: authGetAdminCredential()
-  });
-  try {
-    var raw   = localStorage.getItem(AUTH_USERS_KEY);
-    var extra = raw ? JSON.parse(raw) : [];
-    return [adminEntry].concat(extra.filter(function(u) {
-      return u.username.toLowerCase() !== 'admin';
-    }));
-  } catch(e) { return [adminEntry]; }
-}
-
-function authSaveExtraAccounts(accounts) {
-  var extra = accounts.filter(function(u) {
-    return u.username.toLowerCase() !== 'admin';
-  });
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(extra));
-}
-
 async function sha256hex(str) {
   var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(function(b) {
     return b.toString(16).padStart(2, '0');
   }).join('');
-}
-
-async function authLoginLocal(username, password) {
-  var accounts = authGetAllAccounts();
-  var account  = accounts.find(function(a) {
-    return a.username.toLowerCase() === username.toLowerCase();
-  });
-  if (!account || !account.credential) return false;
-  var hash = await sha256hex(account.credential.salt + password);
-  if (hash !== account.credential.hash) return false;
-  authSetUser(account);
-  return true;
 }
 
 // ── Login principal (serveur d'abord, fallback local) ────────────────────
@@ -211,29 +145,22 @@ async function authLogin(username, password) {
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
+      // Rafraîchir le rendu pour appliquer les permissions
+      if (typeof render === 'function') render();
+      if (typeof renderHome === 'function') renderHome();
+      if (typeof showHome === 'function') showHome();
+      document.dispatchEvent(new CustomEvent('spi_auth_changed'));
+      if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
+      // Démarrer le polling demandes si admin
+      if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
+      // Sync serveur en arrière-plan uniquement
       if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-      // Import automatique du catalogue après login si pas encore de données
-      var products = typeof window._getProducts === 'function' ? window._getProducts() : null;
-      var needsImport = !products || products.length === 0;
-      if(needsImport && typeof syncFromServer === 'function'){
-        setTimeout(function(){ syncFromServer(false); }, 500);
-      }
+      if (typeof syncFromServer === 'function') setTimeout(function(){ syncFromServer(true); }, 300);
       return true;
     }
   }
 
-  // 2. Fallback local (hors ligne ou serveur non configuré)
-  var ok = await authLoginLocal(username, password);
-  if (ok) {
-    var user = authGetCurrentUser();
-    closeAuthModal();
-    applyAuthUI();
-    showAuthToast('Connecté en tant que ' + (user ? user.displayName : username) + ' (mode local)');
-    if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-    return true;
-  }
-
-  return false;
+    return false;
 }
 
 // ── Logout ───────────────────────────────────────────────────────────────
@@ -243,6 +170,11 @@ function authLogout() {
   authClearUser();
   applyAuthUI();
   showAuthToast('Déconnecté');
+  // Rafraîchir le rendu
+  if (typeof render === 'function') render();
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof showHome === 'function') showHome();
+  if (typeof window._reqStopPolling === 'function') window._reqStopPolling();
 }
 
 // ── Gestion utilisateurs serveur ─────────────────────────────────────────
@@ -334,6 +266,22 @@ function applyAuthUI() {
   var btnUsers = document.getElementById('btnOpenUserSettings');
   if (btnUsers) btnUsers.style.display = isAdmin ? 'flex' : 'none';
 
+  // Bouton Nettoyer descriptions : visible admin uniquement
+  var btnClean = document.getElementById('btnCleanDescs');
+  if (btnClean) btnClean.style.display = isAdmin ? '' : 'none';
+
+  // Bouton Mon compte : visible pour les non-admins connectés
+  var btnMyAccount2 = document.getElementById('btnOpenMyAccount');
+  if (btnMyAccount2) btnMyAccount2.style.display = (loggedIn && !isAdmin) ? 'flex' : 'none';
+
+  // Boutons dans l'en-tête de la page utilisateurs (admin uniquement)
+  var btnAdminPw = document.getElementById('btnAdminChangePassword');
+  var btnAddUserOpenBtn = document.getElementById('btnAddUserOpen');
+  var sUrlPw2 = localStorage.getItem(AUTH_SERVER_KEY);
+  if (btnAdminPw) btnAdminPw.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
+  if (btnAddUserOpenBtn) btnAddUserOpenBtn.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
+
+
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
@@ -364,11 +312,45 @@ function applyAuthUI() {
   var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
   if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 
-  // Export catalogue
-  var btnExport = document.getElementById('btnExportJSON');
-  if (btnExport) btnExport.style.display = canExport ? '' : 'none';
-  var btnExportXlsx = document.getElementById('btnExportXLSX');
-  if (btnExportXlsx) btnExportXlsx.style.display = canExport ? '' : 'none';
+  // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
+  var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
+  var canPropose = loggedIn && !canEdit && !!_sUrlReq;
+
+  // Bouton "Proposer un produit" dans le header (remplacement de btnAdd)
+  var btnPropose = document.getElementById('btnProposeProduct');
+  if (btnPropose) btnPropose.style.display = canPropose ? '' : 'none';
+
+  // Bouton FAB "proposer" (remplacement de btnFabAdd)
+  var btnFabPropose = document.getElementById('btnFabPropose');
+  if (btnFabPropose) btnFabPropose.style.display = canPropose ? '' : 'none';
+
+  // Champ suggestions : visible uniquement pour canEdit/admin
+  var fSuggestionsRow = document.getElementById('fSuggestionsRow');
+  if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
+
+  // Bouton "Proposer une modification" sur la fiche produit
+  var btnVmPropose = document.getElementById('vmProposeBtn');
+  if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';
+  // Ajouter/retirer classe has-propose sur viewModal pour décaler le i
+  var _viewModal = document.getElementById('viewModal');
+  if(_viewModal){
+    if(canPropose) _viewModal.classList.add('has-propose');
+    else _viewModal.classList.remove('has-propose');
+  }
+
+  // Export/Import JSON — admin uniquement
+  ['btnExport','btnImport'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = isAdmin ? '' : 'none';
+  });
+  // Export/Import Excel — si permission canExport
+  ['btnExportXlsx','btnImportXlsx'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = canExport ? '' : 'none';
+  });
+  // Séparateur entre export et compare — cacher si pas canExport
+  var _menuSeps = document.querySelectorAll('.hdr-menu-sep');
+  // (les séparateurs restent visibles pour ne pas casser le layout)
 
   // Sync serveur manuelle
   var serverButtonsSection = document.getElementById('serverButtonsSection');
@@ -381,6 +363,20 @@ function applyAuthUI() {
 
   updateAuthHeaderBtn(loggedIn, user);
 
+  // Bouton demandes dans le menu hamburger
+  var _btnReqMenu = document.getElementById('btnRequestsMenu');
+  var _reqMenuSep = document.getElementById('reqMenuSep');
+  var _sUrl       = localStorage.getItem('cat_server_url') || '';
+  var _showReq    = loggedIn && !!_sUrl;
+  if(_btnReqMenu) _btnReqMenu.style.display = _showReq ? '' : 'none';
+  if(_reqMenuSep) _reqMenuSep.style.display = _showReq ? '' : 'none';
+  if(!loggedIn){
+    var _badge     = document.getElementById('requestsBadge');
+    var _badgeMenu = document.getElementById('requestsBadgeMenu');
+    if(_badge)     { _badge.style.display = 'none'; _badge.textContent = ''; }
+    if(_badgeMenu) { _badgeMenu.style.display = 'none'; _badgeMenu.textContent = ''; }
+  }
+
   // Rafraîchir la page utilisateurs si ouverte (admin uniquement)
   if (isAdmin && typeof renderUserPage === 'function') renderUserPage();
 }
@@ -388,12 +384,15 @@ function applyAuthUI() {
 function updateAuthHeaderBtn(loggedIn, user) {
   var btn = document.getElementById('btnAuthToggle');
   if (!btn) return;
+  var nameEl = document.getElementById('hdrUsername');
   if (loggedIn) {
     btn.title = 'Connecté : ' + (user ? user.displayName : '');
     btn.innerHTML = '<i class="ti ti-logout" aria-hidden="true"></i>';
+    if(nameEl){ nameEl.textContent = user ? (user.displayName || user.username || '') : ''; nameEl.style.display = ''; }
     btn.onclick = function() { authLogout(); };
   } else {
     btn.title = 'Se connecter';
+    if(nameEl){ nameEl.textContent = ''; nameEl.style.display = 'none'; }
     btn.innerHTML = '<i class="ti ti-login" aria-hidden="true"></i>';
     btn.onclick = function() { openAuthModal(); };
   }
@@ -446,10 +445,8 @@ async function renderUserPage() {
     }
   }
 
-  // Fallback local
-  var localUsers = authGetAllAccounts();
-  _renderUserList(container, localUsers, false);
-  _bindAddUserForm(false);
+  // Pas de serveur → message
+  container.innerHTML = '<p style="color:var(--ink-soft);font-size:13px;padding:12px 0;">Connectez-vous au serveur pour gérer les utilisateurs.</p>';
 }
 
 function _renderUserList(container, users, isServer) {
@@ -468,6 +465,9 @@ function _renderUserList(container, users, isServer) {
     : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;margin-left:8px;">⚠️ Local</span>';
 
   window._cachedUsers = users; // pour récupérer les permissions au clic Modifier
+  // Fonction d'échappement XSS locale
+  function _esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
   var header = document.createElement('div');
   header.style.cssText = 'display:flex;align-items:center;margin-bottom:12px;';
   header.innerHTML = '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);">Utilisateurs</span>' + source;
@@ -476,16 +476,14 @@ function _renderUserList(container, users, isServer) {
   users.forEach(function(u) {
     var isSelf   = user && u.username === user.username;
     var isAdminU = u.isAdmin || u.username === 'admin';
-    var perms    = u.permissions || {};
-
-    // Badges permissions
+    var perms    = u.permissions || {};  // Badges permissions
     var permBadges = '';
     if (isAdminU) {
       permBadges = '<span style="font-size:10px;background:#EEF4FF;color:#194093;border-radius:4px;padding:1px 6px;margin-right:3px;">Admin complet</span>';
     } else {
       var permList = [
         ['canEdit','Éditer'],['canDelete','Supprimer'],['canViewDocs','Docs'],
-        ['canUploadDocs','Upload'],['canExport','Export'],['canSyncServer','Sync']
+        ['canExport','Export'],['canSyncServer','Data'],['canReq','Req']
       ];
       permList.forEach(function(p) {
         var active = !!perms[p[0]];
@@ -498,8 +496,8 @@ function _renderUserList(container, users, isServer) {
     div.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:'+(isAdminU?'#194093':'#e2e8f0')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
       + '<i class="ti '+(isAdminU?'ti-shield-check':'ti-user')+'" style="color:'+(isAdminU?'#fff':'#64748b')+';font-size:16px;"></i></div>'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + (u.displayName||u.username)
-      + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+u.username+'</span></div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + _esc(u.displayName||u.username)
+      + '<span style="font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px;">@'+_esc(u.username)+'</span></div>'
       + '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px;">' + permBadges + '</div>'
       + '</div>'
       + (isSelf
@@ -576,25 +574,51 @@ function _bindAddUserForm(isServer) {
 }
 
 function openAddUserModal() {
+  var PERM_LIST = [
+    ['canEdit',        'Créer et modifier des produits'],
+    ['canDelete',      'Supprimer des produits'],
+    ['canViewDocs',    'Voir les documents PDF'],
+    ['canUploadDocs',  'Envoyer des documents PDF'],
+    ['canExport',      'Exporter le catalogue'],
+    ['canSyncServer',  'Data serveur'],
+    ['canReq',         'Soumettre des demandes']
+  ];
+
+  var permCheckboxes = PERM_LIST.map(function(p) {
+    var checked = p[0] === 'canViewDocs' ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:2px 0;">'
+      + '<input type="checkbox" class="_nuPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+  }).join('');
+
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_nuUsername" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_nuDisplay" placeholder="Nom affiché" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuDisplay" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_nuPassword" type="password" placeholder="Mot de passe" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;">'
-    + '<input type="checkbox" id="_nuAdmin"> Administrateur</label>'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:6px 0;border-top:1px solid var(--line);margin-top:4px;">'
+    + '<input type="checkbox" id="_nuAdmin"> <strong>Administrateur</strong> (acc\u00e8s complet)</label>'
+    + '<div id="_nuPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Permissions individuelles</div>'
+    + permCheckboxes
+    + '</div>'
     + '</div>'
     + '<div id="_nuError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
     + '<button id="_nuCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Créer l\'utilisateur</button>'
+    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cr\u00e9er l&#39;utilisateur</button>'
     + '</div></div>';
   document.body.appendChild(ov);
 
   ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
+
+  ov.querySelector('#_nuAdmin').addEventListener('change', function() {
+    var sec = ov.querySelector('#_nuPermsSection');
+    if (sec) sec.style.display = this.checked ? 'none' : '';
+  });
+
   ov.querySelector('#_nuSubmit').onclick = async function() {
     var username    = ov.querySelector('#_nuUsername').value.trim();
     var displayName = ov.querySelector('#_nuDisplay').value.trim();
@@ -608,25 +632,32 @@ function openAddUserModal() {
       return;
     }
 
+    var permsNew = _defaultPermissions(isAdminNew);
+    if (!isAdminNew) {
+      ov.querySelectorAll('._nuPerm').forEach(function(cb) {
+        permsNew[cb.getAttribute('data-perm')] = cb.checked;
+      });
+      permsNew.canViewDocs = true;
+    }
+
     var ok = await authCreateUser({
       username:    username,
       displayName: displayName || username,
       password:    password,
       isAdmin:     isAdminNew,
-      permissions: _defaultPermissions(isAdminNew)
+      permissions: permsNew
     });
 
     if (ok) {
       document.body.removeChild(ov);
-      showAuthToast('Utilisateur créé ✓');
+      showAuthToast('Utilisateur cr\u00e9\u00e9 \u2713');
       renderUserPage();
     } else {
-      errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
+      errEl.textContent = 'Erreur \u2014 identifiant d\u00e9j\u00e0 existant ou serveur inaccessible.';
       errEl.style.display = '';
     }
   };
 }
-
 function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   currentPerms = currentPerms || {};
   function _escapeHtml(value) {
@@ -638,12 +669,13 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
       .replace(/'/g, '&#39;');
   }
   var PERM_LIST = [
-    ['canEdit',       'Créer et modifier des produits'],
-    ['canDelete',     'Supprimer des produits'],
-    ['canViewDocs',   'Voir les documents PDF'],
-    ['canUploadDocs', 'Uploader des documents PDF'],
-    ['canExport',     'Exporter le catalogue'],
-    ['canSyncServer', 'Synchronisation serveur']
+    ['canEdit',        'Créer et modifier des produits'],
+    ['canDelete',      'Supprimer des produits'],
+    ['canViewDocs',    'Voir les documents PDF'],
+    ['canUploadDocs',  'Envoyer des documents PDF'],
+    ['canExport',      'Exporter le catalogue'],
+    ['canSyncServer',  'Data serveur'],
+    ['canReq',         'Soumettre des demandes']
   ];
 
   var safeTitleName = _escapeHtml(displayName || username);
@@ -698,6 +730,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
         permsNew[cb.getAttribute('data-perm')] = cb.checked;
       });
       permsNew.canViewDocs = true; // toujours autorisé
+
     }
 
     var data = { isAdmin: isAdminNew, permissions: permsNew };
@@ -716,10 +749,63 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   };
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────
+function openChangePasswordModal() {
+  var user = authGetCurrentUser();
+  var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+  if (!user || !sUrl) return;
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Changer mon mot de passe</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;">'
+    + '<input id="_cpCurrent" type="password" placeholder="Mot de passe actuel" autocomplete="current-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_cpNew" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_cpConfirm" type="password" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '</div>'
+    + '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;">'
+    + '<button id="_cpCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
+    + '<button id="_cpSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+
+  ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_cpSubmit').onclick = async function() {
+    var pwCur  = ov.querySelector('#_cpCurrent').value;
+    var pw1    = ov.querySelector('#_cpNew').value;
+    var pw2    = ov.querySelector('#_cpConfirm').value;
+    var errEl  = ov.querySelector('#_cpError');
+    errEl.textContent = '';
+
+    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
+    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
+    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; return; }
+    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+    try {
+      var r = await fetch(sUrl + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, password: pwCur })
+      });
+      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
+    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
+
+    var ok = await authUpdateUser(user.username, { password: pw1 });
+    if (ok) {
+      document.body.removeChild(ov);
+      showAuthToast('Mot de passe modifié ✓');
+    } else {
+      errEl.textContent = 'Erreur serveur.';
+    }
+  };
+}
 
 function initAuth() {
   applyAuthUI();
+  // Notifier les composants (bottom nav, menu sheet) après applyAuthUI
+  setTimeout(function(){ document.dispatchEvent(new CustomEvent('spi_auth_changed')); }, 300);
 
   // Bouton "Se connecter"
   async function doLogin() {
@@ -746,11 +832,24 @@ function initAuth() {
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
 
   // Navigation gérée dans actions.js
+  // Bouton Mon compte → ouvre directement la modale changement mot de passe
+  var btnMyAcc = document.getElementById('btnOpenMyAccount');
+  if (btnMyAcc) btnMyAcc.addEventListener('click', function() {
+    openChangePasswordModal();
+  });
 
   // Vérifier token au chargement
   if (authIsLoggedIn() && authGetToken()) {
     authRefreshMe();
   }
+
+  // Bouton "Mon mot de passe" dans l'en-tête de la page utilisateurs
+  var btnAdminChangePw = document.getElementById('btnAdminChangePassword');
+  if (btnAdminChangePw) btnAdminChangePw.addEventListener('click', function() { openChangePasswordModal(); });
+
+  // Bouton "Ajouter" dans l'en-tête de la page utilisateurs
+  var btnAddUserOpen = document.getElementById('btnAddUserOpen');
+  if (btnAddUserOpen) btnAddUserOpen.addEventListener('click', function() { openAddUserModal(); });
 }
 
 function authApplyOnProductModal() {

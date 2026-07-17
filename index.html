@@ -1,28 +1,92 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <!-- ── Splash écran blanc immédiat ── -->
+  <style>
+    #app-splash{
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
+      margin-top:calc(-1 * env(safe-area-inset-top, 0));
+      z-index:99999;
+      background:#194093;
+      display:var(--splash-display, block);
+      transition:opacity .3s ease;
+      overflow:hidden;
+    }
+    #app-splash video{
+      position:absolute;
+      top:calc(-1 * env(safe-area-inset-top, 0));
+      left:0;right:0;bottom:0;
+      width:100%;
+      height:calc(100% + env(safe-area-inset-top, 0) + env(safe-area-inset-bottom, 0));
+      object-fit:cover;
+      object-position:center center;
+    }
+    /* Tablette : vidéo à 65% de la taille */
+    @media (max-width: 1024px){
+      #app-splash video{
+        width:65%;
+        height:65%;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+      }
+    }
+    /* Mobile : vidéo à 50% de la taille */
+    @media (max-width: 480px){
+      #app-splash video{
+        width:50%;
+        height:50%;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+      }
+    }
+    body.splash-active{ overflow:hidden; position:fixed; width:100%; touch-action:none; }
+    #app-splash.hide{ opacity:0; pointer-events:none; }
+    /* Dès que splash est caché, le body reprend son fond normal immédiatement */
+    body:not(:has(#app-splash:not(.hide))){ background:var(--paper, #F8F7F4) !important; }
+  </style>
+
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com http: https:; worker-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com http: https:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:;">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SPI">
 <link rel="manifest" href="manifest.webmanifest">
 <title>SPI Engineering — Catalogue Électrique</title>
 <link rel="stylesheet" href="css/styles.css">
-<script src="js/auth.js" defer></script>
+<!-- Préchargement des ressources critiques -->
+  <link rel="preload" href="js/storage.js" as="script">
+  <link rel="preload" href="js/init.js" as="script">
+  <link rel="preload" href="css/styles.css" as="style">
+  <script src="js/auth.js" defer></script>
 <script src="js/storage.js" defer></script>
 <script src="js/render.js" defer></script>
 <script src="js/modal.js" defer></script>
 <script src="js/actions.js" defer></script>
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
+<script src="js/requests.js" defer></script>
+
 </head>
 <body>
+  <script>if(sessionStorage.getItem('app_started')){document.documentElement.style.setProperty('--splash-display','none');}else{document.body.classList.add('splash-active');}</script>
+  <div id="app-splash">
+    <video autoplay muted playsinline preload="auto"
+      onended="var s=document.getElementById('app-splash');if(s){s.classList.add('hide');document.body.classList.remove('splash-active');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}">
+      <source src="assets/splash.mp4" type="video/mp4">
+    </video>
+  </div>
+  </div>
 
 <header>
   <div class="brandmark" id="brandmarkLogo" style="cursor:pointer;" title="Retour à l'accueil">
@@ -42,13 +106,13 @@
   <div class="hdr-spacer"></div>
   <div class="header-actions">
     <span class="hdr-count-chip" id="hdrCountChip" style="display:none;">0 produit</span>
-    <span class="filebar-tooltip-wrap" id="filebarTooltipWrap" style="display:none;">
-      <span class="filebar-tooltip-icon">i</span>
-      <span class="filebar-tooltip-box" id="filebarTooltipBox"></span>
-    </span>
+    <span id="hdrUsername" style="display:none;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;"></span>
     <button id="btnAuthToggle" class="secondary hdr-menu-btn" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
+
     <div class="hdr-menu-wrap" id="hdrMenuWrap">
-      <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options">⋮</button>
+      <button class="secondary hdr-menu-btn" id="hdrMenuBtn" title="Plus d'options" style="position:relative;">⋮
+        <span id="requestsBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;"></span>
+      </button>
       <div class="hdr-menu" id="hdrMenu">
         <button class="hdr-menu-item" id="btnExport">
           <span class="mi-icon blue"><i class="ti ti-download" aria-hidden="true"></i></span>
@@ -78,6 +142,14 @@
           <span class="mi-texts"><span class="mi-title">Comparer les offres</span><span class="mi-sub">Importer les fichiers fournisseurs</span></span>
         </button>
         <div class="hdr-menu-sep"></div>
+        <button class="hdr-menu-item" id="btnRequestsMenu" style="display:none;">
+          <span class="mi-icon" style="background:#EFF6FF;position:relative;">
+            <i class="ti ti-bell" style="color:#194093;"></i>
+            <span id="requestsBadgeMenu" style="display:none;position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:14px;"></span>
+          </span>
+          <span class="mi-texts"><span class="mi-title">Demandes en attente</span><span class="mi-sub">Modifications proposées</span></span>
+        </button>
+        <div class="hdr-menu-sep" id="reqMenuSep" style="display:none;"></div>
         <button class="hdr-menu-item" id="btnSettings">
           <span class="mi-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
           <span class="mi-texts"><span class="mi-title">Paramètres</span><span class="mi-sub">Icônes des familles, Serveur</span></span>
@@ -135,8 +207,33 @@
 </div>
 
 
+    <button class="copper" id="btnAdd">Ajouter un produit</button>
+    <button class="copper" id="btnProposeProduct" style="display:none;">
+      <i class="ti ti-edit" aria-hidden="true"></i> Proposer un produit
+    </button>
+  </div>
+</header>
+
+<!-- ===== BARRE RECHERCHE MOBILE STICKY ===== -->
+<div id="mobileSearchBar" style="display:none;">
+  <div class="mobile-search-inner">
+    <div class="mobile-search-field">
+      <i class="ti ti-search" style="color:var(--ink-soft);font-size:16px;"></i>
+      <input id="mobileSearchInput" type="text" placeholder="Rechercher…" autocomplete="off" inputmode="search" enterkeyhint="search">
+      <button id="mobileSearchClear" style="display:none;"><i class="ti ti-x"></i></button>
+    </div>
+    <button id="mobileSearchCancel">Annuler</button>
+  </div>
+</div>
+<!-- ===== FIN BARRE RECHERCHE MOBILE ===== -->
+
+<!-- ===== CONTENU SCROLLABLE ===== -->
+<div id="appContent">
+
+
+
 <!-- Modale Gestion des prix -->
-<div id="priceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+<div id="priceModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10100;align-items:center;justify-content:center;padding:16px;">
   <div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--line);">
@@ -208,15 +305,15 @@
     </div>
   </div>
 </div>
-
 <!-- Modale Paramètres -->
 <div id="settingsOverlay">
   <div class="settings-box">
+    <div class="sheet-handle-bar"></div>
     <div class="settings-header">
       <h3>Paramètres</h3>
       <button class="close sans" id="settingsClose" aria-label="Fermer">&times;</button>
     </div>
-    <div class="settings-body">
+    <div class="settings-body" id="settingsMainBody">
       <button id="btnOpenFamilyIcons" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#EEF4FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-category" style="font-size:20px;color:var(--copper);"></i>
@@ -237,6 +334,18 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
+      <!-- Bouton Mon compte - visible pour les non-admins connectés -->
+      <button id="btnOpenMyAccount" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+        <span style="width:38px;height:38px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-user-circle" style="font-size:20px;color:#7C3AED;"></i>
+        </span>
+        <span>
+          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Mon compte</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Modifier mon mot de passe</span>
+        </span>
+        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
+      </button>
+
       <button id="btnOpenUserSettings" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-users" style="font-size:20px;color:#3B82F6;"></i>
@@ -285,8 +394,7 @@
       <div class="settings-body">
         <div style="margin-bottom:16px;">
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);display:block;margin-bottom:6px;">URL du serveur json-server</label>
-          <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);">
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:5px;">Utilise les endpoints <code>/pushDatas</code>, <code>/pullDatas</code> et <code>/health</code></div>
+          <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000" style="width:100%;padding:9px 12px;margin: 0px 0px 22px 0px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);">
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
           <button id="btnTestServer" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);">
@@ -311,51 +419,24 @@
 
     <!-- Sous-page Utilisateurs -->
     <div id="settingsUserPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
-        <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
-          <i class="ti ti-arrow-left"></i>
-        </button>
-        <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+            <i class="ti ti-arrow-left"></i>
+          </button>
+          <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btnAdminChangePassword" style="display:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+            <i class="ti ti-key" style="font-size:14px;"></i> Mon mot de passe
+          </button>
+          <button id="btnAddUserOpen" style="display:none;padding:7px 12px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+            <i class="ti ti-user-plus" style="font-size:14px;"></i> Ajouter
+          </button>
+        </div>
       </div>
       <div class="settings-body">
-        <div id="userList" style="margin-bottom:16px;"></div>
-        <div style="border-top:1px solid var(--line);padding-top:16px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Ajouter un utilisateur</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Identifiant</label>
-              <input type="text" id="newUserUsername" placeholder="ex: jean.dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nom affiché</label>
-              <input type="text" id="newUserDisplay" placeholder="ex: Jean Dupont" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Mot de passe</label>
-              <input type="password" id="newUserPassword" placeholder="••••••••" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div id="newUserError" style="font-size:13px;color:#DC2626;min-height:16px;"></div>
-            <button id="btnAddUser" style="width:100%;height:44px;background:#194093;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
-              Ajouter l'utilisateur
-            </button>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--line);padding-top:16px;margin-top:8px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:12px;">Mot de passe administrateur</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Nouveau mot de passe</label>
-              <input type="password" id="adminPw1" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:5px;">Confirmer</label>
-              <input type="password" id="adminPw2" placeholder="••••••••" autocomplete="new-password" style="width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-family:inherit;">
-            </div>
-            <button id="setAdminPwBtn" style="width:100%;height:44px;background:#5C8A3C;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
-              Définir le mot de passe admin
-            </button>
-          </div>
-        </div>
+        <div id="userList"></div>
       </div>
     </div>
 
@@ -385,9 +466,9 @@
     <div class="icon-picker-grid" id="iconPickerGrid"></div>
   </div>
 </div>
-    <button class="copper" id="btnAdd">Ajouter un produit</button>
-  </div>
-</header>
+</div>
+
+
 
 <div id="homePage">
   <div class="home-stats" id="homeStats"></div>
@@ -399,16 +480,14 @@
   <div class="home-families" id="homeFamilies"></div>
 </div>
 
-<div class="wrap" id="catalogueWrap">
+<div class="wrap" id="catalogueWrap" style="display:none;">
 
   <div class="toolbar">
     <div class="search-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="searchInput" placeholder="Rechercher par référence, nom ou description…">
     </div>
-    <button class="search-toggle-btn" id="searchToggleBtn" title="Rechercher" aria-label="Ouvrir la recherche">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
+
     <select id="brandFilter">
       <option value="">Toutes les marques</option>
     </select>
@@ -425,11 +504,42 @@
       <i class="ti ti-arrows-sort sort-icon" aria-hidden="true" id="sortPriceIcon"></i>
       Prix
     </button>
+    <!-- Bouton filtres mobile uniquement -->
+    <button id="btnFilterSheet" class="filter-sheet-fab" title="Filtres" style="display:none;">
+      <i class="ti ti-adjustments-horizontal"></i>
+      <span id="filterSheetBadge" class="filter-sheet-badge" style="display:none;"></span>
+    </button>
+
 
   </div>
-  <div class="search-expand" id="searchExpand">
-    <input type="text" id="searchInputMobile" placeholder="Rechercher…">
-    <button class="search-close-btn" id="searchCloseBtn" aria-label="Fermer">✕</button>
+
+
+  <!-- Bottom sheet filtres mobile -->
+  <div id="filterSheetOverlay" style="display:none;"></div>
+  <div id="filterSheet" class="filter-sheet">
+    <div class="filter-sheet-handle"></div>
+    <div class="filter-sheet-header">
+      <span class="filter-sheet-title">Filtres</span>
+      <button id="filterSheetClose" class="filter-sheet-close">✕</button>
+    </div>
+    <div class="filter-sheet-body">
+      <label class="filter-sheet-label">Marque</label>
+      <select id="filterSheetBrand" class="filter-sheet-select">
+        <option value="">Toutes les marques</option>
+      </select>
+      <label class="filter-sheet-label">Famille</label>
+      <select id="filterSheetFamily" class="filter-sheet-select">
+        <option value="">Toutes les familles</option>
+      </select>
+      <label class="filter-sheet-label">Série</label>
+      <select id="filterSheetSeries" class="filter-sheet-select">
+        <option value="">Toutes les séries</option>
+      </select>
+      <div class="filter-sheet-actions">
+        <button id="filterSheetReset" class="filter-sheet-btn-reset"><i class="ti ti-filter-off"></i> Réinitialiser</button>
+        <button id="filterSheetApply" class="filter-sheet-btn-apply">Appliquer</button>
+      </div>
+    </div>
   </div>
 
   <div class="group-toggle sans" id="groupToggle">
@@ -445,23 +555,11 @@
 
 </div>
 
-<footer>
-  <div class="filebar" id="filebar">
-    <span class="dot" id="filebarDot"></span>
-    <span class="filebar-status" id="filebarStatus">Données enregistrées dans ce navigateur</span>
-    <button class="secondary" id="btnConnectFile" type="button">Choisir un fichier sur mon PC</button>
-    <button class="secondary" id="btnDisconnectFile" type="button" style="display:none;">Déconnecter</button>
-  </div>
-</footer>
+
 
 <div class="fab-stack">
-  <div class="fab-search-box" id="fabSearchBox">
-    <input type="text" id="fabSearchInput" placeholder="Rechercher…" autocomplete="off">
-    <button class="fab-search-close" id="fabSearchClose" aria-label="Fermer">✕</button>
-  </div>
-  <button id="btnFabSearch" class="fab sans" aria-label="Rechercher" title="Rechercher" style="position:relative;">
-    <svg class="svg-lupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <svg class="svg-cross" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linecap="round" style="width:20px;height:20px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  <button id="btnFabPropose" class="fab sans" aria-label="Proposer un produit" title="Proposer un produit" style="display:none;">
+    <i class="ti ti-edit" style="font-size:18px;"></i>
   </button>
   <button id="btnFabAdd" class="fab sans" aria-label="Ajouter un produit" title="Ajouter un produit">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -482,6 +580,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
         <button class="vm-info-btn" id="vmInfoBtn" title="Actions">i</button>
+        <button id="vmProposeBtn" title="Proposer une modification">
+          <i class="ti ti-edit" style="font-size:15px;"></i>
+        </button>
         <div class="vm-info-menu" id="vmInfoMenu">
           <button id="vmEditBtn">Modifier la fiche</button>
           <hr>
@@ -499,11 +600,24 @@
           </div>
           <div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:Calibri,Arial,sans-serif;"></div>
       <div class="vm-price-history" id="vmPriceHistory"></div>
-      <div id="vmDocBtnWrap" style="display:none;margin-top:14px;">
-        <button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;">
-          <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents
-        </button>
+      <!-- ===== BOUTONS DOC + SUGGESTIONS ===== -->
+      <div class="vm-actions-row">
+        <div id="vmDocBtnWrap" style="display:none;">
+          <button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:100%;">
+            <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents
+          </button>
+        </div>
+        <div id="vmSuggestionsSection" style="display:none;">
+          <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:100%;">
+            <i class="ti ti-bulb" style="font-size:17px;"></i>
+            <span id="vmSuggestionsToggleLabel">Afficher suggestions</span>
+          </button>
+        </div>
       </div>
+      <div id="vmSuggestionsCarousel" style="display:none;margin-top:10px;">
+        <div class="sug-carousel" id="vmSuggestionsTrack"></div>
+      </div>
+      <!-- ===== FIN BOUTONS DOC + SUGGESTIONS ===== -->
 
           <!-- ===== SECTION PDF ===== -->
           <div id="vmPdfSection" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
@@ -594,16 +708,33 @@
         <div class="autocomplete-wrap"><input type="text" id="fSupplier" placeholder="ex. Dupont Distribution" autocomplete="off">
         <div class="autocomplete-suggestions" id="supplierSuggestions"></div></div>
       </div>
+      <div class="field">
+        <label for="fLeadTime">Délai de disponibilité</label>
+        <input type="text" id="fLeadTime" placeholder="ex. 3-5 jours, 2 semaines, sur commande...">
+      </div>
       <div class="field field-checkbox">
         <div class="checkbox-row">
           <input type="checkbox" id="f3dAvailable">
           <span class="checkbox-label">3DEXPERIENCE</span>
+          <input type="checkbox" id="fEssential" style="margin-left:18px;">
+          <span class="checkbox-label">Essentiel</span>
         </div>
       </div>
       <div class="field" id="f3dLinkRow" style="display:none;">
         <label for="f3dLink">Lien 3DEXPERIENCE</label>
         <input type="url" id="f3dLink" placeholder="https://...">
       </div>
+
+      <!-- ===== CHAMP SUGGESTIONS ===== -->
+      <div class="field" id="fSuggestionsRow">
+        <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 10)</span></label>
+        <div class="sug-autocomplete-wrap" style="position:relative;">
+          <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
+          <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
+        </div>
+        <div class="sug-chips" id="fSuggestionsChips"></div>
+      </div>
+      <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
 
       <div class="tabs">
         <button class="tab-btn active" data-tab="auto">Extraction automatique</button>
@@ -700,23 +831,15 @@
 
       <!-- ===== SECTION PDF FORMULAIRE ===== -->
       <div id="modalPdfSection" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
-        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Document PDF</div>
-        <div id="modalPdfExisting" style="display:none;">
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);">
-            <i class="ti ti-file-type-pdf" style="font-size:20px;color:#E53E3E;flex-shrink:0;"></i>
-            <span id="modalPdfFilename" style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-            <button id="modalPdfReplaceBtn" style="padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">Remplacer</button>
-            <button id="modalPdfRemoveBtn" style="padding:4px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">Supprimer</button>
-          </div>
-        </div>
-        <div id="modalPdfUpload" style="display:none;">
-          <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;width:fit-content;">
-            <i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;"></i>
-            Ajouter un document PDF
-            <input type="file" id="modalPdfInput" accept=".pdf" style="display:none;">
-          </label>
-        </div>
-        <input type="file" id="modalPdfReplaceInput" accept=".pdf" style="display:none;">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Documents PDF</div>
+        <!-- Liste des fichiers existants (multi-doc) -->
+        <div id="modalPdfList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+        <!-- Zone d'ajout -->
+        <label id="modalPdfUpload" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;">
+          <i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;"></i>
+          Ajouter un ou plusieurs PDF
+          <input type="file" id="modalPdfInput" accept=".pdf" multiple style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+        </label>
       </div>
       <!-- ===== FIN SECTION PDF FORMULAIRE ===== -->
 
@@ -795,7 +918,7 @@
 
   <!-- ── Popup installation PWA ────────────────────────────────────── -->
   <div id="pwaInstallBanner" style="
-    display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    display:none;position:fixed;bottom:75px;left:50%;transform:translateX(-50%);
     z-index:9999;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
     border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
     padding:clamp(10px,4vw,18px);max-width:340px;width:calc(100% - 24px);
@@ -842,6 +965,60 @@
   </div>
 
 
+<!-- ===== PANNEAU DEMANDES ===== -->
+<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10800;align-items:flex-start;justify-content:flex-end;">
+  <div id="requestsPanel" style="background:var(--paper-card);width:100%;max-width:560px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.2);overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="ti ti-bell" style="font-size:20px;color:#194093;"></i>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--ink);">Demandes en attente</div>
+          <div id="requestsPanelSubtitle" style="font-size:12px;color:var(--ink-soft);margin-top:1px;"></div>
+        </div>
+      </div>
+      <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
+    </div>
+    <!-- Onglets Admin / Mes demandes -->
+    <div id="requestsTabs" style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <button class="req-tab active" data-tab="admin" id="reqTabAdmin" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#194093;border-bottom:2px solid #194093;cursor:pointer;font-family:inherit;">Demandes reçues</button>
+      <button class="req-tab" data-tab="mine" id="reqTabMine" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:var(--ink-soft);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">Mes demandes</button>
+    </div>
+    <!-- Corps -->
+    <div id="requestsBody" style="flex:1;overflow-y:auto;"></div>
+    <!-- Footer admin -->
+    <div id="requestsFooter" style="display:none;padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+      <button id="btnAcceptAllRequests" class="copper" style="padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-check"></i> Tout accepter
+      </button>
+      <button id="btnRefuseAllRequests" style="padding:8px 18px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-x"></i> Tout refuser
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN PANNEAU DEMANDES ===== -->
+
+<!-- ===== MODALE DÉTAIL DEMANDE ===== -->
+<div id="reqDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10900;align-items:center;justify-content:center;padding:16px;">
+  <div id="reqDetailModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
+      <div>
+        <div id="reqDetailTitle" style="font-size:15px;font-weight:700;color:var(--ink);"></div>
+        <div id="reqDetailSubtitle" style="font-size:12px;color:var(--ink-soft);margin-top:2px;"></div>
+      </div>
+      <button id="reqDetailClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
+    </div>
+    <div id="reqDetailBody" style="flex:1;overflow-y:auto;padding:20px;"></div>
+    <div id="reqDetailFooter" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">
+      <button id="reqDetailRefuse" class="req-btn-refuse"><i class="ti ti-x"></i> Refuser</button>
+      <button id="reqDetailEdit" style="display:none;padding:9px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i> Modifier</button>
+      <button id="reqDetailAccept" class="req-btn-accept"><i class="ti ti-check"></i> Accepter</button>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN MODALE DÉTAIL DEMANDE ===== -->
+
 <!-- ── Modale Login ─────────────────────────────────────── -->
 <div id="authOverlay">
   <div class="auth-box">
@@ -849,7 +1026,7 @@
     <div class="auth-box-header">
       <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
       <h2>Connexion</h2>
-      <p>Accès réservé aux administrateurs</p>
+      <p>Accès réservé</p>
     </div>
     <div class="auth-fields">
       <div class="auth-field-wrap">
@@ -903,5 +1080,163 @@
   </div>
 </div>
 <!-- ===== FIN MODALE DOCUMENTS ===== -->
+
+<!-- ===== PDF VIEWER ===== -->
+<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;">
+  <div style="background:#1a1a1a;border-radius:14px;width:100%;max-width:1040px;height:94vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#2a2a2a;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+        <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;flex-shrink:0;"></i>
+        <span id="pdfViewerTitle" style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      </div>
+      <button id="pdfViewerClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:rgba(255,255,255,.6);padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
+    </div>
+    <!-- Loader -->
+    <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:14px;">
+      <i class="ti ti-loader-2" style="font-size:36px;color:#fff;animation:spin 1s linear infinite;"></i>
+      <span style="font-size:13px;color:rgba(255,255,255,.5);">Chargement…</span>
+    </div>
+    <!-- iframe blob — viewer natif du navigateur -->
+    <iframe id="pdfViewerFrame" style="display:none;flex:1;border:none;width:100%;" title="Visualiseur PDF"></iframe>
+  </div>
+</div>
+<!-- ===== FIN PDF VIEWER ===== -->
+<!-- ===== PAGE COMPTE MOBILE (bottom sheet) ===== -->
+<div id="accountSheetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9550;"></div>
+<div id="accountSheet" class="account-sheet">
+  <div class="filter-sheet-handle"></div>
+  <div class="account-sheet-header">
+    <span class="filter-sheet-title" id="accountSheetTitle">Mon compte</span>
+    <button id="accountSheetClose" class="filter-sheet-close">✕</button>
+  </div>
+  <div id="accountSheetBody" class="account-sheet-body"></div>
+</div>
+<!-- ===== FIN PAGE COMPTE MOBILE ===== -->
+
+<!-- ===== FLOATING SEARCH (mobile) ===== -->
+<div id="floatingSearchOverlay" style="display:none;"></div>
+<div id="floatingSearch" style="display:none;position:fixed;left:0;right:0;bottom:0;margin-bottom:calc(56px + env(safe-area-inset-bottom));z-index:9801;background:var(--paper-card);border-top: 1.5px solid var(--line);padding:12px 16px 16px;box-shadow:0 -4px 20px rgba(0,0,0,.12);border-radius:16px 16px 0 0;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="flex:1;position:relative;">
+      <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;opacity:.45;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="floatingSearchInput" type="text" placeholder="Rechercher…" autocomplete="off"
+        style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:Calibri,Arial,sans-serif;outline:none;box-sizing:border-box;">
+    </div>
+    <button id="floatingSearchClose" style="background:none;border:none;font-size:15px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:Calibri,Arial,sans-serif;white-space:nowrap;">Annuler</button>
+  </div>
+</div>
+<!-- ===== FIN FLOATING SEARCH ===== -->
+
+<!-- ===== MENU SHEET MOBILE ===== -->
+<div id="menuSheetOverlay" style="display:none;"></div>
+<div id="menuSheet" class="menu-sheet">
+  <div class="filter-sheet-handle"></div>
+  <div class="menu-sheet-header">
+    <span class="filter-sheet-title">Menu</span>
+    <button id="menuSheetClose" style="background:none!important;border:none!important;box-shadow:none!important;outline:none!important;font-size:20px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+  </div>
+  <div class="menu-sheet-body">
+
+    <!-- Connexion -->
+    <div class="menu-sheet-section">
+      <button class="menu-sheet-item" id="msAuth">
+        <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-user" id="msAuthIcon" style="color:#194093;"></i></span>
+        <span class="menu-sheet-texts">
+          <span class="menu-sheet-title" id="msAuthLabel">Se connecter</span>
+          <span class="menu-sheet-sub" id="msAuthSub">Accès réservé</span>
+        </span>
+        <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+      </button>
+    </div>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Demandes (admin) -->
+    <button class="menu-sheet-item" id="msRequests" style="display:none;">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;position:relative;">
+        <i class="ti ti-bell" style="color:#194093;"></i>
+        <span id="msBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:14px;"></span>
+      </span>
+      <span class="menu-sheet-texts">
+        <span class="menu-sheet-title">Demandes en attente</span>
+        <span class="menu-sheet-sub">Modifications proposées</span>
+      </span>
+      <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Export / Import -->
+    <div class="menu-sheet-section-title">Données</div>
+    <button class="menu-sheet-item" id="msExport">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-download" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Exporter JSON</span><span class="menu-sheet-sub">Sauvegarde complète</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msImport">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer JSON</span><span class="menu-sheet-sub">Restaurer ou fusionner</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msExportXlsx">
+      <span class="menu-sheet-icon" style="background:#F0FDF4;"><i class="ti ti-file-spreadsheet" style="color:#16A34A;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Exporter Excel</span><span class="menu-sheet-sub">Envoi fabricant</span></span>
+    </button>
+    <button class="menu-sheet-item" id="msImportXlsx">
+      <span class="menu-sheet-icon" style="background:#F0FDF4;"><i class="ti ti-file-import" style="color:#16A34A;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer Excel</span><span class="menu-sheet-sub">Mise à jour des prix</span></span>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Outils -->
+    <div class="menu-sheet-section-title">Outils</div>
+    <button class="menu-sheet-item" id="msCompare">
+      <span class="menu-sheet-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Comparer les offres</span><span class="menu-sheet-sub">Importer les fichiers fournisseurs</span></span>
+    </button>
+    <button class="menu-sheet-item danger" id="msCleanDescs">
+      <span class="menu-sheet-icon" style="background:#FEF2F2;"><i class="ti ti-eraser" style="color:#DC2626;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Nettoyer descriptions</span><span class="menu-sheet-sub">Supprimer les balises HTML</span></span>
+    </button>
+
+    <div class="menu-sheet-sep"></div>
+
+    <!-- Paramètres -->
+    <button class="menu-sheet-item" id="msSettings">
+      <span class="menu-sheet-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Paramètres</span></span>
+      <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+    </button>
+
+  </div>
+</div>
+<!-- ===== FIN MENU SHEET ===== -->
+
+</div>
+<!-- ===== FIN CONTENU SCROLLABLE ===== -->
+
+<!-- ===== BOTTOM NAV BAR (mobile + tablette) ===== -->
+<nav id="bottomNav" class="bottom-nav">
+  <button class="bottom-nav-item" id="bnHome">
+    <i class="ti ti-home-2"></i>
+    <span>Accueil</span>
+  </button>
+  <button class="bottom-nav-item" id="bnSearch">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>Recherche</span>
+  </button>
+  <button class="bottom-nav-item" id="bnFilter">
+    <i class="ti ti-adjustments-horizontal"></i>
+    <span id="bnFilterLabel">Filtres</span>
+    <span id="bnFilterBadge" class="bottom-nav-badge" style="display:none;"></span>
+  </button>
+  <button class="bottom-nav-item" id="bnMenu">
+    <i class="ti ti-dots" style="font-size:22px;color:inherit;"></i>
+    <span>Menu</span>
+    <span id="bnMenuBadge" class="bottom-nav-badge" style="display:none;"></span>
+  </button>
+</nav>
+<!-- ===== FIN BOTTOM NAV ===== -->
+
 </body>
 </html>

@@ -24,3 +24,8 @@ node_modules/
 dist/
 .env
 .env.local
+* text=auto eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.json text eol=lf

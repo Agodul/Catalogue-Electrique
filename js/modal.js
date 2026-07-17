@@ -5,7 +5,8 @@
   var fRef = document.getElementById('fRef');
   var fFamily = document.getElementById('fFamily');
   var fSeries = document.getElementById('fSeries');
-  var fSupplier = document.getElementById('fSupplier');
+  var fSupplier  = document.getElementById('fSupplier');
+  var fLeadTime  = document.getElementById('fLeadTime');
   var fUrl = document.getElementById('fUrl');
   var fHtml = document.getElementById('fHtml');
   var chkShowHtml = document.getElementById('chkShowHtml');
@@ -31,6 +32,18 @@
   var photoPreview     = document.getElementById('photoPreview');
   var imgPreviewOverlay = document.getElementById('imgPreviewOverlay');
   var imgPreviewImg     = document.getElementById('imgPreviewImg');
+  var f3dAvailable      = document.getElementById('f3dAvailable');
+  var f3dLink           = document.getElementById('f3dLink');
+  var f3dLinkRow        = document.getElementById('f3dLinkRow');
+  var fEssential        = document.getElementById('fEssential');
+  var fSuggestionsSearch = document.getElementById('fSuggestionsSearch');
+  var fSuggestionsChips  = document.getElementById('fSuggestionsChips');
+  var fSuggestionsDrop   = document.getElementById('fSuggestionsDrop');
+  var _sugRefs = []; // tableau des refs sélectionnées
+  var fTags             = document.getElementById('fTags');
+  var familyIconRow     = document.getElementById('familyIconRow');
+  var familyIconPreviewI= document.getElementById('familyIconPreviewI');
+  var selectedFamilyIcon= 'ti-package';
 
   photoPreview.addEventListener('click', function(){
     var img = photoPreview.querySelector('img');
@@ -206,7 +219,7 @@
 
   document.getElementById('priceModalClose').addEventListener('click', closePriceModal);
   document.getElementById('priceModalCancel').addEventListener('click', closePriceModal);
-  priceModalOverlay.addEventListener('click', function(e){ if(e.target === priceModalOverlay) closePriceModal(); });
+  // clic extérieur bloqué — géré par _initModalEscape()
 
   // Ajouter un nouveau prix
   document.getElementById('priceModalAddBtn').addEventListener('click', function(){
@@ -248,7 +261,7 @@
 
   function renderPriceHistory(product){ /* géré par la modale prix */ }
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
@@ -258,6 +271,9 @@
     f3dAvailable.checked = false;
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
+    if(fEssential) fEssential.checked = false;
+    _sugRefs = [];
+    _sugRenderChips();
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
     clearPhotoGallery();
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
@@ -427,10 +443,14 @@
         modalLeftFoot.textContent = 'Ajouté le ' + (p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—');
         fBrand.value = p.brand||''; fRef.value = p.ref||''; fUrl.value = p.url||'';
         fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
+        if(fLeadTime) fLeadTime.value = p.leadTime||'';
         fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
         f3dAvailable.checked = !!p.available3DX;
         f3dLink.value = p.available3DXLink || '';
         update3dLinkVisibility();
+        if(fEssential) fEssential.checked = !!p.essential;
+        _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
+        _sugRenderChips();
         fPrice.value = p.price||''; fPhoto.value = p.photo||'';
         updatePhotoPreview();
         renderPriceHistory(p);
@@ -456,73 +476,116 @@
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
-    // ── Section PDF dans le formulaire (admin + modification uniquement) ──
+    // ── Section PDF multi-doc ────────────────────────────────────
     var sUrl = localStorage.getItem('cat_server_url');
-    var isAdmin = window._userPerms ? window._userPerms.canEdit : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
-    var modalPdfSection  = document.getElementById('modalPdfSection');
-    var modalPdfExisting = document.getElementById('modalPdfExisting');
-    var modalPdfUpload   = document.getElementById('modalPdfUpload');
-    var modalPdfFilename = document.getElementById('modalPdfFilename');
-    var modalPdfInput    = document.getElementById('modalPdfInput');
-    var modalPdfReplaceInput = document.getElementById('modalPdfReplaceInput');
-    var modalPdfReplaceBtn   = document.getElementById('modalPdfReplaceBtn');
-    var modalPdfRemoveBtn    = document.getElementById('modalPdfRemoveBtn');
+    var canUploadPdf = window._userPerms ? (window._userPerms.canUploadDocs || window._userPerms.isAdmin) : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
+    var modalPdfSection = document.getElementById('modalPdfSection');
+    var modalPdfList    = document.getElementById('modalPdfList');
+    var modalPdfUpload  = document.getElementById('modalPdfUpload');
+    var modalPdfInput   = document.getElementById('modalPdfInput');
 
     if(modalPdfSection) modalPdfSection.style.display = 'none';
-    if(modalPdfExisting) modalPdfExisting.style.display = 'none';
-    if(modalPdfUpload) modalPdfUpload.style.display = 'none';
 
-    if(isAdmin && editingId){
+    if(canUploadPdf && editingId){
       var pForPdf = products.find(function(x){ return x.id === editingId; });
-      if(modalPdfSection) modalPdfSection.style.display = '';
-      if(pForPdf && pForPdf.hasDoc){
-        if(modalPdfExisting) modalPdfExisting.style.display = '';
-        if(modalPdfFilename) modalPdfFilename.textContent = pForPdf.docFilename || 'Document PDF';
-      } else {
-        if(modalPdfUpload) modalPdfUpload.style.display = '';
-      }
+      if(pForPdf){
+        if(modalPdfSection) modalPdfSection.style.display = '';
 
-      function doUploadPdf(file){
-        if(!file || !pForPdf || !pForPdf.ref) return;
-        if(!sUrl){ showToast('Serveur non configuré — impossible d\'envoyer le PDF', 'err', 4000); return; }
-        var fd = new FormData();
-        fd.append('ref', pForPdf.ref);
-        fd.append('document', file, file.name);
-        showToast('Envoi du PDF en cours…', 'ok', 3000);
-        (function(){ var h = typeof window.authHeaders==='function'?Object.assign({},window.authHeaders()):{}; delete h['Content-Type']; return fetch(sUrl + '/pushDocs', { method:'POST', headers: h, body: fd }); })()
-          .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
-          .then(function(data){
-            var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-            if(idx2 !== -1){
-              products[idx2].hasDoc = true;
-              products[idx2].docFilename = data.filename || file.name;
-              save(true);
-            }
-            showToast('PDF envoyé ✓', 'ok', 2500);
-            if(modalPdfUpload) modalPdfUpload.style.display = 'none';
-            if(modalPdfExisting) modalPdfExisting.style.display = '';
-            if(modalPdfFilename) modalPdfFilename.textContent = data.filename || file.name;
-          })
-          .catch(function(e){ showToast('Erreur envoi PDF : ' + e, 'err', 4000); });
-      }
+        function _pdfRenderList(files){
+          var L = document.getElementById('modalPdfList');
+          var U = document.getElementById('modalPdfUpload');
+          if(!L) return;
+          L.innerHTML = '';
+          if(U) U.style.display = 'flex';
+          if(!files || files.length === 0) return;
+          L.innerHTML = files.map(function(f){
+            return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
+              + '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>'
+              + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(f.filename) + '</span>'
+              + (f.uuid ? '<button data-uuid="' + escapeHtml(f.uuid) + '" class="pdf-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>' : '')
+              + '</div>';
+          }).join('');
+          L.querySelectorAll('.pdf-del-btn').forEach(function(btn){
+            btn.onclick = function(){ _pdfDeleteOne(btn.getAttribute('data-uuid')); };
+          });
+        }
 
-      if(modalPdfInput) modalPdfInput.onchange = function(){ doUploadPdf(this.files[0]); };
-      if(modalPdfReplaceInput) modalPdfReplaceInput.onchange = function(){ doUploadPdf(this.files[0]); };
-      if(modalPdfReplaceBtn) modalPdfReplaceBtn.onclick = function(){ if(modalPdfReplaceInput) modalPdfReplaceInput.click(); };
-
-      if(modalPdfRemoveBtn){
-        modalPdfRemoveBtn.onclick = function(){
-          if(!pForPdf || !pForPdf.ref) return;
-          fetch(sUrl + '/deleteDocs?id=' + encodeURIComponent(pForPdf.ref), { method:'DELETE' })
+        function _pdfDeleteOne(uuid){
+          if(!uuid || !sUrl) return;
+          var hDel = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete hDel['Content-Type'];
+          fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(uuid), { method:'DELETE', headers: hDel })
+            .then(function(r){ if(!r.ok) return Promise.reject('HTTP '+r.status); })
             .then(function(){
+              pForPdf._docFiles = (pForPdf._docFiles || []).filter(function(f){ return f.uuid !== uuid; });
+              var hasAny = pForPdf._docFiles.length > 0;
+              pForPdf.hasDoc      = hasAny;
+              pForPdf.docFilename = hasAny ? pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ') : '';
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-              if(idx2 !== -1){ products[idx2].hasDoc = false; products[idx2].docFilename = ''; save(true); }
-              showToast('PDF supprimé ✓', 'ok', 2500);
-              if(modalPdfExisting) modalPdfExisting.style.display = 'none';
-              if(modalPdfUpload) modalPdfUpload.style.display = '';
+              if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+              showToast('Fichier supprimé ✓', 'ok', 2000);
+              _pdfRenderList(pForPdf._docFiles);
             })
-            .catch(function(e){ showToast('Erreur suppression PDF : ' + e, 'err', 4000); });
-        };
+            .catch(function(e){ showToast('Erreur suppression : '+e, 'err', 4000); });
+        }
+
+        function _pdfUploadFiles(fileList){
+          if(!fileList || !fileList.length || !pForPdf || !pForPdf.ref) return;
+          if(!sUrl){ showToast('Serveur non configuré', 'err', 4000); return; }
+          var h = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete h['Content-Type'];
+          var arr = Array.from(fileList);
+          showToast('Envoi de '+arr.length+' fichier'+(arr.length>1?'s':'')+' en cours…', 'ok', 3000);
+          Promise.all(arr.map(function(file){
+            var fd = new FormData();
+            fd.append('ref', pForPdf.ref);
+            fd.append('document', file, file.name);
+            return fetch(sUrl + '/pushDocs', { method:'POST', headers: h, body: fd })
+              .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); })
+              .then(function(data){ return { uuid: data.uuid, filename: data.filename || file.name, ref: pForPdf.ref }; });
+          }))
+          .then(function(newFiles){
+            pForPdf._docFiles = (pForPdf._docFiles || []).concat(newFiles);
+            pForPdf.hasDoc = true;
+            pForPdf.docFilename = pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ');
+            var idx2 = products.findIndex(function(x){ return x.id === editingId; });
+            if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+            showToast(arr.length+' PDF envoyé'+(arr.length>1?'s':'')+' ✓', 'ok', 2500);
+            _pdfRenderList(pForPdf._docFiles);
+            if(modalPdfInput) modalPdfInput.value = '';
+          })
+          .catch(function(e){ showToast('Erreur envoi PDF : '+e, 'err', 4000); });
+        }
+
+        if(modalPdfInput) modalPdfInput.onchange = function(){ _pdfUploadFiles(this.files); };
+
+        // Charger la liste depuis le serveur
+        if(sUrl && pForPdf.ref){
+          var hList = typeof window.authHeaders==='function' ? Object.assign({}, window.authHeaders()) : {};
+          delete hList['Content-Type'];
+          var _pdfListEl = document.getElementById('modalPdfList');
+          if(_pdfListEl) _pdfListEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft);padding:4px 0;">Chargement…</div>';
+          fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(pForPdf.ref), { headers: hList })
+            .then(function(r){
+              if(!r.ok){ console.warn('[PDF] pullDocs status:', r.status); return null; }
+              return r.json().catch(function(e){ console.warn('[PDF] json parse error:', e); return null; });
+            })
+            .then(function(d){
+              var files = d && d.items ? d.items : [];
+              pForPdf._docFiles = files;
+              pForPdf.hasDoc = files.length > 0;
+              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
+              _pdfRenderList(files);
+            })
+            .catch(function(e){
+              console.warn('[PDF] fetch error:', e);
+              var files = pForPdf._docFiles || (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
+              _pdfRenderList(files);
+            });
+        } else {
+          console.log('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
+          _pdfRenderList(pForPdf._docFiles || []);
+        }
       }
     }
     // ── Fin section PDF ──
@@ -542,6 +605,15 @@
               fPrice.value.trim() || fPhoto.value.trim());
   }
   function requestCloseModal(){
+    // Réinitialiser le mode proposition
+    if(window._proposeMode){
+      window._proposeMode = false;
+      window._proposeOriginal = null;
+      var title = document.getElementById('modalTitle');
+      var btnSave = document.getElementById('btnSave');
+      if(title) title.textContent = editingId ? 'Modifier le produit' : 'Ajouter un produit';
+      if(btnSave) btnSave.textContent = 'Enregistrer';
+    }
     if(!hasUnsavedInput()){
      closeModal();
     return;
@@ -578,6 +650,90 @@
       closeModal();
     });
   }
+  // ── Logique suggestions autocomplete ────────────────────────────
+  function _sugRenderChips(){
+    if(!fSuggestionsChips) return;
+    var prods = window.products || [];
+    var canEdit = !!(window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin));
+    fSuggestionsChips.innerHTML = _sugRefs.map(function(ref){
+      var p = prods.find(function(x){ return x.ref === ref; });
+      var label = p ? (p.ref + (p.name ? ' — ' + p.name.substring(0,30) : '')) : ref;
+      return '<span class="sug-chip">'
+        + escapeHtml(label)
+        + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer">✕</button>' : '')
+        + '</span>';
+    }).join('');
+    // Listeners suppression
+    fSuggestionsChips.querySelectorAll('.sug-chip-del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var ref = btn.getAttribute('data-ref');
+        _sugRefs = _sugRefs.filter(function(r){ return r !== ref; });
+        _sugRenderChips();
+      });
+    });
+  }
+
+  function _sugSearch(q){
+    if(!fSuggestionsDrop) return;
+    q = (q||'').trim().toLowerCase();
+    if(!q){ fSuggestionsDrop.style.display='none'; return; }
+    var prods = window.products || [];
+    var editingRef = document.getElementById('fRef') ? document.getElementById('fRef').value.trim() : '';
+    var results = prods.filter(function(p){
+      if(_sugRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté
+      if(p.ref === editingRef) return false; // pas soi-même
+      return (p.ref||'').toLowerCase().indexOf(q) !== -1
+          || (p.name||'').toLowerCase().indexOf(q) !== -1
+          || (p.family||'').toLowerCase().indexOf(q) !== -1
+          || (p.brand||'').toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 8);
+    if(!results.length){ fSuggestionsDrop.style.display='none'; return; }
+    fSuggestionsDrop.innerHTML = results.map(function(p){
+      return '<div class="autocomplete-item" data-ref="'+escapeHtml(p.ref)+'">'
+        + '<strong>'+escapeHtml(p.ref)+'</strong>'
+        + (p.name ? ' <span style="color:var(--ink-soft);font-size:12px;">'+escapeHtml(p.name.substring(0,40))+'</span>' : '')
+        + (p.brand ? ' <em style="color:var(--ink-soft);font-size:11px;">'+escapeHtml(p.brand)+'</em>' : '')
+        + '</div>';
+    }).join('');
+    fSuggestionsDrop.style.display = 'block';
+    fSuggestionsDrop.querySelectorAll('.autocomplete-item').forEach(function(item){
+      item.addEventListener('mousedown', function(e){
+        e.preventDefault();
+        var ref = item.getAttribute('data-ref');
+        if(_sugRefs.length >= 10){ alert('Maximum 10 suggestions atteint.'); return; }
+        if(_sugRefs.indexOf(ref) === -1) _sugRefs.push(ref);
+        _sugRenderChips();
+        fSuggestionsSearch.value = '';
+        fSuggestionsDrop.style.display = 'none';
+      });
+    });
+  }
+
+  if(fSuggestionsSearch){
+    fSuggestionsSearch.addEventListener('input', function(){ _sugSearch(this.value); });
+    fSuggestionsSearch.addEventListener('blur', function(){
+      setTimeout(function(){ if(fSuggestionsDrop) fSuggestionsDrop.style.display='none'; }, 150);
+    });
+  }
+
+  // Exposer _sugRefs pour actions.js
+  window._getSugRefs = function(){ return _sugRefs.slice(); };
+
+  // Exposer openModal globalement pour requests.js
+  window._openModal = openModal;
+
+  // Mode proposition : ouvrir la modale avec un flag pour que btnSave envoie une requête
+  window._openProposeModal = function(id){
+    window._proposeMode = true;
+    window._proposeOriginal = id ? (products.find(function(p){ return p.id===id; }) || null) : null;
+    openModal(id || null);
+    // Changer le titre et le bouton
+    var title = document.getElementById('modalTitle');
+    var btnSave = document.getElementById('btnSave');
+    if(title) title.textContent = id ? 'Proposer une modification' : 'Proposer un produit';
+    if(btnSave) btnSave.textContent = 'Envoyer la demande';
+  };
+
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });
 
@@ -585,6 +741,9 @@
   var fabSearchBox   = document.getElementById('fabSearchBox');
   var fabSearchInput = document.getElementById('fabSearchInput');
   var fabSearchClose = document.getElementById('fabSearchClose');
+  if(!fabSearchBox){ fabSearchBox = { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } } }; }
+  if(!fabSearchInput){ fabSearchInput = { value:'', addEventListener:function(){}, focus:function(){} }; }
+  if(!fabSearchClose){ fabSearchClose = { addEventListener:function(){} }; }
 
 
   function switchToCatalogueIfHome(){
@@ -597,8 +756,8 @@
       if(hdrCountChip) hdrCountChip.style.display = '';
     }
   }
-  var btnFabSearchEl = document.getElementById('btnFabSearch');
-  btnFabSearchEl.addEventListener('click', function(){
+  var btnFabSearchEl = document.getElementById('btnFabSearch') || { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } }, addEventListener:function(){} };
+  if(btnFabSearchEl) btnFabSearchEl.addEventListener('click', function(){
     if(fabSearchBox.classList.contains('open') && !fabSearchInput.value.trim()){
       fabSearchBox.classList.remove('open');
       btnFabSearchEl.classList.remove('search-open');
@@ -657,10 +816,8 @@
   var sellingPriceZoneEl = document.getElementById('sellingPriceZone');
   var fSellingPrice      = document.getElementById('fSellingPrice');
   var sellingPriceHint   = document.getElementById('sellingPriceHint');
-  var fTags              = document.getElementById('fTags');
-  var f3dAvailable       = document.getElementById('f3dAvailable');
-  var f3dLink            = document.getElementById('f3dLink');
-  var f3dLinkRow         = document.getElementById('f3dLinkRow');
+  // fTags déclaré en haut du fichier
+  // f3dAvailable, f3dLink, f3dLinkRow déclarés en haut du fichier
 
   function updateSellingPriceHint(){
     if(!sellingPriceZoneEl || sellingPriceZoneEl.style.display === 'none') return;
