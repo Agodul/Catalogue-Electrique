@@ -2102,6 +2102,7 @@
 
       function closeFloatingSearchNow(){
         // Ferme visuellement sans reset (changement d'onglet nav)
+        if(_isIOS && _navEl) _navEl.style.display = '';
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2194,6 +2195,7 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
+        if(_isIOS && _navEl) _navEl.style.display = '';
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2206,6 +2208,7 @@
 
       // Ferme + remet à zéro (croix / overlay / annuler)
       function closeFloatingSearch(){
+        if(_isIOS && _navEl) _navEl.style.display = '';
         closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2221,26 +2224,33 @@
       // ── Positionnement zone de recherche iOS ─────────────────────
       // On écoute uniquement resize (ouverture/fermeture clavier)
       // PAS scroll (ferait bouger la zone quand l'utilisateur scrolle)
-      var _navH = 56;
-      // Mémoriser la hauteur initiale AVANT ouverture du clavier
+      var _navH  = 56;
       var _initH = window.innerHeight;
+      var _navEl = document.getElementById('bottomNav');
+      var _isIOS = document.body.classList.contains('ios');
 
+      // Appelé UNE SEULE FOIS à l'ouverture du clavier (resize)
+      // Positionne la zone et ne bouge plus jusqu'à fermeture
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
         floatSearch.style.marginBottom = '0';
         floatSearch.style.transform    = '';
-        var vv = window.visualViewport;
-        // Utiliser _initH comme référence fixe (innerHeight change sur certains iOS)
-        var refH  = vv ? Math.max(_initH, vv.height) : _initH;
-        var kbH   = vv ? Math.max(0, refH - vv.height) : 0;
+        var vv   = window.visualViewport;
+        var refH = vv ? Math.max(_initH, vv.height) : _initH;
+        var kbH  = vv ? Math.max(0, refH - vv.height) : 0;
         if(kbH > 50){
           floatSearch.style.bottom = kbH + 'px';
+          // iOS : cacher la nav (elle colle au clavier et cause des faux taps)
+          if(_isIOS && _navEl) _navEl.style.display = 'none';
         } else {
           floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
+          if(_isIOS && _navEl) _navEl.style.display = '';
         }
       }
 
       if(window.visualViewport){
+        // resize = ouverture/fermeture clavier → repositionner la zone
+        // PAS scroll → ferait bouger la zone quand l'user scrolle
         window.visualViewport.addEventListener('resize', _updateFloatPos);
       }
 
