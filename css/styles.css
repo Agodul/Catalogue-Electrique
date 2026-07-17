@@ -1635,13 +1635,16 @@
   /* ── Modale Paramètres ── */
   #settingsOverlay{
     position:fixed; inset:0; z-index:9999;
-    background:rgba(0,0,0,.45);
+    background:transparent;
     display:none; align-items:center; justify-content:center;
     padding:16px;
+    pointer-events:none;
   }
+  .settings-box{ pointer-events:all; }
   #settingsOverlay.show{ display:flex; }
   .settings-box{
     background:var(--paper-card);
+    border-top:1.5px solid var(--line);
     border-radius:14px;
     width:100%; max-width:480px;
     max-height:82dvh;
