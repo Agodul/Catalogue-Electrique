@@ -13,9 +13,7 @@
   *{box-sizing:border-box;}
   html{
     -webkit-text-size-adjust:100%;
-    /* Hauteur fixe sur iOS PWA : empêche le recalcul quand le clavier s'ouvre */
-    height:100%;
-    overflow:hidden;
+    height:-webkit-fill-available;
   }
   body{
     margin:0;
@@ -23,10 +21,8 @@
     color:var(--ink);
     font-family: 'Calibri','Carlito',Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    /* Hauteur fixe : la nav fixed reste en bas même avec le clavier */
-    height:100%;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+    min-height:100dvh;
+    min-height:-webkit-fill-available;
   }
 
   /* ===== HEADER ===== */

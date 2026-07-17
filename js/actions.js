@@ -2222,27 +2222,25 @@
       // On écoute uniquement resize (ouverture/fermeture clavier)
       // PAS scroll (ferait bouger la zone quand l'utilisateur scrolle)
       var _navH = 56;
+      // Mémoriser la hauteur initiale AVANT ouverture du clavier
+      var _initH = window.innerHeight;
 
       function _updateFloatPos(){
         if(!floatSearch || floatSearch.style.display === 'none') return;
         floatSearch.style.marginBottom = '0';
         floatSearch.style.transform    = '';
-        if(window.visualViewport){
-          var vv  = window.visualViewport;
-          // Hauteur clavier = différence entre innerHeight et hauteur visible
-          var kbH = Math.max(0, window.innerHeight - vv.height);
-          if(kbH > 50){
-            floatSearch.style.bottom = kbH + 'px';
-          } else {
-            floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
-          }
+        var vv = window.visualViewport;
+        // Utiliser _initH comme référence fixe (innerHeight change sur certains iOS)
+        var refH  = vv ? Math.max(_initH, vv.height) : _initH;
+        var kbH   = vv ? Math.max(0, refH - vv.height) : 0;
+        if(kbH > 50){
+          floatSearch.style.bottom = kbH + 'px';
         } else {
           floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
         }
       }
 
       if(window.visualViewport){
-        // resize uniquement : scroll ferait bouger la zone quand l'utilisateur scrolle la page
         window.visualViewport.addEventListener('resize', _updateFloatPos);
       }
 
