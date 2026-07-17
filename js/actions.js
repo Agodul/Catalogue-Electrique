@@ -2222,7 +2222,7 @@
       function _openMobileSearchBar(){
         var si = document.getElementById('searchInput');
         if(_mobileSearchBar){
-          _mobileSearchBar.style.display = '';
+          _mobileSearchBar.style.display = 'block';
           if(_mobileSearchInput){
             _mobileSearchInput.value = si ? si.value : '';
             _mobileSearchClear && (_mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none');
