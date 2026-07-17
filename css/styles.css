@@ -1736,8 +1736,15 @@
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
     #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
-    /* settings-box : centrée avec 4 coins arrondis, pas de bottom sheet */
-    .settings-box{ width:calc(100% - 24px); max-width:100%; max-height:calc(82dvh - var(--nav-h, 0px)); }
+    /* settings : bottom sheet sur mobile */
+    #settingsOverlay{ padding:0; align-items:flex-end; justify-content:center; padding-bottom:var(--nav-h, 56px); }
+    .settings-box{
+      width:100%; max-width:100%;
+      max-height:88dvh;
+      border-radius:20px 20px 0 0;
+    }
+    .settings-header{ padding:14px 16px 12px; }
+    .settings-body{ padding:12px 16px; }
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
@@ -2312,7 +2319,8 @@
   #xlsxImportOverlay { padding-bottom: var(--nav-h, 56px) !important; }
 
   /* .settings-box centrée → déjà corrigée via l'overlay parent, mais sécurité */
-  .settings-box { max-height: calc(82dvh - var(--nav-h, 0px)); }
+  #settingsOverlay { padding-bottom: var(--nav-h, 56px); }
+  .settings-box { max-height: calc(85dvh - var(--nav-h, 56px)); }
 }
 
 .account-sheet {
@@ -2622,3 +2630,18 @@
 .vm-actions-row{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
 .vm-actions-row > div{ flex:1; min-width:0; }
 .vm-actions-row > div button{ width:100%; box-sizing:border-box; }
+
+/* ── Poignée drag pour les bottom sheets (mobile) ────────────── */
+.sheet-handle-bar{
+  display: none;
+}
+@media(max-width: 640px){
+  .sheet-handle-bar{
+    display: block;
+    width: 40px; height: 4px;
+    background: var(--line);
+    border-radius: 4px;
+    margin: 10px auto 4px;
+    flex-shrink: 0;
+  }
+}
