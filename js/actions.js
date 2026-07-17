@@ -261,12 +261,16 @@
     updateServerSubtitle();
     if(serverUrl){
       setTimeout(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
         doSyncCheck();
         syncDeletions();
         startSyncPolling();
       }, 1500);
-      // Sync suppressions toutes les 5 minutes
-      setInterval(syncDeletions, 5 * 60 * 1000);
+      // Sync suppressions toutes les 5 minutes (si connecté)
+      setInterval(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+        syncDeletions();
+      }, 5 * 60 * 1000);
     }
   }
 
@@ -295,6 +299,7 @@
   // Sync complète pour détecter les suppressions côté serveur
   async function syncDeletions(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var getHeaders = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
       delete getHeaders['Content-Type'];
@@ -325,6 +330,7 @@
 
   async function doSyncCheck(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
@@ -343,6 +349,7 @@
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     _syncInterval = setInterval(doSyncCheck, 15000);
   }
 
