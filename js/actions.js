@@ -2136,6 +2136,10 @@
         closeFilterSheetNow();
         showHome();
         setActive(bnHome);
+        // Remonter en haut de page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        var ac = document.getElementById('appContent');
+        if(ac) ac.scrollTo({ top: 0, behavior: 'smooth' });
       });
 
       bnSearch.addEventListener('click', function(){
