@@ -2428,6 +2428,61 @@
 }
 
 /* Éléments mobiles cachés sur desktop */
+
+/* ── Barre recherche mobile sticky ───────────────────────────── */
+#mobileSearchBar{
+  display: none; /* caché par défaut, affiché en JS */
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--paper-card);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.mobile-search-inner{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+.mobile-search-field{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper);
+  border: 1.5px solid var(--copper);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+#mobileSearchInput{
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-family: Calibri, Arial, sans-serif;
+  color: var(--ink);
+  outline: none;
+  min-width: 0;
+}
+#mobileSearchInput::placeholder{ color: var(--ink-soft); }
+#mobileSearchClear{
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-soft); padding: 0; font-size: 14px;
+  display: flex; align-items: center;
+}
+#mobileSearchCancel{
+  background: none; border: none; cursor: pointer;
+  color: var(--copper); font-size: 15px; font-weight: 600;
+  font-family: Calibri, Arial, sans-serif;
+  white-space: nowrap; padding: 4px 0;
+}
+
+/* Sur desktop : jamais visible */
+@media(min-width: 1025px){
+  #mobileSearchBar{ display: none !important; }
+}
+
 @media (min-width: 1025px) {
   header { display: flex !important; }
   .toolbar { display: flex !important; }

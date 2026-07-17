@@ -2102,7 +2102,7 @@
 
       function closeFloatingSearchNow(){
         // Ferme visuellement sans reset (changement d'onglet nav)
-        if(_isIOS && _navEl) _navEl.style.display = '';
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(false);
         var fSearch=document.getElementById('floatingSearch');
         var fOverlay=document.getElementById('floatingSearchOverlay');
         var fInput=document.getElementById('floatingSearchInput');
@@ -2130,23 +2130,12 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
+        closeViewNow();
+        closeRequestsPanelNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
-        // Ouvrir le floating search au-dessus du clavier
-        var fso = document.getElementById('floatingSearchOverlay');
-        var fs  = document.getElementById('floatingSearch');
-        var fsi = document.getElementById('floatingSearchInput');
-        var si  = document.getElementById('searchInput');
-        if(fs && fsi){
-          if(fso) fso.style.display = 'block';
-          fs.style.display = 'block';
-          fs.style.transform = '';
-          fs.style.marginBottom = '0';
-          fs.style.bottom = 'calc(56px + env(safe-area-inset-bottom))';
-          // Désactiver les clics sur la nav pendant que la recherche est ouverte (évite les faux taps iOS)
-          if(si) fsi.value = si.value || '';
-          setTimeout(function(){ fsi.focus(); setTimeout(_updateFloatPos, 150); setTimeout(_updateFloatPos, 600); }, 50);
-        }
+        // Ouvrir la barre de recherche mobile sticky (plus de floating search sur mobile)
+        if(typeof _openMobileSearchBar === 'function') _openMobileSearchBar();
         setActive(bnSearch);
       });
 
@@ -2195,7 +2184,7 @@
 
       // Ferme visuellement sans toucher aux valeurs (Entrée / validation)
       function closeFloatingSearchOnly(){
-        if(_isIOS && _navEl) _navEl.style.display = '';
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(false);
         if(floatSearch){
           floatSearch.style.display      = 'none';
           floatSearch.style.transform    = '';
@@ -2208,7 +2197,7 @@
 
       // Ferme + remet à zéro (croix / overlay / annuler)
       function closeFloatingSearch(){
-        if(_isIOS && _navEl) _navEl.style.display = '';
+        if(window._closeMobileSearchBar) window._closeMobileSearchBar(true);
         closeFloatingSearchOnly();
         var bfEl=document.getElementById('familyFilter');
         var bbEl=document.getElementById('brandFilter');
@@ -2224,35 +2213,58 @@
       // ── Positionnement zone de recherche iOS ─────────────────────
       // On écoute uniquement resize (ouverture/fermeture clavier)
       // PAS scroll (ferait bouger la zone quand l'utilisateur scrolle)
-      var _navH  = 56;
-      var _initH = window.innerHeight;
-      var _navEl = document.getElementById('bottomNav');
-      var _isIOS = document.body.classList.contains('ios');
+      // ── Barre de recherche mobile sticky ─────────────────────────
+      var _mobileSearchBar   = document.getElementById('mobileSearchBar');
+      var _mobileSearchInput = document.getElementById('mobileSearchInput');
+      var _mobileSearchClear = document.getElementById('mobileSearchClear');
+      var _mobileSearchCancel= document.getElementById('mobileSearchCancel');
 
-      // Appelé UNE SEULE FOIS à l'ouverture du clavier (resize)
-      // Positionne la zone et ne bouge plus jusqu'à fermeture
-      function _updateFloatPos(){
-        if(!floatSearch || floatSearch.style.display === 'none') return;
-        floatSearch.style.marginBottom = '0';
-        floatSearch.style.transform    = '';
-        var vv   = window.visualViewport;
-        var refH = vv ? Math.max(_initH, vv.height) : _initH;
-        var kbH  = vv ? Math.max(0, refH - vv.height) : 0;
-        if(kbH > 50){
-          floatSearch.style.bottom = kbH + 'px';
-          // iOS : cacher la nav (elle colle au clavier et cause des faux taps)
-          if(_isIOS && _navEl) _navEl.style.display = 'none';
-        } else {
-          floatSearch.style.bottom = 'calc(' + _navH + 'px + env(safe-area-inset-bottom))';
-          if(_isIOS && _navEl) _navEl.style.display = '';
+      function _openMobileSearchBar(){
+        var si = document.getElementById('searchInput');
+        if(_mobileSearchBar){
+          _mobileSearchBar.style.display = '';
+          if(_mobileSearchInput){
+            _mobileSearchInput.value = si ? si.value : '';
+            _mobileSearchClear && (_mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none');
+            // Scroll en haut puis focus — clavier s'ouvre naturellement
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            setTimeout(function(){ _mobileSearchInput.focus(); }, 80);
+          }
         }
       }
 
-      if(window.visualViewport){
-        // resize = ouverture/fermeture clavier → repositionner la zone
-        // PAS scroll → ferait bouger la zone quand l'user scrolle
-        window.visualViewport.addEventListener('resize', _updateFloatPos);
+      function _closeMobileSearchBar(doReset){
+        if(_mobileSearchBar) _mobileSearchBar.style.display = 'none';
+        if(_mobileSearchInput) _mobileSearchInput.blur();
+        if(doReset){
+          if(_mobileSearchInput) _mobileSearchInput.value = '';
+          var si = document.getElementById('searchInput');
+          if(si){ si.value = ''; if(typeof render==='function') render(); }
+        }
       }
+
+      if(_mobileSearchInput){
+        _mobileSearchInput.addEventListener('input', function(){
+          var si = document.getElementById('searchInput');
+          if(si){ si.value = _mobileSearchInput.value; if(typeof render==='function') render(); }
+          if(_mobileSearchClear) _mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none';
+        });
+        _mobileSearchInput.addEventListener('keydown', function(e){
+          if(e.key === 'Enter'){ _mobileSearchInput.blur(); }
+        });
+      }
+      if(_mobileSearchClear) _mobileSearchClear.addEventListener('click', function(){
+        if(_mobileSearchInput){ _mobileSearchInput.value = ''; _mobileSearchInput.focus(); }
+        var si = document.getElementById('searchInput');
+        if(si){ si.value = ''; if(typeof render==='function') render(); }
+        if(_mobileSearchClear) _mobileSearchClear.style.display = 'none';
+      });
+      if(_mobileSearchCancel) _mobileSearchCancel.addEventListener('click', function(){
+        _closeMobileSearchBar(false);
+      });
+
+      window._openMobileSearchBar  = _openMobileSearchBar;
+      window._closeMobileSearchBar = _closeMobileSearchBar;
 
       if(floatClose)   floatClose.addEventListener('click', closeFloatingSearch);
       if(floatOverlay) floatOverlay.addEventListener('click', closeFloatingSearch);
