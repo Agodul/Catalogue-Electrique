@@ -166,7 +166,7 @@
         sugSection.style.display = '';
         // Réinitialiser l'état du toggle
         if(sugCarousel) sugCarousel.style.display = 'none';
-        if(sugLabel) sugLabel.textContent = 'Afficher suggestions (' + sugRefs.length + ')';
+        if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
 
         // Construire le carrousel
         if(sugTrack){
@@ -204,8 +204,8 @@
             var visible = sugCarousel && sugCarousel.style.display !== 'none';
             if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
             if(sugLabel) sugLabel.textContent = visible
-              ? 'Afficher suggestions (' + sugRefs.length + ')'
-              : 'Masquer suggestions';
+              ? 'Afficher les suggestions (' + sugRefs.length + ')'
+              : 'Masquer les suggestions';
             // Scroller jusqu'aux suggestions quand on les ouvre
             if(!visible && sugSection){
               setTimeout(function(){
