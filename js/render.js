@@ -193,12 +193,12 @@
 
     if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
 
-    // ── Section Suggestions ────────────────────────────────────────
+    // ── Section Suggestions (ouvre une modale, comme le bouton Documents) ──
     var sugSection = document.getElementById('vmSuggestionsSection');
     var sugToggle  = document.getElementById('vmSuggestionsToggle');
     var sugLabel   = document.getElementById('vmSuggestionsToggleLabel');
-    var sugTrack   = document.getElementById('vmSuggestionsTrack');
-    var sugCarousel= document.getElementById('vmSuggestionsCarousel');
+    var sugOverlay = document.getElementById('sugOverlay');
+    var sugList    = document.getElementById('sugList');
     // Filtrer les refs vides ET vérifier que les produits existent réellement
     var _allProds = window.products || [];
     var sugRefs = Array.isArray(p.suggestions)
@@ -210,63 +210,53 @@
     if(sugSection){
       if(sugRefs.length){
         sugSection.style.display = '';
-        // Réinitialiser l'état du toggle
-        if(sugCarousel) sugCarousel.style.display = 'none';
         if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
 
-        // Construire le carrousel
-        if(sugTrack){
-          var prods = window.products || [];
-          sugTrack.innerHTML = sugRefs.map(function(ref){
-            var sp = prods.find(function(x){ return x.ref === ref; });
-            if(!sp) return ''; // produit supprimé
-            var photoHtml = sp.photo
-              ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.style.display=\'none\'">'
-              : '<div class="sug-card-nophoto"><i class="ti ti-photo-off"></i></div>';
-            return '<div class="sug-card" data-id="'+escapeHtml(sp.id)+'">'+
-              '<div class="sug-card-photo">'+photoHtml+'</div>'+
-              '<div class="sug-card-body">'+
-                '<div class="sug-card-ref">'+escapeHtml(sp.ref||'')+'</div>'+
-                '<div class="sug-card-name">'+escapeHtml((sp.name||'').substring(0,50))+'</div>'+
-              '</div>'+
-            '</div>';
-          }).join('');
+        if(sugToggle) sugToggle.onclick = function(){
+          if(sugList){
+            var prods = window.products || [];
+            sugList.innerHTML = '<div class="sug-carousel sug-carousel--modal">' + sugRefs.map(function(ref){
+              var sp = prods.find(function(x){ return x.ref === ref; });
+              if(!sp) return ''; // produit supprimé
+              var photoHtml = sp.photo
+                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.style.display=\'none\'">'
+                : '<div class="sug-card-nophoto"><i class="ti ti-photo-off"></i></div>';
+              return '<div class="sug-card" data-id="'+escapeHtml(sp.id)+'">'+
+                '<div class="sug-card-photo">'+photoHtml+'</div>'+
+                '<div class="sug-card-body">'+
+                  '<div class="sug-card-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                  '<div class="sug-card-name">'+escapeHtml((sp.name||'').substring(0,50))+'</div>'+
+                '</div>'+
+              '</div>';
+            }).join('') + '</div>';
 
-          // Clic sur une suggestion → empile la fiche courante et ouvre la suggestion
-          sugTrack.querySelectorAll('.sug-card[data-id]').forEach(function(card){
-            card.addEventListener('click', function(){
-              var pid = card.getAttribute('data-id');
-              if(pid){
-                _viewHistory.push(id); // mémoriser la fiche parente
-                openView(pid);
-              }
-            });
-          });
-        }
-
-        // Toggle afficher/masquer
-        if(sugToggle){
-          sugToggle.onclick = function(){
-            var visible = sugCarousel && sugCarousel.style.display !== 'none';
-            if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
-            if(sugLabel) sugLabel.textContent = visible
-              ? 'Afficher suggestions (' + sugRefs.length + ')'
-              : 'Masquer suggestions';
-            // Scroller jusqu'aux suggestions quand on les ouvre
-            if(!visible && sugSection){
-              setTimeout(function(){
-                var vmScroll = document.querySelector('.vm-scroll');
-                if(vmScroll){
-                  vmScroll.scrollTo({ top: vmScroll.scrollHeight, behavior: 'smooth' });
+            // Clic sur une suggestion → empile la fiche courante, ferme la
+            // modale et ouvre la suggestion
+            sugList.querySelectorAll('.sug-card[data-id]').forEach(function(card){
+              card.addEventListener('click', function(){
+                var pid = card.getAttribute('data-id');
+                if(pid){
+                  _viewHistory.push(id);
+                  if(sugOverlay) sugOverlay.style.display = 'none';
+                  openView(pid);
                 }
-              }, 50);
-            }
-          };
-        }
+              });
+            });
+          }
+          if(sugOverlay){
+            sugOverlay.style.display = 'flex';
+            document.body.classList.add('modal-open');
+          }
+        };
       } else {
         sugSection.style.display = 'none';
       }
     }
+    var sugCloseBtn = document.getElementById('sugCloseBtn');
+    if(sugCloseBtn) sugCloseBtn.onclick = function(){
+      if(sugOverlay) sugOverlay.style.display = 'none';
+      document.body.classList.remove('modal-open');
+    };
     // ── Fin Suggestions ────────────────────────────────────────────
 
     viewOverlay.classList.add('open');

@@ -2721,6 +2721,10 @@
   box-shadow:0 4px 14px rgba(0,0,0,.12);
   transform:translateY(-2px);
 }
+.sug-carousel--modal{
+  flex-wrap:wrap;
+  overflow-x:visible;
+}
 .sug-card-photo{
   width:100%; aspect-ratio:1/1;
   background:#DDE2E8; display:flex;
