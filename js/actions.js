@@ -448,6 +448,35 @@
   // Exposer globalement pour storage.js
   window.pushToServer = pushToServer;
 
+  // ── Vérifie qu'un changement d'icône de famille a bien été persisté par le
+  // serveur — un fetch qui répond 200 ne garantit pas que le serveur a
+  // effectivement conservé le champ familyIcon (il peut l'ignorer/le
+  // rejeter silencieusement). On relit les données pour s'en assurer et on
+  // alerte clairement si l'icône affichée par le serveur ne correspond pas.
+  async function verifyFamilyIconOnServer(family, expectedIcon, refs){
+    if(!serverUrl || !refs || !refs.length) return;
+    try{
+      // Laisser le temps au push (déclenché par save()) d'arriver au serveur
+      await new Promise(function(r){ setTimeout(r, 1500); });
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(serverUrl+'/pullDatas', { headers: h });
+      if(!r.ok) return;
+      var data = await r.json();
+      var serverItems = data && Array.isArray(data.items)
+        ? data.items.map(function(i){ return i.data; })
+        : (Array.isArray(data) ? data : []);
+      var mismatched = refs.filter(function(ref){
+        var sp = serverItems.find(function(x){ return x && x.ref === ref; });
+        return sp && sp.familyIcon !== expectedIcon;
+      });
+      if(mismatched.length){
+        showToast('Le serveur n\'a pas confirmé la nouvelle icône de "'+family+'" (vérifiez la configuration serveur)', 'warn', 6000);
+        console.warn('verifyFamilyIconOnServer: mismatch pour', mismatched);
+      }
+    }catch(e){ console.warn('verifyFamilyIconOnServer:', e.message); }
+  }
+
   // ── Pull différentiel : récupère les nouveautés serveur et fusionne par ref ──
   async function syncFromServer(silent){
     if(!serverUrl) return;
@@ -1963,16 +1992,19 @@
         iconPickerModal.classList.remove('show');
         // Contexte Paramètres : sauvegarder sur tous les produits de la famille
         if(settingsEditingFamily){
-          familyIcons[settingsEditingFamily] = icon;
+          var _editedFamily = settingsEditingFamily;
+          familyIcons[_editedFamily] = icon;
           saveFamilyIcons();
+          var _touchedRefs = [];
           products.forEach(function(p){
-            if(p.family === settingsEditingFamily) p.familyIcon = icon;
+            if(p.family === _editedFamily){ p.familyIcon = icon; if(p.ref) _touchedRefs.push(p.ref); }
           });
           save(true);
-          var thumb = document.getElementById('settings-thumb-'+settingsEditingFamily);
+          var thumb = document.getElementById('settings-thumb-'+_editedFamily);
           if(thumb) thumb.className = 'ti '+icon;
           settingsEditingFamily = null;
           renderHome();
+          verifyFamilyIconOnServer(_editedFamily, icon, _touchedRefs);
         }
       });
     });
