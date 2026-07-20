@@ -16,8 +16,27 @@ function _chatNormFields(p){
     brand: normalizeSearch(p.brand),
     family: normalizeSearch(p.family),
     desc: normalizeSearch(p.desc),
-    tags: normalizeSearch(Array.isArray(p.tags) ? p.tags.join(' ') : '')
+    // Tableau (pas une chaîne jointe) : chaque tag doit garder ses limites de
+    // mot pour que la comparaison "champ contenu dans le terme" ci-dessous
+    // fonctionne tag par tag (sinon un tag isolé comme "capteur" ne peut
+    // jamais être vu comme "contenu dans" la question une fois noyé dans une
+    // longue chaîne "capteur entree autre-tag").
+    tags: Array.isArray(p.tags) ? p.tags.map(normalizeSearch) : []
   };
+}
+
+// Comparaison substring dans les deux sens (terme dans le champ, ou champ
+// dans le terme), pour ne pas rater "capteurs" (question) vs "capteur" (tag
+// enregistré) ou l'inverse — une simple correspondance à sens unique rate un
+// des deux sens dès qu'un pluriel/singulier ne coïncide pas exactement.
+function _chatMatches(field, term){
+  if(!field || !term) return false;
+  if(field.indexOf(term) !== -1) return true;
+  return field.length >= 3 && term.indexOf(field) !== -1;
+}
+
+function _chatMatchesAny(fields, term){
+  return fields.some(function(f){ return _chatMatches(f, term); });
 }
 
 function findChatCandidateProducts(query, limit){
@@ -34,13 +53,13 @@ function findChatCandidateProducts(query, limit){
     var f = _chatNormFields(p);
     var score = 0;
     if(f.ref && terms.indexOf(f.ref) !== -1) score += 100;
-    else if(f.ref && terms.some(function(t){ return f.ref.indexOf(t) === 0; })) score += 80;
+    else if(f.ref && terms.some(function(t){ return _chatMatches(f.ref, t); })) score += 80;
     terms.forEach(function(t){
-      if(f.name.indexOf(t) !== -1) score += 40;
-      if(f.brand.indexOf(t) !== -1) score += 30;
-      if(f.family.indexOf(t) !== -1) score += 30;
-      if(f.tags.indexOf(t) !== -1) score += 25;
-      if(f.desc.indexOf(t) !== -1) score += 15;
+      if(_chatMatches(f.name, t)) score += 40;
+      if(_chatMatches(f.brand, t)) score += 30;
+      if(_chatMatches(f.family, t)) score += 30;
+      if(_chatMatchesAny(f.tags, t)) score += 25;
+      if(_chatMatches(f.desc, t)) score += 15;
     });
     if(score > 0) scored.push({ p: p, score: score });
   }
