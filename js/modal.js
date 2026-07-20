@@ -1091,6 +1091,7 @@
       'leuze.com'             : 'Leuze',
       'leuze.fr'              : 'Leuze',
       'carlo-gavazzi.com'     : 'Carlo Gavazzi',
+      'Cembre.com'            : 'Cembre',
     };
     for(var domain in supplierMap){
       if(hostname === domain || hostname.endsWith('.' + domain)){

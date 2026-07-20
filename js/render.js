@@ -16,6 +16,41 @@
   var _sugOpen     = false; // mémorise si le carrousel suggestions est ouvert
   var _viewHistory = []; // pile pour retour suggestion → parent
 
+  // ── Copier la référence (délégué une seule fois, le contenu de vmMeta est régénéré à chaque ouverture) ──
+  function copyToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text);
+    }
+    // Repli pour contextes non sécurisés / anciens navigateurs
+    return new Promise(function(resolve, reject){
+      try{
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? resolve() : reject(new Error('execCommand a échoué'));
+      }catch(e){ reject(e); }
+    });
+  }
+  if(vmMeta){
+    vmMeta.addEventListener('click', function(e){
+      var btn = e.target.closest ? e.target.closest('.vm-copy-btn') : null;
+      if(!btn) return;
+      var ref = btn.getAttribute('data-copy') || '';
+      copyToClipboard(ref).then(function(){
+        showToast('Référence copiée ✓', 'ok', 1800);
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.classList.remove('copied'); }, 1200);
+      }).catch(function(){
+        showToast('Impossible de copier la référence', 'err', 2500);
+      });
+    });
+  }
+
   function buildPriceHistoryReadonly(product){
     if(!product || !Array.isArray(product.priceHistory) || product.priceHistory.length === 0) return '';
     var entries = product.priceHistory.map(function(h){ return {price:h.price, date:h.date}; });
@@ -53,7 +88,7 @@
 
     // Photo
     if(p.photo){
-      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
+      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
     }else{
       vmPhoto.innerHTML = '<span class="ph-placeholder">Pas de photo</span>';
     }
@@ -84,6 +119,11 @@
         val = p.available3DXLink
           ? '<a href="'+escapeHtml(p.available3DXLink)+'" target="_blank" rel="noopener noreferrer" class="three-d-badge" title="Disponible dans la 3DEXPERIENCE">'+m[1]+'</a>'
           : m[1];
+      } else if(m[0] === 'Référence'){
+        val = '<span class="vm-ref-copy">'
+          + '<span>'+escapeHtml(m[1])+'</span>'
+          + '<button type="button" class="vm-copy-btn" data-copy="'+escapeHtml(m[1])+'" title="Copier la référence" aria-label="Copier la référence"><i class="ti ti-copy" aria-hidden="true"></i><i class="ti ti-check" aria-hidden="true"></i></button>'
+          + '</span>';
       } else {
         val = '<span>'+escapeHtml(m[1])+'</span>';
       }

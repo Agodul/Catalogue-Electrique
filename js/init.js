@@ -255,3 +255,11 @@
   if(typeof window._initBottomNav   === 'function') window._initBottomNav();
   if(typeof window._initMenuSheet   === 'function') window._initMenuSheet();
 
+  // ── Bloquer le menu contextuel (clic droit / appui long) et le drag sur les images ──
+  document.addEventListener('contextmenu', function(e){
+    if(e.target && e.target.tagName === 'IMG') e.preventDefault();
+  });
+  document.addEventListener('dragstart', function(e){
+    if(e.target && e.target.tagName === 'IMG') e.preventDefault();
+  });
+
