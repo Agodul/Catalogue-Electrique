@@ -277,12 +277,16 @@
     updateServerSubtitle();
     if(serverUrl){
       setTimeout(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
         doSyncCheck();
         syncDeletions();
         startSyncPolling();
       }, 1500);
-      // Sync suppressions toutes les 5 minutes
-      setInterval(syncDeletions, 5 * 60 * 1000);
+      // Sync suppressions toutes les 5 minutes (si connecté)
+      setInterval(function(){
+        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+        syncDeletions();
+      }, 5 * 60 * 1000);
     }
   }
 
@@ -311,6 +315,7 @@
   // Sync complète pour détecter les suppressions côté serveur
   async function syncDeletions(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var getHeaders = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
       delete getHeaders['Content-Type'];
@@ -341,6 +346,7 @@
 
   async function doSyncCheck(){
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var checkUrl = serverUrl+'/check' + (lastSync !== '0' ? '?timestamp='+lastSync : '');
@@ -359,6 +365,7 @@
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     _syncInterval = setInterval(doSyncCheck, 15000);
   }
 
@@ -1593,11 +1600,15 @@
 
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
-  window.addEventListener('scroll', function(){
-    btnScrollTop.classList.toggle('show', window.scrollY > 400);
+  // Écouter scroll sur appContent (mobile) ou window (desktop)
+  var _appContent = document.getElementById('appContent');
+  var _scrollTarget = _appContent || window;
+  _scrollTarget.addEventListener('scroll', function(){
+    var _scrollY = _appContent ? _appContent.scrollTop : window.scrollY;
+    btnScrollTop.classList.toggle('show', _scrollY > 400);
   });
   btnScrollTop.addEventListener('click', function(){
-    window.scrollTo({top:0, behavior:'smooth'});
+    var _acEl2=document.getElementById('appContent'); if(_acEl2) _acEl2.scrollTo({top:0,behavior:'smooth'}); else window.scrollTo({top:0,behavior:'smooth'});
   });
 
   // ---------- Page d'accueil ----------
@@ -2139,17 +2150,28 @@
         document.body.classList.remove('modal-open');
       }
 
+      function closeSettingsNow(){
+        var so=document.getElementById('settingsOverlay');
+        if(so) so.classList.remove('show');
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeSettingsNow();
         showHome();
         setActive(bnHome);
+        // Remonter en haut de page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        var ac = document.getElementById('appContent');
+        if(ac) ac.scrollTo({ top: 0, behavior: 'smooth' });
       });
 
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
+        closeSettingsNow();
         // Fermer la fiche produit si ouverte
         var _vo=document.getElementById('viewOverlay');
         if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
@@ -2166,6 +2188,7 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
+        closeSettingsNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2186,6 +2209,7 @@
         if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
+        closeSettingsNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
@@ -2251,7 +2275,9 @@
             _mobileSearchInput.value = si ? si.value : '';
             _mobileSearchClear && (_mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none');
             // Scroll en haut puis focus — clavier s'ouvre naturellement
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            // Scroller le conteneur appContent (pas window) sur mobile
+            var _ac = document.getElementById('appContent');
+            if(_ac) _ac.scrollTop = 0; else window.scrollTo({ top: 0, behavior: 'instant' });
             setTimeout(function(){ _mobileSearchInput.focus(); }, 80);
           }
         }
@@ -2286,6 +2312,16 @@
       if(_mobileSearchCancel) _mobileSearchCancel.addEventListener('click', function(){
         _closeMobileSearchBar(false);
       });
+
+      // Fermer le clavier quand on touche le contenu de la page (scroll, tap sur catalogue)
+      // Le clavier se ferme via blur sur l'input
+      document.addEventListener('touchstart', function(e){
+        if(!_mobileSearchInput || !_mobileSearchBar || _mobileSearchBar.style.display === 'none') return;
+        // Si le touch est en dehors de la barre de recherche → blur (ferme le clavier)
+        if(!_mobileSearchBar.contains(e.target)){
+          _mobileSearchInput.blur();
+        }
+      }, { passive: true });
 
       window._openMobileSearchBar  = _openMobileSearchBar;
       window._closeMobileSearchBar = _closeMobileSearchBar;

@@ -159,7 +159,13 @@
     var sugLabel   = document.getElementById('vmSuggestionsToggleLabel');
     var sugTrack   = document.getElementById('vmSuggestionsTrack');
     var sugCarousel= document.getElementById('vmSuggestionsCarousel');
-    var sugRefs    = Array.isArray(p.suggestions) && p.suggestions.length ? p.suggestions : [];
+    // Filtrer les refs vides ET vérifier que les produits existent réellement
+    var _allProds = window.products || [];
+    var sugRefs = Array.isArray(p.suggestions)
+      ? p.suggestions.filter(function(r){
+          return r && r.trim() && _allProds.some(function(x){ return x.ref === r; });
+        })
+      : [];
 
     if(sugSection){
       if(sugRefs.length){
@@ -204,8 +210,8 @@
             var visible = sugCarousel && sugCarousel.style.display !== 'none';
             if(sugCarousel) sugCarousel.style.display = visible ? 'none' : '';
             if(sugLabel) sugLabel.textContent = visible
-              ? 'Afficher les suggestions (' + sugRefs.length + ')'
-              : 'Masquer les suggestions';
+              ? 'Afficher suggestions (' + sugRefs.length + ')'
+              : 'Masquer suggestions';
             // Scroller jusqu'aux suggestions quand on les ouvre
             if(!visible && sugSection){
               setTimeout(function(){

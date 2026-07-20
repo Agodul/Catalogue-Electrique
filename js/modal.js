@@ -685,14 +685,21 @@
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
           || (p.family||'').toLowerCase().indexOf(q) !== -1
-          || (p.brand||'').toLowerCase().indexOf(q) !== -1;
-    }).slice(0, 8);
+          || (p.brand||'').toLowerCase().indexOf(q) !== -1
+          || (p.series||'').toLowerCase().indexOf(q) !== -1;
+    });
     if(!results.length){ fSuggestionsDrop.style.display='none'; return; }
     fSuggestionsDrop.innerHTML = results.map(function(p){
-      return '<div class="autocomplete-item" data-ref="'+escapeHtml(p.ref)+'">'
-        + '<strong>'+escapeHtml(p.ref)+'</strong>'
-        + (p.name ? ' <span style="color:var(--ink-soft);font-size:12px;">'+escapeHtml(p.name.substring(0,40))+'</span>' : '')
-        + (p.brand ? ' <em style="color:var(--ink-soft);font-size:11px;">'+escapeHtml(p.brand)+'</em>' : '')
+      var thumb = p.photo
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+        : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
+      return '<div class="autocomplete-item sug-drop-item" data-ref="'+escapeHtml(p.ref)+'">'
+        + '<div class="sug-drop-thumb">'+thumb+'</div>'
+        + '<div class="sug-drop-text">'
+        +   '<div class="sug-drop-ref">'+escapeHtml(p.ref)+'</div>'
+        +   (p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,45))+'</div>' : '')
+        +   (p.brand ? '<div class="sug-drop-brand">'+escapeHtml(p.brand)+'</div>' : '')
+        + '</div>'
         + '</div>';
     }).join('');
     fSuggestionsDrop.style.display = 'block';
