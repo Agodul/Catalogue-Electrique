@@ -383,6 +383,7 @@
     background:rgba(28,26,23,.48);
     display:none; align-items:center; justify-content:center;
     padding:20px;
+    z-index:500;
   }
   #viewOverlay.open{ display:flex; }
   #viewModal{
@@ -2291,6 +2292,7 @@
 /* Fiche produit : animation slide-up sur mobile */
 @media (max-width: 640px) {
   #viewOverlay {
+    top: 0 !important;
     align-items: flex-end !important;
     padding: 0 !important;
     background: rgba(0,0,0,.5) !important;
@@ -2480,7 +2482,8 @@
     background: var(--paper-card);
     border-top: 1.5px solid var(--line);
     border-radius: 20px 20px 0 0;
-    padding-bottom: calc(var(--nav-h, 56px) + env(safe-area-inset-bottom));
+    /* --nav-h inclut déjà env(safe-area-inset-bottom) — ne pas l'ajouter deux fois */
+    padding-bottom: var(--nav-h, 56px);
     transform: translateY(100%);
     transition: transform .3s cubic-bezier(.32,.72,0,1);
     max-height: calc(100dvh - 60px);
