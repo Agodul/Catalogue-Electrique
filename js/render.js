@@ -406,32 +406,117 @@
   }
   // ── Fin modale Documents ─────────────────────────────────────────
 
-  // ── Viewer PDF via iframe officielle PDF.js ─────────────────────
-  var _pdfCurrentBlobUrl = null;
+  // ── Viewer PDF rendu sur canvas via PDF.js — permet le pincement pour
+  // zoomer sur mobile (impossible à intercepter avec l'ancien lecteur natif
+  // en iframe : les gestes tactiles sur une iframe restent dans son propre
+  // contexte et ne remontent jamais à la page parente). ──────────────────
+  var _pdfjsLoadPromise = null;
+  function ensurePdfJs(){
+    if(window.pdfjsLib) return Promise.resolve();
+    if(_pdfjsLoadPromise) return _pdfjsLoadPromise;
+    _pdfjsLoadPromise = new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = 'js/pdf.min.js';
+      s.onload = function(){
+        try{
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+          resolve();
+        }catch(e){ reject(e); }
+      };
+      s.onerror = function(){ _pdfjsLoadPromise = null; reject(new Error('Échec du chargement du lecteur PDF')); };
+      document.head.appendChild(s);
+    });
+    return _pdfjsLoadPromise;
+  }
 
-  function _openPdfIframe(ab, docName){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var loader  = document.getElementById('pdfViewerLoader');
-    var frame   = document.getElementById('pdfViewerFrame');
-    if(_pdfCurrentBlobUrl) URL.revokeObjectURL(_pdfCurrentBlobUrl);
-    _pdfCurrentBlobUrl = URL.createObjectURL(new Blob([ab], { type: 'application/pdf' }));
-    // Passer du loader à l'iframe
-    if(loader) loader.style.display = 'none';
-    if(frame){
-      frame.src = _pdfCurrentBlobUrl;
-      frame.style.display = 'block';
+  var _pdfCurrentDoc = null;
+  var _pdfZoom = 1;
+  var MIN_PDF_ZOOM = 1, MAX_PDF_ZOOM = 4;
+
+  function _pdfSetZoom(z){
+    _pdfZoom = Math.min(MAX_PDF_ZOOM, Math.max(MIN_PDF_ZOOM, z));
+    var zoomWrap = document.getElementById('pdfViewerZoomWrap');
+    if(zoomWrap) zoomWrap.style.transform = 'scale('+_pdfZoom+')';
+  }
+
+  // Pincement à deux doigts : capté sur le conteneur qui défile, sans
+  // bloquer le défilement/le geste à un doigt (uniquement en pincement actif).
+  (function _initPdfPinchZoom(){
+    var scrollEl = document.getElementById('pdfViewerScroll');
+    if(!scrollEl) return;
+    var startDist = 0, startZoom = 1;
+    function dist(touches){
+      var dx = touches[0].clientX - touches[1].clientX;
+      var dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx*dx + dy*dy);
+    }
+    scrollEl.addEventListener('touchstart', function(e){
+      if(e.touches.length === 2){
+        startDist = dist(e.touches);
+        startZoom = _pdfZoom;
+      }
+    }, {passive:true});
+    scrollEl.addEventListener('touchmove', function(e){
+      if(e.touches.length === 2 && startDist > 0){
+        e.preventDefault();
+        var scale = dist(e.touches) / startDist;
+        _pdfSetZoom(startZoom * scale);
+      }
+    }, {passive:false});
+    scrollEl.addEventListener('touchend', function(e){
+      if(e.touches.length < 2) startDist = 0;
+    }, {passive:true});
+  })();
+
+  async function _openPdfCanvas(ab, docName){
+    var loader   = document.getElementById('pdfViewerLoader');
+    var scrollEl = document.getElementById('pdfViewerScroll');
+    var pagesEl  = document.getElementById('pdfViewerPages');
+    if(pagesEl) pagesEl.innerHTML = '';
+    _pdfSetZoom(1);
+    try{
+      await ensurePdfJs();
+      var pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+      _pdfCurrentDoc = pdf;
+      var containerWidth = ((scrollEl && scrollEl.parentElement) ? scrollEl.parentElement.clientWidth : 800) - 24;
+      var dpr = window.devicePixelRatio || 1;
+      for(var pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+        var page = await pdf.getPage(pageNum);
+        var baseViewport = page.getViewport({ scale: 1 });
+        var scale = containerWidth / baseViewport.width;
+        var viewport = page.getViewport({ scale: scale * dpr });
+        var canvas = document.createElement('canvas');
+        canvas.width  = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width  = (viewport.width / dpr) + 'px';
+        canvas.style.height = (viewport.height / dpr) + 'px';
+        canvas.style.display = 'block';
+        canvas.style.margin  = '0 auto 8px';
+        canvas.style.background = '#fff';
+        if(pagesEl) pagesEl.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+      }
+      if(loader) loader.style.display = 'none';
+      if(scrollEl) scrollEl.style.display = 'block';
+    }catch(e){
+      console.warn('[PDF] rendu échoué:', e);
+      _pdfClose();
+      showToast('Erreur d\'affichage du PDF : '+(e && e.message || e), 'err', 4000);
     }
   }
 
   function _pdfClose(){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var frame   = document.getElementById('pdfViewerFrame');
-    var loader  = document.getElementById('pdfViewerLoader');
-    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    var overlay  = document.getElementById('pdfViewerOverlay');
+    var scrollEl = document.getElementById('pdfViewerScroll');
+    var pagesEl  = document.getElementById('pdfViewerPages');
+    var loader   = document.getElementById('pdfViewerLoader');
+    if(scrollEl) scrollEl.style.display = 'none';
+    if(pagesEl) pagesEl.innerHTML = '';
     if(loader) loader.style.display = 'flex';
     if(overlay) overlay.style.display = 'none';
     document.body.classList.remove('modal-open');
-    if(_pdfCurrentBlobUrl){ URL.revokeObjectURL(_pdfCurrentBlobUrl); _pdfCurrentBlobUrl = null; }
+    _pdfSetZoom(1);
+    if(_pdfCurrentDoc){ _pdfCurrentDoc.destroy(); _pdfCurrentDoc = null; }
   }
 
   // Initialiser les listeners fermeture une seule fois
@@ -441,28 +526,28 @@
   })();
 
   window._openPdfViewerWithBuffer = function(docName, fetchFn){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var title   = document.getElementById('pdfViewerTitle');
-    var loader  = document.getElementById('pdfViewerLoader');
-    var frame   = document.getElementById('pdfViewerFrame');
+    var overlay  = document.getElementById('pdfViewerOverlay');
+    var title    = document.getElementById('pdfViewerTitle');
+    var loader   = document.getElementById('pdfViewerLoader');
+    var scrollEl = document.getElementById('pdfViewerScroll');
     if(title) title.textContent = docName || 'Document PDF';
-    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    if(scrollEl) scrollEl.style.display = 'none';
     if(loader) loader.style.display = 'flex';
     if(overlay) overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
     fetchFn(
-      function onBuffer(ab){ _openPdfIframe(ab, docName); },
+      function onBuffer(ab){ _openPdfCanvas(ab, docName); },
       function onError(e){ _pdfClose(); showToast('Erreur PDF : '+(e&&e.message||e), 'err', 4000); }
     );
   };
 
   window._openPdfViewer = function(pdfUrl, docName){
-    var overlay = document.getElementById('pdfViewerOverlay');
-    var title   = document.getElementById('pdfViewerTitle');
-    var loader  = document.getElementById('pdfViewerLoader');
-    var frame   = document.getElementById('pdfViewerFrame');
+    var overlay  = document.getElementById('pdfViewerOverlay');
+    var title    = document.getElementById('pdfViewerTitle');
+    var loader   = document.getElementById('pdfViewerLoader');
+    var scrollEl = document.getElementById('pdfViewerScroll');
     if(title) title.textContent = docName || 'Document PDF';
-    if(frame){ frame.style.display = 'none'; frame.src = 'about:blank'; }
+    if(scrollEl) scrollEl.style.display = 'none';
     if(loader) loader.style.display = 'flex';
     if(overlay) overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
@@ -470,7 +555,7 @@
     delete h['Content-Type'];
     fetch(pdfUrl, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-      .then(function(ab){ _openPdfIframe(ab, docName); })
+      .then(function(ab){ _openPdfCanvas(ab, docName); })
       .catch(function(e){ _pdfClose(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
   };
   // ── Fin PDF Viewer ───────────────────────────────────────────────

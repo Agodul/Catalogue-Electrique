@@ -1111,8 +1111,13 @@
       <i class="ti ti-loader-2" style="font-size:36px;color:#fff;animation:spin 1s linear infinite;"></i>
       <span style="font-size:13px;color:rgba(255,255,255,.5);">Chargement…</span>
     </div>
-    <!-- iframe blob — viewer natif du navigateur -->
-    <iframe id="pdfViewerFrame" style="display:none;flex:1;border:none;width:100%;" title="Visualiseur PDF"></iframe>
+    <!-- Rendu PDF.js sur canvas — permet le pincement pour zoomer sur mobile,
+         impossible à intercepter avec l'ancien lecteur natif en iframe. -->
+    <div id="pdfViewerScroll" style="display:none;flex:1;overflow:auto;background:#525252;">
+      <div id="pdfViewerZoomWrap" style="transform-origin:0 0;width:fit-content;">
+        <div id="pdfViewerPages"></div>
+      </div>
+    </div>
   </div>
 </div>
 <!-- ===== FIN PDF VIEWER ===== -->
