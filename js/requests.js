@@ -310,7 +310,10 @@
       btnEdit.style.display = reqIsAdmin() ? 'flex' : 'none';
       btnEdit.onclick = function(){
         overlay.style.display = 'none';
-        document.body.classList.remove('modal-open');
+        // Fermer aussi le panneau "Demandes en attente" derrière — sinon il
+        // reste visible à côté de la modale d'édition standard.
+        if(typeof reqClosePanel === 'function') reqClosePanel();
+        else document.body.classList.remove('modal-open');
         if(typeof window._openReviewModal === 'function') window._openReviewModal(item, user);
       };
     }
