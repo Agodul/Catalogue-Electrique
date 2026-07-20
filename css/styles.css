@@ -19,7 +19,7 @@
     --line:#C9D0D8;
     --copper:#194093;
     --copper-deep:#122d6e;
-    --moss:#5C8A3C;
+    --moss:#4A6E30; /* contraste WCAG AA (≥4.5:1) sur blanc et sur fond clair */
     --warn:#DC2626;
     --shadow: 0 1px 3px rgba(0,0,0,0.10), 0 6px 18px rgba(0,0,0,0.10);
   }

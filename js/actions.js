@@ -179,23 +179,24 @@
   window._priceSort = null; // null | 'asc' | 'desc'
   var sortPriceBtn  = document.getElementById('sortPriceBtn');
   var sortPriceIcon = document.getElementById('sortPriceIcon');
+  // Partagé avec le bottom-sheet filtres mobile (même état, même rendu)
+  window._setPriceSort = function(mode){
+    window._priceSort = mode || null;
+    if(sortPriceBtn) sortPriceBtn.classList.remove('active-asc','active-desc');
+    if(mode === 'asc'){
+      if(sortPriceBtn) sortPriceBtn.classList.add('active-asc');
+      if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-ascending sort-icon';
+    } else if(mode === 'desc'){
+      if(sortPriceBtn) sortPriceBtn.classList.add('active-desc');
+      if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-descending sort-icon';
+    } else {
+      if(sortPriceIcon) sortPriceIcon.className = 'ti ti-arrows-sort sort-icon';
+    }
+  };
   if(sortPriceBtn){
     sortPriceBtn.addEventListener('click', function(){
-      if(window._priceSort === null){
-        window._priceSort = 'asc';
-        sortPriceBtn.classList.add('active-asc');
-        sortPriceBtn.classList.remove('active-desc');
-        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-ascending sort-icon';
-      } else if(window._priceSort === 'asc'){
-        window._priceSort = 'desc';
-        sortPriceBtn.classList.remove('active-asc');
-        sortPriceBtn.classList.add('active-desc');
-        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-sort-descending sort-icon';
-      } else {
-        window._priceSort = null;
-        sortPriceBtn.classList.remove('active-asc','active-desc');
-        if(sortPriceIcon) sortPriceIcon.className = 'ti ti-arrows-sort sort-icon';
-      }
+      var next = window._priceSort === null ? 'asc' : window._priceSort === 'asc' ? 'desc' : null;
+      window._setPriceSort(next);
       _lastRenderKey = ''; render();
     });
   }
@@ -929,9 +930,7 @@
     familyFilterEl.value = '';
     seriesFilterEl.value = '';
     // Réinitialiser aussi le tri prix
-    window._priceSort = null;
-    if(sortPriceBtn) sortPriceBtn.classList.remove('active-asc','active-desc');
-    if(sortPriceIcon) sortPriceIcon.className = 'ti ti-arrows-sort sort-icon';
+    window._setPriceSort(null);
     _lastRenderKey = '';
     render();
   });
@@ -1706,12 +1705,13 @@
         countWithDiscount++;
       }
     });
-    var avgDisp = countWithDiscount > 0 ? '-'+Math.round(avgDiscount/countWithDiscount)+'%' : '--';
+    var avgDisp  = countWithDiscount > 0 ? '-'+Math.round(avgDiscount/countWithDiscount)+'%' : '--';
+    var discTitle = countWithDiscount > 0 ? '' : ' title="Aucun produit avec remise actuellement"';
 
     homeStats.innerHTML =
       '<div class="home-stat"><div class="home-stat-val">'+total+'</div><div class="home-stat-lbl">Produits</div></div>' +
       '<div class="home-stat"><div class="home-stat-val">'+brands+'</div><div class="home-stat-lbl">Marques</div></div>' +
-      '<div class="home-stat"><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
+      '<div class="home-stat"'+discTitle+'><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
 
     // Familles avec compteur
     var familyCounts = {};
@@ -2392,6 +2392,7 @@
     var selBrand=document.getElementById('filterSheetBrand');
     var selFamily=document.getElementById('filterSheetFamily');
     var selSeries=document.getElementById('filterSheetSeries');
+    var selSort=document.getElementById('filterSheetSort');
     var brandFilterEl=document.getElementById('brandFilter');
     var familyFilterEl=document.getElementById('familyFilter');
     var seriesFilterEl=document.getElementById('seriesFilter');
@@ -2459,6 +2460,7 @@
         (familyFilterEl&&familyFilterEl.value)||'',
         (seriesFilterEl&&seriesFilterEl.value)||''
       );
+      if(selSort) selSort.value = window._priceSort || '';
       overlay.style.display='block';
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
@@ -2472,6 +2474,7 @@
       if(brandFilterEl&&selBrand) brandFilterEl.value=selBrand.value;
       if(familyFilterEl&&selFamily) familyFilterEl.value=selFamily.value;
       if(seriesFilterEl&&selSeries) seriesFilterEl.value=selSeries.value;
+      if(selSort && typeof window._setPriceSort==='function') window._setPriceSort(selSort.value || null);
       closeSheet();
       if(typeof render==='function') render();
     }
@@ -2479,10 +2482,12 @@
       if(selBrand) selBrand.value='';
       if(selFamily) selFamily.value='';
       if(selSeries) selSeries.value='';
+      if(selSort) selSort.value='';
       if(brandFilterEl) brandFilterEl.value='';
       if(familyFilterEl) familyFilterEl.value='';
       if(seriesFilterEl) seriesFilterEl.value='';
       if(searchInputEl) searchInputEl.value='';
+      if(typeof window._setPriceSort==='function') window._setPriceSort(null);
       closeSheet();
       if(typeof render==='function') render();
     }
