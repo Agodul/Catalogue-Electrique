@@ -5,14 +5,17 @@
 //  Catalogue Électrique — SPI Engineering
 // ══════════════════════════════════════════════════════════════════════════
 
-var AUTH_SESSION_KEY = "cat_auth_user";   // sessionStorage : { token, user }
+var AUTH_SESSION_KEY = "cat_auth_user";   // localStorage : { token, user }
 var AUTH_SERVER_KEY  = "cat_server_url";  // localStorage : URL serveur
 
 // ── Helpers session ──────────────────────────────────────────────────────
+// localStorage (pas sessionStorage) : sur mobile, l'OS termine souvent le
+// processus de la PWA en arrière-plan pour libérer de la mémoire, ce qui
+// vide sessionStorage et forçait une reconnexion à chaque réouverture.
 
 function _authGetSession() {
   try {
-    var raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+    var raw = localStorage.getItem(AUTH_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch(e) { return null; }
 }
@@ -34,11 +37,11 @@ function authGetToken() {
 }
 
 function authSetSession(token, user) {
-  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ token: token, user: user }));
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ token: token, user: user }));
 }
 
 function authClearUser() {
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  localStorage.removeItem(AUTH_SESSION_KEY);
 }
 
 
