@@ -343,11 +343,14 @@ function applyAuthUI() {
     var el = document.getElementById(id);
     if(el) el.style.display = isAdmin ? '' : 'none';
   });
-  // Export/Import Excel — si permission canExport
-  ['btnExportXlsx','btnImportXlsx'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = canExport ? '' : 'none';
-  });
+  // Export Excel — si permission canExport
+  var btnExportXlsxEl = document.getElementById('btnExportXlsx');
+  if(btnExportXlsxEl) btnExportXlsxEl.style.display = canExport ? '' : 'none';
+  // Import Excel — si permission canExport (édition directe) OU droit de
+  // proposer (l'import passe alors par le circuit de demandes — jamais
+  // d'écriture directe au catalogue pour ces utilisateurs).
+  var btnImportXlsxEl = document.getElementById('btnImportXlsx');
+  if(btnImportXlsxEl) btnImportXlsxEl.style.display = (canExport || canPropose) ? '' : 'none';
   // Séparateur entre export et compare — cacher si pas canExport
   var _menuSeps = document.querySelectorAll('.hdr-menu-sep');
   // (les séparateurs restent visibles pour ne pas casser le layout)

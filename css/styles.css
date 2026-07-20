@@ -1438,14 +1438,11 @@
   }
   #imgPreviewOverlay.show{ display:flex; }
   #imgPreviewOverlay img{
-    width:500px; height:500px;
+    width:min(500px, 90vw); height:min(500px, 90vw);
     border-radius:8px;
     object-fit:contain;
     background:#111;
     box-shadow:0 20px 60px rgba(0,0,0,.5);
-  }
-  @media(max-width:400px){
-    #imgPreviewOverlay img{ width:320px; height:320px; }
   }
   .photo-preview{ cursor:zoom-in; }
   .photo-preview img{ cursor:zoom-in; }
@@ -1589,7 +1586,7 @@
     font-size:14px; background:var(--paper); color:var(--ink);
   }
   .icon-picker-grid{
-    display:grid; grid-template-columns:repeat(8,1fr);
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(40px,1fr));
     gap:6px; overflow-y:auto; flex:1;
   }
   .icon-picker-item{

@@ -499,6 +499,31 @@
     refDupBannerEl.classList.remove('open');
   });
 
+  // Pré-remplit le formulaire depuis un objet produit — utilisé pour l'édition
+  // d'un produit existant, et pour la révision d'une demande soumise (qui
+  // n'existe pas encore dans `products`).
+  function fillFormFromProduct(p){
+    fBrand.value = p.brand||''; fRef.value = p.ref||''; fUrl.value = p.url||'';
+    fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
+    if(fLeadTime) fLeadTime.value = p.leadTime||'';
+    fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
+    renderTagSuggestions();
+    f3dAvailable.checked = !!p.available3DX;
+    f3dLink.value = p.available3DXLink || '';
+    update3dLinkVisibility();
+    if(fEssential) fEssential.checked = !!p.essential;
+    _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
+    _sugRenderChips();
+    fPrice.value = p.price||''; fPhoto.value = p.photo||'';
+    updatePhotoPreview();
+    renderPriceHistory(p);
+    switchTab('manual');
+    if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';
+    if(priceDisplayRow) priceDisplayRow.style.display = 'flex';
+    if(priceCreateRow)  priceCreateRow.style.display  = 'none';
+    updatePriceDisplay();
+  }
+
   function openModal(id){
     editingId = id || null;
     resetForm();
@@ -507,25 +532,7 @@
       if(p){
         modalTitle.textContent = 'Modifier le produit';
         modalLeftFoot.textContent = 'Ajouté le ' + (p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—');
-        fBrand.value = p.brand||''; fRef.value = p.ref||''; fUrl.value = p.url||'';
-        fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
-        if(fLeadTime) fLeadTime.value = p.leadTime||'';
-        fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
-        renderTagSuggestions();
-        f3dAvailable.checked = !!p.available3DX;
-        f3dLink.value = p.available3DXLink || '';
-        update3dLinkVisibility();
-        if(fEssential) fEssential.checked = !!p.essential;
-        _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
-        _sugRenderChips();
-        fPrice.value = p.price||''; fPhoto.value = p.photo||'';
-        updatePhotoPreview();
-        renderPriceHistory(p);
-        switchTab('manual');
-        if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';
-        if(priceDisplayRow) priceDisplayRow.style.display = 'flex';
-        if(priceCreateRow)  priceCreateRow.style.display  = 'none';
-        updatePriceDisplay();
+        fillFormFromProduct(p);
       }
     }else{
       modalTitle.textContent = 'Ajouter un produit';
@@ -683,8 +690,9 @@
   window._resetProposeModeUI = resetProposeModeUI;
 
   function requestCloseModal(){
-    // Réinitialiser le mode proposition
+    // Réinitialiser le mode proposition / révision
     resetProposeModeUI();
+    resetReviewModeUI();
     if(!hasUnsavedInput()){
      closeModal();
     return;
@@ -811,6 +819,51 @@
     if(title) title.textContent = id ? 'Proposer une modification' : 'Proposer un produit';
     if(btnSave) btnSave.textContent = 'Envoyer la demande';
   };
+
+  // Mode révision de demande (admin) : ouvre la modale standard "Modifier le
+  // produit", pré-remplie avec les données soumises, pour permettre de tout
+  // modifier avant de valider. `item` est l'entrée de la file de demandes.
+  window._openReviewModal = function(item, user){
+    var data     = item.data || {};
+    var original = data._reqOriginal;
+    var isNew    = !original;
+    var p = isNew ? Object.assign({}, data) : Object.assign({}, original, data);
+
+    window._proposeMode = false;
+    window._reviewMode  = true;
+    window._reviewItem  = item;
+    window._reviewUser  = user;
+    window._reviewBase  = {
+      id: p.id || null,
+      createdAt: p.createdAt || null,
+      priceHistory: Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [],
+      price: p.price || '',
+      priceCatalogue: p.priceCatalogue || ''
+    };
+
+    editingId = null;
+    resetForm();
+    fillFormFromProduct(p);
+    modalTitle.textContent = (isNew ? 'Nouveau produit : ' : 'Modification proposée : ') + (p.ref || '');
+    modalLeftFoot.textContent = 'Soumis par ' + user + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+    var btnSave = document.getElementById('btnSave');
+    if(btnSave) btnSave.textContent = 'Valider et accepter';
+    overlay.classList.add('open');
+    document.body.classList.add('modal-open');
+  };
+
+  function resetReviewModeUI(){
+    if(!window._reviewMode) return;
+    window._reviewMode = false;
+    window._reviewItem = null;
+    window._reviewUser = null;
+    window._reviewBase = null;
+    var title = document.getElementById('modalTitle');
+    var btnSave = document.getElementById('btnSave');
+    if(title) title.textContent = editingId ? 'Modifier le produit' : 'Ajouter un produit';
+    if(btnSave) btnSave.textContent = 'Enregistrer';
+  }
+  window._resetReviewModeUI = resetReviewModeUI;
 
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });

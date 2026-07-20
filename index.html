@@ -264,17 +264,19 @@
       <!-- Tableau historique -->
       <div style="padding:14px 20px 6px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;font-weight:600;">Historique des prix</div>
-        <table id="priceModalTable" style="width:100%;border-collapse:collapse;font-size:13.5px;">
-          <thead>
-            <tr style="background:var(--paper);">
-              <th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Date</th>
-              <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Prix</th>
-              <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Évolution</th>
-              <th style="border-bottom:1px solid var(--line);width:32px;"></th>
-            </tr>
-          </thead>
-          <tbody id="priceModalBody"></tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table id="priceModalTable" style="width:100%;min-width:320px;border-collapse:collapse;font-size:13.5px;">
+            <thead>
+              <tr style="background:var(--paper);">
+                <th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Date</th>
+                <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Prix</th>
+                <th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);">Évolution</th>
+                <th style="border-bottom:1px solid var(--line);width:32px;"></th>
+              </tr>
+            </thead>
+            <tbody id="priceModalBody"></tbody>
+          </table>
+        </div>
         <div id="priceModalEmpty" style="display:none;padding:16px 0;font-size:13px;color:var(--ink-soft);font-style:italic;">Aucun historique enregistré.</div>
       </div>
       <!-- Formulaire ajout nouveau prix -->
@@ -885,10 +887,12 @@
       <button onclick="document.getElementById('xlsxImportOverlay').style.display='none'" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:16px 24px;">
-      <table id="xlsxPreviewTable" style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead id="xlsxPreviewHead"></thead>
-        <tbody id="xlsxPreviewBody"></tbody>
-      </table>
+      <div style="overflow-x:auto;">
+        <table id="xlsxPreviewTable" style="width:100%;min-width:480px;border-collapse:collapse;font-size:13px;">
+          <thead id="xlsxPreviewHead"></thead>
+          <tbody id="xlsxPreviewBody"></tbody>
+        </table>
+      </div>
     </div>
     <div style="padding:14px 24px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;align-items:center;">
       <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>

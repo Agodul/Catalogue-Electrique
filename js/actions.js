@@ -111,6 +111,41 @@
       return;
     }
 
+    // ── Mode révision de demande (admin) : valider les modifs et accepter ──
+    if(window._reviewMode && window._reviewItem && typeof window.reqAccept === 'function'){
+      (async function(){
+        var btnSave = document.getElementById('btnSave');
+        if(btnSave){ btnSave.disabled = true; btnSave.style.opacity = '0.5'; }
+        var item = window._reviewItem;
+        var reviewUser = window._reviewUser;
+        var base = window._reviewBase || {};
+        if(base.id) payload.id = base.id;
+        payload.createdAt = base.createdAt || Date.now();
+        var history = Array.isArray(base.priceHistory) ? base.priceHistory.slice() : [];
+        var oldReviewPrice = (base.price || '').trim();
+        if(oldReviewPrice && oldReviewPrice !== newPrice.trim()) history.push({price: oldReviewPrice, date: Date.now()});
+        payload.priceHistory = history;
+        // Le champ prix de la modale standard représente le prix courant, pas
+        // le prix catalogue — conserver celui soumis à l'origine (pas de champ
+        // dédié pour le modifier dans ce flux de révision).
+        payload.priceCatalogue = base.priceCatalogue || '';
+
+        var ok = await window.reqAccept(item.ref, reviewUser, payload);
+        if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
+        if(ok){
+          showToast('Demande acceptée ✓', 'ok', 3000);
+          if(typeof window._resetReviewModeUI === 'function') window._resetReviewModeUI();
+          if(typeof closeModal === 'function') closeModal();
+          else document.getElementById('modalOverlay').classList.remove('open');
+          if(typeof reqOpenPanel === 'function') reqOpenPanel();
+          if(typeof reqUpdateBadge === 'function') reqUpdateBadge();
+        } else {
+          showToast('Erreur lors de la validation', 'warn', 3000);
+        }
+      })();
+      return;
+    }
+
     if(editingId){
       var idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){
@@ -1306,8 +1341,14 @@
         // Affiche la modale de prévisualisation
         document.getElementById('xlsxImportSummary').textContent =
           countNew + ' nouvelle(s) · ' + countUpdate + ' mise(s) à jour · ' + countNoChange + ' inchangée(s)';
-        document.getElementById('xlsxImportInfo').textContent =
-          'Les lignes sans "Nouveau prix" conservent l\'ancien prix.';
+        var hasDirectEditRights = window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin);
+        document.getElementById('xlsxImportInfo').textContent = hasDirectEditRights
+          ? 'Les lignes sans "Nouveau prix" conservent l\'ancien prix.'
+          : 'Les lignes sans "Nouveau prix" conservent l\'ancien prix. Sans droit d\'édition directe, chaque ligne sera envoyée en demande d\'approbation.';
+        var btnConfirmXlsxImportEl = document.getElementById('btnConfirmXlsxImport');
+        if(btnConfirmXlsxImportEl) btnConfirmXlsxImportEl.textContent = hasDirectEditRights
+          ? '✓ Confirmer l\'import'
+          : '✓ Envoyer pour approbation';
 
         var thead = document.getElementById('xlsxPreviewHead');
         var tbody = document.getElementById('xlsxPreviewBody');
@@ -1353,9 +1394,77 @@
   });
 
   // ── Confirmer l'import ────────────────────────────────────────
-  document.getElementById('btnConfirmXlsxImport').addEventListener('click', function(){
+  document.getElementById('btnConfirmXlsxImport').addEventListener('click', async function(){
     var now = new Date().toISOString();
     var added = 0, updated = 0;
+
+    // ── Sans droit d'édition directe : chaque ligne part en demande ──
+    // (jamais d'écriture directe au catalogue pour ces utilisateurs)
+    var hasDirectEditRights = window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin);
+    if(!hasDirectEditRights){
+      if(typeof window.reqSubmit !== 'function'){
+        showToast('Serveur de demandes non configuré — import impossible sans droit d\'édition directe.', 'err', 5000);
+        return;
+      }
+      var btnConfirm = this;
+      btnConfirm.disabled = true;
+      var toSubmit = xlsxPendingData.filter(function(item){ return item.status !== 'nochange'; });
+      var submitted = 0, failed = 0;
+      await Promise.all(toSubmit.map(async function(item){
+        var payload, original;
+        if(item.status === 'new'){
+          var initHistory = [];
+          var initPrice = '';
+          if(item.newCataloguePrice && item.newSellingPrice){
+            initHistory.push({price: item.newCataloguePrice, date: now, label: 'Prix catalogue'});
+            initHistory.push({price: item.newSellingPrice, date: now, label: 'Prix de vente'});
+            initPrice = item.newSellingPrice;
+          } else if(item.newCataloguePrice){
+            initHistory.push({price: item.newCataloguePrice, date: now, label: 'Prix catalogue'});
+            initPrice = item.newCataloguePrice;
+          } else if(item.newSellingPrice){
+            initHistory.push({price: item.newSellingPrice, date: now, label: 'Prix de vente'});
+            initPrice = item.newSellingPrice;
+          } else if(item.newPrice){
+            initHistory.push({price: item.newPrice, date: now});
+            initPrice = item.newPrice;
+          }
+          payload = {
+            ref: item.ref, name: item.newName, brand: item.newBrand, family: item.newFamily,
+            series: item.newSeries, supplier: item.newSupplier, desc: item.newDesc,
+            photo: item.newPhoto, tags: item.newTags, price: initPrice,
+            priceCatalogue: item.newCataloguePrice || '', priceHistory: initHistory
+          };
+          original = null;
+        } else {
+          var existingP = item.existing;
+          payload = Object.assign({}, existingP, {
+            name:     item.newName     || existingP.name,
+            brand:    item.newBrand    || existingP.brand,
+            family:   item.newFamily   || existingP.family,
+            series:   item.newSeries   || existingP.series,
+            supplier: item.newSupplier || existingP.supplier,
+            desc:     item.newDesc     || existingP.desc,
+            photo:    item.newPhoto    || existingP.photo,
+            tags:     (item.newTags && item.newTags.length) ? item.newTags : existingP.tags,
+            price:          item.newSellingPrice   || existingP.price,
+            priceCatalogue: item.newCataloguePrice || existingP.priceCatalogue
+          });
+          original = existingP;
+        }
+        var ok = await window.reqSubmit(payload, original);
+        if(ok) submitted++; else failed++;
+      }));
+      btnConfirm.disabled = false;
+      document.getElementById('xlsxImportOverlay').style.display = 'none';
+      if(submitted){
+        showToast(submitted + ' demande(s) envoyée(s) pour approbation' + (failed ? ', ' + failed + ' échec(s)' : ''), failed ? 'warn' : 'ok', 4500);
+      } else {
+        showToast('Erreur lors de l\'envoi des demandes', 'err', 4000);
+      }
+      xlsxPendingData = [];
+      return;
+    }
 
     xlsxPendingData.forEach(function(item){
       if(item.status === 'nochange') return;
