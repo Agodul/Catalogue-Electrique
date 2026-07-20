@@ -1,3 +1,18 @@
+  // ── Enregistrement du service worker ──────────────────────────────
+  // Sans cet appel, sw.js n'est jamais activé : ni le cache hors-ligne,
+  // ni l'interception de /share-target (partage natif Android) ne fonctionnent.
+  // sw.js doit rester à la racine du site : un service worker ne peut jamais
+  // couvrir une portée plus large que le dossier où se trouve son fichier
+  // (limitation du navigateur, pas contournable sans en-tête serveur dédié —
+  // indisponible sur un hébergement statique comme GitHub Pages).
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(e){
+        console.warn('[PWA] Échec enregistrement service worker:', e.message);
+      });
+    });
+  }
+
   // ── Popup installation PWA ────────────────────────────────────────
   (function(){
     var isStandalone = window.matchMedia('(display-mode: standalone)').matches

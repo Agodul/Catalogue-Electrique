@@ -17,7 +17,6 @@ const FILES = [
   "./js/requests.js",
   "./js/render.js",
   "./js/storage.js",
-  "./viewer.html",
   "./assets/splash.mp4",
   "./assets/splash-mobile.mp4"
 ];
@@ -93,14 +92,15 @@ self.addEventListener("fetch", event => {
       } catch(e) {}
     }
 
-    // Rediriger vers index.html à la racine (GitHub Pages)
-    const redirectTo = "/Catalogue-Electrique/index.html";
-    const qs = new URLSearchParams();
-    if(safeTargetUrl)  qs.set("share_url",   safeTargetUrl);
-    if(sharedTitle)    qs.set("share_title", sharedTitle.substring(0, 200));
+    // Rediriger vers index.html à côté de ce service worker — calculé
+    // relativement à sw.js plutôt qu'en chemin absolu figé, pour rester
+    // correct quel que soit le sous-dossier d'hébergement réel.
+    const redirectTo = new URL("./index.html", self.location.href);
+    if(safeTargetUrl) redirectTo.searchParams.set("share_url",   safeTargetUrl);
+    if(sharedTitle)   redirectTo.searchParams.set("share_title", sharedTitle.substring(0, 200));
 
     event.respondWith(
-      Response.redirect(redirectTo + "?" + qs.toString(), 302)
+      Response.redirect(redirectTo.href, 302)
     );
     return;
   }
