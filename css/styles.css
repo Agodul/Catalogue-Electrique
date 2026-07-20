@@ -1,3 +1,16 @@
+/* ═══════════════════════════════════════════════════════════════
+   BREAKPOINTS — paliers officiels (à réutiliser, ne pas en créer d'autres)
+   ≤320px      : très petit mobile (iPhone SE 1re gen...)
+   ≤380px      : petit mobile
+   ≤640px      : mobile
+   641-768px   : petite tablette (portrait)
+   769-1024px  : grande tablette
+   ≥1025px     : desktop
+   Les plages ne doivent jamais se chevaucher (ex. 641-768 commence
+   juste après la limite mobile ≤640, sans zone commune) — un
+   chevauchement rend le rendu dépendant de l'ordre des règles dans
+   ce fichier plutôt que de la largeur d'écran réelle.
+   ═══════════════════════════════════════════════════════════════ */
 :root{
     --ink:#111827;
     --ink-soft:#6B7280;
@@ -1764,8 +1777,8 @@
     #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
   }
 
-  @media(min-width:541px) and (max-width:768px){
-    /* Petite tablette (~541-768px) */
+  @media(min-width:641px) and (max-width:768px){
+    /* Petite tablette (641-768px) */
     .grid{ grid-template-columns:repeat(3,1fr); gap:10px; }
     header{ padding:0 16px; height:58px; }
     .hdr-count-chip{ display:inline-block; font-size:11px; }
@@ -2479,11 +2492,8 @@
 }
 
 /* Sur desktop : jamais visible */
-@media(min-width: 1025px){
-  #mobileSearchBar{ display: none !important; }
-}
-
 @media (min-width: 1025px) {
+  #mobileSearchBar{ display: none !important; }
   header { display: flex !important; }
   .toolbar { display: flex !important; }
   #floatingSearch, #floatingSearchOverlay { display: none !important; }
@@ -2521,8 +2531,8 @@
   }
 }
 
-/* Tablette petite 541-768px */
-@media(min-width:541px) and (max-width:768px){
+/* Tablette petite 641-768px */
+@media(min-width:641px) and (max-width:768px){
   .essential-badge{
     font-size:9px;
     padding:2px 6px;

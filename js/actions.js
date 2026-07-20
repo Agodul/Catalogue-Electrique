@@ -1,4 +1,19 @@
-// ---------- Save product ----------
+// ---------- Chargement paresseux de XLSX (import/export Excel) ----------
+  var _xlsxLoadPromise = null;
+  function ensureXLSX(){
+    if(window.XLSX) return Promise.resolve();
+    if(_xlsxLoadPromise) return _xlsxLoadPromise;
+    _xlsxLoadPromise = new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){ _xlsxLoadPromise = null; reject(new Error('Échec du chargement de la librairie Excel')); };
+      document.head.appendChild(s);
+    });
+    return _xlsxLoadPromise;
+  }
+
+  // ---------- Save product ----------
   function formatPrice(raw){
     var v = raw.trim();
     if(!v) return v;
@@ -147,13 +162,14 @@
   });
 
   // ---------- Search / filter ----------
+  var _searchRenderDebounced = debounce(render, 180);
   searchInputEl.addEventListener('input', function(){
     // Si on est sur la home et qu'on tape, basculer vers le catalogue
     var homePage = document.getElementById('homePage');
     if(homePage && !homePage.classList.contains('hidden') && searchInputEl.value.trim().length > 0){
       showCatalogueAll();
     }
-    render();
+    _searchRenderDebounced();
   });
   brandFilterEl.addEventListener('change', render);
   familyFilterEl.addEventListener('change', render);
@@ -733,10 +749,11 @@
 
     // Listeners fichiers
     compareSuppliers.querySelectorAll('.compare-file-input').forEach(function(fi){
-      fi.addEventListener('change', function(){
+      fi.addEventListener('change', async function(){
         var idx = parseInt(fi.getAttribute('data-idx'));
         var file = fi.files[0];
         if(!file) return;
+        try{ await ensureXLSX(); }catch(err){ showToast(err.message, 'err'); return; }
         // Mettre à jour le nom si encore générique
         if(supplierSlots[idx].name === 'Fournisseur '+(idx+1)){
           supplierSlots[idx].name = file.name.replace(/\.[^.]+$/,'');
@@ -857,7 +874,8 @@
   });
 
   // Exporter comparaison en Excel
-  document.getElementById('btnExportCompare').addEventListener('click', function(){
+  document.getElementById('btnExportCompare').addEventListener('click', async function(){
+    try{ await ensureXLSX(); }catch(err){ showToast(err.message, 'err'); return; }
     var loaded = supplierSlots.filter(function(s){ return Object.keys(s.data).length > 0; });
     var allRefs = {};
     loaded.forEach(function(s){ Object.keys(s.data).forEach(function(r){ allRefs[r]=true; }); });
@@ -1075,8 +1093,9 @@
   // ══════════════════════════════════════════════════════════════
   //  EXPORT EXCEL (fabricant) — produits filtrés actuellement
   // ══════════════════════════════════════════════════════════════
-  document.getElementById('btnExportXlsx').addEventListener('click', function(){
+  document.getElementById('btnExportXlsx').addEventListener('click', async function(){
     hdrMenu.classList.remove('open');
+    try{ await ensureXLSX(); }catch(err){ showToast(err.message, 'err'); return; }
 
     // Récupère les produits filtrés (même logique que render)
     var search = (document.getElementById('searchInput') || document.getElementById('searchInputMobile') || {value:''}).value.toLowerCase().trim();
@@ -1147,9 +1166,10 @@
     document.getElementById('fileImportXlsx').click();
   });
 
-  document.getElementById('fileImportXlsx').addEventListener('change', function(e){
+  document.getElementById('fileImportXlsx').addEventListener('change', async function(e){
     var file = e.target.files[0];
     if(!file) return;
+    try{ await ensureXLSX(); }catch(err){ showToast(err.message, 'err'); return; }
     var reader = new FileReader();
     reader.onload = function(ev){
       try{

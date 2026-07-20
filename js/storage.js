@@ -587,13 +587,19 @@
     // Auto-load au scroll
     if(_lazyScrollHandler) window.removeEventListener('scroll', _lazyScrollHandler, true);
     if(_lazyItems.length > 0){
+      var _lazyScrollTicking = false;
       _lazyScrollHandler = function(){
-        var el = document.getElementById('lazyMore');
-        if(!el) return;
-        var rect = el.getBoundingClientRect();
-        if(rect.top < window.innerHeight + 200){ window._loadMoreCards(); }
+        if(_lazyScrollTicking) return;
+        _lazyScrollTicking = true;
+        requestAnimationFrame(function(){
+          _lazyScrollTicking = false;
+          var el = document.getElementById('lazyMore');
+          if(!el) return;
+          var rect = el.getBoundingClientRect();
+          if(rect.top < window.innerHeight + 200){ window._loadMoreCards(); }
+        });
       };
-      window.addEventListener('scroll', _lazyScrollHandler, true);
+      window.addEventListener('scroll', _lazyScrollHandler, {capture:true, passive:true});
     }
 
     // Clic sur la carte → ouvre la vue de consultation
