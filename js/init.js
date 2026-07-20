@@ -204,6 +204,7 @@
       { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: true },
       { overlay: 'docOverlay',        close: 'docCloseBtn'      },
       { overlay: 'sugOverlay',        close: 'sugCloseBtn'      },
+      { overlay: 'chatOverlay',       close: 'chatCloseBtn'     },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
       { overlay: 'conflictOverlay',   close: 'conflictClose'    },
       { overlay: 'whatsNewOverlay',   close: 'btnWNClose'       },

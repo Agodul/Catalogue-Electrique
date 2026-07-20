@@ -840,7 +840,7 @@
     box-shadow:0 4px 14px rgba(28,26,23,.25);
     transition:opacity .2s ease, transform .2s ease, background .15s ease, visibility .2s;
   }
-  #btnFabAdd, #btnFabPropose{
+  #btnFabAdd, #btnFabPropose, #btnFabChat{
     background:var(--copper);
     border:1px solid var(--copper);
     color:#fff;
@@ -2731,6 +2731,23 @@
 }
 .sug-list-chevron{
   flex-shrink:0; color:var(--ink-soft); font-size:16px;
+}
+
+/* ── Assistant IA : bulles de conversation ─────────────────────── */
+.chat-msg{
+  max-width:80%; padding:9px 13px; border-radius:14px;
+  font-size:13.5px; line-height:1.4; white-space:pre-wrap; word-break:break-word;
+}
+.chat-msg-user{
+  align-self:flex-end;
+  background:var(--copper); color:#fff;
+  border-bottom-right-radius:4px;
+}
+.chat-msg-bot{
+  align-self:flex-start;
+  background:var(--paper); color:var(--ink);
+  border:1px solid var(--line);
+  border-bottom-left-radius:4px;
 }
 
 .vm-actions-row{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }

@@ -310,6 +310,10 @@ function applyAuthUI() {
   var btnFabAdd = document.getElementById('btnFabAdd');
   if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
+  // Bulle "Assistant IA" — admin uniquement
+  var btnFabChat = document.getElementById('btnFabChat');
+  if (btnFabChat) btnFabChat.style.display = isAdmin ? '' : 'none';
+
   // Bouton ⓘ — visible uniquement si canEdit ou canDelete
   var vmInfoBtn = document.getElementById('vmInfoBtn');
   var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
