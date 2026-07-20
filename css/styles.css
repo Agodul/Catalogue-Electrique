@@ -2313,6 +2313,8 @@
     align-items: stretch;
     /* iOS PWA : rester en bas même quand le clavier est ouvert */
     bottom: env(keyboard-inset-height, 0px);
+    /* Empêche le double-tap de déclencher un zoom sur la barre de nav */
+    touch-action: manipulation;
   }
 
   .bottom-nav-item {
@@ -2334,6 +2336,7 @@
     position: relative;
     transition: color .15s;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   .bottom-nav-item svg,
   .bottom-nav-item i {
