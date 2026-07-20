@@ -162,7 +162,7 @@
   });
 
   // ---------- Search / filter ----------
-  var _searchRenderDebounced = debounce(render, 180);
+  var _searchRenderDebounced = debounce(function(){ render(true); }, 180);
   searchInputEl.addEventListener('input', function(){
     // Si on est sur la home et qu'on tape, basculer vers le catalogue
     var homePage = document.getElementById('homePage');
@@ -171,9 +171,9 @@
     }
     _searchRenderDebounced();
   });
-  brandFilterEl.addEventListener('change', render);
-  familyFilterEl.addEventListener('change', render);
-  seriesFilterEl.addEventListener('change', render);
+  brandFilterEl.addEventListener('change', function(){ render(); });
+  familyFilterEl.addEventListener('change', function(){ render(); });
+  seriesFilterEl.addEventListener('change', function(){ render(); });
 
   // ── Tri par prix ──────────────────────────────────────────────
   window._priceSort = null; // null | 'asc' | 'desc'

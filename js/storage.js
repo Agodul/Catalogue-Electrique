@@ -416,71 +416,70 @@
   var _vmMenuTimer = null;
   var _lazyScrollHandler = null;
 
-  function render(){
+  // fastPath=true : appelé depuis la recherche texte, qui ne change jamais
+  // le périmètre des marques/familles/séries → on saute leur reconstruction.
+  function render(fastPath){
     _cardIdx = 0;
     refreshFilterCache();
-    var allBrands   = _filterCache.brands;
-    var allFamilies = _filterCache.families;
-    var allSeries   = _filterCache.series;
-    var currentBrandFilter = brandFilterEl.value;
-    // Si un filtre famille/série est actif, ne proposer que les marques présentes dans ces produits
-    var activeFamilyFilter = familyFilterEl.value;
-    var activeSeriesFilter = seriesFilterEl.value;
-    var brandsForFilter = allBrands;
-    if(activeFamilyFilter || activeSeriesFilter){
-      var brandsInScope = {};
-      products.forEach(function(p){
-        var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
-        var matchSeries = !activeSeriesFilter || (p.series||'') === activeSeriesFilter;
-        if(matchFamily && matchSeries && p.brand) brandsInScope[p.brand] = true;
-      });
-      brandsForFilter = allBrands.filter(function(b){ return brandsInScope[b]; });
-    }
-    brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + brandsForFilter.map(function(b){
-      return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
-    }).join('');
-    brandFilterEl.value = brandsForFilter.indexOf(currentBrandFilter) !== -1 ? currentBrandFilter : '';
 
-    var currentFamilyFilter = familyFilterEl.value;
-    // Filtrer les familles selon la marque active
-    var activeBrandForFamily = brandFilterEl.value;
-    var familiesForFilter = allFamilies;
-    if(activeBrandForFamily){
-      var familiesInScope = {};
-      products.forEach(function(p){
-        if((p.brand||'') === activeBrandForFamily && p.family) familiesInScope[p.family] = true;
-      });
-      familiesForFilter = allFamilies.filter(function(f){ return familiesInScope[f]; });
-    }
-    familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + familiesForFilter.map(function(f){
-      return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
-    }).join('');
-    familyFilterEl.value = familiesForFilter.indexOf(currentFamilyFilter) !== -1 ? currentFamilyFilter : '';
+    if(!fastPath){
+      var allBrands   = _filterCache.brands;
+      var allFamilies = _filterCache.families;
+      var allSeries   = _filterCache.series;
+      var currentBrandFilter = brandFilterEl.value;
+      // Si un filtre famille/série est actif, ne proposer que les marques présentes dans ces produits
+      var activeFamilyFilter = familyFilterEl.value;
+      var activeSeriesFilter = seriesFilterEl.value;
+      var brandsForFilter = allBrands;
+      if(activeFamilyFilter || activeSeriesFilter){
+        var brandsInScope = {};
+        products.forEach(function(p){
+          var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
+          var matchSeries = !activeSeriesFilter || (p.series||'') === activeSeriesFilter;
+          if(matchFamily && matchSeries && p.brand) brandsInScope[p.brand] = true;
+        });
+        brandsForFilter = allBrands.filter(function(b){ return brandsInScope[b]; });
+      }
+      brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + brandsForFilter.map(function(b){
+        return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
+      }).join('');
+      brandFilterEl.value = brandsForFilter.indexOf(currentBrandFilter) !== -1 ? currentBrandFilter : '';
 
-    var currentSeriesFilter = seriesFilterEl.value;
-    // Lire la marque APRÈS rebuild du select (peut avoir changé)
-    var activeBrandFilter = brandFilterEl.value;
-    // Ne proposer que les séries présentes dans le contexte famille/marque actif
-    var seriesForFilter = allSeries;
-    if(activeFamilyFilter || activeBrandFilter){
-      var seriesInScope = {};
-      products.forEach(function(p){
-        var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
-        var matchBrand  = !activeBrandFilter  || (p.brand||'')  === activeBrandFilter;
-        if(matchFamily && matchBrand && p.series) seriesInScope[p.series] = true;
-      });
-      seriesForFilter = allSeries.filter(function(s){ return seriesInScope[s]; });
-    }
-    seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + seriesForFilter.map(function(s){
-      return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>';
-    }).join('');
-    seriesFilterEl.value = seriesForFilter.indexOf(currentSeriesFilter) !== -1 ? currentSeriesFilter : '';
+      var currentFamilyFilter = familyFilterEl.value;
+      // Filtrer les familles selon la marque active
+      var activeBrandForFamily = brandFilterEl.value;
+      var familiesForFilter = allFamilies;
+      if(activeBrandForFamily){
+        var familiesInScope = {};
+        products.forEach(function(p){
+          if((p.brand||'') === activeBrandForFamily && p.family) familiesInScope[p.family] = true;
+        });
+        familiesForFilter = allFamilies.filter(function(f){ return familiesInScope[f]; });
+      }
+      familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + familiesForFilter.map(function(f){
+        return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
+      }).join('');
+      familyFilterEl.value = familiesForFilter.indexOf(currentFamilyFilter) !== -1 ? currentFamilyFilter : '';
 
-    // brandListEl supprimé }).join('');
-    // Datalist fournisseurs
-    // supplierListEl supprimé }).join('');
-    // familyListEl supprimé }).join('');
-    // seriesListEl supprimé }).join('');
+      var currentSeriesFilter = seriesFilterEl.value;
+      // Lire la marque APRÈS rebuild du select (peut avoir changé)
+      var activeBrandFilter = brandFilterEl.value;
+      // Ne proposer que les séries présentes dans le contexte famille/marque actif
+      var seriesForFilter = allSeries;
+      if(activeFamilyFilter || activeBrandFilter){
+        var seriesInScope = {};
+        products.forEach(function(p){
+          var matchFamily = !activeFamilyFilter || (p.family||'') === activeFamilyFilter;
+          var matchBrand  = !activeBrandFilter  || (p.brand||'')  === activeBrandFilter;
+          if(matchFamily && matchBrand && p.series) seriesInScope[p.series] = true;
+        });
+        seriesForFilter = allSeries.filter(function(s){ return seriesInScope[s]; });
+      }
+      seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + seriesForFilter.map(function(s){
+        return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>';
+      }).join('');
+      seriesFilterEl.value = seriesForFilter.indexOf(currentSeriesFilter) !== -1 ? currentSeriesFilter : '';
+    }
 
     var filtered = getFilteredProducts();
     var hdrChip = document.getElementById('hdrCountChip');
