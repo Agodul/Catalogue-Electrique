@@ -1112,11 +1112,11 @@
       <span style="font-size:13px;color:rgba(255,255,255,.5);">Chargement…</span>
     </div>
     <!-- Rendu PDF.js sur canvas — permet le pincement pour zoomer sur mobile,
-         impossible à intercepter avec l'ancien lecteur natif en iframe. -->
+         impossible à intercepter avec l'ancien lecteur natif en iframe. Le
+         zoom redimensionne directement les canvas (pas de transform CSS) pour
+         que le défilement fonctionne de façon fiable sur iOS Safari. -->
     <div id="pdfViewerScroll" style="display:none;flex:1;overflow:auto;background:#525252;">
-      <div id="pdfViewerZoomWrap" style="transform-origin:0 0;width:fit-content;">
-        <div id="pdfViewerPages"></div>
-      </div>
+      <div id="pdfViewerPages"></div>
     </div>
   </div>
 </div>

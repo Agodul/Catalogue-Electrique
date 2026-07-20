@@ -430,13 +430,47 @@
   }
 
   var _pdfCurrentDoc = null;
+  var _pdfPageInfos = []; // { page, canvas, cssWidth0, cssHeight0, baseScale, renderTask }
   var _pdfZoom = 1;
   var MIN_PDF_ZOOM = 1, MAX_PDF_ZOOM = 4;
+  var MAX_PDF_CANVAS_DIM = 4096; // limite raisonnable de résolution (mémoire/support navigateur)
+  var _pdfSharpenTimer = null;
+
+  // Le zoom redimensionne réellement les canvas (et non un transform CSS) :
+  // sur iOS Safari, un transform:scale() sur un enfant n'agrandit pas de façon
+  // fiable la zone de défilement d'un ancêtre overflow:auto, ce qui empêchait
+  // tout déplacement une fois zoomé. Un vrai redimensionnement de boîte fait
+  // grandir naturellement le scrollWidth/scrollHeight du conteneur.
+  function _pdfApplyZoomSize(){
+    _pdfPageInfos.forEach(function(info){
+      info.canvas.style.width  = (info.cssWidth0 * _pdfZoom) + 'px';
+      info.canvas.style.height = (info.cssHeight0 * _pdfZoom) + 'px';
+    });
+  }
 
   function _pdfSetZoom(z){
     _pdfZoom = Math.min(MAX_PDF_ZOOM, Math.max(MIN_PDF_ZOOM, z));
-    var zoomWrap = document.getElementById('pdfViewerZoomWrap');
-    if(zoomWrap) zoomWrap.style.transform = 'scale('+_pdfZoom+')';
+    _pdfApplyZoomSize();
+  }
+
+  // Après le pincement, on re-rend chaque page à la résolution correspondant
+  // au zoom final pour rester net (le redimensionnement CSS pendant le geste
+  // ne fait qu'étirer le bitmap existant, ce qui devient flou en zoomant fort).
+  function _pdfSharpenPages(){
+    _pdfPageInfos.forEach(function(info){
+      var targetScale = info.baseScale * _pdfZoom * Math.min(window.devicePixelRatio || 1, 2);
+      var viewport = info.page.getViewport({ scale: targetScale });
+      if(Math.max(viewport.width, viewport.height) > MAX_PDF_CANVAS_DIM){
+        var capFactor = MAX_PDF_CANVAS_DIM / Math.max(viewport.width, viewport.height);
+        viewport = info.page.getViewport({ scale: targetScale * capFactor });
+      }
+      if(info.renderTask) info.renderTask.cancel();
+      info.canvas.width  = viewport.width;
+      info.canvas.height = viewport.height;
+      var task = info.page.render({ canvasContext: info.canvas.getContext('2d'), viewport: viewport });
+      info.renderTask = task;
+      task.promise.catch(function(e){ if(e && e.name !== 'RenderingCancelledException') console.warn('[PDF] re-rendu échoué:', e); });
+    });
   }
 
   // Pincement à deux doigts : capté sur le conteneur qui défile, sans
@@ -464,7 +498,11 @@
       }
     }, {passive:false});
     scrollEl.addEventListener('touchend', function(e){
-      if(e.touches.length < 2) startDist = 0;
+      if(e.touches.length < 2 && startDist > 0){
+        startDist = 0;
+        clearTimeout(_pdfSharpenTimer);
+        _pdfSharpenTimer = setTimeout(_pdfSharpenPages, 120);
+      }
     }, {passive:true});
   })();
 
@@ -473,7 +511,8 @@
     var scrollEl = document.getElementById('pdfViewerScroll');
     var pagesEl  = document.getElementById('pdfViewerPages');
     if(pagesEl) pagesEl.innerHTML = '';
-    _pdfSetZoom(1);
+    _pdfPageInfos = [];
+    _pdfZoom = 1;
     try{
       await ensurePdfJs();
       var pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
@@ -495,6 +534,14 @@
         canvas.style.background = '#fff';
         if(pagesEl) pagesEl.appendChild(canvas);
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+        _pdfPageInfos.push({
+          page: page,
+          canvas: canvas,
+          cssWidth0: viewport.width / dpr,
+          cssHeight0: viewport.height / dpr,
+          baseScale: scale,
+          renderTask: null
+        });
       }
       if(loader) loader.style.display = 'none';
       if(scrollEl) scrollEl.style.display = 'block';
@@ -510,12 +557,15 @@
     var scrollEl = document.getElementById('pdfViewerScroll');
     var pagesEl  = document.getElementById('pdfViewerPages');
     var loader   = document.getElementById('pdfViewerLoader');
+    clearTimeout(_pdfSharpenTimer);
+    _pdfPageInfos.forEach(function(info){ if(info.renderTask) info.renderTask.cancel(); });
+    _pdfPageInfos = [];
     if(scrollEl) scrollEl.style.display = 'none';
     if(pagesEl) pagesEl.innerHTML = '';
     if(loader) loader.style.display = 'flex';
     if(overlay) overlay.style.display = 'none';
     document.body.classList.remove('modal-open');
-    _pdfSetZoom(1);
+    _pdfZoom = 1;
     if(_pdfCurrentDoc){ _pdfCurrentDoc.destroy(); _pdfCurrentDoc = null; }
   }
 
@@ -558,7 +608,6 @@
       .then(function(ab){ _openPdfCanvas(ab, docName); })
       .catch(function(e){ _pdfClose(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
   };
-  // ── Fin PDF Viewer ───────────────────────────────────────────────
   // ── Fin PDF Viewer ───────────────────────────────────────────────
 
 
