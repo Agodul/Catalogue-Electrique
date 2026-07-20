@@ -2400,51 +2400,25 @@
     if(!sheet||!btnOpen) return;
 
     // ── Cascade mobile : recalcule les options en fonction des sélections ──
+    // Utilise le même algorithme que la toolbar desktop (computeCascadeOptions
+    // dans storage.js) pour garantir un comportement identique des deux côtés.
     function buildCascadeOptions(currentBrand, currentFamily, currentSeries){
-      var prods = window.products || [];
+      var opts = computeCascadeOptions(currentBrand, currentFamily, currentSeries);
 
-      // 1. Marques disponibles selon famille + série actives
-      var brandsInScope = {};
-      prods.forEach(function(p){
-        var mf = !currentFamily || (p.family||'')===currentFamily;
-        var ms = !currentSeries || (p.series||'')===currentSeries;
-        if(mf && ms && p.brand) brandsInScope[p.brand]=true;
-      });
-      var allBrands = Object.keys(brandsInScope).sort();
       if(selBrand){
         selBrand.innerHTML = '<option value="">Toutes les marques</option>'
-          + allBrands.map(function(b){ return '<option value="'+_esc(b)+'">'+_esc(b)+'</option>'; }).join('');
-        selBrand.value = allBrands.indexOf(currentBrand)!==-1 ? currentBrand : '';
+          + opts.brands.map(function(b){ return '<option value="'+_esc(b)+'">'+_esc(b)+'</option>'; }).join('');
+        selBrand.value = opts.effectiveBrand;
       }
-      var effectiveBrand = selBrand ? selBrand.value : '';
-
-      // 2. Familles disponibles selon marque + série actives
-      var familiesInScope = {};
-      prods.forEach(function(p){
-        var mb = !effectiveBrand || (p.brand||'')===effectiveBrand;
-        var ms = !currentSeries  || (p.series||'')===currentSeries;
-        if(mb && ms && p.family) familiesInScope[p.family]=true;
-      });
-      var allFamilies = Object.keys(familiesInScope).sort();
       if(selFamily){
         selFamily.innerHTML = '<option value="">Toutes les familles</option>'
-          + allFamilies.map(function(f){ return '<option value="'+_esc(f)+'">'+_esc(f)+'</option>'; }).join('');
-        selFamily.value = allFamilies.indexOf(currentFamily)!==-1 ? currentFamily : '';
+          + opts.families.map(function(f){ return '<option value="'+_esc(f)+'">'+_esc(f)+'</option>'; }).join('');
+        selFamily.value = opts.effectiveFamily;
       }
-      var effectiveFamily = selFamily ? selFamily.value : '';
-
-      // 3. Séries disponibles selon marque + famille actives
-      var seriesInScope = {};
-      prods.forEach(function(p){
-        var mb = !effectiveBrand  || (p.brand||'')===effectiveBrand;
-        var mf = !effectiveFamily || (p.family||'')===effectiveFamily;
-        if(mb && mf && p.series) seriesInScope[p.series]=true;
-      });
-      var allSeries = Object.keys(seriesInScope).sort();
       if(selSeries){
         selSeries.innerHTML = '<option value="">Toutes les séries</option>'
-          + allSeries.map(function(s){ return '<option value="'+_esc(s)+'">'+_esc(s)+'</option>'; }).join('');
-        selSeries.value = allSeries.indexOf(currentSeries)!==-1 ? currentSeries : '';
+          + opts.series.map(function(s){ return '<option value="'+_esc(s)+'">'+_esc(s)+'</option>'; }).join('');
+        selSeries.value = opts.series.indexOf(currentSeries)!==-1 ? currentSeries : '';
       }
     }
     function _esc(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
