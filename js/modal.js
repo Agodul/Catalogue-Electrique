@@ -41,9 +41,74 @@
   var fSuggestionsDrop   = document.getElementById('fSuggestionsDrop');
   var _sugRefs = []; // tableau des refs sélectionnées
   var fTags             = document.getElementById('fTags');
+  var tagSuggestionsEl  = document.getElementById('tagSuggestions');
   var familyIconRow     = document.getElementById('familyIconRow');
   var familyIconPreviewI= document.getElementById('familyIconPreviewI');
   var selectedFamilyIcon= 'ti-package';
+
+  // ── Suggestions de tags depuis la description ───────────────────────
+  var TAG_STOPWORDS = ['pour','avec','sans','dans','entre','vers','sous','chez',
+    'les','des','une','un','le','la','de','du','et','ou','ce','cet','cette','ces',
+    'est','sont','sur','par','au','aux','en','plus','tres','tout','tous','toute',
+    'toutes','qui','que','quoi','son','sa','ses','leur','leurs','ne','pas','aussi',
+    'comme','etre','avoir','ainsi','ils','elle','elles','il','on','notre','votre',
+    'nos','vos','permet','permettant','ideal','idéal','produit','produits'];
+
+  function extractTagSuggestions(desc, existingTags){
+    var norm = typeof normalizeSearch === 'function' ? normalizeSearch(desc || '') : (desc||'').toLowerCase();
+    var words = norm.split(/[\s-]+/).filter(Boolean);
+    var existing = {};
+    (existingTags||[]).forEach(function(t){
+      var nt = typeof normalizeSearch === 'function' ? normalizeSearch(t) : t.toLowerCase();
+      existing[nt] = true;
+    });
+    var seen = {};
+    var out = [];
+    words.forEach(function(w){
+      if(w.length < 4 || w.length > 20) return;
+      if(TAG_STOPWORDS.indexOf(w) !== -1) return;
+      if(/^\d+$/.test(w)) return;
+      if(seen[w] || existing[w]) return;
+      seen[w] = true;
+      out.push(w);
+    });
+    return out.slice(0, 8);
+  }
+
+  function renderTagSuggestions(){
+    if(!tagSuggestionsEl || !fDesc || !fTags) return;
+    var currentTags = fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+    var suggestions = extractTagSuggestions(fDesc.value, currentTags);
+    if(!suggestions.length){
+      tagSuggestionsEl.style.display = 'none';
+      tagSuggestionsEl.innerHTML = '';
+      return;
+    }
+    tagSuggestionsEl.style.display = 'flex';
+    tagSuggestionsEl.innerHTML = suggestions.map(function(w){
+      return '<button type="button" class="tag-suggestion-chip" data-word="'+escapeHtml(w)+'">+ '+escapeHtml(w)+'</button>';
+    }).join('');
+  }
+
+  if(fDesc){
+    var _tagSuggestTimer = null;
+    fDesc.addEventListener('input', function(){
+      clearTimeout(_tagSuggestTimer);
+      _tagSuggestTimer = setTimeout(renderTagSuggestions, 300);
+    });
+  }
+  if(fTags) fTags.addEventListener('input', renderTagSuggestions);
+  if(tagSuggestionsEl){
+    tagSuggestionsEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.tag-suggestion-chip');
+      if(!btn) return;
+      var word = btn.getAttribute('data-word');
+      var current = fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+      if(current.indexOf(word) === -1) current.push(word);
+      fTags.value = current.join(', ');
+      renderTagSuggestions();
+    });
+  }
 
   photoPreview.addEventListener('click', function(){
     var img = photoPreview.querySelector('img');
@@ -266,6 +331,7 @@
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
+    renderTagSuggestions();
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     f3dAvailable.checked = false;
@@ -445,6 +511,7 @@
         fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
         if(fLeadTime) fLeadTime.value = p.leadTime||'';
         fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
+        renderTagSuggestions();
         f3dAvailable.checked = !!p.available3DX;
         f3dLink.value = p.available3DXLink || '';
         update3dLinkVisibility();
@@ -1389,7 +1456,7 @@
     var data = extractFromHtml(html, fUrl.value.trim());
     var found = [];
     if(data.name)     { fName.value     = data.name;              found.push('nom'); }
-    if(data.desc)     { fDesc.value     = stripHtml(data.desc);   found.push('description'); }
+    if(data.desc)     { fDesc.value     = stripHtml(data.desc);   found.push('description'); renderTagSuggestions(); }
     if(data.price)    { fPrice.value    = data.price;             found.push('prix'); }
     if(data.photo)    { fPhoto.value    = data.photo; updatePhotoPreview(); found.push('photo'); }
     // Afficher la galerie si plusieurs photos trouvées (ou même une seule via proxy)
