@@ -528,7 +528,10 @@
     _pdfZoom = 1;
     try{
       await ensurePdfJs();
-      var pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
+      // PDF.js transfère (détache) l'ArrayBuffer passé à getDocument — on lui
+      // donne une copie pour que le buffer mis en cache (préchargement au
+      // survol du bouton "Voir") reste réutilisable aux ouvertures suivantes.
+      var pdf = await window.pdfjsLib.getDocument({ data: ab.slice(0) }).promise;
       _pdfCurrentDoc = pdf;
       var containerWidth = ((scrollEl && scrollEl.parentElement) ? scrollEl.parentElement.clientWidth : 800) - 24;
       var dpr = window.devicePixelRatio || 1;
