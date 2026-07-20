@@ -99,7 +99,10 @@
         if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
         if(ok){
           showToast('Demande envoyée ✓', 'ok', 3000);
-          if(typeof requestCloseModal === 'function') requestCloseModal();
+          // Fermeture directe : la demande est déjà envoyée, il n'y a rien à
+          // "perdre" — pas besoin de la confirmation "Annuler la saisie".
+          if(typeof window._resetProposeModeUI === 'function') window._resetProposeModeUI();
+          if(typeof closeModal === 'function') closeModal();
           else document.getElementById('modalOverlay').classList.remove('open');
         } else {
           showToast('Erreur lors de l\'envoi', 'warn', 3000);

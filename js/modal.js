@@ -671,16 +671,20 @@
               fUrl.value.trim() || fHtml.value.trim() || fName.value.trim() || fDesc.value.trim() ||
               fPrice.value.trim() || fPhoto.value.trim());
   }
+  function resetProposeModeUI(){
+    if(!window._proposeMode) return;
+    window._proposeMode = false;
+    window._proposeOriginal = null;
+    var title = document.getElementById('modalTitle');
+    var btnSave = document.getElementById('btnSave');
+    if(title) title.textContent = editingId ? 'Modifier le produit' : 'Ajouter un produit';
+    if(btnSave) btnSave.textContent = 'Enregistrer';
+  }
+  window._resetProposeModeUI = resetProposeModeUI;
+
   function requestCloseModal(){
     // Réinitialiser le mode proposition
-    if(window._proposeMode){
-      window._proposeMode = false;
-      window._proposeOriginal = null;
-      var title = document.getElementById('modalTitle');
-      var btnSave = document.getElementById('btnSave');
-      if(title) title.textContent = editingId ? 'Modifier le produit' : 'Ajouter un produit';
-      if(btnSave) btnSave.textContent = 'Enregistrer';
-    }
+    resetProposeModeUI();
     if(!hasUnsavedInput()){
      closeModal();
     return;
