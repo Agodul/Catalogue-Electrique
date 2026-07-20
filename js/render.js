@@ -88,7 +88,7 @@
 
     // Photo
     if(p.photo){
-      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
+      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;transform:scale(1.12);display:block;" onerror="this.parentElement.innerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">';
     }else{
       vmPhoto.innerHTML = '<span class="ph-placeholder">Pas de photo</span>';
     }
