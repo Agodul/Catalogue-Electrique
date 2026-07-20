@@ -235,9 +235,15 @@
       writeProductsToFile();
     }
     // Sync serveur si activée
-    // Push vers le serveur si configuré
+    // Push vers le serveur si configuré — on avertit si l'envoi échoue
+    // (sinon un changement, ex. icône de famille, peut rester local sans
+    // que personne ne s'en aperçoive avant la prochaine synchro).
     if(typeof pushToServer === 'function' && localStorage.getItem('cat_server_url')){
-      pushToServer();
+      pushToServer().then(function(ok){
+        if(!ok && typeof showToast === 'function'){
+          showToast('Échec de synchronisation avec le serveur — modification enregistrée localement uniquement', 'warn', 5000);
+        }
+      });
     }
     // Animation 7 — pulse du point de sauvegarde
     var dot = document.getElementById('filebarDot');

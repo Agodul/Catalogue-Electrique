@@ -413,8 +413,12 @@
   }
 
   // ── Sync vers serveur ─────────────────────────────────────────────
+  // Renvoie true/false selon le succès réel de l'envoi — auparavant la
+  // fonction avalait silencieusement toute erreur (token expiré, rejet
+  // serveur, coupure réseau...), donnant l'illusion que tout avait bien
+  // été synchronisé alors que rien n'était arrivé côté serveur.
   async function pushToServer(){
-    if(!serverUrl) return;
+    if(!serverUrl) return true;
     try{
       // Marquer tous les produits comme récemment sauvegardés
       var now = Date.now();
@@ -424,14 +428,22 @@
       var toSend = products.map(function(p){
         return Object.assign({}, p, { createdAt: now });
       });
-      await fetch(serverUrl+'/pushDatas', {
+      var r = await fetch(serverUrl+'/pushDatas', {
         method:'POST',
         headers: typeof window.authHeaders === 'function'
           ? window.authHeaders()
           : {'Content-Type':'application/json'},
         body: JSON.stringify(toSend)
       });
-    }catch(e){ console.warn('pushToServer:', e.message); }
+      if(!r.ok){
+        console.warn('pushToServer: HTTP', r.status);
+        return false;
+      }
+      return true;
+    }catch(e){
+      console.warn('pushToServer:', e.message);
+      return false;
+    }
   }
   // Exposer globalement pour storage.js
   window.pushToServer = pushToServer;
