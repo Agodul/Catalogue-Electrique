@@ -2304,7 +2304,9 @@
     max-height: calc(95vh - var(--nav-h, 56px)) !important;
     transform: translateY(100%);
     transition: transform .35s cubic-bezier(.32,.72,0,1);
-    padding-bottom: env(safe-area-inset-bottom);
+    /* margin-bottom (--nav-h) réserve déjà l'espace de la nav + la safe-area —
+       un padding-bottom supplémentaire créait une bande blanche vide en trop
+       en bas de la fiche, au-dessus de la barre de navigation. */
     margin-bottom: var(--nav-h, 56px);
   }
   #viewOverlay.open #viewModal {
