@@ -340,12 +340,12 @@
       if(f.type === 'textarea'){
         return '<div style="margin-bottom:12px;">'
           + '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
-          + '<textarea data-key="' + f.key + '" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:Calibri,Arial,sans-serif;background:var(--paper);color:var(--ink);resize:vertical;box-sizing:border-box;">' + val + '</textarea>'
+          + '<textarea data-key="' + f.key + '" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:var(--font-sans);background:var(--paper);color:var(--ink);resize:vertical;box-sizing:border-box;">' + val + '</textarea>'
           + '</div>';
       }
       return '<div style="margin-bottom:12px;">'
         + '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
-        + '<input type="' + f.type + '" data-key="' + f.key + '" value="' + val + '" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:Calibri,Arial,sans-serif;background:var(--paper);color:var(--ink);box-sizing:border-box;">'
+        + '<input type="' + f.type + '" data-key="' + f.key + '" value="' + val + '" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:var(--font-sans);background:var(--paper);color:var(--ink);box-sizing:border-box;">'
         + '</div>';
     }).join('');
 

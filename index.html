@@ -55,6 +55,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans/index.css">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -605,17 +606,17 @@
           <div class="vm-price-row">
             <div class="vm-price" id="vmPrice"></div>
           </div>
-          <div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:Calibri,Arial,sans-serif;"></div>
+          <div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:var(--font-sans);"></div>
       <div class="vm-price-history" id="vmPriceHistory"></div>
       <!-- ===== BOUTONS DOC + SUGGESTIONS ===== -->
       <div class="vm-actions-row">
         <div id="vmDocBtnWrap" style="display:none;">
-          <button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:100%;">
+          <button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
             <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents
           </button>
         </div>
         <div id="vmSuggestionsSection" style="display:none;">
-          <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:100%;">
+          <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
             <i class="ti ti-bulb" style="font-size:17px;"></i>
             <span id="vmSuggestionsToggleLabel">Afficher suggestions</span>
           </button>
@@ -634,11 +635,11 @@
                 Document PDF
               </div>
               <div id="vmPdfAdminBtns" style="display:none;gap:6px;display:none;">
-                <label id="vmPdfUploadLabel" style="padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:4px;">
+                <label id="vmPdfUploadLabel" style="padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:4px;">
                   <i class="ti ti-upload" style="font-size:14px;"></i> Envoyer
                   <input type="file" id="vmPdfInput" accept=".pdf" style="display:none;">
                 </label>
-                <button id="vmPdfDeleteBtn" style="padding:5px 10px;border-radius:7px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:4px;">
+                <button id="vmPdfDeleteBtn" style="padding:5px 10px;border-radius:7px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:4px;">
                   <i class="ti ti-trash" style="font-size:14px;"></i> Supprimer
                 </button>
               </div>
@@ -650,7 +651,7 @@
           </div>
           <!-- Section upload si pas de PDF -->
           <div id="vmPdfUploadSection" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
-            <label id="vmPdfUploadLabel2" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:Calibri,Arial,sans-serif;width:fit-content;">
+            <label id="vmPdfUploadLabel2" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:var(--font-sans);width:fit-content;">
               <i class="ti ti-file-type-pdf" style="font-size:20px;color:#E53E3E;"></i>
               Ajouter un document PDF
               <input type="file" id="vmPdfInput2" accept=".pdf" style="display:none;">
@@ -874,7 +875,7 @@
     display:flex;flex-direction:column;
     box-shadow:0 24px 80px rgba(0,0,0,.3);
     overflow:hidden;
-    font-family:'Calibri','Carlito',Arial,sans-serif;
+    font-family:var(--font-sans);
   ">
     <div style="padding:20px 24px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;">
       <div>
@@ -1020,7 +1021,7 @@
     <div id="reqDetailBody" style="flex:1;overflow-y:auto;padding:20px;"></div>
     <div id="reqDetailFooter" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">
       <button id="reqDetailRefuse" class="req-btn-refuse"><i class="ti ti-x"></i> Refuser</button>
-      <button id="reqDetailEdit" style="display:none;padding:9px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:Calibri,Arial,sans-serif;display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i> Modifier</button>
+      <button id="reqDetailEdit" style="display:none;padding:9px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i> Modifier</button>
       <button id="reqDetailAccept" class="req-btn-accept"><i class="ti ti-check"></i> Accepter</button>
     </div>
   </div>
@@ -1129,9 +1130,9 @@
     <div style="flex:1;position:relative;">
       <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;opacity:.45;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input id="floatingSearchInput" type="text" placeholder="Rechercher…" autocomplete="off"
-        style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:Calibri,Arial,sans-serif;outline:none;box-sizing:border-box;">
+        style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:var(--font-sans);outline:none;box-sizing:border-box;">
     </div>
-    <button id="floatingSearchClose" style="background:none;border:none;font-size:15px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:Calibri,Arial,sans-serif;white-space:nowrap;">Annuler</button>
+    <button id="floatingSearchClose" style="background:none;border:none;font-size:15px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:var(--font-sans);white-space:nowrap;">Annuler</button>
   </div>
 </div>
 <!-- ===== FIN FLOATING SEARCH ===== -->
