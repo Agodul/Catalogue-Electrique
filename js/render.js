@@ -494,7 +494,20 @@
       if(e.touches.length === 2 && startDist > 0){
         e.preventDefault();
         var scale = dist(e.touches) / startDist;
+        // Ancre le zoom sur le point du pincement : on retrouve le point du
+        // contenu situé sous le milieu des deux doigts avant le changement de
+        // zoom, puis on ajuste le défilement pour qu'il reste sous les doigts
+        // après redimensionnement (sinon le zoom part toujours du coin
+        // haut-gauche du canvas, indépendamment de l'endroit pincé).
+        var rect = scrollEl.getBoundingClientRect();
+        var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        var oldZoom = _pdfZoom;
+        var contentX = (scrollEl.scrollLeft + midX) / oldZoom;
+        var contentY = (scrollEl.scrollTop + midY) / oldZoom;
         _pdfSetZoom(startZoom * scale);
+        scrollEl.scrollLeft = contentX * _pdfZoom - midX;
+        scrollEl.scrollTop  = contentY * _pdfZoom - midY;
       }
     }, {passive:false});
     scrollEl.addEventListener('touchend', function(e){
