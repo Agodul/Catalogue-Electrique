@@ -828,6 +828,10 @@
     display:flex; flex-direction:column; align-items:center; gap:12px;
     z-index:40;
   }
+  /* Le FAB passe au-dessus des modales sur mobile (z-index relevé pour rester
+     visible au-dessus du contenu de page) — le masquer explicitement dès
+     qu'une modale est ouverte pour éviter qu'il ne la recouvre. */
+  body.modal-open .fab-stack{ display:none !important; }
   .fab{
     width:46px; height:46px;
     padding:0;
@@ -2146,6 +2150,14 @@
     }
   }
   @keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+  .btn-spinner{
+    display:inline-block; width:14px; height:14px;
+    border:2px solid rgba(255,255,255,.4); border-top-color:#fff;
+    border-radius:50%; vertical-align:-2px;
+    animation:spin .6s linear infinite;
+  }
+  button.secondary .btn-spinner{ border-color:rgba(0,0,0,.2); border-top-color:var(--ink-soft); }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
 
   /* PDF.js Text Layer */
   #pdfTextLayer span {

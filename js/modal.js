@@ -1416,7 +1416,30 @@
   }
 
   // ── Bouton mobile Android : Coller & Extraire ────────────────────
-  var btnPasteExtract = document.getElementById('btnPasteExtract');
+  // ── État de chargement partagé entre les deux boutons d'extraction ──
+  // (le clic sur "Coller le lien et extraire" déclenche "Extraire depuis
+  // l'URL" en interne — les deux doivent refléter le même état pendant
+  // l'appel réseau, pour que l'utilisateur voie que quelque chose se passe
+  // et ne puisse pas déclencher plusieurs extractions en même temps).
+  var btnPasteExtract    = document.getElementById('btnPasteExtract');
+  var btnExtractFromUrl  = document.getElementById('btnExtractFromUrl');
+  var _pasteExtractLabel = btnPasteExtract ? btnPasteExtract.innerHTML : '';
+  var _extractUrlLabel   = btnExtractFromUrl ? btnExtractFromUrl.innerHTML : '';
+  function setExtractLoading(isLoading){
+    if(btnPasteExtract){
+      btnPasteExtract.disabled = isLoading;
+      btnPasteExtract.innerHTML = isLoading
+        ? '<span class="btn-spinner" aria-hidden="true"></span> Extraction en cours…'
+        : _pasteExtractLabel;
+    }
+    if(btnExtractFromUrl){
+      btnExtractFromUrl.disabled = isLoading;
+      btnExtractFromUrl.innerHTML = isLoading
+        ? '<span class="btn-spinner" aria-hidden="true"></span> Extraction…'
+        : _extractUrlLabel;
+    }
+  }
+
   if(btnPasteExtract){
     btnPasteExtract.addEventListener('click', function(){
       if(navigator.clipboard && navigator.clipboard.readText){
@@ -1425,7 +1448,7 @@
             text = (text || '').trim();
             if(text && /^https?:\/\//.test(text)){
               fUrl.value = text;
-              document.getElementById('btnExtractFromUrl').click();
+              btnExtractFromUrl.click();
             } else {
               showToast('Aucun lien trouvé dans le presse-papier', 'warn', 2500);
             }
@@ -1439,13 +1462,14 @@
     });
   }
 
-  document.getElementById('btnExtractFromUrl').addEventListener('click', function(){
+  btnExtractFromUrl.addEventListener('click', function(){
     var url = fUrl.value.trim();
     var hintEl = document.getElementById('extractUrlHint');
     if(!url){
       showToast('Collez d\'abord une URL dans le champ', 'warn', 2500);
       return;
     }
+    setExtractLoading(true);
     hintEl.style.display = 'block';
     hintEl.style.color   = 'var(--ink-soft)';
     hintEl.textContent   = '⏳ Récupération de la page en cours…';
@@ -1459,6 +1483,7 @@
 
     function tryProxy(idx){
       if(idx >= proxies.length){
+        setExtractLoading(false);
         hintEl.style.color  = '#DC2626';
         hintEl.textContent  = '✗ Impossible de récupérer la page — collez le code source manuellement.';
         return;
@@ -1491,6 +1516,7 @@
           }
           fHtml.value = html;
           document.getElementById('btnExtract').click();
+          setExtractLoading(false);
           hintEl.style.color  = '#059669';
           hintEl.textContent  = '✓ Extraction réussie !';
           setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
