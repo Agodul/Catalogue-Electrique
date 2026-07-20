@@ -215,7 +215,7 @@
         if(sugToggle) sugToggle.onclick = function(){
           if(sugList){
             var prods = window.products || [];
-            sugList.innerHTML = '<div class="sug-carousel sug-carousel--modal">' + sugRefs.map(function(ref){
+            sugList.innerHTML = '<div class="sug-carousel">' + sugRefs.map(function(ref){
               var sp = prods.find(function(x){ return x.ref === ref; });
               if(!sp) return ''; // produit supprimé
               var photoHtml = sp.photo
