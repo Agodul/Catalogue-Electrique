@@ -214,27 +214,30 @@
 
         if(sugToggle) sugToggle.onclick = function(){
           if(sugList){
+            // Liste compacte (comme la modale Documents) plutôt qu'une grille
+            // de grandes vignettes : miniature fixe + texte sur une ligne.
             var prods = window.products || [];
-            sugList.innerHTML = '<div class="sug-carousel">' + sugRefs.map(function(ref){
+            sugList.innerHTML = sugRefs.map(function(ref){
               var sp = prods.find(function(x){ return x.ref === ref; });
               if(!sp) return ''; // produit supprimé
               var photoHtml = sp.photo
-                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.style.display=\'none\'">'
-                : '<div class="sug-card-nophoto"><i class="ti ti-photo-off"></i></div>';
-              return '<div class="sug-card" data-id="'+escapeHtml(sp.id)+'">'+
-                '<div class="sug-card-photo">'+photoHtml+'</div>'+
-                '<div class="sug-card-body">'+
-                  '<div class="sug-card-ref">'+escapeHtml(sp.ref||'')+'</div>'+
-                  '<div class="sug-card-name">'+escapeHtml((sp.name||'').substring(0,50))+'</div>'+
+                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+                : '<i class="ti ti-photo-off"></i>';
+              return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
+                '<div class="sug-list-photo">'+photoHtml+'</div>'+
+                '<div class="sug-list-body">'+
+                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                  '<div class="sug-list-name">'+escapeHtml((sp.name||'').substring(0,60))+'</div>'+
                 '</div>'+
+                '<i class="ti ti-chevron-right sug-list-chevron"></i>'+
               '</div>';
-            }).join('') + '</div>';
+            }).join('');
 
             // Clic sur une suggestion → empile la fiche courante, ferme la
             // modale et ouvre la suggestion
-            sugList.querySelectorAll('.sug-card[data-id]').forEach(function(card){
-              card.addEventListener('click', function(){
-                var pid = card.getAttribute('data-id');
+            sugList.querySelectorAll('.sug-list-item[data-id]').forEach(function(row){
+              row.addEventListener('click', function(){
+                var pid = row.getAttribute('data-id');
                 if(pid){
                   _viewHistory.push(id);
                   if(sugOverlay) sugOverlay.style.display = 'none';
