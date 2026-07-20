@@ -660,7 +660,6 @@ function openAddUserModal() {
 }
 function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   currentPerms = currentPerms || {};
-
   function _escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -669,10 +668,6 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
-
-  var safeTitleName   = _escapeHtml(displayName || username);
-  var safeDisplayValue = _escapeHtml(displayName || '');
-
   var PERM_LIST = [
     ['canEdit',        'Créer et modifier des produits'],
     ['canDelete',      'Supprimer des produits'],
@@ -683,9 +678,12 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canReq',         'Soumettre des demandes']
   ];
 
+  var safeTitleName = _escapeHtml(displayName || username);
+  var safeDisplayValue = _escapeHtml(displayName || '');
+
   var permCheckboxes = PERM_LIST.map(function(p) {
-    var checked   = currentPerms[p[0]] ? ' checked' : '';
-    var permKey   = _escapeHtml(p[0]);
+    var checked = currentPerms[p[0]] ? ' checked' : '';
+    var permKey = _escapeHtml(p[0]);
     var permLabel = _escapeHtml(p[1]);
     return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:3px 0;">'
       + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+'> '+permLabel+'</label>';
