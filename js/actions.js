@@ -79,6 +79,7 @@
       name: fName.value.trim(),
       desc: stripHtml(fDesc.value.trim()),
       tags: fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean),
+      chatNotes: fChatNotes ? fChatNotes.value.trim() : '',
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,

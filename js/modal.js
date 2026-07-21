@@ -19,6 +19,7 @@
   }
   var fName = document.getElementById('fName');
   var fDesc = document.getElementById('fDesc');
+  var fChatNotes = document.getElementById('fChatNotes');
   var fPrice = document.getElementById('fPrice');
   var priceDisplayRow = document.getElementById('priceDisplayRow');
   var priceDisplayVal = document.getElementById('priceDisplayVal');
@@ -331,6 +332,7 @@
     selectedFamilyIcon = 'ti-package';
     familyIconPreviewI.className = 'ti ti-package';
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
+    if(fChatNotes) fChatNotes.value = '';
     renderTagSuggestions();
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     if(priceCreateRow)  priceCreateRow.style.display  = 'block';
@@ -507,6 +509,7 @@
     fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
     if(fLeadTime) fLeadTime.value = p.leadTime||'';
     fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
+    if(fChatNotes) fChatNotes.value = p.chatNotes || '';
     renderTagSuggestions();
     f3dAvailable.checked = !!p.available3DX;
     f3dLink.value = p.available3DXLink || '';

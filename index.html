@@ -748,6 +748,14 @@
       </div>
       <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
 
+      <!-- ===== CHAMP NOTES ASSISTANT IA (admin uniquement) ===== -->
+      <div class="field" id="fChatNotesRow" style="display:none;">
+        <label for="fChatNotes">Notes pour l'assistant IA <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(non affichées aux utilisateurs)</span></label>
+        <textarea id="fChatNotes" rows="3" placeholder="Infos utiles pour répondre aux questions sur ce produit : compatibilités, précisions techniques, équivalences…"></textarea>
+        <div class="hint">Ce texte n'apparaît jamais dans la fiche produit — il sert uniquement de contexte à l'assistant IA du chat.</div>
+      </div>
+      <!-- ===== FIN CHAMP NOTES ASSISTANT IA ===== -->
+
       <div class="tabs">
         <button class="tab-btn active" data-tab="auto">Extraction automatique</button>
         <button class="tab-btn" data-tab="manual">Saisie manuelle</button>

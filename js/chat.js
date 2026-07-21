@@ -16,6 +16,7 @@ function _chatNormFields(p){
     brand: normalizeSearch(p.brand),
     family: normalizeSearch(p.family),
     desc: normalizeSearch(p.desc),
+    chatNotes: normalizeSearch(p.chatNotes),
     // Tableau (pas une chaîne jointe) : chaque tag doit garder ses limites de
     // mot pour que la comparaison "champ contenu dans le terme" ci-dessous
     // fonctionne tag par tag (sinon un tag isolé comme "capteur" ne peut
@@ -60,6 +61,7 @@ function findChatCandidateProducts(query, limit){
       if(_chatMatches(f.family, t)) score += 30;
       if(_chatMatchesAny(f.tags, t)) score += 25;
       if(_chatMatches(f.desc, t)) score += 15;
+      if(_chatMatches(f.chatNotes, t)) score += 15;
     });
     if(score > 0) scored.push({ p: p, score: score });
   }
@@ -72,7 +74,10 @@ function findChatCandidateProducts(query, limit){
       brand: s.p.brand || '',
       family: s.p.family || '',
       price: s.p.price || '',
-      priceCatalogue: s.p.priceCatalogue || ''
+      priceCatalogue: s.p.priceCatalogue || '',
+      desc: s.p.desc || '',
+      tags: Array.isArray(s.p.tags) ? s.p.tags : [],
+      chatNotes: s.p.chatNotes || ''
     };
   });
 }

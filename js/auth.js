@@ -335,6 +335,10 @@ function applyAuthUI() {
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
 
+  // Champ notes assistant IA : visible uniquement pour canEdit/admin
+  var fChatNotesRow = document.getElementById('fChatNotesRow');
+  if(fChatNotesRow) fChatNotesRow.style.display = canEdit ? '' : 'none';
+
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');
   if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';
