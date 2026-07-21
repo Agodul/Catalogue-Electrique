@@ -98,6 +98,213 @@ function askChat(question){
   });
 }
 
+// ── Configurateur d'armoire (questionnaire déterministe, sans IA) ────────
+// Les règles (questions + correspondances vers des réf/quantités) sont
+// définies par l'admin via l'éditeur JSON (icône ⚙️), pas par le modèle —
+// aucune improvisation possible sur du matériel électrique.
+
+function fetchConfiguratorRules(){
+  var sUrl = localStorage.getItem('cat_server_url');
+  if(!sUrl) return Promise.reject(new Error('Aucun serveur configuré'));
+  return fetch(sUrl + '/configuratorRules', { headers: authHeaders() }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function saveConfiguratorRules(rules){
+  var sUrl = localStorage.getItem('cat_server_url');
+  if(!sUrl) return Promise.reject(new Error('Aucun serveur configuré'));
+  return fetch(sUrl + '/configuratorRules', {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(rules)
+  }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+// Fonction pure : évalue les règles par rapport aux réponses données et
+// retourne la liste agrégée [{ref, qty}]. Aucun eval()/formule libre —
+// seulement qty fixe, qtyPerUnit (division arrondie au supérieur) et
+// rangeTable (sélection de réf selon un seuil numérique).
+function _configEvalRules(rules, answers){
+  var totals = {};
+  (rules || []).forEach(function(rule){
+    var when = rule.when || {};
+    var action = rule.action || {};
+    var raw = answers[when.question];
+    if(raw === undefined || raw === null) return;
+    var values = Array.isArray(raw) ? raw : [raw];
+    values.forEach(function(value){
+      if(Object.prototype.hasOwnProperty.call(when, 'equals') && value !== when.equals) return;
+      var ref, qty;
+      if(action.rangeTable){
+        var sorted = action.rangeTable.slice().sort(function(a, b){
+          var am = (a.max === null || a.max === undefined) ? Infinity : a.max;
+          var bm = (b.max === null || b.max === undefined) ? Infinity : b.max;
+          return am - bm;
+        });
+        var match = sorted.filter(function(r){
+          var m = (r.max === null || r.max === undefined) ? Infinity : r.max;
+          return Number(value) <= m;
+        })[0];
+        if(!match) return;
+        ref = match.ref; qty = match.qty != null ? match.qty : 1;
+      } else if(action.qtyPerUnit){
+        var per = action.qtyPerUnit.per || 1;
+        ref = action.ref;
+        qty = Math.ceil((Number(value) || 0) / per);
+      } else {
+        ref = action.ref;
+        qty = action.qty != null ? action.qty : 1;
+      }
+      if(!ref || !qty || qty <= 0) return;
+      totals[ref] = (totals[ref] || 0) + qty;
+    });
+  });
+  return Object.keys(totals).map(function(ref){ return { ref: ref, qty: totals[ref] }; });
+}
+
+var _configState = null; // non-null pendant le questionnaire (détourne _chatSend)
+
+function _configParseAnswer(q, text){
+  var t = (text || '').trim().toLowerCase();
+  if(q.type === 'boolean'){
+    if(['oui','o','yes','y'].indexOf(t) !== -1) return true;
+    if(['non','n','no'].indexOf(t) !== -1) return false;
+    return null;
+  }
+  if(q.type === 'number'){
+    var n = parseFloat(t.replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  return text;
+}
+
+function _configAskQuestion(q, repeatIndex, repeatCount){
+  var label = q.label || q.id;
+  if(repeatIndex) label += ' (n°' + repeatIndex + '/' + repeatCount + ')';
+  if(q.type === 'boolean') label += ' (oui/non)';
+  _chatAppendMessage('assistant', label);
+}
+
+function _configAskNext(){
+  var cfg = _configState;
+  if(!cfg) return;
+  if(cfg.repeatRemaining > 0){
+    cfg.repeatIndex++;
+    cfg.repeatRemaining--;
+    _configAskQuestion(cfg.questions[cfg.qIndex], cfg.repeatIndex, cfg.repeatCount);
+    return;
+  }
+  cfg.qIndex++;
+  if(cfg.qIndex >= cfg.questions.length){
+    _configFinish();
+    return;
+  }
+  var q = cfg.questions[cfg.qIndex];
+  if(q.repeatFor){
+    var count = Math.max(0, Math.round(Number(cfg.answers[q.repeatFor]) || 0));
+    if(count <= 0){ _configAskNext(); return; } // rien à répéter, passer à la suivante
+    cfg.answers[q.id] = [];
+    cfg.repeatIndex = 1;
+    cfg.repeatRemaining = count - 1;
+    cfg.repeatCount = count;
+    _configAskQuestion(q, 1, count);
+  } else {
+    _configAskQuestion(q, null, null);
+  }
+}
+
+function _configAdvance(userText){
+  var cfg = _configState;
+  if(!cfg) return;
+  var q = cfg.questions[cfg.qIndex];
+  var value = _configParseAnswer(q, userText);
+  if(value === null){
+    _chatAppendMessage('assistant', "Je n'ai pas compris, réponds par " + (q.type === 'boolean' ? '"oui" ou "non".' : 'un nombre.'));
+    return;
+  }
+  if(q.repeatFor) cfg.answers[q.id].push(value);
+  else cfg.answers[q.id] = value;
+  _configAskNext();
+}
+
+function _configFinish(){
+  var cfg = _configState;
+  var items = _configEvalRules(cfg.rules, cfg.answers);
+  _configState = null;
+  if(!items.length){
+    _chatAppendMessage('assistant', "Aucun matériel déterminé à partir de tes réponses.");
+    return;
+  }
+  var lines = items.map(function(it){
+    var p = (window.products || []).find(function(x){ return x.ref === it.ref; });
+    return '• ' + it.qty + ' × ' + it.ref + (p ? ' — ' + (p.name || '') : ' (référence introuvable dans le catalogue)');
+  });
+  _chatAppendMessage('assistant', 'Liste de matériel :\n' + lines.join('\n'));
+}
+
+function _configStart(){
+  fetchConfiguratorRules().then(function(rules){
+    if(!rules || !Array.isArray(rules.questions) || !rules.questions.length){
+      _chatAppendMessage('assistant', "Aucune question n'est configurée pour le moment. Utilise l'icône ⚙️ pour en définir.");
+      return;
+    }
+    _configState = { questions: rules.questions, rules: rules.rules || [], answers: {}, qIndex: -1, repeatRemaining: 0 };
+    _chatAppendMessage('assistant', "C'est parti — je vais te poser quelques questions pour établir la liste de matériel.");
+    _configAskNext();
+  }).catch(function(e){
+    if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err');
+  });
+}
+
+// ── Éditeur de règles (admin) ─────────────────────────────────────────
+function _configRulesOpen(){
+  var overlay = document.getElementById('configRulesOverlay');
+  var textarea = document.getElementById('configRulesTextarea');
+  if(!overlay || !textarea) return;
+  overlay.style.display = 'flex';
+  document.body.classList.add('modal-open');
+  textarea.value = 'Chargement…';
+  fetchConfiguratorRules().then(function(rules){
+    textarea.value = JSON.stringify(rules, null, 2);
+  }).catch(function(e){
+    textarea.value = '';
+    if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err');
+  });
+}
+
+function _configRulesClose(){
+  var overlay = document.getElementById('configRulesOverlay');
+  if(overlay) overlay.style.display = 'none';
+  document.body.classList.remove('modal-open');
+}
+
+function _configRulesSave(){
+  var textarea = document.getElementById('configRulesTextarea');
+  if(!textarea) return;
+  var parsed;
+  try{
+    parsed = JSON.parse(textarea.value);
+  }catch(e){
+    if(typeof showToast === 'function') showToast('JSON invalide : ' + e.message, 'err');
+    return;
+  }
+  if(!parsed || !Array.isArray(parsed.questions) || !Array.isArray(parsed.rules)){
+    if(typeof showToast === 'function') showToast('Le JSON doit contenir "questions" et "rules" (tableaux).', 'err');
+    return;
+  }
+  saveConfiguratorRules(parsed).then(function(){
+    if(typeof showToast === 'function') showToast('Règles enregistrées', 'ok');
+    _configRulesClose();
+  }).catch(function(e){
+    if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err');
+  });
+}
+
 // ── UI ────────────────────────────────────────────────────────────────
 function _chatAppendMessage(role, text){
   var messagesEl = document.getElementById('chatMessages');
@@ -121,6 +328,12 @@ function _chatSend(){
   if(!question) return;
   input.value = '';
   _chatAppendMessage('user', question);
+
+  if(_configState){
+    _configAdvance(question);
+    return;
+  }
+
   _chatSetTyping(true);
   askChat(question).then(function(answer){
     _chatSetTyping(false);
@@ -166,4 +379,16 @@ function _chatClose(){
   if(input) input.addEventListener('keydown', function(e){
     if(e.key === 'Enter') _chatSend();
   });
+
+  var btnConfigStart = document.getElementById('chatConfigStartBtn');
+  if(btnConfigStart) btnConfigStart.addEventListener('click', _configStart);
+
+  var btnConfigGear = document.getElementById('chatConfigGearBtn');
+  if(btnConfigGear) btnConfigGear.addEventListener('click', _configRulesOpen);
+
+  var btnConfigRulesClose = document.getElementById('configRulesCloseBtn');
+  if(btnConfigRulesClose) btnConfigRulesClose.addEventListener('click', _configRulesClose);
+
+  var btnConfigRulesSave = document.getElementById('configRulesSaveBtn');
+  if(btnConfigRulesSave) btnConfigRulesSave.addEventListener('click', _configRulesSave);
 })();

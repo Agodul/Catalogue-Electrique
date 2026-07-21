@@ -205,6 +205,7 @@
       { overlay: 'docOverlay',        close: 'docCloseBtn'      },
       { overlay: 'sugOverlay',        close: 'sugCloseBtn'      },
       { overlay: 'chatOverlay',       close: 'chatCloseBtn'     },
+      { overlay: 'configRulesOverlay', close: 'configRulesCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
       { overlay: 'conflictOverlay',   close: 'conflictClose'    },
       { overlay: 'whatsNewOverlay',   close: 'btnWNClose'       },
