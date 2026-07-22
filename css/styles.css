@@ -3143,6 +3143,7 @@
 }
 .cfg-tab-btn:hover{ background:var(--paper); border-color:var(--copper-deep); }
 .cfg-tab-btn-active{ background:var(--copper); color:#fff; border-color:var(--copper); }
+.cfg-tab-btn-active:hover{ background:var(--copper-deep); border-color:var(--copper-deep); color:#fff; }
 .cfg-tab-btn-icon{ font-size:13px; line-height:1; }
 .cfg-tab-panel{ min-height:0; }
 
