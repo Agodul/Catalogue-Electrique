@@ -628,6 +628,12 @@
             <span id="vmSuggestionsToggleLabel">Afficher suggestions</span>
           </button>
         </div>
+        <div id="vmSpecsSection" style="display:none;margin-top:8px;">
+          <button id="vmSpecsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
+            <i class="ti ti-list-details" style="font-size:17px;"></i>
+            <span id="vmSpecsToggleLabel">Voir les caractéristiques</span>
+          </button>
+        </div>
       </div>
       <!-- ===== FIN BOUTONS DOC + SUGGESTIONS ===== -->
 
@@ -747,6 +753,16 @@
         <div class="sug-chips" id="fSuggestionsChips"></div>
       </div>
       <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
+
+      <!-- ===== CHAMP CARACTÉRISTIQUES (fenêtre dédiée) ===== -->
+      <div class="field" id="fSpecsRow">
+        <label>Caractéristiques techniques <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(ex: nombre d'entrées, connecteur…)</span></label>
+        <button type="button" id="btnOpenSpecs" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
+          <i class="ti ti-list-details" style="font-size:17px;"></i>
+          <span id="btnOpenSpecsLabel">Ajouter des caractéristiques</span>
+        </button>
+      </div>
+      <!-- ===== FIN CHAMP CARACTÉRISTIQUES ===== -->
 
       <!-- ===== CHAMP NOTES ASSISTANT IA (admin uniquement) ===== -->
       <div class="field" id="fChatNotesRow" style="display:none;">
@@ -1108,13 +1124,29 @@
 <div id="sugOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10600;align-items:center;justify-content:center;padding:20px;">
   <div id="sugModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">💡 Produits suggérés</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugModalTitle">💡 Produits suggérés</div>
       <button id="sugCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div id="sugList" style="flex:1;overflow-y:auto;padding:20px;min-height:0;"></div>
   </div>
 </div>
 <!-- ===== FIN MODALE SUGGESTIONS ===== -->
+
+<!-- ===== MODALE CARACTÉRISTIQUES TECHNIQUES ===== -->
+<div id="specsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10600;align-items:center;justify-content:center;padding:20px;">
+  <div id="specsModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;color:var(--ink);">🔧 Caractéristiques techniques</div>
+      <button id="specsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px;min-height:0;">
+      <div id="specsRows" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <button type="button" id="btnAddSpecRow" style="margin-top:12px;background:none;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink-soft);cursor:pointer;font-size:12.5px;font-weight:600;padding:8px 14px;font-family:var(--font-sans);">+ Ajouter une caractéristique</button>
+      <datalist id="specKeyOptions"></datalist>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN MODALE CARACTÉRISTIQUES ===== -->
 
 <!-- ===== MODALE CHAT IA (admin) ===== -->
 <div id="chatOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10600;align-items:center;justify-content:center;padding:20px;">
@@ -1151,39 +1183,91 @@
       <div style="font-size:15px;font-weight:700;color:var(--ink);">⚙️ Questionnaire armoire électrique</div>
       <button id="configRulesCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
+    <div class="cfg-tabbar">
+      <button type="button" class="cfg-tab-btn cfg-tab-btn-active" data-tab="diagram"><span class="cfg-tab-btn-icon">🗺️</span><span>Schéma</span></button>
+      <button type="button" class="cfg-tab-btn" data-tab="assistant"><span class="cfg-tab-btn-icon">✨</span><span>Assistant</span></button>
+    </div>
     <div style="flex:1;min-height:0;display:flex;overflow:hidden;">
-      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
-        <div class="hint" style="margin:0;">
-          Glisse un bloc depuis la palette à droite pour construire ton questionnaire. Un composant (ex: Variateur)
-          regroupe sa quantité, ses sous-questions (ex: Puissance, posée une fois par unité) et les règles qui en
-          dépendent — glissées directement sur le bon bloc, impossible de les relier au mauvais endroit.
+      <div id="tabPanelDiagram" class="cfg-tab-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div id="diagToolbar" class="diag-toolbar">
+          <button type="button" class="diag-tool-btn" data-nodetype="question">❓ Question</button>
+          <button type="button" class="diag-tool-btn" data-nodetype="material">🧱 Matériel</button>
+          <button type="button" class="diag-tool-btn" data-nodetype="choice">🗂️ L'utilisateur choisit</button>
+          <button type="button" class="diag-tool-btn" data-nodetype="and">🔗 ET (condition combinée)</button>
+          <button type="button" class="diag-tool-btn" data-nodetype="cumul">🧮 Cumul pondéré</button>
+          <button type="button" id="diagReorganizeBtn" class="diag-tool-btn" title="Réorganise automatiquement les boîtes selon la logique du questionnaire">🧹 Réorganiser</button>
+          <span class="diag-zoom-controls">
+            <button type="button" id="diagZoomOut" class="diag-zoom-btn" title="Dézoomer">➖</button>
+            <span id="diagZoomLabel" class="diag-zoom-label">100%</span>
+            <button type="button" id="diagZoomIn" class="diag-zoom-btn" title="Zoomer">➕</button>
+            <button type="button" id="diagZoomReset" class="diag-zoom-btn" title="Réinitialiser le zoom">1:1</button>
+          </span>
+          <span class="diag-toolbar-hint">Dépose une boîte, tire une flèche d'un point de sortie vers un point d'entrée pour la relier. Clique-glisse le fond pour te déplacer dans le schéma.</span>
         </div>
-        <div id="configBuilderComponents" class="cfg-canvas-root" style="display:flex;flex-direction:column;gap:14px;min-height:120px;"></div>
+        <div id="diagCanvasWrap" style="flex:1;overflow:auto;position:relative;background:var(--paper);">
+          <div id="diagCanvas" style="position:relative;width:1800px;height:1200px;transform-origin:0 0;">
+            <svg id="diagEdgesSvg" style="position:absolute;top:0;left:0;width:1800px;height:1200px;pointer-events:none;"></svg>
+          </div>
+        </div>
       </div>
-      <div id="configPalette" class="cfg-palette">
-        <div class="cfg-palette-title">Blocs</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="component">📦 Composant</div>
-        <div class="cfg-palette-hint">Dépose sur la zone de gauche pour créer un nouveau composant (ex: Variateur, Robot, Automate…).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="subquestion">❓ Sous-question</div>
-        <div class="cfg-palette-hint">Dépose sur un composant : question posée une fois par unité (ex: Puissance).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="baseref">🧱 Référence de base</div>
-        <div class="cfg-palette-hint">Dépose sur la zone de gauche : référence ajoutée systématiquement, sans dépendre d'aucune réponse.</div>
-        <div class="cfg-palette-section-title">Règles</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-fixed">➕ Référence fixe</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-perUnit">📐 Par tranche</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-range">📊 Selon un seuil</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-choice">🗂️ L'utilisateur choisit</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-remove">🔁 Retirer / remplacer</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-alert">⚠️ Alerte de cohérence</div>
-        <div class="cfg-palette-hint">Dépose une règle sur un composant ou une sous-question pour l'y attacher.</div>
+      <div id="tabPanelAssistant" class="cfg-tab-panel" style="display:none;flex:1;overflow:hidden;">
+        <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
+          <button type="button" id="btnOpenWizard" class="cfg-wizard-open-btn">➕ Ajouter un élément au questionnaire</button>
+          <div id="configBuilderComponents" class="cfg-canvas-root" style="display:flex;flex-direction:column;gap:14px;min-height:120px;"></div>
+          <button type="button" id="btnToggleAdvanced" class="cfg-advanced-toggle">Mode avancé (glisser-déposer) ▾</button>
+        </div>
+        <div id="configPalette" class="cfg-palette" style="display:none;">
+          <div class="hint" style="margin:0 0 10px;">
+            Glisse un bloc ci-dessous sur la zone de gauche pour construire ton questionnaire à la main. Un composant
+            (ex: Variateur) regroupe sa quantité, ses sous-questions (ex: Puissance, posée une fois par unité) et les
+            règles qui en dépendent — glissées directement sur le bon bloc, impossible de les relier au mauvais endroit.
+          </div>
+          <div class="cfg-palette-title">Blocs</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="component">📦 Composant</div>
+          <div class="cfg-palette-hint">Dépose sur la zone de gauche pour créer un nouveau composant (ex: Variateur, Robot, Automate…).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="subquestion">❓ Sous-question</div>
+          <div class="cfg-palette-hint">Dépose sur un composant : question posée une fois par unité (ex: Puissance).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="baseref">🧱 Référence de base</div>
+          <div class="cfg-palette-hint">Dépose sur la zone de gauche : référence ajoutée systématiquement, sans dépendre d'aucune réponse.</div>
+          <div class="cfg-palette-section-title">Règles</div>
+          <div class="cfg-palette-hint" style="margin:-2px 0 6px;">Une règle se dépose SUR un composant ou une sous-question : elle dit "SI la réponse est ça, ALORS ajoute ce matériel".</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-fixed">➕ Référence fixe</div>
+          <div class="cfg-palette-hint">Ajoute toujours la même référence, en quantité fixe (ex: un disjoncteur général systématique).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-perUnit">📐 Par tranche</div>
+          <div class="cfg-palette-hint">Quantité = réponse ÷ capacité par carte, arrondi au-dessus (ex: 1 carte pour 8 entrées → 20 entrées = 3 cartes).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-range">📊 Selon un seuil</div>
+          <div class="cfg-palette-hint">Choisit une référence selon la valeur d'une réponse numérique (ex: la puissance du moteur détermine quel variateur commander).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-choice">🗂️ L'utilisateur choisit</div>
+          <div class="cfg-palette-hint">Laisse l'utilisateur choisir lui-même une référence précise dans une catégorie du catalogue (ex: quel modèle de bouton).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-remove">🔁 Retirer / remplacer</div>
+          <div class="cfg-palette-hint">Retire une référence déjà ajoutée par une autre règle et peut la remplacer par une autre (ex: option lumineuse → version simple).</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-alert">⚠️ Alerte de cohérence</div>
+          <div class="cfg-palette-hint">Affiche un simple message d'avertissement à l'utilisateur, sans ajouter de matériel (ex: "puissance totale élevée, vérifier le disjoncteur général").</div>
+          <div class="cfg-palette-block" draggable="true" data-blocktype="rule-cumul">🧮 Cumul pondéré</div>
+          <div class="cfg-palette-hint">Additionne plusieurs réponses (chacune avec son propre poids) pour calculer combien de cartes commander (ex: X entrées directes + 1 par bouton, ÷ capacité de la carte).</div>
+        </div>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex-shrink:0;">
+      <input type="file" id="configRulesImportInput" accept="application/json,.json" style="display:none;">
+      <button id="configRulesImportBtn" style="background:none;border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-sans);">📥 Importer un questionnaire</button>
       <button id="configRulesSaveBtn" style="background:var(--copper);border:none;border-radius:10px;color:#fff;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-sans);">Enregistrer</button>
     </div>
   </div>
 </div>
 <!-- ===== FIN MODALE ÉDITEUR RÈGLES CONFIGURATEUR ===== -->
+
+<!-- ===== ASSISTANT PAS-À-PAS (création simple d'un élément du questionnaire) ===== -->
+<div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10800;align-items:center;justify-content:center;padding:20px;">
+  <div id="wizardModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;color:var(--ink);">✨ Ajouter un élément</div>
+      <button id="wizardCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
+    </div>
+    <div id="wizardStepBody" style="flex:1;overflow-y:auto;padding:22px 24px;"></div>
+  </div>
+</div>
+<!-- ===== FIN ASSISTANT PAS-À-PAS ===== -->
 
 <!-- ===== PDF VIEWER ===== -->
 <div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;">

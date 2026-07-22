@@ -213,6 +213,8 @@
         if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
 
         if(sugToggle) sugToggle.onclick = function(){
+          var sugModalTitle = document.getElementById('sugModalTitle');
+          if(sugModalTitle) sugModalTitle.textContent = '💡 Produits suggérés';
           if(sugList){
             // Liste compacte (comme la modale Documents) plutôt qu'une grille
             // de grandes vignettes : miniature fixe + texte sur une ligne.
@@ -260,7 +262,38 @@
       if(sugOverlay) sugOverlay.style.display = 'none';
       document.body.classList.remove('modal-open');
     };
-    // ── Fin Suggestions ────────────────────────────────────────────
+
+    // ── Section Caractéristiques (réutilise le même overlay/liste que Suggestions) ──
+    var specsSection = document.getElementById('vmSpecsSection');
+    var specsToggle  = document.getElementById('vmSpecsToggle');
+    var specsToggleLabel = document.getElementById('vmSpecsToggleLabel');
+    var specEntries = (p.specs && typeof p.specs === 'object')
+      ? Object.keys(p.specs).filter(function(k){ return p.specs[k]; }).map(function(k){ return [k, p.specs[k]]; })
+      : [];
+
+    if(specsSection){
+      if(specEntries.length){
+        specsSection.style.display = '';
+        if(specsToggleLabel) specsToggleLabel.textContent = 'Voir les caractéristiques (' + specEntries.length + ')';
+
+        if(specsToggle) specsToggle.onclick = function(){
+          var sugModalTitle = document.getElementById('sugModalTitle');
+          if(sugModalTitle) sugModalTitle.textContent = '🔧 Caractéristiques techniques';
+          if(sugList){
+            sugList.innerHTML = specEntries.map(function(entry){
+              return '<div class="vm-meta-item"><label>'+escapeHtml(entry[0])+'</label><span>'+escapeHtml(entry[1])+'</span></div>';
+            }).join('');
+          }
+          if(sugOverlay){
+            sugOverlay.style.display = 'flex';
+            document.body.classList.add('modal-open');
+          }
+        };
+      } else {
+        specsSection.style.display = 'none';
+      }
+    }
+
 
     viewOverlay.classList.add('open');
     document.body.classList.add('modal-open');

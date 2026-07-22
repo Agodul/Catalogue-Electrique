@@ -41,6 +41,7 @@
   var fSuggestionsChips  = document.getElementById('fSuggestionsChips');
   var fSuggestionsDrop   = document.getElementById('fSuggestionsDrop');
   var _sugRefs = []; // tableau des refs sélectionnées
+  var _specsRows = []; // [{key, value}] — caractéristiques techniques libres
   var fTags             = document.getElementById('fTags');
   var tagSuggestionsEl  = document.getElementById('tagSuggestions');
   var familyIconRow     = document.getElementById('familyIconRow');
@@ -342,6 +343,8 @@
     if(fEssential) fEssential.checked = false;
     _sugRefs = [];
     _sugRenderChips();
+    _specsRows = [];
+    _specsRenderRows();
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
     clearPhotoGallery();
     extractStatus.className = 'extract-status'; extractStatus.textContent='';
@@ -517,6 +520,10 @@
     if(fEssential) fEssential.checked = !!p.essential;
     _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
     _sugRenderChips();
+    _specsRows = (p.specs && typeof p.specs === 'object')
+      ? Object.keys(p.specs).map(function(k){ return { key: k, value: p.specs[k] }; })
+      : [];
+    _specsRenderRows();
     fPrice.value = p.price||''; fPhoto.value = p.photo||'';
     updatePhotoPreview();
     renderPriceHistory(p);
@@ -807,6 +814,98 @@
 
   // Exposer _sugRefs pour actions.js
   window._getSugRefs = function(){ return _sugRefs.slice(); };
+
+  // ── Logique caractéristiques techniques (clé/valeur libres) ─────
+  var specsOverlay   = document.getElementById('specsOverlay');
+  var specsRowsEl    = document.getElementById('specsRows');
+  var specKeyOptionsEl = document.getElementById('specKeyOptions');
+  var btnOpenSpecs   = document.getElementById('btnOpenSpecs');
+  var btnOpenSpecsLabel = document.getElementById('btnOpenSpecsLabel');
+  var specsCloseBtn  = document.getElementById('specsCloseBtn');
+  var btnAddSpecRow  = document.getElementById('btnAddSpecRow');
+
+  function _specsExistingKeys(){
+    var keys = [];
+    (window.products || []).forEach(function(p){
+      if(p.specs && typeof p.specs === 'object'){
+        Object.keys(p.specs).forEach(function(k){ if(keys.indexOf(k) === -1) keys.push(k); });
+      }
+    });
+    return keys.sort();
+  }
+
+  function _specsRenderKeyDatalist(){
+    if(!specKeyOptionsEl) return;
+    specKeyOptionsEl.innerHTML = _specsExistingKeys().map(function(k){
+      return '<option value="'+escapeHtml(k)+'">';
+    }).join('');
+  }
+
+  function _specsRenderRows(){
+    if(btnOpenSpecsLabel){
+      var count = _specsRows.filter(function(r){ return (r.key||'').trim(); }).length;
+      btnOpenSpecsLabel.textContent = count ? ('Caractéristiques (' + count + ')') : 'Ajouter des caractéristiques';
+    }
+    if(!specsRowsEl) return;
+    specsRowsEl.innerHTML = _specsRows.map(function(row, ri){
+      return '<div class="spec-row" data-ri="'+ri+'" style="display:flex;gap:8px;align-items:center;">'
+        + '  <input type="text" class="spec-key" data-ri="'+ri+'" list="specKeyOptions" placeholder="Nom (ex: Entrées)" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
+        + '  <input type="text" class="spec-value" data-ri="'+ri+'" placeholder="Valeur (ex: 8)" value="'+escapeHtml(row.value||'')+'" style="flex:1;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
+        + '  <button type="button" class="spec-row-del" data-ri="'+ri+'" style="background:none;border:1.5px solid var(--line);border-radius:7px;color:var(--ink-soft);cursor:pointer;font-size:13px;padding:5px 8px;">✕</button>'
+        + '</div>';
+    }).join('');
+    specsRowsEl.querySelectorAll('.spec-key').forEach(function(input){
+      input.addEventListener('input', function(){
+        _specsRows[parseInt(input.getAttribute('data-ri'), 10)].key = input.value;
+      });
+    });
+    specsRowsEl.querySelectorAll('.spec-value').forEach(function(input){
+      input.addEventListener('input', function(){
+        _specsRows[parseInt(input.getAttribute('data-ri'), 10)].value = input.value;
+      });
+    });
+    specsRowsEl.querySelectorAll('.spec-row-del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        _specsRows.splice(parseInt(btn.getAttribute('data-ri'), 10), 1);
+        _specsRenderRows();
+      });
+    });
+  }
+
+  if(btnAddSpecRow){
+    btnAddSpecRow.addEventListener('click', function(){
+      _specsRows.push({ key: '', value: '' });
+      _specsRenderRows();
+    });
+  }
+  if(btnOpenSpecs){
+    btnOpenSpecs.addEventListener('click', function(){
+      _specsRenderKeyDatalist();
+      if(specsOverlay){
+        specsOverlay.style.display = 'flex';
+        document.body.classList.add('modal-open');
+      }
+    });
+  }
+  if(specsCloseBtn){
+    specsCloseBtn.addEventListener('click', function(){
+      _specsRenderRows(); // met à jour le compteur sur le bouton avant de fermer
+      if(specsOverlay){
+        specsOverlay.style.display = 'none';
+        document.body.classList.remove('modal-open');
+      }
+    });
+  }
+
+  // Exposer _specsRows (converties en objet {clé: valeur}) pour actions.js
+  window._getSpecsObj = function(){
+    var obj = {};
+    _specsRows.forEach(function(row){
+      var k = (row.key || '').trim();
+      if(k) obj[k] = row.value || '';
+    });
+    return obj;
+  };
 
   // Exposer openModal globalement pour requests.js
   window._openModal = openModal;

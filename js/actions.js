@@ -84,6 +84,7 @@
       available3DXLink: f3dLink.value.trim(),
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
       suggestions: typeof window._getSugRefs === 'function' ? window._getSugRefs() : [],
+      specs: typeof window._getSpecsObj === 'function' ? window._getSpecsObj() : {},
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
       photo: fPhoto.value.trim()
