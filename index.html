@@ -1146,38 +1146,37 @@
 
 <!-- ===== MODALE ÉDITEUR RÈGLES CONFIGURATEUR (admin) ===== -->
 <div id="configRulesOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10700;align-items:center;justify-content:center;padding:20px;">
-  <div id="configRulesModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:640px;height:min(600px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
+  <div id="configRulesModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:960px;height:min(860px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div style="font-size:15px;font-weight:700;color:var(--ink);">⚙️ Questionnaire armoire électrique</div>
       <button id="configRulesCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:20px;min-height:0;display:flex;flex-direction:column;gap:10px;">
-      <div class="hint" style="margin:0;">
-        Définit les questions posées par le bouton "Configurer une armoire" et les règles qui déterminent
-        le matériel (référence + quantité). Format JSON — voir la structure attendue ci-dessous.
+    <div style="flex:1;min-height:0;display:flex;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div class="hint" style="margin:0;">
+          Glisse un bloc depuis la palette à droite pour construire ton questionnaire. Un composant (ex: Variateur)
+          regroupe sa quantité, ses sous-questions (ex: Puissance, posée une fois par unité) et les règles qui en
+          dépendent — glissées directement sur le bon bloc, impossible de les relier au mauvais endroit.
+        </div>
+        <div id="configBuilderComponents" class="cfg-canvas-root" style="display:flex;flex-direction:column;gap:14px;min-height:120px;"></div>
       </div>
-      <textarea id="configRulesTextarea" spellcheck="false"
-        style="flex:1;min-height:280px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;line-height:1.5;resize:vertical;"
-        placeholder='{
-  "questions": [
-    { "id": "hasRobot", "label": "Y a-t-il des robots ?", "type": "boolean" },
-    { "id": "automateIO", "label": "Nombre d\'entrées/sorties automate", "type": "number" },
-    { "id": "motorCount", "label": "Nombre de moteurs à variateur", "type": "number" },
-    { "id": "motorPower", "label": "Puissance du moteur (kW)", "type": "number", "repeatFor": "motorCount" }
-  ],
-  "rules": [
-    { "when": { "question": "hasRobot", "equals": true },
-      "action": { "ref": "REF-SECU-ROBOT", "qty": 1 } },
-    { "when": { "question": "automateIO" },
-      "action": { "ref": "REF-IO-MODULE-8", "qtyPerUnit": { "per": 8 } } },
-    { "when": { "question": "motorPower" },
-      "action": { "rangeTable": [
-        { "max": 5, "ref": "REF-VAR-0-5KW" },
-        { "max": 15, "ref": "REF-VAR-5-15KW" },
-        { "max": null, "ref": "REF-VAR-15KW-PLUS" }
-      ] } }
-  ]
-}'></textarea>
+      <div id="configPalette" class="cfg-palette">
+        <div class="cfg-palette-title">Blocs</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="component">📦 Composant</div>
+        <div class="cfg-palette-hint">Dépose sur la zone de gauche pour créer un nouveau composant (ex: Variateur, Robot, Automate…).</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="subquestion">❓ Sous-question</div>
+        <div class="cfg-palette-hint">Dépose sur un composant : question posée une fois par unité (ex: Puissance).</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="baseref">🧱 Référence de base</div>
+        <div class="cfg-palette-hint">Dépose sur la zone de gauche : référence ajoutée systématiquement, sans dépendre d'aucune réponse.</div>
+        <div class="cfg-palette-section-title">Règles</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-fixed">➕ Référence fixe</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-perUnit">📐 Par tranche</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-range">📊 Selon un seuil</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-choice">🗂️ L'utilisateur choisit</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-remove">🔁 Retirer / remplacer</div>
+        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-alert">⚠️ Alerte de cohérence</div>
+        <div class="cfg-palette-hint">Dépose une règle sur un composant ou une sous-question pour l'y attacher.</div>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex-shrink:0;">
       <button id="configRulesSaveBtn" style="background:var(--copper);border:none;border-radius:10px;color:#fff;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-sans);">Enregistrer</button>
