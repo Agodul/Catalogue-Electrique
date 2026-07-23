@@ -580,8 +580,11 @@
         var card = tmp.firstChild;
         targetGrid.appendChild(card);
       });
-      // Rebinder les clics sur les nouvelles cartes
-      grid.querySelectorAll('[data-view]').forEach(function(card){
+      // Rebinder les clics sur les nouvelles cartes — un lot peut atterrir dans
+      // PLUSIEURS groupes différents (mode groupement), donc on reparcourt tout
+      // le conteneur plutôt que le seul dernier groupe, sinon les cartes ajoutées
+      // aux autres groupes restent sans clic (_viewBound évite les doublons).
+      contentEl.querySelectorAll('[data-view]').forEach(function(card){
         if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
       });
       var moreBtn = document.getElementById('lazyMore');
