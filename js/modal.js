@@ -1105,6 +1105,21 @@
     return s;
   }
 
+  // Bribes d'interface parasites parfois capturées avec le texte extrait
+  // (ex: widget de prix Sonepar replié) — retirées automatiquement de tout
+  // champ extrait, que ce soit via copier-coller ou l'extension Chrome
+  // (même pipeline d'extraction, voir extractFromHtml).
+  var EXTRACT_JUNK_PHRASES = [/sans offre/gi, /d[ée]tail du prix ferm[ée]/gi];
+  function stripJunkPhrases(str){
+    if(!str) return str;
+    var s = str;
+    EXTRACT_JUNK_PHRASES.forEach(function(re){ s = s.replace(re, ' '); });
+    // Recolle les séparateurs (tirets, barres, puces) laissés orphelins par la suppression.
+    s = s.replace(/\s+/g, ' ').trim();
+    s = s.replace(/([-–—|•])(\s*\1)+/g, '$1').replace(/^[\s\-–—|•]+|[\s\-–—|•]+$/g, '');
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
   function extractFromHtml(htmlStr, pageUrl){
     var result = {photo:null, photos:[], name:null, desc:null, price:null, brand:null, ref:null, supplier:null};
     var doc;
@@ -1505,9 +1520,9 @@
     }
 
     // ── Nettoyage final ────────────────────────────────────────────────
-    if(result.name)  result.name  = stripHtml(result.name).replace(/\s+/g,' ').trim();
-    if(result.desc)  result.desc  = stripHtml(result.desc).replace(/\s+/g,' ').trim();
-    if(result.price) result.price = decodeEntities(result.price).replace(/\s+/g,' ').trim();
+    if(result.name)  result.name  = stripJunkPhrases(stripHtml(result.name).replace(/\s+/g,' ').trim());
+    if(result.desc)  result.desc  = stripJunkPhrases(stripHtml(result.desc).replace(/\s+/g,' ').trim());
+    if(result.price) result.price = stripJunkPhrases(decodeEntities(result.price).replace(/\s+/g,' ').trim());
 
     return result;
   }
