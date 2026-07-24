@@ -59,10 +59,27 @@
   function updateFilebarUI(connected){ /* filebar supprimée */ }
 
   function showToast(message, type, duration){
-    duration = typeof duration === 'number' ? duration : 3000;
+    if(typeof duration !== 'number'){
+      // Durée adaptée à la longueur du message : une confirmation courte
+      // reste ~2,5-3s, un message d'erreur long (ex. validation du
+      // configurateur) reste affiché plus longtemps pour être lisible,
+      // jusqu'à un plafond raisonnable.
+      var base = (type === 'err' || type === 'warn') ? 3000 : 2200;
+      duration = Math.min(base + (message ? message.length * 45 : 0), 9000);
+    }
     var toast = document.createElement('div');
     toast.className = 'toast ' + (type || 'info');
-    toast.textContent = message;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    var iconClass = {ok:'ti-circle-check', err:'ti-alert-circle', warn:'ti-alert-triangle', info:'ti-info-circle'}[type] || 'ti-info-circle';
+    var icon = document.createElement('i');
+    icon.className = 'ti ' + iconClass + ' toast-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    var text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = message;
+    toast.appendChild(icon);
+    toast.appendChild(text);
     document.body.appendChild(toast);
     requestAnimationFrame(function(){ toast.classList.add('visible'); });
     setTimeout(function(){
