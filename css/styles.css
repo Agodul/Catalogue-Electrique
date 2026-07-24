@@ -26,6 +26,31 @@
     /* Échelle d'élévation — réutiliser plutôt que créer une nouvelle valeur d'ombre */
     --shadow-card-hover: 0 6px 20px rgba(25,64,147,.10);
     --shadow-modal: 0 20px 60px rgba(0,0,0,.25);
+
+    /* Échelle de z-index — réutiliser un palier existant plutôt que d'en
+       improviser un nouveau. Paliers du plus bas au plus haut :
+       overlay          fiche produit, formulaire d'édition (plein écran de base)
+       overlay-popover  suggestions/autocomplete flottant par-dessus un formulaire
+       sheet            feuille mobile basse secondaire (compte)
+       sheet-high       feuille mobile basse principale (filtres, menu), FAB
+       panel            panneau plein écran (comparateur, paramètres, tooltip doublon réf)
+       panel-nested     panneau ouvert PAR-DESSUS un autre panel (ex. sélecteur d'icône
+                        depuis les paramètres) — toujours au-dessus de --z-panel, quel
+                        que soit l'ordre des éléments dans le HTML
+       modal-top        modale prioritaire (nouveautés, aperçu image, connexion)
+       toast            notification ponctuelle
+       requests         file des demandes
+       nav              barre de navigation basse — toujours au-dessus de tout */
+    --z-overlay:         500;
+    --z-overlay-popover: 600;
+    --z-sheet:           9300;
+    --z-sheet-high:      9600;
+    --z-panel:           9999;
+    --z-panel-nested:    10050;
+    --z-modal-top:       10100;
+    --z-toast:           10150;
+    --z-requests:        10800;
+    --z-nav:             10900;
   }
   *{box-sizing:border-box;}
   /* Empêche le menu contextuel (appui long / clic droit) et le drag sur les images */
@@ -399,7 +424,7 @@
     background:rgba(28,26,23,.48);
     display:none; align-items:center; justify-content:center;
     padding:20px;
-    z-index:500;
+    z-index:var(--z-overlay);
   }
   #viewOverlay.open{ display:flex; }
   #viewModal{
@@ -524,7 +549,7 @@
   .modal-overlay{
     position:fixed; inset:0; background:rgba(28,26,23,.45);
     display:none; align-items:center; justify-content:center;
-    padding:24px 20px; z-index:500;
+    padding:24px 20px; z-index:var(--z-overlay);
   }
   .modal-overlay.open{ display:flex; }
   .modal{
@@ -643,7 +668,7 @@
     border-radius:6px;
     white-space:normal;
     width:240px;
-    z-index:9999;
+    z-index:var(--z-panel);
     pointer-events:none;
     box-shadow:0 4px 12px rgba(0,0,0,.25);
   }
@@ -1255,7 +1280,7 @@
     position:fixed; inset:0;
     background:rgba(28,26,23,.55);
     display:none; align-items:center; justify-content:center;
-    padding:20px; z-index:10000; padding-bottom:max(20px,env(safe-area-inset-bottom));
+    padding:20px; z-index:var(--z-modal-top); padding-bottom:max(20px,env(safe-area-inset-bottom));
     animation:fadeBg .25s ease forwards;
   }
   #whatsNewOverlay.open{ display:flex; }
@@ -1475,7 +1500,7 @@
 
   /* ── Modale aperçu image ── */
   #imgPreviewOverlay{
-    position:fixed; inset:0; z-index:10000;
+    position:fixed; inset:0; z-index:var(--z-modal-top);
     background:rgba(0,0,0,.85);
     display:none; align-items:center; justify-content:center;
     padding:16px; cursor:zoom-out;
@@ -1523,7 +1548,7 @@
     border:1px solid var(--line);
     border-radius:8px;
     box-shadow:0 8px 24px rgba(0,0,0,.14);
-    z-index:600;
+    z-index:var(--z-overlay-popover);
     max-height:200px;
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
@@ -1604,9 +1629,11 @@
   }
   .family-icon-picker-btn:hover{ border-color:var(--copper); }
 
-  /* Modale picker icônes */
+  /* Modale picker icônes — ouverte depuis #settingsOverlay (--z-panel), doit
+     donc toujours s'afficher au-dessus : palier dédié plutôt qu'une valeur
+     égale qui ne gagnerait que par coïncidence d'ordre dans le HTML. */
   #iconPickerModal{
-    position:fixed; inset:0; z-index:9999;
+    position:fixed; inset:0; z-index:var(--z-panel-nested);
     background:rgba(0,0,0,.45);
     display:none; align-items:center; justify-content:center;
     padding:16px;
@@ -1645,7 +1672,7 @@
 
   /* ── Modale Comparaison ── */
   #compareOverlay{
-    position:fixed; inset:0; z-index:9999;
+    position:fixed; inset:0; z-index:var(--z-panel);
     background:rgba(0,0,0,.45);
     display:none; align-items:flex-start; justify-content:center;
     padding:16px; overflow-y:auto;
@@ -1743,7 +1770,7 @@
 
   /* ── Modale Paramètres ── */
   #settingsOverlay{
-    position:fixed; inset:0; z-index:9999;
+    position:fixed; inset:0; z-index:var(--z-panel);
     background:transparent;
     display:none; align-items:center; justify-content:center;
     padding:16px;
@@ -1926,7 +1953,7 @@
   ============================================================ */
 
   #authOverlay{
-    position:fixed; inset:0; z-index:10000;
+    position:fixed; inset:0; z-index:var(--z-modal-top);
     background:rgba(0,0,0,.55);
     display:none; align-items:center; justify-content:center;
     padding:20px; box-sizing:border-box;
@@ -2007,7 +2034,7 @@
     background:#111827; color:#fff; font-size:13px;
     padding:9px 18px; border-radius:20px;
     opacity:0; pointer-events:none; transition:opacity .25s;
-    z-index:10001; white-space:nowrap;
+    z-index:var(--z-toast); white-space:nowrap;
   }
   #authToast.show{ opacity:1; }
 
@@ -2235,7 +2262,7 @@
     position: fixed;
     bottom: 0;
     left: 0; right: 0;
-    z-index: 9600;
+    z-index: var(--z-sheet-high);
     background: var(--paper-card);
     border-top: 1.5px solid var(--line);
     margin-bottom: calc(56px + env(safe-area-inset-bottom));
@@ -2355,12 +2382,12 @@
 
 @media (max-width: 1024px) {
   :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
-  .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: 9600 !important; }
+  .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: var(--z-sheet-high) !important; }
   .bottom-nav {
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    z-index: 9999;
+    z-index: var(--z-panel);
     background: var(--paper-card);
     border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom);
@@ -2440,8 +2467,8 @@
   #btnAuthToggle { display: none !important; }
   .filter-sheet-fab { display: none !important; }
 
-  /* Bottom nav au-dessus de tous les panneaux y compris requestsOverlay (z-index:10800) */
-  #bottomNav { z-index: 10900 !important; }
+  /* Bottom nav au-dessus de tous les panneaux, y compris la file de demandes (--z-requests) */
+  #bottomNav { z-index: var(--z-nav) !important; }
 
   /* ── Correction overlays coupés par la bottom nav ────────── */
   /* Overlays centrés : padding-bottom pour décaler le contenu vers le haut */
@@ -2471,7 +2498,7 @@
 .account-sheet {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  z-index: 9300;
+  z-index: var(--z-sheet);
   background: var(--paper-card);
   border-radius: 20px 20px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
@@ -2508,7 +2535,7 @@
     position: fixed;
     bottom: 0;
     left: 0; right: 0;
-    z-index: 9600;
+    z-index: var(--z-sheet-high);
     background: var(--paper-card);
     border-top: 1.5px solid var(--line);
     border-radius: 20px 20px 0 0;

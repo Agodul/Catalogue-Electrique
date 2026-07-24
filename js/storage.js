@@ -226,6 +226,10 @@
   function save(skipFileWrite){
     _lastRenderKey = '';
     _filterCache.version = -1;
+    // Nettoyage : _score était un champ de score de recherche d'une version
+    // précédente, jamais recalculé aujourd'hui — on le retire au passage pour
+    // qu'il disparaisse progressivement des fiches plutôt que de rester figé.
+    products.forEach(function(p){ if('_score' in p) delete p._score; });
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
     }catch(e){
@@ -375,15 +379,43 @@
 
   // ─────────────────────────────────────────────────────────────
   //  RECHERCHE PAR PERTINENCE
-  //  Score attribué à chaque produit selon la qualité de correspondance :
-  //    100 — référence exacte (ex: "BMF00JC" → BMF00JC)
-  //     80 — référence commence par le terme
-  //     70 — nom exact complet
-  //     60 — nom commence par le terme
+  //  Un produit correspond si TOUS les mots tapés se retrouvent quelque part
+  //  (référence, nom, tags, marque, famille ou description). Le classement
+  //  privilégie ensuite les correspondances les plus fortes :
+  //    100 — référence exacte              80 — référence commence par le terme
+  //     70 — nom exact complet              60 — nom commence par le terme
   //     50 — marque ou famille exacte
+  //  + un petit bonus par terme selon le champ où il a été trouvé (réf > nom
+  //  > tags > marque/famille > description), pour départager le reste.
+  //  Le score est calculé à la volée pour la recherche en cours — il n'est
+  //  jamais écrit sur les produits eux-mêmes (voir l'ancien champ _score,
+  //  supprimé, qui restait figé une fois enregistré par erreur).
   // ─────────────────────────────────────────────────────────────
-  //  Recherche par référence ET tags uniquement
-  // ─────────────────────────────────────────────────────────────
+  function scoreProductMatch(p, raw, terms){
+    var ref    = normalizeSearch(p.ref || '');
+    var name   = normalizeSearch(p.name || '');
+    var tags   = normalizeSearch((p.tags||[]).join(' '));
+    var brand  = normalizeSearch(p.brand || '');
+    var family = normalizeSearch(p.family || '');
+    var desc   = normalizeSearch(p.desc || '');
+
+    var score = 0;
+    if(ref === raw) score = 100;
+    else if(ref.indexOf(raw) === 0) score = 80;
+    else if(name === raw) score = 70;
+    else if(name.indexOf(raw) === 0) score = 60;
+    else if(brand === raw || family === raw) score = 50;
+
+    terms.forEach(function(t){
+      if(ref.indexOf(t) !== -1) score += 8;
+      else if(name.indexOf(t) !== -1) score += 6;
+      else if(tags.indexOf(t) !== -1) score += 5;
+      else if(brand.indexOf(t) !== -1 || family.indexOf(t) !== -1) score += 3;
+      else if(desc.indexOf(t) !== -1) score += 1;
+    });
+    return score;
+  }
+
   function getFilteredProducts(){
     var raw = normalizeSearch(searchInputEl.value);
     var brand  = brandFilterEl.value;
@@ -410,26 +442,25 @@
     // Découpe en mots pour recherche multi-termes
     var terms = raw.split(/\s+/).filter(Boolean);
 
-    // Filtrer : ref OU tags contiennent tous les termes
+    // Filtrer : le produit doit contenir chaque terme dans au moins un des
+    // champs recherchés (référence, nom, tags, marque, famille, description)
     var matched = filtered.filter(function(p){
-      var ref  = normalizeSearch(p.ref || '');
-      var tags = normalizeSearch((p.tags||[]).join(' '));
+      var ref    = normalizeSearch(p.ref || '');
+      var name   = normalizeSearch(p.name || '');
+      var tags   = normalizeSearch((p.tags||[]).join(' '));
+      var brandN = normalizeSearch(p.brand || '');
+      var familyN= normalizeSearch(p.family || '');
+      var desc   = normalizeSearch(p.desc || '');
       return terms.every(function(t){
-        return ref.indexOf(t) !== -1 || tags.indexOf(t) !== -1;
+        return ref.indexOf(t) !== -1 || name.indexOf(t) !== -1 || tags.indexOf(t) !== -1
+          || brandN.indexOf(t) !== -1 || familyN.indexOf(t) !== -1 || desc.indexOf(t) !== -1;
       });
     });
 
-    // Trier : ref exacte en premier, puis ref partielle, puis tags
-    matched.sort(function(a, b){
-      var ra = normalizeSearch(a.ref||'');
-      var rb = normalizeSearch(b.ref||'');
-      var term0 = terms[0] || '';
-      var aExact = ra === term0 ? 2 : ra.indexOf(term0) === 0 ? 1 : 0;
-      var bExact = rb === term0 ? 2 : rb.indexOf(term0) === 0 ? 1 : 0;
-      return bExact - aExact;
-    });
+    // Trier par pertinence (score calculé pour cette recherche uniquement)
+    matched.sort(function(a, b){ return scoreProductMatch(b, raw, terms) - scoreProductMatch(a, raw, terms); });
 
-    // Tri prix si actif
+    // Tri prix si actif (prioritaire sur la pertinence si demandé explicitement)
     if(window._priceSort === 'asc'){
       matched.sort(function(a,b){ return (parsePriceNumber(a.price)||0) - (parsePriceNumber(b.price)||0); });
     } else if(window._priceSort === 'desc'){
@@ -438,23 +469,19 @@
     return matched;
   }
 
-  function groupByField(list, field, fallbackLabel, hasSearch){
+  // Regroupe une liste de produits par champ (marque/famille/série), groupes
+  // triés alphabétiquement. Utilisé uniquement en mode navigation normale —
+  // en mode recherche, les résultats restent en liste plate triée par
+  // pertinence (voir getFilteredProducts), donc pas de tri par groupe ici.
+  function groupByField(list, field, fallbackLabel){
     var groups = {};
     var order = [];
-    var groupScore = {}; // score max par groupe
     list.forEach(function(p){
       var key = p[field] || fallbackLabel;
-      if(!groups[key]){ groups[key] = []; order.push(key); groupScore[key] = 0; }
+      if(!groups[key]){ groups[key] = []; order.push(key); }
       groups[key].push(p);
-      // Garder le score max du groupe (stocké sur le produit via _score)
-      if(p._score !== undefined && p._score > groupScore[key]) groupScore[key] = p._score;
     });
-    if(hasSearch){
-      // Trier les groupes par score max décroissant
-      order.sort(function(a,b){ return groupScore[b] - groupScore[a]; });
-    } else {
-      order.sort(function(a,b){ return a.localeCompare(b, 'fr'); });
-    }
+    order.sort(function(a,b){ return a.localeCompare(b, 'fr'); });
     return {groups:groups, order:order};
   }
 
@@ -534,7 +561,7 @@
       // ── Mode normal : groupement par marque/famille/série ──
       var fieldMap = {brand:'brand', family:'family', series:'series'};
       var fallbackMap = {brand:'(Sans marque)', family:'(Sans famille)', series:'(Sans série)'};
-      var g = groupByField(filtered, fieldMap[groupBy], fallbackMap[groupBy], false);
+      var g = groupByField(filtered, fieldMap[groupBy], fallbackMap[groupBy]);
       var totalRendered = 0;
       g.order.forEach(function(groupName){
         var items = g.groups[groupName];

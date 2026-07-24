@@ -14,8 +14,16 @@
   }
 
   // ---------- Save product ----------
+  // Uniformise le séparateur décimal en virgule (format FR) — ne touche pas
+  // aux devises non-euro, où le point est la convention normale.
+  function normalizePriceFormat(v){
+    if(!v) return v;
+    if(/[$£¥]|USD|GBP|CHF|CAD/i.test(v)) return v;
+    return v.replace(/(\d)\.(\d)/g, '$1,$2');
+  }
+
   function formatPrice(raw){
-    var v = raw.trim();
+    var v = normalizePriceFormat(raw.trim());
     if(!v) return v;
     // Si une devise est déjà présente (symbole ou code), on ne touche à rien
     if(/[€$£¥]|EUR|USD|GBP|CHF|CAD/i.test(v)) return v;
@@ -37,8 +45,44 @@
     return isNaN(n) ? null : n;
   }
 
+  // Réutilise l'orthographe déjà présente dans le catalogue pour une marque
+  // (insensible à la casse/accents) au lieu de laisser coexister deux entrées
+  // pour la même marque (ex. "BALLUFF" et "Balluff") dans le filtre marque.
+  function canonicalizeBrand(brand){
+    if(!brand) return brand;
+    var norm = normalizeSearch(brand);
+    for(var i=0;i<products.length;i++){
+      if(products[i].brand && normalizeSearch(products[i].brand) === norm) return products[i].brand;
+    }
+    return brand;
+  }
+
+  // Dédoublonne et réutilise l'orthographe déjà présente dans le catalogue
+  // pour chaque tag (insensible à la casse/accents), pour éviter que
+  // "câble cellule" et "cable cellule" cohabitent comme deux tags distincts.
+  function canonicalizeTags(tagsArr){
+    var seen = {};
+    var result = [];
+    tagsArr.forEach(function(t){
+      var norm = normalizeSearch(t);
+      if(!norm || seen[norm]) return;
+      seen[norm] = true;
+      var canonical = t;
+      outer:
+      for(var i=0;i<products.length;i++){
+        var pt = products[i].tags;
+        if(!pt) continue;
+        for(var j=0;j<pt.length;j++){
+          if(normalizeSearch(pt[j]) === norm){ canonical = pt[j]; break outer; }
+        }
+      }
+      result.push(canonical);
+    });
+    return result;
+  }
+
   document.getElementById('btnSave').addEventListener('click', function(){
-    var brand = fBrand.value.trim();
+    var brand = canonicalizeBrand(fBrand.value.trim());
     var ref = fRef.value.trim();
     if(!brand || !ref){
       alert('La marque et la référence sont obligatoires.');
@@ -78,7 +122,7 @@
       url: fUrl.value.trim(),
       name: fName.value.trim(),
       desc: stripHtml(fDesc.value.trim()),
-      tags: fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean),
+      tags: canonicalizeTags(fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean)),
       chatNotes: fChatNotes ? fChatNotes.value.trim() : '',
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
@@ -1349,18 +1393,18 @@
           var ref = (row[COL_REF]||'').toString().trim();
           if(!ref) return;
 
-          var newCataloguePrice = COL_NEW_PRICE   ? (row[COL_NEW_PRICE]  ||'').toString().trim() : '';
-          var newSellingPrice   = COL_NEW_SELLING ? (row[COL_NEW_SELLING]||'').toString().trim() : '';
+          var newCataloguePrice = COL_NEW_PRICE   ? normalizePriceFormat((row[COL_NEW_PRICE]  ||'').toString().trim()) : '';
+          var newSellingPrice   = COL_NEW_SELLING ? normalizePriceFormat((row[COL_NEW_SELLING]||'').toString().trim()) : '';
           // Compatibilité avec anciens exports (colonne "Nouveau prix (€)" unique)
           var newPrice = newCataloguePrice || newSellingPrice;
           var newName     = COL_NAME      ? (row[COL_NAME]     ||'').toString().trim() : '';
-          var newBrand    = COL_BRAND     ? (row[COL_BRAND]    ||'').toString().trim() : '';
+          var newBrand    = COL_BRAND     ? canonicalizeBrand((row[COL_BRAND]||'').toString().trim()) : '';
           var newFamily   = COL_FAMILY    ? (row[COL_FAMILY]   ||'').toString().trim() : '';
           var newSeries   = COL_SERIES    ? (row[COL_SERIES]   ||'').toString().trim() : '';
           var newSupplier = COL_SUPPLIER  ? (row[COL_SUPPLIER] ||'').toString().trim() : '';
           var newDesc     = COL_DESC      ? (row[COL_DESC]     ||'').toString().trim() : '';
           var newPhoto    = COL_PHOTO     ? (row[COL_PHOTO]    ||'').toString().trim() : '';
-          var newTags     = COL_TAGS      ? (row[COL_TAGS]     ||'').toString().split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+          var newTags     = COL_TAGS      ? canonicalizeTags((row[COL_TAGS]||'').toString().split(',').map(function(t){return t.trim();}).filter(Boolean)) : [];
 
           var existing = existingMap[ref];
           var status, oldPrice = '';
