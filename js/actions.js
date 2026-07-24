@@ -578,7 +578,29 @@
     }catch(e){ console.warn('syncFromServer:', e.message); }
   }
 
-  // Patch de save() pour pousser vers le serveur après chaque modif
+  // Envoie products au serveur (POST /pushDatas) puis retire un pull différentiel
+  // pour rester synchronisé. Partagé par le bouton "Envoyer le catalogue local
+  // au serveur" et par l'import JSON (Fusionner/Remplacer), qui ne poussaient
+  // sinon la modification que dans le stockage local du navigateur.
+  async function pushCatalogToServer(opts){
+    opts = opts || {};
+    var url = opts.url || serverUrl;
+    if(!url) return { ok: false, reason: 'no-server' };
+    try{
+      var r = await fetch(url+'/pushDatas', {
+        method:'POST',
+        headers: typeof window.authHeaders === 'function' ? window.authHeaders() : {'Content-Type':'application/json'},
+        body: JSON.stringify(products)
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var result = await r.json();
+      serverUrl = url;
+      await syncFromServer(true);
+      return { ok: true, upserted: result.upserted };
+    }catch(e){
+      return { ok: false, reason: 'error', message: e.message };
+    }
+  }
 
   // ── Navigation Paramètres ─────────────────────────────────────────
   var settingsFamilyPage  = document.getElementById('settingsFamilyPage');
@@ -773,23 +795,9 @@
   document.getElementById('btnPushToServer').addEventListener('click', async function(){
     var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
     if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
-    try{
-      var r = await fetch(url+'/pushDatas', {
-        method:'POST',
-        headers: typeof window.authHeaders === 'function'
-          ? window.authHeaders()
-          : {'Content-Type':'application/json'},
-        body: JSON.stringify(products)
-      });
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      var result = await r.json();
-      // Pull différentiel pour récupérer ce qu'on n'avait pas
-      serverUrl = url;
-      await syncFromServer(true);
-      showToast(result.upserted+' envoyé(s), catalogue synchronisé ✓', 'ok', 3000);
-    }catch(e){
-      showToast('Erreur : '+e.message, 'warn', 3000);
-    }
+    var res = await pushCatalogToServer({ url: url });
+    if(res.ok) showToast(res.upserted+' envoyé(s), catalogue synchronisé ✓', 'ok', 3000);
+    else showToast('Erreur : '+(res.message || 'aucun serveur configuré'), 'warn', 3000);
   });
 
   // ══════════════════════════════════════════════════════════════
@@ -1102,7 +1110,7 @@
         + '<button id="_importCancel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
         + '</div></div>';
       document.body.appendChild(overlay);
-      overlay.querySelector('#_importMerge').addEventListener('click', function(){
+      overlay.querySelector('#_importMerge').addEventListener('click', async function(){
         // Même logique que syncFromServer : ref inconnue → ajout, ref connue → conflit
         var localMap = {};
         products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
@@ -1145,6 +1153,8 @@
         document.body.removeChild(overlay);
         e.target.value = '';
 
+        var pushRes = await pushCatalogToServer();
+        var syncMsg = pushRes.ok ? ', envoyé au serveur ✓' : (pushRes.reason === 'no-server' ? '' : ' (échec envoi serveur : '+pushRes.message+')');
         if(importConflicts.length > 0){
           setTimeout(function(){
             if(typeof window.openConflictModal === 'function'){
@@ -1152,10 +1162,10 @@
             }
           }, 300);
         } else {
-          showToast(added+' produit(s) ajouté(s) ✓', 'ok', 3000);
+          showToast(added+' produit(s) ajouté(s)'+syncMsg, 'ok', 3000);
         }
       });
-      overlay.querySelector('#_importReplace').addEventListener('click', function(){
+      overlay.querySelector('#_importReplace').addEventListener('click', async function(){
         products = _pendingImport;
         save();
         var homePage = document.getElementById('homePage');
@@ -1165,9 +1175,12 @@
         if(catalogueWrap) catalogueWrap.style.display = 'none';
         if(hdrCountChip) hdrCountChip.style.display = 'none';
         render(); renderHome();
-        showToast('Catalogue remplacé — '+count+' produit(s) ✓', 'ok', 3000);
         document.body.removeChild(overlay);
         e.target.value = '';
+
+        var pushRes = await pushCatalogToServer();
+        var syncMsg = pushRes.ok ? ', envoyé au serveur ✓' : (pushRes.reason === 'no-server' ? '' : ' (échec envoi serveur : '+pushRes.message+')');
+        showToast('Catalogue remplacé — '+count+' produit(s)'+syncMsg, 'ok', 3000);
       });
       overlay.querySelector('#_importCancel').addEventListener('click', function(){
         document.body.removeChild(overlay);
