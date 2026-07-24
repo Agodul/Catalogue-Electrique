@@ -1835,6 +1835,11 @@
     // Désactiver le mode viewAll si on filtre par marque ou famille
     if(brandFilter || familyFilter){
       if(window._setViewAll) window._setViewAll(false);
+      // Révéler la barre de filtres — sinon le select famille/marque reste
+      // caché et rien n'indique visuellement quelle catégorie est active
+      // (ex: clic sur une carte famille depuis l'accueil).
+      var toolbarEl = document.querySelector('.toolbar');
+      if(toolbarEl) toolbarEl.classList.add('filters-visible');
     }
     homePage.classList.add('hidden');
     catalogueWrap.style.display = '';
