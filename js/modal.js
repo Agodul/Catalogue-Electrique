@@ -20,6 +20,27 @@
   var fName = document.getElementById('fName');
   var fDesc = document.getElementById('fDesc');
   var fChatNotes = document.getElementById('fChatNotes');
+  var fChatNotesBody = document.getElementById('fChatNotesBody');
+  var btnToggleChatNotes = document.getElementById('btnToggleChatNotes');
+  var btnToggleChatNotesLabel = document.getElementById('btnToggleChatNotesLabel');
+
+  // Replié par défaut ; le libellé du bouton reflète si une note existe déjà.
+  function refreshChatNotesToggleLabel(){
+    if(!btnToggleChatNotesLabel) return;
+    var hasNote = fChatNotes && fChatNotes.value.trim();
+    var expanded = fChatNotesBody && fChatNotesBody.style.display !== 'none';
+    if(expanded) btnToggleChatNotesLabel.textContent = 'Masquer la note pour l\'assistant IA';
+    else btnToggleChatNotesLabel.textContent = hasNote ? 'Modifier la note pour l\'assistant IA' : 'Ajouter une note pour l\'assistant IA';
+  }
+  if(btnToggleChatNotes){
+    btnToggleChatNotes.addEventListener('click', function(){
+      var show = fChatNotesBody.style.display === 'none';
+      fChatNotesBody.style.display = show ? 'block' : 'none';
+      refreshChatNotesToggleLabel();
+      if(show && fChatNotes) fChatNotes.focus();
+    });
+  }
+
   var fPrice = document.getElementById('fPrice');
   var priceDisplayRow = document.getElementById('priceDisplayRow');
   var priceDisplayVal = document.getElementById('priceDisplayVal');
@@ -395,6 +416,8 @@
     familyIconPreviewI.className = 'ti ti-package';
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
     if(fChatNotes) fChatNotes.value = '';
+    if(fChatNotesBody) fChatNotesBody.style.display = 'none';
+    refreshChatNotesToggleLabel();
     renderTagSuggestions();
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     if(priceCreateRow)  priceCreateRow.style.display  = 'block';
@@ -574,6 +597,8 @@
     if(fLeadTime) fLeadTime.value = p.leadTime||'';
     fName.value = p.name||''; fDesc.value = p.desc||''; fTags.value = (Array.isArray(p.tags) ? p.tags.join(', ') : '');
     if(fChatNotes) fChatNotes.value = p.chatNotes || '';
+    if(fChatNotesBody) fChatNotesBody.style.display = 'none';
+    refreshChatNotesToggleLabel();
     renderTagSuggestions();
     f3dAvailable.checked = !!p.available3DX;
     f3dLink.value = p.available3DXLink || '';

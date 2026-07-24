@@ -770,10 +770,16 @@
       <!-- ===== FIN CHAMP CARACTÉRISTIQUES ===== -->
 
       <!-- ===== CHAMP NOTES ASSISTANT IA (admin uniquement) ===== -->
-      <div class="field" id="fChatNotesRow" style="display:none;">
-        <label for="fChatNotes">Notes pour l'assistant IA <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(non affichées aux utilisateurs)</span></label>
-        <textarea id="fChatNotes" rows="3" placeholder="Infos utiles pour répondre aux questions sur ce produit : compatibilités, précisions techniques, équivalences…"></textarea>
-        <div class="hint">Ce texte n'apparaît jamais dans la fiche produit — il sert uniquement de contexte à l'assistant IA du chat.</div>
+      <div class="field" id="fChatNotesRow">
+        <button type="button" id="btnToggleChatNotes" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
+          <i class="ti ti-message-2" style="font-size:17px;"></i>
+          <span id="btnToggleChatNotesLabel">Ajouter une note pour l'assistant IA</span>
+        </button>
+        <div id="fChatNotesBody" style="display:none;margin-top:10px;">
+          <label for="fChatNotes">Notes pour l'assistant IA <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(non affichées aux utilisateurs)</span></label>
+          <textarea id="fChatNotes" rows="3" placeholder="Infos utiles pour répondre aux questions sur ce produit : compatibilités, précisions techniques, équivalences…"></textarea>
+          <div class="hint">Ce texte n'apparaît jamais dans la fiche produit — il sert uniquement de contexte à l'assistant IA du chat.</div>
+        </div>
       </div>
       <!-- ===== FIN CHAMP NOTES ASSISTANT IA ===== -->
 

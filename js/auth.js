@@ -335,7 +335,8 @@ function applyAuthUI() {
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
 
-  // Champ notes assistant IA : visible uniquement pour canEdit/admin
+  // Champ notes assistant IA : visible uniquement pour canEdit/admin (replié
+  // derrière un bouton par défaut — voir btnToggleChatNotes dans modal.js)
   var fChatNotesRow = document.getElementById('fChatNotesRow');
   if(fChatNotesRow) fChatNotesRow.style.display = canEdit ? '' : 'none';
 
