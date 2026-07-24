@@ -163,6 +163,12 @@
   var btnOpenPriceModal   = document.getElementById('btnOpenPriceModal');
   var priceModalOverlay   = document.getElementById('priceModalOverlay');
 
+  // Une remise est active quand le prix catalogue et le prix affiché sont
+  // tous les deux connus et différents.
+  function hasActiveRemise(p){
+    return !!(p.priceCatalogue && p.price && p.priceCatalogue !== p.price);
+  }
+
   // ── Modale gestion des prix ───────────────────────────────────────
   function openPriceModal(){
     var p = products.find(function(x){ return x.id === editingId; });
@@ -171,7 +177,10 @@
     // Ref produit en sous-titre
     document.getElementById('priceModalRef').textContent = (p.brand ? p.brand + ' — ' : '') + (p.ref || p.name || '');
 
-    // Prix actuel
+    // Prix catalogue / prix remisé actuels
+    var remiseActive = hasActiveRemise(p);
+    document.getElementById('priceModalCurrentCatalogue').textContent = (p.priceCatalogue || p.price || '—');
+    document.getElementById('priceModalCurrentRemiseWrap').style.display = remiseActive ? '' : 'none';
     document.getElementById('priceModalCurrent').textContent = p.price || '—';
 
     // Delta global
@@ -194,8 +203,10 @@
     var dd = String(today.getDate()).padStart(2,'0');
     var mm = String(today.getMonth()+1).padStart(2,'0');
     document.getElementById('priceModalNewDate').value = today.getFullYear()+'-'+mm+'-'+dd;
-    document.getElementById('priceModalNewCatalogue').value = '';
-    document.getElementById('priceModalNewRemise').value = '';
+    // Pré-remplir avec les valeurs actuelles : modifier juste l'un des deux
+    // champs et cliquer sur Ajouter ne touche alors que ce prix-là.
+    document.getElementById('priceModalNewCatalogue').value = p.priceCatalogue || p.price || '';
+    document.getElementById('priceModalNewRemise').value = remiseActive ? p.price : '';
     document.getElementById('priceModalError').style.display = 'none';
 
     priceModalOverlay.style.display = 'flex';
@@ -209,8 +220,8 @@
     tbody.innerHTML = '';
 
     var history = Array.isArray(p.priceHistory) ? p.priceHistory : [];
-    var all = history.map(function(h){ return {price: h.price, date: h.date, current: false}; });
-    if(p.price) all.push({price: p.price, date: null, current: true});
+    var all = history.map(function(h){ return {price: h.price, date: h.date, label: h.label||'', current: false}; });
+    if(p.price) all.push({price: p.price, date: null, label: hasActiveRemise(p) ? 'Votre prix' : '', current: true});
 
     if(all.length === 0){ emptyEl.style.display = 'block'; return; }
     emptyEl.style.display = 'none';
@@ -230,6 +241,12 @@
       var tdPrice = document.createElement('td');
       tdPrice.style.cssText = 'padding:8px 10px;text-align:right;font-weight:600;white-space:nowrap;font-size:13px;';
       tdPrice.textContent = entry.price || '—';
+      if(entry.label){
+        var lblSpan = document.createElement('span');
+        lblSpan.style.cssText = 'display:block;font-weight:400;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;';
+        lblSpan.textContent = entry.label;
+        tdPrice.appendChild(lblSpan);
+      }
       tr.appendChild(tdPrice);
 
       // Delta
@@ -288,7 +305,11 @@
   document.getElementById('priceModalCancel').addEventListener('click', closePriceModal);
   // clic extérieur bloqué — géré par _initModalEscape()
 
-  // Ajouter un nouveau prix
+  // Ajouter un nouveau prix — le prix catalogue et le prix remisé sont
+  // modifiés indépendamment : ne renseigner que l'un des deux ne touche que
+  // ce prix-là (les champs sont pré-remplis avec les valeurs actuelles par
+  // openPriceModal, donc laisser un champ inchangé revient à ne rien lui
+  // faire). Même logique que l'import Excel en masse (catChanged/sellingChanged).
   document.getElementById('priceModalAddBtn').addEventListener('click', function(){
     var rawCat = document.getElementById('priceModalNewCatalogue').value.trim();
     var rawRem = document.getElementById('priceModalNewRemise').value.trim();
@@ -296,27 +317,67 @@
     var errEl = document.getElementById('priceModalError');
     errEl.style.display = 'none';
 
-    if(!rawCat){ errEl.textContent = 'Veuillez saisir un prix catalogue.'; errEl.style.display='block'; return; }
+    if(!rawCat && !rawRem){
+      errEl.textContent = 'Renseignez le prix catalogue, le prix remisé, ou les deux.';
+      errEl.style.display = 'block';
+      return;
+    }
 
     var p = products.find(function(x){ return x.id === editingId; });
     if(!p) return;
 
-    var history = Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [];
-    // Sauvegarder le prix actuel dans l'historique
-    if(p.price) history.push({ price: p.price, date: rawDate ? new Date(rawDate).getTime() : Date.now() });
+    // À vérifier AVANT toute modification : s'il n'y avait pas de remise en
+    // cours, une mise à jour du seul prix catalogue doit suivre sur le prix
+    // affiché plutôt que fabriquer une remise qui n'existait pas.
+    var hadDiscount = hasActiveRemise(p);
 
-    var newPrice = formatPrice(rawRem || rawCat);
+    var dateMs = rawDate ? new Date(rawDate).getTime() : Date.now();
+    var history = Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [];
+    var changed = false;
+
+    if(rawCat){
+      var newCat = formatPrice(rawCat);
+      if(newCat !== (p.priceCatalogue || '')){
+        if(p.priceCatalogue) history.push({price: p.priceCatalogue, date: dateMs, label: 'Prix catalogue'});
+        p.priceCatalogue = newCat;
+        changed = true;
+      }
+    }
+
+    if(rawRem){
+      var newRem = formatPrice(rawRem);
+      if(newRem !== (p.price || '')){
+        if(p.price) history.push({price: p.price, date: dateMs, label: 'Votre prix'});
+        p.price = newRem;
+        changed = true;
+      }
+    } else if(rawCat && !hadDiscount && formatPrice(rawCat) !== (p.price || '')){
+      // Pas de remise active : le prix affiché suit le prix catalogue
+      if(p.price) history.push({price: p.price, date: dateMs, label: 'Votre prix'});
+      p.price = formatPrice(rawCat);
+      changed = true;
+    }
+
+    if(!changed){
+      errEl.textContent = 'Les valeurs saisies sont identiques aux prix actuels.';
+      errEl.style.display = 'block';
+      return;
+    }
+
     p.priceHistory = history;
-    p.price = newPrice;
-    fPrice.value = newPrice;
+    fPrice.value = p.price || '';
     updatePriceDisplay();
 
     save(); render();
     renderPriceHistory(p);
     renderPriceModalTable(p);
-    document.getElementById('priceModalCurrent').textContent = newPrice;
-    document.getElementById('priceModalNewCatalogue').value = '';
-    document.getElementById('priceModalNewRemise').value = '';
+
+    var remiseActive = hasActiveRemise(p);
+    document.getElementById('priceModalCurrentCatalogue').textContent = p.priceCatalogue || p.price || '—';
+    document.getElementById('priceModalCurrentRemiseWrap').style.display = remiseActive ? '' : 'none';
+    document.getElementById('priceModalCurrent').textContent = p.price || '—';
+    document.getElementById('priceModalNewCatalogue').value = p.priceCatalogue || p.price || '';
+    document.getElementById('priceModalNewRemise').value = remiseActive ? p.price : '';
   });
 
   // Appliquer et fermer
