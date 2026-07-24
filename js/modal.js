@@ -1109,7 +1109,10 @@
   // (ex: widget de prix Sonepar replié) — retirées automatiquement de tout
   // champ extrait, que ce soit via copier-coller ou l'extension Chrome
   // (même pipeline d'extraction, voir extractFromHtml).
-  var EXTRACT_JUNK_PHRASES = [/sans offre/gi, /d[ée]tail du prix ferm[ée]/gi];
+  var EXTRACT_JUNK_PHRASES = [
+    /sans\s+offre/gi,
+    /d[ée]tails?\s*[:\-]?\s*du\s*[:\-]?\s*prix\s*[:\-]?\s*ferm[ée]s?/gi
+  ];
   function stripJunkPhrases(str){
     if(!str) return str;
     var s = str;
