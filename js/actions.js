@@ -713,6 +713,18 @@
   btnOpenServerSettings.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
   btnServerPageBack.addEventListener('click', function(){ showSettingsMain(); });
 
+  // Vérifie qu'un serveur répond, avec un timeout court : une IP mal saisie
+  // ou injoignable ne doit pas faire attendre l'utilisateur indéfiniment.
+  function pingServerUrl(url){
+    return new Promise(function(resolve){
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 4000);
+      fetch(url+'/health', ctrl ? {signal: ctrl.signal} : {})
+        .then(function(r){ clearTimeout(timer); resolve(!!r.ok); })
+        .catch(function(){ clearTimeout(timer); resolve(false); });
+    });
+  }
+
   // Test connexion
   document.getElementById('btnTestServer').addEventListener('click', async function(){
     var url = serverUrlInput.value.trim().replace(/\/+$/,'');
@@ -742,6 +754,21 @@
   document.getElementById('btnSaveServer').addEventListener('click', async function(){
     var newUrl     = serverUrlInput.value.trim().replace(/\/+$/, '');
     var urlChanged = newUrl && newUrl !== serverUrl;
+
+    // Si l'adresse a changé, vérifier qu'elle répond avant d'aller plus loin —
+    // sinon la fenêtre de connexion s'affichait même pour un serveur injoignable
+    // (IP mal saisie, serveur éteint...), ce qui n'a rien à faire là.
+    if(urlChanged){
+      var btnSaveServerEl = this;
+      btnSaveServerEl.disabled = true;
+      var reachable = await pingServerUrl(newUrl);
+      btnSaveServerEl.disabled = false;
+      if(!reachable){
+        showToast('Serveur injoignable à cette adresse — vérifiez l\'IP et le port.', 'err', 4000);
+        return;
+      }
+    }
+
     serverUrl  = newUrl;
     saveServerConfig();
     if(serverUrl) startSyncPolling(); else stopSyncPolling();
