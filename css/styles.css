@@ -227,6 +227,21 @@
     letter-spacing:.04em;
   }
 
+  /* ── Bandeau de catégorie active (famille/marque sélectionnée) ──
+     Un chip contextuel discret — pas un titre de page, pour ne pas faire
+     doublon avec les titres de groupe (marque/série) juste en dessous.
+     Couleur alignée sur l'identité du catalogue (--copper), pas sur
+     l'étiquette famille des cartes produit (qui est un vert secondaire). */
+  .active-filter-banner{
+    display:flex; align-items:center; margin-bottom:18px;
+  }
+  .active-filter-title{
+    display:inline-flex; align-items:center; margin:0;
+    font-size:14px; font-weight:700; color:var(--copper-deep);
+    border:1.5px solid var(--copper); background:rgba(25,64,147,.07);
+    border-radius:20px; padding:7px 16px;
+  }
+
   /* ── Variante A : grille compacte (photo carrée) ── */
   .grid{
     display:grid;

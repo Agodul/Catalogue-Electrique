@@ -507,6 +507,17 @@
     var html = '';
     _lazyItems = []; // produits à afficher progressivement
 
+    // ── Bandeau de catégorie active (ex: clic sur une carte famille depuis
+    // l'accueil) — remplace le menu déroulant (peu visible) par un gros
+    // titre en haut des résultats, avec une croix pour revenir à l'accueil.
+    var activeFamily = familyFilterEl.value;
+    var activeBrand  = brandFilterEl.value;
+    if(!hasSearch && !viewAll && (activeFamily || activeBrand)){
+      html += '<div class="active-filter-banner">'
+        + '<span class="active-filter-title">'+escapeHtml(activeFamily || activeBrand)+'</span>'
+        + '</div>';
+    }
+
     if(hasSearch || viewAll){
       // ── Mode recherche ou "Voir tout" : liste plate ──
       _lazyItems = filtered.slice(40);
