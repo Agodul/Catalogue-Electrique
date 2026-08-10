@@ -2846,7 +2846,7 @@
        feuille externe battrait ce inline et ferait revenir le bug. Cette
        règle CSS ne sert que de repli si JS/visualViewport est indisponible. */
     position:fixed;
-    top:0;
+    top:env(safe-area-inset-top, 0px);
     left:0;
     right:0;
     bottom:var(--nav-h, 56px);

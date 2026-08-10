@@ -527,9 +527,18 @@ function _armoireUpdateMobileDraftBadge(){
 // et applique la hauteur en JS via window.visualViewport, qui lui reflète
 // la zone réellement visible, et on la resynchronise à chaque changement
 // (rotation, apparition/disparition de la barre d'outils, clavier...).
+// Hauteur d'origine (desktop) du modal, capturée depuis le HTML avant toute
+// modification JS — sert à la restaurer telle quelle en repassant en
+// desktop, plutôt que de la vider (style.height='' efface l'inline existant
+// sans rien remettre à la place, laissant le modal sans contrainte de
+// hauteur : il grossit alors à la taille de tout son contenu, ~2000px+,
+// et déborde largement de l'écran — bug réel observé en le vérifiant).
+var _armoireOriginalHeight = null;
+
 function _armoireSyncMobileHeight(){
   var modal = document.getElementById('armoireConfigModal');
   if(!modal) return;
+  if(_armoireOriginalHeight === null) _armoireOriginalHeight = modal.style.height || 'min(760px,92vh)';
   if(window.innerWidth > 768){
     // Desktop / tablette large : laisser le CSS gérer, ne pas polluer avec du inline.
     modal.style.position = '';
@@ -537,7 +546,7 @@ function _armoireSyncMobileHeight(){
     modal.style.left = '';
     modal.style.right = '';
     modal.style.bottom = '';
-    modal.style.height = '';
+    modal.style.height = _armoireOriginalHeight;
     return;
   }
   var nav = document.querySelector('.bottom-nav');
@@ -546,12 +555,17 @@ function _armoireSyncMobileHeight(){
   var viewportH = vv ? vv.height : window.innerHeight;
   // Hauteur de nav visible dans le viewport actuel (0 si masquée/hors écran).
   var navH = navRect ? Math.max(0, viewportH - navRect.top) : 0;
+  var bottomPx = Math.max(240, viewportH - navH);
   modal.style.position = 'fixed';
-  modal.style.top = '0px';
+  // top laisse la place à l'encoche/barre de statut (env(safe-area-inset-top)) —
+  // sans ça la fenêtre remonte derrière l'heure/le réseau/la batterie en haut
+  // de l'écran. La hauteur est réduite d'autant pour garder le bas au même
+  // endroit (juste au-dessus de la nav, calculé ci-dessus).
+  modal.style.top = 'env(safe-area-inset-top, 0px)';
   modal.style.left = '0px';
   modal.style.right = '0px';
   modal.style.bottom = 'auto';
-  modal.style.height = Math.max(240, viewportH - navH) + 'px';
+  modal.style.height = 'calc(' + bottomPx + 'px - env(safe-area-inset-top, 0px))';
 }
 
 var _armoireViewportHandler = null;
