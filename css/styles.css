@@ -2828,18 +2828,24 @@
    inline (style="..."), qui prime toujours sur une règle externe sans
    !important — même convention que .fab-stack plus haut dans ce fichier. */
 @media(max-width:768px){
-  /* padding-bottom réserve la place de la nav basse (même mécanique que
-     #settingsOverlay) — sans ça la modale s'étend jusqu'au vrai bas de
-     l'écran et son dernier bouton se retrouve derrière la nav. */
-  #armoireConfigOverlay{
-    padding:0 0 var(--nav-h, 56px) 0 !important;
-    align-items:flex-end !important;
-  }
+  /* La modale est calée en position:fixed avec top/bottom explicites au
+     lieu d'une hauteur calculée en vh/dvh : sur iOS Safari, 100vh (et même
+     100dvh sur certaines versions/contextes PWA) peut être plus grand que
+     le viewport réellement visible une fois la barre d'outils/nav prise en
+     compte, ce qui faisait déborder la modale sous la nav basse (retour
+     utilisateur — "la fenêtre déborde"). Ancrer top:0/bottom:navh sur un
+     élément position:fixed est résolu contre le viewport visuel réel par
+     le moteur de rendu, donc insensible à cet écart vh/dvh. */
+  #armoireConfigOverlay{ padding:0 !important; }
   #armoireConfigModal{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    right:0 !important;
+    bottom:var(--nav-h, 56px) !important;
     max-width:100% !important;
     width:100% !important;
-    height:calc(100vh - var(--nav-h, 56px)) !important;
-    height:calc(100dvh - var(--nav-h, 56px)) !important;
+    height:auto !important;
     border-radius:16px 16px 0 0 !important;
   }
   /* Empiler les deux colonnes moitié-moitié les rendait inutilisables
