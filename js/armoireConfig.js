@@ -519,6 +519,43 @@ function _armoireUpdateMobileDraftBadge(){
 
 // ── Ouverture / fermeture ────────────────────────────────────────────────
 
+// Safari iOS positionne les éléments position:fixed par rapport au
+// viewport de mise en page (qui inclut la zone sous la barre d'outils
+// dynamique), pas par rapport à ce qui est réellement visible à l'écran —
+// un bug ancien et bien documenté. Le CSS seul (même position:fixed avec
+// top/bottom explicites) reste donc piégé par ce décalage. On calcule
+// et applique la hauteur en JS via window.visualViewport, qui lui reflète
+// la zone réellement visible, et on la resynchronise à chaque changement
+// (rotation, apparition/disparition de la barre d'outils, clavier...).
+function _armoireSyncMobileHeight(){
+  var modal = document.getElementById('armoireConfigModal');
+  if(!modal) return;
+  if(window.innerWidth > 768){
+    // Desktop / tablette large : laisser le CSS gérer, ne pas polluer avec du inline.
+    modal.style.position = '';
+    modal.style.top = '';
+    modal.style.left = '';
+    modal.style.right = '';
+    modal.style.bottom = '';
+    modal.style.height = '';
+    return;
+  }
+  var nav = document.querySelector('.bottom-nav');
+  var navRect = (nav && getComputedStyle(nav).display !== 'none') ? nav.getBoundingClientRect() : null;
+  var vv = window.visualViewport;
+  var viewportH = vv ? vv.height : window.innerHeight;
+  // Hauteur de nav visible dans le viewport actuel (0 si masquée/hors écran).
+  var navH = navRect ? Math.max(0, viewportH - navRect.top) : 0;
+  modal.style.position = 'fixed';
+  modal.style.top = '0px';
+  modal.style.left = '0px';
+  modal.style.right = '0px';
+  modal.style.bottom = 'auto';
+  modal.style.height = Math.max(240, viewportH - navH) + 'px';
+}
+
+var _armoireViewportHandler = null;
+
 function _armoireOpen(){
   var overlay = document.getElementById('armoireConfigOverlay');
   if(!overlay) return;
@@ -533,12 +570,35 @@ function _armoireOpen(){
   _armoireSwitchTab(_armoireActiveTab);
   _armoireFetchBlocks();
   _armoireFetchSavedConfigs();
+
+  _armoireSyncMobileHeight();
+  if(window.visualViewport && !_armoireViewportHandler){
+    _armoireViewportHandler = function(){ _armoireSyncMobileHeight(); };
+    window.visualViewport.addEventListener('resize', _armoireViewportHandler);
+    window.visualViewport.addEventListener('scroll', _armoireViewportHandler);
+  }
+  window.addEventListener('orientationchange', _armoireSyncMobileHeight);
 }
 
 function _armoireClose(){
   var overlay = document.getElementById('armoireConfigOverlay');
   if(overlay) overlay.style.display = 'none';
   document.body.classList.remove('modal-open');
+  if(_armoireViewportHandler && window.visualViewport){
+    window.visualViewport.removeEventListener('resize', _armoireViewportHandler);
+    window.visualViewport.removeEventListener('scroll', _armoireViewportHandler);
+    _armoireViewportHandler = null;
+  }
+  window.removeEventListener('orientationchange', _armoireSyncMobileHeight);
+  var modal = document.getElementById('armoireConfigModal');
+  if(modal){
+    modal.style.position = '';
+    modal.style.top = '';
+    modal.style.left = '';
+    modal.style.right = '';
+    modal.style.bottom = '';
+    modal.style.height = '';
+  }
 }
 
 (function _initArmoireConfig(){
