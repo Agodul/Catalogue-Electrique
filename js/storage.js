@@ -58,6 +58,18 @@
   function setFilebar(state, msg){ /* filebar supprimée */ }
   function updateFilebarUI(connected){ /* filebar supprimée */ }
 
+  // Positionne le conteneur de toasts juste sous le header (dont la hauteur
+  // varie selon les breakpoints) plutôt que de la dupliquer en dur en CSS.
+  function _positionToastStack(stack){
+    var header = document.querySelector('header');
+    var top = header ? header.getBoundingClientRect().bottom + 12 : 16;
+    stack.style.top = top + 'px';
+  }
+  window.addEventListener('resize', function(){
+    var stack = document.getElementById('toastStack');
+    if(stack) _positionToastStack(stack);
+  });
+
   function showToast(message, type, duration){
     if(typeof duration !== 'number'){
       // Durée adaptée à la longueur du message : une confirmation courte
@@ -80,7 +92,14 @@
     text.textContent = message;
     toast.appendChild(icon);
     toast.appendChild(text);
-    document.body.appendChild(toast);
+    var stack = document.getElementById('toastStack');
+    if(!stack){
+      stack = document.createElement('div');
+      stack.id = 'toastStack';
+      document.body.appendChild(stack);
+    }
+    _positionToastStack(stack);
+    stack.appendChild(toast);
     requestAnimationFrame(function(){ toast.classList.add('visible'); });
     setTimeout(function(){
       toast.classList.remove('visible');
@@ -128,7 +147,7 @@
     try{
       var handle;
       // Try to open an existing file, fall back to creating a new one
-      var choice = confirm('Cliquez sur OK pour choisir un fichier .json existant à utiliser,\nou sur Annuler pour créer un nouveau fichier de sauvegarde.');
+      var choice = await customConfirm('Connecter un fichier', 'Choisissez un fichier .json existant à utiliser, ou créez un nouveau fichier de sauvegarde.', { okLabel: 'Choisir un fichier existant', cancelLabel: 'Créer un nouveau fichier' });
       if(choice){
         var handles = await window.showOpenFilePicker({
           types: [{description:'Catalogue JSON', accept:{'application/json':['.json']}}],
@@ -158,7 +177,7 @@
           if(text.trim()){
             var parsed = JSON.parse(text);
             if(Array.isArray(parsed)){
-              var useImported = confirm('Le fichier choisi contient ' + parsed.length + ' produit(s).\n\nOK = charger ce contenu (remplace le catalogue actuel affiché)\nAnnuler = garder le catalogue actuel et l\'écrire dans ce fichier');
+              var useImported = await customConfirm('Fichier existant', 'Le fichier choisi contient ' + parsed.length + ' produit(s).', { okLabel: 'Charger ce contenu (remplace le catalogue actuel)', cancelLabel: 'Garder le catalogue actuel' });
               if(useImported){
                 products = parsed;
                 save(true);
@@ -250,7 +269,7 @@
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
     }catch(e){
-      alert("Impossible d'enregistrer dans le navigateur (stockage plein). Le fichier connecté sur votre PC, si actif, reste à jour.");
+      showToast("Impossible d'enregistrer dans le navigateur (stockage plein). Le fichier connecté sur votre PC, si actif, reste à jour.", 'err', 6000);
     }
     if(!skipFileWrite && fileHandle){
       writeProductsToFile();

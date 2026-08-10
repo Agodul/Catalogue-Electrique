@@ -85,7 +85,7 @@
     var brand = canonicalizeBrand(fBrand.value.trim());
     var ref = fRef.value.trim();
     if(!brand || !ref){
-      alert('La marque et la référence sont obligatoires.');
+      showToast('La marque et la référence sont obligatoires.', 'err', 3000);
       return;
     }
     var cataloguePrice = formatPrice(fPrice.value);
@@ -123,7 +123,6 @@
       name: fName.value.trim(),
       desc: stripHtml(fDesc.value.trim()),
       tags: canonicalizeTags(fTags.value.split(',').map(function(t){ return t.trim(); }).filter(Boolean)),
-      chatNotes: fChatNotes ? fChatNotes.value.trim() : '',
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
@@ -1130,24 +1129,9 @@
     });
     save(); render();
 
-    // Même style de popup que la confirmation "Annuler la saisie"
-    var popup = document.createElement('div');
-    popup.style.cssText =
-      'position:fixed;inset:0;background:rgba(28,26,23,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
-    popup.innerHTML =
-      '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
-        '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">Nettoyer les descriptions</div>' +
-        '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">' + (count > 0
-          ? count + ' description(s) nettoyée(s) avec succès.'
-          : 'Aucune description HTML à nettoyer — tout est déjà propre !') + '</div>' +
-        '<div style="display:flex;flex-direction:column;gap:8px;">' +
-          '<button id="_cleanDescsOk" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#1e293b;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>OK</strong></button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(popup);
-    popup.querySelector('#_cleanDescsOk').addEventListener('click', function(){
-      document.body.removeChild(popup);
-    });
+    customAlert('Nettoyer les descriptions', count > 0
+      ? count + ' description(s) nettoyée(s) avec succès.'
+      : 'Aucune description HTML à nettoyer — tout est déjà propre !');
   });
 
   // ---------- Export / Import ----------
@@ -2341,7 +2325,7 @@
       if(typeof openConflictModal === 'function'){
         openConflictModal(fakeConflicts);
       } else {
-        alert('La modale de conflits sera disponible après le prochain déploiement complet.');
+        showToast('La modale de conflits sera disponible après le prochain déploiement complet.', 'warn', 4000);
       }
     });
   };
