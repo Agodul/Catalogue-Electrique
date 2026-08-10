@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v363";
+const CACHE = "spi-catalogue-v364";
 
 const FILES = [
   "./",
@@ -9,9 +9,10 @@ const FILES = [
   "./icon-192.png",
   "./icon-512.png",
   "./css/styles.css",
+  "./js/popup.js",
   "./js/actions.js",
   "./js/auth.js",
-  "./js/chat.js",
+  "./js/armoireConfig.js",
   "./js/init.js",
   "./js/modal.js",
   "./js/pwa.js",
