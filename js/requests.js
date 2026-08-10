@@ -436,7 +436,7 @@
       body.querySelectorAll('[data-req-cancel]').forEach(function(btn){
         btn.addEventListener('click', async function(){
           var ref = btn.getAttribute('data-req-cancel');
-          if(!confirm('Annuler la demande pour ' + ref + ' ?')) return;
+          if(!(await customConfirm('Annuler la demande ?', 'Annuler la demande pour ' + escapeHtml(ref) + ' ?', { okLabel: 'Annuler la demande', danger: true }))) return;
           btn.disabled = true;
           var ok = await window.reqCancel(ref);
           if(ok){ showToast('Demande annulée', 'ok', 2000); reqLoadMineList(); }
@@ -522,7 +522,7 @@
 
     var btnAccept = document.getElementById('btnAcceptAllRequests');
     if(btnAccept) btnAccept.addEventListener('click', async function(){
-      if(!confirm('Accepter toutes les demandes ?')) return;
+      if(!(await customConfirm('Accepter toutes les demandes ?', '', { okLabel: 'Accepter tout' }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
@@ -540,7 +540,7 @@
 
     var btnRefuse = document.getElementById('btnRefuseAllRequests');
     if(btnRefuse) btnRefuse.addEventListener('click', async function(){
-      if(!confirm('Refuser toutes les demandes ?')) return;
+      if(!(await customConfirm('Refuser toutes les demandes ?', '', { okLabel: 'Refuser tout', danger: true }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       var r = await fetch(sUrl + '/pullDatasReq', { headers: h });

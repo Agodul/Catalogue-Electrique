@@ -71,6 +71,7 @@
   <link rel="preload" href="js/storage.js" as="script">
   <link rel="preload" href="js/init.js" as="script">
   <link rel="preload" href="css/styles.css" as="style">
+  <script src="js/popup.js" defer></script>
   <script src="js/auth.js" defer></script>
 <script src="js/storage.js" defer></script>
 <script src="js/render.js" defer></script>
@@ -79,7 +80,7 @@
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
 <script src="js/requests.js" defer></script>
-<script src="js/chat.js" defer></script>
+<script src="js/armoireConfig.js" defer></script>
 
 </head>
 <body>
@@ -483,9 +484,13 @@
 
 <div id="homePage">
   <div class="home-stats" id="homeStats"></div>
-  <button class="home-all-btn" id="homeAllBtn" style="margin-top:10px; margin-bottom:20px;">
+  <button class="home-all-btn" id="homeAllBtn" style="margin-top:10px; margin-bottom:10px;">
     <i class="ti ti-layout-grid" aria-hidden="true"></i>
     Voir tout le catalogue
+  </button>
+  <button class="home-all-btn" id="btnOpenArmoireConfig" style="display:none;margin-bottom:20px;border-color:var(--copper);color:var(--copper-deep);">
+    <i class="ti ti-tools" aria-hidden="true"></i>
+    Configurateur d'armoire
   </button>
   <div class="home-section-title">Familles de produits</div>
   <div class="home-families" id="homeFamilies"></div>
@@ -580,9 +585,6 @@
   </button>
   <button id="btnFabAdd" class="fab sans" aria-label="Ajouter un produit" title="Ajouter un produit">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </button>
-  <button id="btnFabChat" class="fab sans" aria-label="Assistant IA" title="Assistant IA (admin)" style="display:none;">
-    <i class="ti ti-message-chatbot" style="font-size:19px;"></i>
   </button>
   <button id="btnScrollTop" class="fab sans" aria-label="Remonter en haut de la page" title="Remonter en haut">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
@@ -768,20 +770,6 @@
         </button>
       </div>
       <!-- ===== FIN CHAMP CARACTÉRISTIQUES ===== -->
-
-      <!-- ===== CHAMP NOTES ASSISTANT IA (admin uniquement) ===== -->
-      <div class="field" id="fChatNotesRow">
-        <button type="button" id="btnToggleChatNotes" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-          <i class="ti ti-message-2" style="font-size:17px;"></i>
-          <span id="btnToggleChatNotesLabel">Ajouter une note pour l'assistant IA</span>
-        </button>
-        <div id="fChatNotesBody" style="display:none;margin-top:10px;">
-          <label for="fChatNotes">Notes pour l'assistant IA <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(non affichées aux utilisateurs)</span></label>
-          <textarea id="fChatNotes" rows="3" placeholder="Infos utiles pour répondre aux questions sur ce produit : compatibilités, précisions techniques, équivalences…"></textarea>
-          <div class="hint">Ce texte n'apparaît jamais dans la fiche produit — il sert uniquement de contexte à l'assistant IA du chat.</div>
-        </div>
-      </div>
-      <!-- ===== FIN CHAMP NOTES ASSISTANT IA ===== -->
 
       <div class="tabs">
         <button class="tab-btn active" data-tab="auto">Extraction automatique</button>
@@ -1159,98 +1147,63 @@
 </div>
 <!-- ===== FIN MODALE CARACTÉRISTIQUES ===== -->
 
-<!-- ===== MODALE CHAT IA (admin) ===== -->
-<div id="chatOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10600;align-items:center;justify-content:center;padding:20px;">
-  <div id="chatModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:520px;height:min(640px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">🤖 Assistant catalogue</div>
-      <div style="display:flex;align-items:center;gap:4px;">
-        <button id="chatConfigGearBtn" title="Configurer le questionnaire armoire" style="background:none;border:none;font-size:17px;cursor:pointer;color:var(--ink-soft);padding:4px 6px;">⚙️</button>
-        <button id="chatCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-      </div>
+<!-- ===== MODALE CONFIGURATEUR D'ARMOIRE (admin) ===== -->
+<div id="armoireConfigOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10600;align-items:center;justify-content:center;padding:16px;">
+  <div id="armoireConfigModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:920px;height:min(760px,92vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;color:var(--ink);">🛠️ Configurateur d'armoire</div>
+      <button id="armoireConfigCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
-    <div style="padding:10px 16px 0;flex-shrink:0;">
-      <button id="chatConfigStartBtn" style="width:100%;padding:8px 12px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-sans);">
-        🔧 Configurer une armoire
-      </button>
-    </div>
-    <div id="chatMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;"></div>
-    <div id="chatTypingIndicator" style="display:none;padding:0 16px 8px;font-size:12px;color:var(--ink-soft);">
-      <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i> L'assistant réfléchit…
-    </div>
-    <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex-shrink:0;">
-      <input id="chatInput" type="text" placeholder="Posez une question sur le catalogue…" autocomplete="off"
-        style="flex:1;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px;font-family:var(--font-sans);outline:none;">
-      <button id="chatSendBtn" style="background:var(--copper);border:none;border-radius:10px;color:#fff;padding:0 16px;cursor:pointer;">Envoyer</button>
-    </div>
-  </div>
-</div>
-<!-- ===== FIN MODALE CHAT IA ===== -->
 
-<!-- ===== MODALE ÉDITEUR RÈGLES CONFIGURATEUR (admin) ===== -->
-<div id="configRulesOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10700;align-items:center;justify-content:center;padding:20px;">
-  <div id="configRulesModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:960px;height:min(860px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">⚙️ Questionnaire armoire électrique</div>
-      <button id="configRulesCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-    <div style="flex:1;min-height:0;display:flex;overflow:hidden;">
-      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
-        <button type="button" id="btnOpenWizard" class="cfg-wizard-open-btn">➕ Ajouter un élément au questionnaire</button>
-        <div id="configBuilderComponents" class="cfg-canvas-root" style="display:flex;flex-direction:column;gap:14px;min-height:120px;"></div>
-        <button type="button" id="btnToggleAdvanced" class="cfg-advanced-toggle">Mode avancé (glisser-déposer) ▾</button>
+    <!-- Bascule mobile : une seule colonne visible à la fois, plein écran
+         (caché sur desktop où les deux colonnes restent côte à côte). -->
+    <div class="armoire-mobile-switch" style="display:none;padding:10px 16px 0;flex-shrink:0;">
+      <div class="tabs">
+        <button type="button" class="armoire-mobile-tab tab-btn active" data-view="browse">🔍 Parcourir</button>
+        <button type="button" class="armoire-mobile-tab tab-btn" data-view="draft">🛒 Ma configuration<span id="armoireMobileDraftBadge" style="display:none;"></span></button>
       </div>
-      <div id="configPalette" class="cfg-palette" style="display:none;">
-        <div class="hint" style="margin:0 0 10px;">
-          Glisse un bloc ci-dessous sur la zone de gauche pour construire ton questionnaire à la main. Un composant
-          (ex: Variateur) regroupe sa quantité, ses sous-questions (ex: Puissance, posée une fois par unité) et les
-          règles qui en dépendent — glissées directement sur le bon bloc, impossible de les relier au mauvais endroit.
+    </div>
+
+    <div class="armoire-cfg-body" style="flex:1;min-height:0;display:flex;overflow:hidden;">
+
+      <!-- Colonne recherche produits + blocs/configs -->
+      <div class="armoire-cfg-browse" style="flex:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;">
+          <input type="text" id="armoireConfigSearch" placeholder="Rechercher un produit (réf, nom)…" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--paper);color:var(--ink);">
         </div>
-        <div class="cfg-palette-title">Blocs</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="component">📦 Composant</div>
-        <div class="cfg-palette-hint">Dépose sur la zone de gauche pour créer un nouveau composant (ex: Variateur, Robot, Automate…).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="subquestion">❓ Sous-question</div>
-        <div class="cfg-palette-hint">Dépose sur un composant : question posée une fois par unité (ex: Puissance).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="baseref">🧱 Référence de base</div>
-        <div class="cfg-palette-hint">Dépose sur la zone de gauche : référence ajoutée systématiquement, sans dépendre d'aucune réponse.</div>
-        <div class="cfg-palette-section-title">Règles</div>
-        <div class="cfg-palette-hint" style="margin:-2px 0 6px;">Une règle se dépose SUR un composant ou une sous-question : elle dit "SI la réponse est ça, ALORS ajoute ce matériel".</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-fixed">➕ Référence fixe</div>
-        <div class="cfg-palette-hint">Ajoute toujours la même référence, en quantité fixe (ex: un disjoncteur général systématique).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-perUnit">📐 Par tranche</div>
-        <div class="cfg-palette-hint">Quantité = réponse ÷ capacité par carte, arrondi au-dessus (ex: 1 carte pour 8 entrées → 20 entrées = 3 cartes).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-range">📊 Selon un seuil</div>
-        <div class="cfg-palette-hint">Choisit une référence selon la valeur d'une réponse numérique (ex: la puissance du moteur détermine quel variateur commander).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-choice">🗂️ L'utilisateur choisit</div>
-        <div class="cfg-palette-hint">Laisse l'utilisateur choisir lui-même une référence précise dans une catégorie du catalogue (ex: quel modèle de bouton).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-remove">🔁 Retirer / remplacer</div>
-        <div class="cfg-palette-hint">Retire une référence déjà ajoutée par une autre règle et peut la remplacer par une autre (ex: option lumineuse → version simple).</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-alert">⚠️ Alerte de cohérence</div>
-        <div class="cfg-palette-hint">Affiche un simple message d'avertissement à l'utilisateur, sans ajouter de matériel (ex: "puissance totale élevée, vérifier le disjoncteur général").</div>
-        <div class="cfg-palette-block" draggable="true" data-blocktype="rule-cumul">🧮 Cumul pondéré</div>
-        <div class="cfg-palette-hint">Additionne plusieurs réponses (chacune avec son propre poids) pour calculer combien de cartes commander (ex: X entrées directes + 1 par bouton, ÷ capacité de la carte).</div>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex-shrink:0;">
-      <input type="file" id="configRulesImportInput" accept="application/json,.json" style="display:none;">
-      <button id="configRulesImportBtn" style="background:none;border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-sans);">📥 Importer un questionnaire</button>
-      <button id="configRulesSaveBtn" style="background:var(--copper);border:none;border-radius:10px;color:#fff;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-sans);">Enregistrer</button>
-    </div>
-  </div>
-</div>
-<!-- ===== FIN MODALE ÉDITEUR RÈGLES CONFIGURATEUR ===== -->
+        <div id="armoireConfigSearchResults" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:120px;"></div>
 
-<!-- ===== ASSISTANT PAS-À-PAS (création simple d'un élément du questionnaire) ===== -->
-<div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10800;align-items:center;justify-content:center;padding:20px;">
-  <div id="wizardModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">✨ Ajouter un élément</div>
-      <button id="wizardCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
+        <div style="border-top:1px solid var(--line);background:var(--paper);flex-shrink:0;padding:14px 16px;">
+          <div class="tabs" style="margin-bottom:10px;">
+            <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks">📦 Mes blocs</button>
+            <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs">📋 Mes configurations</button>
+          </div>
+          <div id="armoireConfigBlocksList" style="max-height:190px;overflow-y:auto;background:var(--paper-card);border:1px solid var(--line);border-radius:9px;padding:4px 10px;"></div>
+          <div id="armoireConfigSavedList" style="display:none;max-height:190px;overflow-y:auto;background:var(--paper-card);border:1px solid var(--line);border-radius:9px;padding:4px 10px;"></div>
+        </div>
+      </div>
+
+      <!-- Colonne configuration en cours -->
+      <div class="armoire-cfg-draft" style="flex:1;min-width:260px;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:700;color:var(--ink);">Configuration en cours</div>
+            <button type="button" id="armoireConfigClearBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;">Vider</button>
+          </div>
+          <div id="armoireConfigStats" style="display:none;margin-top:8px;gap:8px;"></div>
+        </div>
+        <div id="armoireConfigDraftList" style="flex:1;overflow-y:auto;padding:10px 14px;"></div>
+        <div style="padding:12px 14px;border-top:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+          <button type="button" id="armoireConfigExportBtn" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cfe0bd;background:#eef4e8;color:#3b6d11;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-file-spreadsheet" style="font-size:15px;" aria-hidden="true"></i> Exporter en Excel <span style="font-weight:500;opacity:.75;">(par fournisseur)</span></button>
+          <button type="button" id="armoireConfigSaveBlockBtn" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Enregistrer comme bloc</button>
+          <button type="button" id="armoireConfigSaveConfigBtn" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--copper);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-device-floppy" style="font-size:15px;" aria-hidden="true"></i> Enregistrer la configuration</button>
+        </div>
+      </div>
+
     </div>
-    <div id="wizardStepBody" style="flex:1;overflow-y:auto;padding:22px 24px;"></div>
   </div>
 </div>
-<!-- ===== FIN ASSISTANT PAS-À-PAS ===== -->
+<!-- ===== FIN MODALE CONFIGURATEUR D'ARMOIRE ===== -->
 
 <!-- ===== PDF VIEWER ===== -->
 <div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;">

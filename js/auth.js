@@ -310,9 +310,9 @@ function applyAuthUI() {
   var btnFabAdd = document.getElementById('btnFabAdd');
   if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
-  // Bulle "Assistant IA" — admin uniquement
-  var btnFabChat = document.getElementById('btnFabChat');
-  if (btnFabChat) btnFabChat.style.display = isAdmin ? '' : 'none';
+  // Bouton "Configurateur d'armoire" (accueil) — admin uniquement
+  var btnOpenArmoireConfig = document.getElementById('btnOpenArmoireConfig');
+  if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = isAdmin ? '' : 'none';
 
   // Bouton ⓘ — visible uniquement si canEdit ou canDelete
   var vmInfoBtn = document.getElementById('vmInfoBtn');
@@ -334,11 +334,6 @@ function applyAuthUI() {
   // Champ suggestions : visible uniquement pour canEdit/admin
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
-
-  // Champ notes assistant IA : visible uniquement pour canEdit/admin (replié
-  // derrière un bouton par défaut — voir btnToggleChatNotes dans modal.js)
-  var fChatNotesRow = document.getElementById('fChatNotesRow');
-  if(fChatNotesRow) fChatNotesRow.style.display = canEdit ? '' : 'none';
 
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');
@@ -543,7 +538,7 @@ function _renderUserList(container, users, isServer) {
   container.querySelectorAll('.btnDelUser').forEach(function(btn) {
     btn.addEventListener('click', async function() {
       var uname = this.getAttribute('data-user');
-      if (!confirm('Supprimer l\'utilisateur "' + uname + '" ?')) return;
+      if (!(await customConfirm('Supprimer cet utilisateur ?', 'L\'utilisateur « ' + escapeHtml(uname) + ' » sera supprimé définitivement.', { okLabel: 'Supprimer', danger: true }))) return;
       var ok = await authDeleteUser(uname);
       if (ok) { showAuthToast('Utilisateur supprimé ✓'); renderUserPage(); }
       else showAuthToast('Erreur suppression', 'err', 3000);
