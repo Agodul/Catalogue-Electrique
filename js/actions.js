@@ -2397,11 +2397,16 @@
         if(so) so.classList.remove('show');
       }
 
+      function closeArmoireConfigNow(){
+        if(typeof _armoireClose === 'function') _armoireClose();
+      }
+
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
         closeSettingsNow();
+        closeArmoireConfigNow();
         showHome();
         setActive(bnHome);
         // Remonter en haut de page
@@ -2414,6 +2419,7 @@
         closeMenuSheet();
         closeFilterSheetNow();
         closeSettingsNow();
+        closeArmoireConfigNow();
         // Fermer la fiche produit si ouverte
         var _vo=document.getElementById('viewOverlay');
         if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
@@ -2431,6 +2437,7 @@
         closeMenuSheet();
         closeFloatingSearchNow();
         closeSettingsNow();
+        closeArmoireConfigNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2452,6 +2459,7 @@
         closeFloatingSearchNow();
         closeFilterSheetNow();
         closeSettingsNow();
+        closeArmoireConfigNow();
         // Ouvrir le menu sheet
         overlay.style.display='block';
         sheet.style.display='block';
