@@ -189,7 +189,7 @@ function _armoireRenderFamilyProducts(family){
   if(!el) return;
   var all = window.products || [];
   var results = all.filter(function(p){ return (p.family || '(Sans famille)') === family; });
-  var backRow = '<div class="armoire-family-back" style="display:flex;align-items:center;gap:6px;padding:8px 6px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--copper-deep);font-size:12.5px;font-weight:600;">'
+  var backRow = '<div class="armoire-family-back" style="display:flex;align-items:center;gap:6px;padding:8px 6px;margin-bottom:6px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--copper-deep);font-size:12.5px;font-weight:600;">'
     + '<i class="ti ti-chevron-left" style="font-size:14px;"></i> Toutes les familles</div>';
   if(!results.length){
     el.innerHTML = backRow + '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:16px 8px;">Aucun produit dans cette famille.</div>';
@@ -535,6 +535,23 @@ function _armoireUpdateMobileDraftBadge(){
 // et déborde largement de l'écran — bug réel observé en le vérifiant).
 var _armoireOriginalHeight = null;
 
+// Mesure la vraie valeur en pixels de env(safe-area-inset-top) via un
+// élément sonde, plutôt que d'injecter la chaîne "env(...)" directement
+// dans un style inline posé en JS après le chargement de la page — ce
+// deuxième chemin a des soucis de support connus sur certaines versions de
+// WebKit/iOS (la valeur ne se recalcule pas toujours correctement une fois
+// affectée dynamiquement), ce qui laissait la fenêtre remonter derrière la
+// barre de statut malgré la règle. Une sonde mesurée donne un nombre en
+// pixels déjà résolu par le moteur de rendu — fiable dans tous les cas.
+function _armoireSafeAreaTop(){
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;';
+  document.body.appendChild(probe);
+  var px = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+  document.body.removeChild(probe);
+  return px;
+}
+
 function _armoireSyncMobileHeight(){
   var modal = document.getElementById('armoireConfigModal');
   if(!modal) return;
@@ -556,16 +573,18 @@ function _armoireSyncMobileHeight(){
   // Hauteur de nav visible dans le viewport actuel (0 si masquée/hors écran).
   var navH = navRect ? Math.max(0, viewportH - navRect.top) : 0;
   var bottomPx = Math.max(240, viewportH - navH);
+  var safeTop = _armoireSafeAreaTop();
   modal.style.position = 'fixed';
-  // top laisse la place à l'encoche/barre de statut (env(safe-area-inset-top)) —
-  // sans ça la fenêtre remonte derrière l'heure/le réseau/la batterie en haut
-  // de l'écran. La hauteur est réduite d'autant pour garder le bas au même
-  // endroit (juste au-dessus de la nav, calculé ci-dessus).
-  modal.style.top = 'env(safe-area-inset-top, 0px)';
+  // top laisse la place à l'encoche/barre de statut — sans ça la fenêtre
+  // remonte derrière l'heure/le réseau/la batterie en haut de l'écran. La
+  // hauteur est réduite d'autant pour garder le bas au même endroit (juste
+  // au-dessus de la nav, calculé ci-dessus). safeTop est un nombre de
+  // pixels déjà mesuré (voir _armoireSafeAreaTop), pas une chaîne "env(...)".
+  modal.style.top = safeTop + 'px';
   modal.style.left = '0px';
   modal.style.right = '0px';
   modal.style.bottom = 'auto';
-  modal.style.height = 'calc(' + bottomPx + 'px - env(safe-area-inset-top, 0px))';
+  modal.style.height = Math.max(200, bottomPx - safeTop) + 'px';
 }
 
 var _armoireViewportHandler = null;
