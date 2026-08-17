@@ -310,9 +310,9 @@ function applyAuthUI() {
   var btnFabAdd = document.getElementById('btnFabAdd');
   if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
-  // Bouton "Configurateur d'armoire" (accueil) — admin uniquement
+  // Bouton "Configurateur d'armoire" (accueil) — tout utilisateur connecté
   var btnOpenArmoireConfig = document.getElementById('btnOpenArmoireConfig');
-  if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = isAdmin ? '' : 'none';
+  if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = loggedIn ? '' : 'none';
 
   // Bouton ⓘ — visible uniquement si canEdit ou canDelete
   var vmInfoBtn = document.getElementById('vmInfoBtn');
