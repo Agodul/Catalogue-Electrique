@@ -336,16 +336,6 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
-      <button id="btnOpenWhatsNew" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
-        <span style="width:38px;height:38px;border-radius:8px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ti-sparkles" style="font-size:20px;color:#F59E0B;"></i>
-        </span>
-        <span>
-          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Quoi de neuf ?</span>
-          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Voir les fonctionnalités disponibles</span>
-        </span>
-        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
-      </button>
       <!-- Bouton Mon compte - visible pour les non-admins connectés -->
       <button id="btnOpenMyAccount" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -923,26 +913,6 @@
       <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>
       <button class="secondary" onclick="document.getElementById('xlsxImportOverlay').style.display='none'">Annuler</button>
       <button class="copper" id="btnConfirmXlsxImport">✓ Confirmer l'import</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════
-     MODALE "QUOI DE NEUF"
-═══════════════════════════════════════════ -->
-<div id="whatsNewOverlay">
-  <div id="whatsNewModal">
-    <div id="whatsNewHead">
-      <div>
-        <div class="wn-title">Quoi de neuf ?</div>
-        <div class="wn-subtitle">Catalogue Électrique — SPI Engineering</div>
-      </div>
-      <span class="wn-badge" id="wnBadge"></span>
-    </div>
-    <div id="whatsNewBody"></div>
-    <div id="whatsNewFoot">
-      <span class="wn-hint"><i class="ti ti-keyboard" aria-hidden="true"></i> Échap pour fermer</span>
-      <button class="copper" id="btnWhatsNewClose" aria-label="Fermer le changelog">C'est parti !</button>
     </div>
   </div>
 </div>

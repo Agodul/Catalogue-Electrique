@@ -1301,121 +1301,6 @@
   }
   .vm-desc-toggle:hover{ text-decoration:underline; }
 
-  
-  #whatsNewOverlay{
-    position:fixed; inset:0;
-    background:rgba(28,26,23,.55);
-    display:none; align-items:center; justify-content:center;
-    padding:20px; z-index:var(--z-modal-top); padding-bottom:max(20px,env(safe-area-inset-bottom));
-    animation:fadeBg .25s ease forwards;
-  }
-  #whatsNewOverlay.open{ display:flex; }
-  #whatsNewModal{
-    background:var(--paper-card);
-    border-radius:14px;
-    width:100%; max-width:560px;
-    max-height:90vh;
-    display:flex; flex-direction:column;
-    box-shadow:var(--shadow-modal);
-    overflow:hidden;
-    animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards;
-  }
-  #whatsNewHead{
-    padding:22px 24px 16px;
-    border-bottom:1px solid var(--line);
-    display:flex; align-items:flex-start; justify-content:space-between;
-    flex-shrink:0;
-  }
-  #whatsNewHead .wn-title{
-    font-size:20px; font-weight:700; color:var(--ink);
-    margin:0 0 3px;
-  }
-  #whatsNewHead .wn-subtitle{
-    font-size:13px; color:var(--ink-soft);
-  }
-  #whatsNewHead .wn-badge{
-    font-size:11px; font-weight:700; color:#fff;
-    background:var(--copper); border-radius:20px;
-    padding:3px 10px; white-space:nowrap; flex-shrink:0;
-    margin-top:2px; margin-left:12px;
-  }
-  #whatsNewBody{
-    overflow-y:auto; flex:1;
-    padding:16px 24px 20px;
-    -webkit-overflow-scrolling:touch;
-  }
-  .wn-section{
-    margin-bottom:18px;
-  }
-  .wn-section-title{
-    font-size:11px; font-weight:700; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--ink-soft);
-    margin:0 0 8px;
-  }
-  .wn-item{
-    display:flex; align-items:flex-start; gap:10px;
-    padding:8px 10px; border-radius:8px;
-    margin-bottom:4px;
-    background:var(--paper);
-    border:1px solid var(--line);
-  }
-  .wn-item .wn-icon{
-    width:30px; height:30px; border-radius:8px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:16px; flex-shrink:0;
-  }
-  .wn-icon.blue{ background:#eef2fc; color:#194093; }
-  .wn-icon.green{ background:#eef4e8; color:#3b6d11; }
-  .wn-icon.orange{ background:#fff7ed; color:#c2410c; }
-  .wn-icon.purple{ background:#f3f0ff; color:#6d28d9; }
-  .wn-item .wn-texts{ display:flex; flex-direction:column; gap:1px; }
-  .wn-item .wn-name{ font-size:13.5px; font-weight:600; color:var(--ink); }
-  .wn-item .wn-desc{ font-size:12px; color:var(--ink-soft); line-height:1.4; }
-  #whatsNewFoot{
-    padding:14px 24px 18px;
-    border-top:1px solid var(--line);
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px; flex-shrink:0;
-  }
-  #whatsNewFoot .wn-hint{
-    font-size:12px; color:var(--ink-soft);
-  }
-  #btnWhatsNewClose{
-    padding:9px 20px;
-  }
-  @media (max-width:640px){
-    #whatsNewOverlay{ padding:0 0 var(--nav-h, 56px) 0; align-items:flex-end; justify-content:center; }
-    #whatsNewModal{
-      border-radius:16px 16px 0 0;
-      max-height:75vh;
-      width:100%; max-width:100%;
-      animation:none;
-    }
-    #whatsNewHead{ padding:10px 14px 8px; }
-    #whatsNewHead .wn-title{ font-size:15px; margin-bottom:1px; }
-    #whatsNewHead .wn-subtitle{ font-size:11px; }
-    #whatsNewHead .wn-badge{ font-size:10px; padding:2px 8px; }
-    #whatsNewBody{ padding:8px 12px 10px; }
-    .wn-section{ margin-bottom:10px; }
-    .wn-section-title{ font-size:9.5px; margin-bottom:5px; }
-    .wn-item{ padding:5px 8px; gap:7px; margin-bottom:3px; border-radius:7px; }
-    .wn-item .wn-icon{ width:24px; height:24px; font-size:13px; border-radius:6px; }
-    .wn-item .wn-name{ font-size:11.5px; }
-    .wn-item .wn-desc{ font-size:10px; line-height:1.3; }
-    #whatsNewFoot{ padding:8px 14px 18px; gap:8px; }
-    #whatsNewFoot .wn-hint{ font-size:10.5px; }
-    #btnWhatsNewClose{ padding:7px 16px; font-size:12px; }
-  }
-  @media (max-width:380px){
-    #whatsNewModal{ max-height:80vh; }
-    #whatsNewHead .wn-title{ font-size:14px; }
-    #whatsNewBody{ padding:6px 10px 8px; }
-    .wn-item{ padding:4px 7px; gap:6px; }
-    .wn-item .wn-icon{ width:22px; height:22px; font-size:12px; }
-    .wn-item .wn-name{ font-size:11px; }
-    .wn-item .wn-desc{ font-size:9.5px; }
-  }
-
   /* ── Page d'accueil familles ── */
   #homePage{
     padding:24px 20px 40px;
@@ -1878,7 +1763,7 @@
   #overlay .modal{ will-change:transform; }
 
   /* ── Scroll fluide iOS ───────────────────────────────────────── */
-  .modal-body, #whatsNewBody, .settings-body{ -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+  .modal-body, .settings-body{ -webkit-overflow-scrolling:touch; touch-action:pan-y; }
 
   /* ── focus-visible (outline clavier uniquement) ─────────────── */
   button:focus:not(:focus-visible){ outline:none; }
