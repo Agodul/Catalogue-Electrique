@@ -195,6 +195,15 @@
       var idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){
         var existing = products[idx];
+        // En mode édition, fPrice contient le prix de vente actuel (voir
+        // fillFormFromProduct), pas le prix catalogue — la ligne "cataloguePrice
+        // = formatPrice(fPrice.value)" plus haut ne reflète donc PAS le prix
+        // catalogue ici. Seule la sous-modale "Gestion des prix" (priceModalAddBtn)
+        // gère ce champ séparément. Sans cette ligne, "Enregistrer" écrasait
+        // p.priceCatalogue avec le prix de vente, effaçant silencieusement toute
+        // remise déjà en place (bug : modifier prix catalogue ET remisé dans la
+        // sous-modale, puis Enregistrer, ne gardait que le prix remisé).
+        payload.priceCatalogue = existing.priceCatalogue || '';
         var oldPrice = (existing.price||'').trim();
         if(oldPrice && oldPrice !== newPrice.trim()){
           var history = Array.isArray(existing.priceHistory) ? existing.priceHistory.slice() : [];
@@ -203,19 +212,29 @@
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
         products[idx] = Object.assign({}, existing, payload);
-        // Propager l'icône à tous les produits de la même famille
+        // Propager l'icône à tous les produits de la même famille — bump
+        // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
+        // envoi (pas plus récent que sa version déjà enregistrée).
         if(familyVal && payload.familyIcon){
           products.forEach(function(p){
-            if(p.family === familyVal) p.familyIcon = payload.familyIcon;
+            if(p.family === familyVal && p.id !== products[idx].id){
+              p.familyIcon = payload.familyIcon;
+              p.updatedAt = Date.now();
+            }
           });
         }
       }
     }else{
       payload.id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-      // Propager l'icône aux produits existants de la même famille
+      // Propager l'icône aux produits existants de la même famille — bump
+      // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
+      // envoi (pas plus récent que sa version déjà enregistrée).
       if(familyVal && payload.familyIcon){
         products.forEach(function(p){
-          if(p.family === familyVal && !p.familyIcon) p.familyIcon = payload.familyIcon;
+          if(p.family === familyVal && !p.familyIcon){
+            p.familyIcon = payload.familyIcon;
+            p.updatedAt = Date.now();
+          }
         });
       }
       payload.createdAt = Date.now();
@@ -334,7 +353,7 @@
       var icon = getFamilyIcon(f);
       var count = counts[f] || 0;
       return '<div class="family-icon-row-settings" data-family="'+escapeHtml(f)+'">'
-        + '<div class="family-icon-thumb"><i class="ti '+icon+'" id="settings-thumb-'+escapeHtml(f)+'"></i></div>'
+        + '<div class="family-icon-thumb" id="settings-thumb-'+escapeHtml(f)+'">'+renderFamilyIconHtml(icon)+'</div>'
         + '<div class="family-icon-name">'+escapeHtml(f)+'</div>'
         + '<div class="family-icon-count">'+count+(count>1?' réf':' réf')+'</div>'
         + '<button class="family-icon-change-btn" data-family="'+escapeHtml(f)+'"><i class="ti ti-pencil"></i></button>'
@@ -1712,17 +1731,34 @@
   var homeAllBtn     = document.getElementById('homeAllBtn');
 
   // Icônes par famille (mots-clés → icône Tabler)
+  // Fallback approximatif pour une famille jamais vue (pas dans
+  // FAMILY_NAME_TO_ICON — voir js/familyIcons.js) : détection par mots-clés,
+  // vers l'icône existante la plus proche.
   var familyIconMap = [
-    { keys:['câble','cable','cordon','liaison'],         icon:'ti-plug-connected' },
-    { keys:['capteur','sensor','detect','proxim'],       icon:'ti-antenna' },
-    { keys:['module','master','bus','réseau','network'], icon:'ti-circuit-switchclosed' },
-    { keys:['aliment','power','psu','transfo'],          icon:'ti-bolt' },
-    { keys:['actionn','valve','moteur','drive'],         icon:'ti-settings-2' },
-    { keys:['connect','bornier','terminal','borne'],     icon:'ti-plug' },
-    { keys:['commut','switch','bouton','button'],        icon:'ti-toggle-right' },
-    { keys:['relay','relai','relais','contacteur'],      icon:'ti-circuit-resistor' },
-    { keys:['affich','display','hmi','écran'],           icon:'ti-device-desktop' },
-    { keys:['automate','plc','controleur'],              icon:'ti-cpu' },
+    { keys:['câble','cable','cordon','liaison','raccord'],          icon:'svg-cable-de-liaison' },
+    { keys:['capteur','sensor','detect','proxim'],                  icon:'svg-capteur' },
+    { keys:['module','bus','réseau','network'],                     icon:'svg-communication-reseau' },
+    { keys:['master','plc','automate','controleur','contrôleur'],   icon:'svg-plc' },
+    { keys:['aliment','power','psu','transfo'],                     icon:'svg-alimentation' },
+    { keys:['variat','drive'],                                      icon:'svg-variateur' },
+    { keys:['connect','fiche'],                                     icon:'svg-connecteur-confectionnables' },
+    { keys:['prise'],                                               icon:'svg-prise' },
+    { keys:['bornier','terminal','borne'],                          icon:'svg-borne' },
+    { keys:['commut','switch'],                                     icon:'svg-switch' },
+    { keys:['bouton','button','poussoir'],                          icon:'svg-bouton' },
+    { keys:['relay','relai','relais'],                              icon:'svg-relais' },
+    { keys:['contact'],                                             icon:'svg-contacteur' },
+    { keys:['disjonct','breaker'],                                  icon:'svg-disjoncteur' },
+    { keys:['affich','display','écran','ecran'],                    icon:'svg-ecran' },
+    { keys:['armoire','coffret','enclosure'],                       icon:'svg-armoire' },
+    { keys:['accessoire'],                                          icon:'svg-accessoire' },
+    { keys:['barrière','barriere','immatériel'],                    icon:'svg-barriere-immaterielle' },
+    { keys:['amplif'],                                              icon:'svg-amplificateur' },
+    { keys:['rail','din'],                                          icon:'svg-rail-din' },
+    { keys:['robot'],                                               icon:'svg-robot' },
+    { keys:['moteur','motor'],                                      icon:'svg-moteur-brushless' },
+    { keys:['ventilat','fan'],                                      icon:'svg-ventilateur' },
+    { keys:['vision','camera','caméra'],                            icon:'svg-vision' },
   ];
 
   function getFamilyIcon(name){
@@ -1734,6 +1770,10 @@
         return products[i].familyIcon;
       }
     }
+    // Priorité 3 : correspondance exacte pour les familles réelles connues
+    if(typeof FAMILY_NAME_TO_ICON !== 'undefined' && FAMILY_NAME_TO_ICON[name]){
+      return FAMILY_NAME_TO_ICON[name];
+    }
     // Fallback : détection par mots-clés
     var lower = name.toLowerCase();
     for(var i=0;i<familyIconMap.length;i++){
@@ -1741,7 +1781,7 @@
         if(lower.indexOf(familyIconMap[i].keys[j]) !== -1) return familyIconMap[i].icon;
       }
     }
-    return 'ti-package';
+    return 'svg-generique';
   }
 
   function showHome(){
@@ -1825,7 +1865,7 @@
         var icon = getFamilyIcon(f);
         var count = familyCounts[f];
         return '<div class="home-family-card" data-family="'+escapeHtml(f)+'">'
-          + '<div class="home-family-icon"><i class="ti '+icon+'" aria-hidden="true"></i></div>'
+          + '<div class="home-family-icon">'+renderFamilyIconHtml(icon)+'</div>'
           + '<div class="home-family-name">'+escapeHtml(f)+'</div>'
           + '<div class="home-family-count">'+count+(count>1?' références':' référence')+'</div>'
           + '</div>';
@@ -1862,43 +1902,17 @@
   });
 
   // ---------- Picker icônes famille ----------
-  var ICON_LIST = [
-    'ti-package','ti-plug-connected','ti-plug','ti-antenna','ti-bolt',
-    'ti-circuit-switchclosed','ti-circuit-resistor','ti-cpu','ti-device-desktop',
-    'ti-settings','ti-settings-2','ti-tool','ti-tools',
-    'ti-wifi','ti-bluetooth','ti-usb','ti-network',
-    'ti-toggle-right','ti-toggle-left','ti-switch',
-    'ti-box','ti-boxes','ti-archive',
-    'ti-temperature','ti-thermometer','ti-droplet','ti-wind',
-    'ti-eye','ti-scan','ti-qrcode','ti-barcode',
-    'ti-lock','ti-key','ti-shield',
-    'ti-battery','ti-battery-charging',
-    'ti-bulb','ti-sun','ti-moon',
-    'ti-motor','ti-engine','ti-robot',
-    'ti-chart-bar','ti-chart-line','ti-chart-pie',
-    'ti-file','ti-files','ti-folder',
-    'ti-truck','ti-car','ti-forklift',
-    'ti-home','ti-building','ti-door',
-    'ti-ruler','ti-ruler-2','ti-dimensions',
-    'ti-camera','ti-video','ti-microphone',
-    'ti-phone','ti-headphones','ti-radio',
-    'ti-printer','ti-scan','ti-clipboard',
-    'ti-hammer','ti-screwdriver','ti-drill',
-    'ti-alarm','ti-bell','ti-urgent',
-    'ti-heart','ti-star','ti-flag',
-    'ti-clock','ti-calendar','ti-timer',
-    'ti-map','ti-map-pin','ti-compass',
-    'ti-cloud','ti-cloud-upload','ti-cloud-download',
-    'ti-database','ti-server','ti-terminal',
-    'ti-code','ti-brackets','ti-api',
-    'ti-refresh','ti-reload','ti-rotate',
-    'ti-filter','ti-search','ti-zoom-in',
-    'ti-trash','ti-edit','ti-copy',
-    'ti-check','ti-x','ti-alert-triangle',
-    'ti-info-circle','ti-question-mark','ti-help'
-  ];
+  // Liste des pictogrammes SVG maison (js/familyIcons.js) — remplace l'ancien
+  // choix de ~90 icônes Tabler génériques par un set restreint mais parlant,
+  // pensé pour un catalogue électrique.
+  var ICON_LIST = FAMILY_ICON_CHOICES;
 
-  var selectedFamilyIcon = 'ti-package';
+  function _setFamilyIconPreview(icon){
+    var el = document.getElementById('familyIconPreview');
+    if(el) el.innerHTML = renderFamilyIconHtml(icon);
+  }
+
+  var selectedFamilyIcon = 'svg-generique';
   var familyIconRow      = document.getElementById('familyIconRow');
   var familyIconPreviewI = document.getElementById('familyIconPreviewI');
   var familyIconPickerBtn = document.getElementById('familyIconPickerBtn');
@@ -1917,10 +1931,10 @@
 
   function renderIconGrid(filter){
     var list = ICON_LIST.filter(function(ic){
-      return !filter || ic.replace('ti-','').indexOf(filter.toLowerCase()) !== -1;
+      return !filter || ic.replace('svg-','').indexOf(filter.toLowerCase()) !== -1;
     });
     iconPickerGrid.innerHTML = list.map(function(ic){
-      return '<div class="icon-picker-item'+(ic===selectedFamilyIcon?' selected':'')+'" data-icon="'+ic+'" title="'+ic.replace('ti-','')+'"><i class="ti '+ic+'"></i></div>';
+      return '<div class="icon-picker-item'+(ic===selectedFamilyIcon?' selected':'')+'" data-icon="'+ic+'" title="'+ic.replace('svg-','')+'">'+renderFamilyIconHtml(ic)+'</div>';
     }).join('');
     iconPickerGrid.querySelectorAll('.icon-picker-item').forEach(function(el){
       el.addEventListener('click', function(){
@@ -1929,7 +1943,7 @@
         iconPickerGrid.querySelectorAll('.icon-picker-item').forEach(function(x){ x.classList.remove('selected'); });
         el.classList.add('selected');
         // Mettre à jour l'aperçu dans le formulaire
-        familyIconPreviewI.className = 'ti '+icon;
+        _setFamilyIconPreview(icon);
         iconPickerModal.classList.remove('show');
         // Contexte Paramètres : sauvegarder sur tous les produits de la famille
         if(settingsEditingFamily){
@@ -1938,11 +1952,15 @@
           saveFamilyIcons();
           var _touchedRefs = [];
           products.forEach(function(p){
-            if(p.family === _editedFamily){ p.familyIcon = icon; if(p.ref) _touchedRefs.push(p.ref); }
+            if(p.family === _editedFamily){
+              p.familyIcon = icon;
+              p.updatedAt = Date.now(); // sans ça le serveur ignore l'envoi (pas plus récent que sa version)
+              if(p.ref) _touchedRefs.push(p.ref);
+            }
           });
           save(true);
           var thumb = document.getElementById('settings-thumb-'+_editedFamily);
-          if(thumb) thumb.className = 'ti '+icon;
+          if(thumb) thumb.innerHTML = renderFamilyIconHtml(icon);
           settingsEditingFamily = null;
           renderHome();
           verifyFamilyIconOnServer(_editedFamily, icon, _touchedRefs);
@@ -1973,7 +1991,7 @@
     if(val && knownFamilies.indexOf(val) === -1){
       // Nouvelle famille → montrer le picker
       selectedFamilyIcon = getFamilyIcon(val); // pré-sélectionner par mots-clés
-      familyIconPreviewI.className = 'ti '+selectedFamilyIcon;
+      _setFamilyIconPreview(selectedFamilyIcon);
       familyIconRow.classList.add('show');
     } else {
       familyIconRow.classList.remove('show');

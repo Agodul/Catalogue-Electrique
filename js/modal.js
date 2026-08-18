@@ -159,7 +159,7 @@
   var extractStatus = document.getElementById('extractStatus');
   var modalLeftFoot = document.getElementById('modalLeftFoot');
 
-  var PRICE_ALERT_THRESHOLD = 10; // % d'augmentation à partir duquel on signale une grosse hausse
+  var PRICE_ALERT_THRESHOLD = 3; // % d'augmentation à partir duquel on signale une grosse hausse
   var btnOpenPriceModal   = document.getElementById('btnOpenPriceModal');
   var priceModalOverlay   = document.getElementById('priceModalOverlay');
 
@@ -391,8 +391,8 @@
   function resetForm(){
     fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
     familyIconRow.classList.remove('show');
-    selectedFamilyIcon = 'ti-package';
-    familyIconPreviewI.className = 'ti ti-package';
+    selectedFamilyIcon = 'svg-generique';
+    _setFamilyIconPreview('svg-generique');
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
     renderTagSuggestions();
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
@@ -602,10 +602,12 @@
         modalTitle.textContent = 'Modifier le produit';
         modalLeftFoot.textContent = 'Ajouté le ' + (p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—');
         fillFormFromProduct(p);
+        _formOriginalSnapshot = _formSnapshotNow();
       }
     }else{
       modalTitle.textContent = 'Ajouter un produit';
       modalLeftFoot.textContent = '';
+      _formOriginalSnapshot = null;
 
       if(window.innerWidth <= 768){
         switchTab('manual');
@@ -742,10 +744,30 @@
       inputs.forEach(function(el){ el.removeAttribute('readonly'); });
     }, 300);
   }
+  // En mode édition, le formulaire est pré-rempli avec le produit existant —
+  // hasUnsavedInput() ne doit alerter que si quelque chose a réellement
+  // changé par rapport à ces valeurs de départ, pas juste si les champs sont
+  // non-vides (sinon la confirmation "Annuler la saisie" apparaît à chaque
+  // fermeture, même sans la moindre modification — bug remonté par
+  // l'utilisateur). Capturé dans openModal() juste après le pré-remplissage.
+  var _formOriginalSnapshot = null;
+  function _formSnapshotNow(){
+    return {
+      brand: fBrand.value.trim(), ref: fRef.value.trim(), family: fFamily.value.trim(),
+      series: fSeries.value.trim(), url: fUrl.value.trim(), html: fHtml.value.trim(),
+      name: fName.value.trim(), desc: fDesc.value.trim(), price: fPrice.value.trim(),
+      photo: fPhoto.value.trim()
+    };
+  }
   function hasUnsavedInput(){
-    return !!(fBrand.value.trim() || fRef.value.trim() || fFamily.value.trim() || fSeries.value.trim() ||
-              fUrl.value.trim() || fHtml.value.trim() || fName.value.trim() || fDesc.value.trim() ||
-              fPrice.value.trim() || fPhoto.value.trim());
+    var current = _formSnapshotNow();
+    if(!_formOriginalSnapshot){
+      // Mode création : le formulaire démarre vide, tout champ rempli est une saisie à protéger.
+      return !!(current.brand || current.ref || current.family || current.series ||
+                current.url || current.html || current.name || current.desc ||
+                current.price || current.photo);
+    }
+    return Object.keys(current).some(function(k){ return current[k] !== _formOriginalSnapshot[k]; });
   }
   function resetProposeModeUI(){
     if(!window._proposeMode) return;
@@ -1005,6 +1027,7 @@
     editingId = null;
     resetForm();
     fillFormFromProduct(p);
+    _formOriginalSnapshot = _formSnapshotNow();
     modalTitle.textContent = (isNew ? 'Nouveau produit : ' : 'Modification proposée : ') + (p.ref || '');
     modalLeftFoot.textContent = 'Soumis par ' + user + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
     var btnSave = document.getElementById('btnSave');

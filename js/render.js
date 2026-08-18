@@ -152,7 +152,7 @@
     // Prix + badge hausse + prix d'origine barré + remise
     var jumpPct = getLastPriceJumpPct(p);
     var badge = jumpPct!==null && jumpPct>=PRICE_ALERT_THRESHOLD
-      ? ' <span class="price-jump-badge"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>' : '';
+      ? ' <span class="price-jump-badge price-jump-badge-lg"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>' : '';
     var orig = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
     var discBadgeVm = discPct !== null && discPct < 0
@@ -766,9 +766,15 @@
     if(tagItems.length){
       tags = '<div class="tags">' + tagItems.join('') + '</div>';
     }
+    // La bulle de hausse reste avec le reste des infos prix (retour
+    // utilisateur : ne pas l'isoler sur la photo). Pour garder l'alignement
+    // entre cartes même quand elle retombe sur une 2e ligne (prix + remise +
+    // hausse ne tiennent pas toujours sur une seule ligne selon la longueur
+    // des nombres), .price-row réserve une hauteur fixe pour 2 lignes — voir
+    // règle CSS .card .body-bottom .price-row.
     var jumpPct = getLastPriceJumpPct(p);
     var priceJumpBadge = jumpPct !== null && jumpPct >= PRICE_ALERT_THRESHOLD
-      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>'
+      ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix"><i class="ti ti-alert-triangle" aria-hidden="true"></i> +'+jumpPct.toFixed(0)+'%</span>'
       : '';
     var origPrice = getOriginalPrice(p);
     var discPct = getDiscountPct(p);

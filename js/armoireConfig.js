@@ -72,16 +72,25 @@ function _armoireFormatLeadDays(days){
 
 function _armoireComputeStats(){
   var totalPrice = 0, hasPrice = false, leadDays = [];
+  // Le délai qui compte réellement pour pouvoir tout assembler est celui de
+  // la référence la plus lente (on attend toutes les pièces avant de monter
+  // l'armoire) — une moyenne seule masque ce goulot d'étranglement quand une
+  // référence traîne loin derrière les autres (retour utilisateur). On garde
+  // sa référence pour pouvoir l'afficher, pas juste le nombre de jours.
+  var maxLeadDays = null, maxLeadRef = null;
   _armoireDraft.forEach(function(it){
     var p = _armoireProductByRef(it.ref);
     if(!p) return;
     var unit = parsePriceNumber(p.price);
     if(unit != null){ totalPrice += unit * it.qty; hasPrice = true; }
     var days = _armoireParseLeadTimeDays(p.leadTime);
-    if(days != null) leadDays.push(days);
+    if(days != null){
+      leadDays.push(days);
+      if(maxLeadDays === null || days > maxLeadDays){ maxLeadDays = days; maxLeadRef = it.ref; }
+    }
   });
   var avgLeadDays = leadDays.length ? (leadDays.reduce(function(a, b){ return a + b; }, 0) / leadDays.length) : null;
-  return { totalPrice: hasPrice ? totalPrice : null, avgLeadDays: avgLeadDays, leadCount: leadDays.length };
+  return { totalPrice: hasPrice ? totalPrice : null, avgLeadDays: avgLeadDays, maxLeadDays: maxLeadDays, maxLeadRef: maxLeadRef, leadCount: leadDays.length };
 }
 
 function _armoireRenderStats(){
@@ -92,9 +101,12 @@ function _armoireRenderStats(){
   var priceHtml = stats.totalPrice != null
     ? stats.totalPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
     : '—';
-  var leadHtml = stats.avgLeadDays != null
-    ? '~' + _armoireFormatLeadDays(stats.avgLeadDays) + (stats.leadCount < _armoireDraft.length ? ' <span style="opacity:.6;font-weight:500;">(' + stats.leadCount + '/' + _armoireDraft.length + ')</span>' : '')
-    : '—';
+  var countSuffix = stats.leadCount < _armoireDraft.length ? ' <span style="opacity:.6;font-weight:500;">(' + stats.leadCount + '/' + _armoireDraft.length + ')</span>' : '';
+  var leadAvgHtml = stats.avgLeadDays != null ? '~' + _armoireFormatLeadDays(stats.avgLeadDays) + countSuffix : '—';
+  // Délai le plus long = la vraie durée d'attente avant de pouvoir tout
+  // assembler (bloqué par la référence la plus lente) — la moyenne seule
+  // masque ce cas quand une référence traîne loin derrière les autres.
+  var leadMaxHtml = stats.maxLeadDays != null ? _armoireFormatLeadDays(stats.maxLeadDays) + countSuffix : '—';
   el.style.display = 'flex';
   el.innerHTML =
     '<div style="flex:1;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0;">'
@@ -103,7 +115,11 @@ function _armoireRenderStats(){
     + '</div>'
     + '<div style="flex:1;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0;">'
       + '<div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;">Délai moyen</div>'
-      + '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leadHtml + '</div>'
+      + '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leadAvgHtml + '</div>'
+    + '</div>'
+    + '<div class="armoire-stat-delai-max" style="flex:1;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0;' + (stats.leadCount ? 'cursor:pointer;' : '') + '"' + (stats.leadCount ? ' title="Voir le détail des délais par référence"' : '') + '>'
+      + '<div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">Délai max' + (stats.leadCount ? ' <i class="ti ti-list-details" style="font-size:11px;vertical-align:-1px;" aria-hidden="true"></i>' : '') + '</div>'
+      + '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leadMaxHtml + '</div>'
     + '</div>';
 }
 
@@ -283,6 +299,40 @@ function _armoireShowEntryDetails(entry){
   customAlert(escapeHtml(entry.name), '<div style="max-height:min(50vh,340px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;margin:-4px 0 -4px;padding-right:12px;text-align:left;white-space:normal;">' + rows + '</div>');
 }
 
+// Détail des délais par référence (popup au clic sur la case "Délai max") —
+// triés du plus long au plus court, pour repérer d'un coup d'œil quelles
+// références tirent le délai global vers le haut.
+function _armoireShowLeadTimesDetails(){
+  var rows = _armoireDraft.map(function(it){
+    var p = _armoireProductByRef(it.ref);
+    var name = p ? (p.name || it.ref) : it.ref;
+    var days = p ? _armoireParseLeadTimeDays(p.leadTime) : null;
+    return { ref: it.ref, name: name, days: days, leadTime: p ? (p.leadTime || '') : '' };
+  }).sort(function(a, b){
+    if(a.days == null && b.days == null) return 0;
+    if(a.days == null) return 1;
+    if(b.days == null) return -1;
+    return b.days - a.days;
+  });
+  var knownDays = rows.filter(function(r){ return r.days != null; }).map(function(r){ return r.days; });
+  var maxDays = knownDays.length ? Math.max.apply(null, knownDays) : null;
+  var html = rows.map(function(r){
+    var isMax = r.days != null && maxDays != null && r.days === maxDays;
+    var delayLabel = r.days != null ? _armoireFormatLeadDays(r.days) : (r.leadTime || 'Non renseigné');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(r.name) + '</div>'
+      + '<div style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(r.ref) + '</div>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + (isMax ? 'var(--copper-deep)' : 'var(--ink-soft)') + ';flex-shrink:0;white-space:nowrap;display:flex;align-items:center;gap:4px;">'
+        + (isMax ? '<i class="ti ti-alert-triangle" style="font-size:13px;" aria-hidden="true"></i>' : '')
+        + escapeHtml(delayLabel)
+      + '</div>'
+      + '</div>';
+  }).join('');
+  customAlert('Délais par référence', '<div style="max-height:min(50vh,340px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;margin:-4px 0 -4px;padding-right:12px;text-align:left;white-space:normal;">' + html + '</div>');
+}
+
 function _armoireRenderBlocksList(){
   var el = document.getElementById('armoireConfigBlocksList');
   if(!el) return;
@@ -328,6 +378,10 @@ async function _armoireExportExcel(){
   var allItems = [];
   var grandTotal = 0, grandHasPrice = false, grandQty = 0;
   var allLeadDays = [];
+  // Référence qui bloque la livraison complète (délai le plus long) — voir
+  // même raisonnement que _armoireComputeStats : la moyenne seule masque ce
+  // goulot d'étranglement.
+  var grandMaxLead = null, grandMaxLeadItem = null;
   _armoireDraft.forEach(function(it){
     var p = _armoireProductByRef(it.ref);
     var supplier = (p && p.supplier && p.supplier.trim()) ? p.supplier.trim() : ((p && p.brand) ? p.brand : 'Fournisseur non renseigné');
@@ -349,7 +403,10 @@ async function _armoireExportExcel(){
     allItems.push(item);
     grandQty += it.qty;
     if(total != null){ grandTotal += total; grandHasPrice = true; }
-    if(leadDays != null) allLeadDays.push(leadDays);
+    if(leadDays != null){
+      allLeadDays.push(leadDays);
+      if(grandMaxLead === null || leadDays > grandMaxLead){ grandMaxLead = leadDays; grandMaxLeadItem = item; }
+    }
   });
   var supplierNames = Object.keys(groups).sort();
   var grandAvgLead = allLeadDays.length ? (allLeadDays.reduce(function(a, b){ return a + b; }, 0) / allLeadDays.length) : null;
@@ -369,6 +426,7 @@ async function _armoireExportExcel(){
   summary.push(['Quantité totale', grandQty]);
   summary.push(['Prix total estimé (€)', grandHasPrice ? _armoireRound2(grandTotal) : 'N/C']);
   summary.push(['Délai moyen estimé', grandAvgLead != null ? _armoireFormatLeadDays(grandAvgLead) : 'N/C']);
+  summary.push(['Délai le plus long estimé', grandMaxLead != null ? _armoireFormatLeadDays(grandMaxLead) + ' (' + grandMaxLeadItem.ref + (grandMaxLeadItem.name ? ' — ' + grandMaxLeadItem.name : '') + ')' : 'N/C']);
   summary.push([]);
   summary.push(['RÉPARTITION PAR FOURNISSEUR']);
   summary.push(['Fournisseur', 'Références', 'Quantité', 'Montant (€)', 'Délai estimé']);
@@ -493,6 +551,32 @@ function _armoireSwitchTab(tab){
   if(savedEl) savedEl.style.display = tab === 'configs' ? '' : 'none';
 }
 
+// ── Tiroir "Mes blocs / Mes configurations" ──────────────────────────────
+// Ouvert à la demande par-dessus la liste de familles (voir CSS
+// .armoire-blocks-drawer) au lieu d'être empilé en permanence dessous.
+
+function _armoireOpenBlocksDrawer(){
+  var drawer = document.getElementById('armoireBlocksDrawer');
+  if(drawer) drawer.style.display = 'flex';
+  if(!_armoireDrawerOutsideHandler){
+    _armoireDrawerOutsideHandler = function(e){
+      var d = document.getElementById('armoireBlocksDrawer');
+      var trigger = document.getElementById('armoireBlocksDrawerTrigger');
+      if(!d || d.style.display === 'none') return;
+      if(d.contains(e.target) || (trigger && trigger.contains(e.target))) return;
+      _armoireCloseBlocksDrawer();
+    };
+    document.addEventListener('mousedown', _armoireDrawerOutsideHandler);
+  }
+}
+
+function _armoireCloseBlocksDrawer(){
+  var drawer = document.getElementById('armoireBlocksDrawer');
+  if(drawer) drawer.style.display = 'none';
+}
+
+var _armoireDrawerOutsideHandler = null;
+
 // ── Bascule mobile "Parcourir" / "Ma configuration" ──────────────────────
 // Sous 768px, empiler les deux colonnes moitié-moitié les rendait
 // inutilisables (listes minuscules, double scroll) — une seule colonne
@@ -560,7 +644,7 @@ function _armoireSafeAreaTop(){
 function _armoireSyncMobileHeight(){
   var modal = document.getElementById('armoireConfigModal');
   if(!modal) return;
-  if(_armoireOriginalHeight === null) _armoireOriginalHeight = modal.style.height || 'min(760px,92vh)';
+  if(_armoireOriginalHeight === null) _armoireOriginalHeight = modal.style.height || 'min(820px,90vh)';
   if(window.innerWidth > 768){
     // Desktop / tablette large : laisser le CSS gérer, ne pas polluer avec du inline.
     modal.style.position = '';
@@ -602,6 +686,7 @@ function _armoireOpen(){
   _armoireBrowseFamily = null;
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.value = '';
+  _armoireCloseBlocksDrawer();
   _armoireSetMobileView('browse');
   _armoireRenderDraft();
   _armoireRenderSearchResults('');
@@ -622,6 +707,7 @@ function _armoireClose(){
   var overlay = document.getElementById('armoireConfigOverlay');
   if(overlay) overlay.style.display = 'none';
   document.body.classList.remove('modal-open');
+  _armoireCloseBlocksDrawer();
   if(_armoireViewportHandler && window.visualViewport){
     window.visualViewport.removeEventListener('resize', _armoireViewportHandler);
     window.visualViewport.removeEventListener('scroll', _armoireViewportHandler);
@@ -645,6 +731,12 @@ function _armoireClose(){
 
   var btnClose = document.getElementById('armoireConfigCloseBtn');
   if(btnClose) btnClose.addEventListener('click', _armoireClose);
+
+  var btnDrawerTrigger = document.getElementById('armoireBlocksDrawerTrigger');
+  if(btnDrawerTrigger) btnDrawerTrigger.addEventListener('click', _armoireOpenBlocksDrawer);
+
+  var btnDrawerClose = document.getElementById('armoireBlocksDrawerClose');
+  if(btnDrawerClose) btnDrawerClose.addEventListener('click', _armoireCloseBlocksDrawer);
 
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.addEventListener('input', function(){ _armoireRenderSearchResults(searchInput.value); });
@@ -680,6 +772,14 @@ function _armoireClose(){
     if(e.target.closest('.armoire-qty-plus')) _armoireSetQty(ref, item.qty + 1);
     else if(e.target.closest('.armoire-qty-minus')) _armoireSetQty(ref, item.qty - 1);
     else if(e.target.closest('.armoire-item-remove')) _armoireRemoveFromDraft(ref);
+  });
+
+  // Délégation sur le conteneur des stats plutôt que sur la case elle-même :
+  // son innerHTML est régénéré à chaque _armoireRenderStats(), un listener
+  // posé directement sur la case serait perdu au premier re-rendu.
+  var statsEl = document.getElementById('armoireConfigStats');
+  if(statsEl) statsEl.addEventListener('click', function(e){
+    if(e.target.closest('.armoire-stat-delai-max')) _armoireShowLeadTimesDetails();
   });
 
   var clearBtn = document.getElementById('armoireConfigClearBtn');

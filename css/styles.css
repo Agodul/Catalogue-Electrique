@@ -188,7 +188,11 @@
   }
 
   /* ===== LAYOUT ===== */
-  .wrap{ max-width:1180px; margin:0 auto; padding:28px 32px 80px; }
+  /* 1180px laissait de grandes marges vides sur les écrans larges (retour
+     utilisateur, capture à l'appui). Élargi à 1400px + minmax du grid relevé
+     de 200 à 230px (voir .grid plus bas) pour que ce supplément élargisse
+     les cartes existantes plutôt que d'en faire tenir davantage par rangée. */
+  .wrap{ max-width:1400px; margin:0 auto; padding:28px 32px 80px; }
 
   .toolbar{
     display:none; gap:10px; align-items:center; flex-wrap:nowrap;
@@ -274,7 +278,7 @@
   /* ── Variante A : grille compacte (photo carrée) ── */
   .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+    grid-template-columns:repeat(auto-fill, minmax(230px,1fr));
     gap:14px;
   }
 
@@ -355,7 +359,12 @@
     margin-top:auto; padding-top:8px;
     flex-shrink:0;
   }
-  .card .body-bottom .price-row{ display:flex; align-items:center; gap:5px; flex-shrink:0; }
+  /* min-height : réserve la place du pire cas (remise + hausse tarifaire
+     forçant un retour à la ligne, ex. nombres à 5 chiffres) pour que les tags
+     famille/série démarrent toujours à la même hauteur d'une carte à l'autre
+     dans la même rangée, que le prix tienne sur 1 ou 2 lignes (retour
+     utilisateur — mesuré en pratique : ~28px sur 1 ligne, ~49px sur 2). */
+  .card .body-bottom .price-row{ display:flex; align-items:center; gap:5px; flex-shrink:0; min-height:50px; }
   .card .tags{ display:flex; gap:6px; flex-wrap:wrap; overflow:visible; align-items:baseline; }
   .card .tag{
     font-size:11px; letter-spacing:.02em;
@@ -393,30 +402,42 @@
     display:flex; align-items:center; gap:5px; flex-shrink:0;
   }
   .price-original{
-    font-size:13px; color:var(--ink-soft);
+    font-size:12px; color:var(--ink-soft);
     text-decoration:line-through; font-weight:400;
-    margin-right:5px;
+    margin-right:4px;
   }
   .vm-price-original{
     font-size:16px; color:var(--ink-soft);
     text-decoration:line-through; font-weight:400;
     margin-right:6px;
   }
+  /* Taille resserrée pour que prix + remise + hausse tiennent sur une seule
+     ligne dans une carte du catalogue (~200px) — un produit avec remise ET
+     hausse de prix simultanées débordait sur 2 lignes, ce qui décalait les
+     tags famille/série vers le bas et cassait l'alignement avec les cartes
+     voisines de la même rangée (retour utilisateur). */
   .price-jump-badge{
-    font-size: 14px;
-    display:inline-block; margin-left:6px;
+    font-size: 11.5px;
+    display:inline-flex; align-items:center; gap:2px; margin-left:4px;
     color:#fff; background:var(--warn);
-    padding: 2px 5px 0px 5px; border-radius:10px; vertical-align:middle;
+    padding: 1px 5px 1px 4px; border-radius:10px; vertical-align:middle;
   }
+  .price-jump-badge i{ font-size:11px; }
   .discount-badge{
-    font-size: 14px;
-    display:inline-block; margin-left:6px;
+    font-size: 11.5px;
+    display:inline-block; margin-left:4px;
     color:#fff; background:var(--moss);
-    padding:1px 6px; border-radius:10px; vertical-align:middle;
+    padding:1px 5px; border-radius:10px; vertical-align:middle;
   }
   .discount-badge-lg{
     font-size:14px; padding:2px 9px;
   }
+  /* Variante utilisée sur la fiche détail (espace non contraint comme dans
+     une carte) — remet la taille d'origine, cohérente avec discount-badge-lg. */
+  .price-jump-badge-lg{
+    font-size:14px; padding:2px 7px 2px 6px;
+  }
+  .price-jump-badge-lg i{ font-size:13px; }
   .card{ cursor:pointer; }
   .card .price-row{ margin-top:auto; padding-top:8px; }
 
@@ -1045,6 +1066,9 @@
     .price-original{ font-size:8.5px; }
     .discount-badge{ font-size:9px; padding:1px 3px; }
     .price-jump-badge{ font-size:9.5px; padding: 2px 6px 0px 5px; }
+    /* Réserve mobile plus petite (texte plus compact qu'en desktop) — voir
+       .card .body-bottom .price-row en base pour le raisonnement complet. */
+    .card .body-bottom .price-row{ min-height:42px; }
     .card .tag{ font-size:8px; padding:1px 3px; }
 
     /* ── Fiche produit : bottom sheet ── */
@@ -1302,9 +1326,13 @@
   .vm-desc-toggle:hover{ text-decoration:underline; }
 
   /* ── Page d'accueil familles ── */
+  /* 900px laissait de grandes marges vides sur écran large, même logique
+     que .wrap (page catalogue) — élargi à 1200px. Pas allé jusqu'à 1400px
+     comme .wrap : sans photos, les tuiles familles/stats commençaient à
+     paraître trop étirées/vides à cette largeur (vérifié visuellement). */
   #homePage{
     padding:24px 20px 40px;
-    max-width:900px;
+    max-width:1200px;
     margin:0 auto;
   }
   #homePage.hidden{ display:none; }
@@ -1365,6 +1393,10 @@
     display:flex; align-items:center; justify-content:center;
     font-size:24px; color:var(--copper);
   }
+  /* Dimensionne les pictogrammes SVG maison (js/familyIcons.js) — font-size
+     ci-dessus ne sert qu'au repli police Tabler (anciennes icônes déjà
+     enregistrées), les <svg> ont besoin d'une taille explicite. */
+  .home-family-icon svg, .home-family-icon img{ width:24px; height:24px; flex-shrink:0; }
   .home-family-name{
     font-size:13px; font-weight:700;
     color:var(--ink); line-height:1.2;
@@ -1395,6 +1427,7 @@
     .home-stat-val{ font-size:20px; }
     .home-family-card{ padding:12px 8px 10px; }
     .home-family-icon{ width:40px; height:40px; font-size:20px; border-radius:10px; }
+    .home-family-icon svg, .home-family-icon img{ width:20px; height:20px; }
     .home-family-name{ font-size:12px; }
     .home-family-count{ font-size:10px; }
     #homePage{ padding:16px 12px 32px; }
@@ -1406,6 +1439,7 @@
     .home-stat-val{ font-size:17px; }
     .home-family-card{ padding:10px 6px 8px; }
     .home-family-icon{ width:34px; height:34px; font-size:17px; }
+    .home-family-icon svg, .home-family-icon img{ width:17px; height:17px; }
     .home-family-name{ font-size:11px; }
   }
 
@@ -1532,6 +1566,7 @@
     justify-content:center; font-size:20px; color:var(--copper);
     border:2px solid var(--copper); flex-shrink:0;
   }
+  .family-icon-preview svg, .family-icon-preview img{ width:20px; height:20px; flex-shrink:0; }
   .family-icon-picker-btn{
     font-size:12px; padding:6px 12px;
     border:1px solid var(--line); border-radius:6px;
@@ -1578,6 +1613,7 @@
     font-size:20px; color:var(--ink); cursor:pointer;
     transition:border-color .12s, background .12s;
   }
+  .icon-picker-item svg, .icon-picker-item img{ width:20px; height:20px; flex-shrink:0; }
   .icon-picker-item:hover{ border-color:var(--copper); background:#EEF4FF; color:var(--copper); }
   .icon-picker-item.selected{ border-color:var(--copper); background:#EEF4FF; color:var(--copper); }
 
@@ -1718,6 +1754,7 @@
     justify-content:center; font-size:20px; color:var(--copper);
     flex-shrink:0;
   }
+  .family-icon-thumb svg, .family-icon-thumb img{ width:20px; height:20px; flex-shrink:0; }
   .family-icon-name{
     flex:1; font-size:13px; color:var(--ink); font-weight:500;
   }
@@ -1806,7 +1843,7 @@
   /* ── Grille tablette 641-1024px ──────────────────────────────── */
   @media(min-width:769px) and (max-width:1024px){
     /* Grande tablette (iPad, Galaxy Tab...) */
-    .grid{ grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+    .grid{ grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
     header{ padding:0 20px; height:64px; }
     .hdr-count-chip{ display:inline-block; }
     .wrap{ padding:16px 20px 80px; }
@@ -2701,6 +2738,22 @@
   }
 }
 
+/* ── Configurateur d'armoire — tiroir "Mes blocs / Mes configurations" ──
+   Ouvert à la demande par-dessus la liste de familles (bouton "Mes blocs"
+   à côté du champ de recherche) au lieu d'être empilé en permanence
+   dessous — ça compressait la liste de familles (retour utilisateur).
+   display géré en JS (armoireConfig.js) : 'flex' à l'ouverture, 'none'
+   à la fermeture — cette règle ne fixe que l'apparence. */
+.armoire-blocks-drawer{
+  position:absolute; top:0; right:0; bottom:0;
+  width:380px; max-width:88%;
+  background:var(--paper-card);
+  border-left:1px solid var(--line);
+  box-shadow:-8px 0 24px rgba(0,0,0,.12);
+  flex-direction:column;
+  z-index:5;
+}
+
 /* ── Configurateur d'armoire — mobile / tablette ─────────────────
    Sur desktop, .armoire-cfg-body est une rangée à deux colonnes
    (parcours produits | configuration en cours). En dessous de
@@ -2758,6 +2811,13 @@
   }
   .armoire-cfg-browse.armoire-mobile-hidden,
   .armoire-cfg-draft.armoire-mobile-hidden{ display:none !important; }
+  /* Sur mobile le tiroir "Mes blocs" recouvre toute la colonne parcours
+     (au lieu d'un panneau ancré à droite comme sur desktop) — pas assez
+     de largeur pour un tiroir partiel. */
+  .armoire-blocks-drawer{
+    left:0 !important; width:100% !important; max-width:100% !important;
+    border-radius:16px 16px 0 0;
+  }
 }
 #armoireMobileDraftBadge{
   display:inline-block; margin-left:5px; padding:1px 6px;
