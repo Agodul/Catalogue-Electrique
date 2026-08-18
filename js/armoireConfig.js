@@ -250,6 +250,11 @@ function _armoireListItemHtml(entry, kind){
   var actionClass = kind === 'block' ? 'armoire-block-insert' : 'armoire-config-load';
   var delClass = kind === 'block' ? 'armoire-block-del' : 'armoire-config-del';
   var infoClass = kind === 'block' ? 'armoire-block-info' : 'armoire-config-info';
+  // Suppression réservée aux comptes ayant le droit d'édition ou de
+  // suppression — le configurateur est ouvert à tout utilisateur connecté,
+  // mais pas la suppression des blocs/configs de tout le monde.
+  var perms = window._userPerms || {};
+  var canDeleteEntry = !!(perms.canEdit || perms.canDelete || perms.isAdmin);
   return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
@@ -257,7 +262,7 @@ function _armoireListItemHtml(entry, kind){
     + '</div>'
     + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;font-style:italic;font-family:Georgia,serif;">i</button>'
     + '<button type="button" class="' + actionClass + '" style="padding:5px 9px;border-radius:7px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">' + actionLabel + '</button>'
-    + '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>'
+    + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
     + '</div>';
 }
 
