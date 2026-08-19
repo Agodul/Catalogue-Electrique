@@ -57,7 +57,12 @@
     'nos','vos','permet','permettant','ideal','idéal','produit','produits'];
 
   function extractTagSuggestions(desc, existingTags){
-    var norm = typeof normalizeSearch === 'function' ? normalizeSearch(desc || '') : (desc||'').toLowerCase();
+    // Retirer les balises HTML avant d'extraire des mots — sans ça, une
+    // description contenant du HTML collé par erreur (ex. copié depuis une
+    // page web) polluait les suggestions avec des mots comme "html" ou
+    // "script" au lieu de vrais mots-clés produit (retour utilisateur).
+    var cleanDesc = (desc || '').replace(/<[^>]*>/g, ' ');
+    var norm = typeof normalizeSearch === 'function' ? normalizeSearch(cleanDesc) : cleanDesc.toLowerCase();
     var words = norm.split(/[\s-]+/).filter(Boolean);
     var existing = {};
     (existingTags||[]).forEach(function(t){
@@ -667,7 +672,7 @@
               pForPdf.hasDoc      = hasAny;
               pForPdf.docFilename = hasAny ? pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ') : '';
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-              if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+              if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
               showToast('Fichier supprimé ✓', 'ok', 2000);
               _pdfRenderList(pForPdf._docFiles);
             })
@@ -694,7 +699,7 @@
             pForPdf.hasDoc = true;
             pForPdf.docFilename = pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ');
             var idx2 = products.findIndex(function(x){ return x.id === editingId; });
-            if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true); }
+            if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
             showToast(arr.length+' PDF envoyé'+(arr.length>1?'s':'')+' ✓', 'ok', 2500);
             _pdfRenderList(pForPdf._docFiles);
             if(modalPdfInput) modalPdfInput.value = '';

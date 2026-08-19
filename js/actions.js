@@ -191,6 +191,13 @@
       return;
     }
 
+    // Produits réellement touchés par cet enregistrement (le produit
+    // sauvegardé + les éventuels autres produits de la même famille dont
+    // l'icône est propagée ci-dessous) — transmis à save() pour n'envoyer
+    // que ceux-ci au serveur plutôt que tout le catalogue à chaque fois
+    // (retour utilisateur + dev : gros payload identifié comme cause d'échec
+    // de synchro pour les comptes non-admin).
+    var touchedForSync = [];
     if(editingId){
       var idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){
@@ -212,14 +219,21 @@
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
         products[idx] = Object.assign({}, existing, payload);
+        touchedForSync.push(products[idx]);
         // Propager l'icône à tous les produits de la même famille — bump
         // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
-        // envoi (pas plus récent que sa version déjà enregistrée).
+        // envoi (pas plus récent que sa version déjà enregistrée). Condition
+        // p.familyIcon !== payload.familyIcon ajoutée : sans elle, cette
+        // boucle retouchait TOUS les frères de la famille à CHAQUE
+        // modification du produit (même sans rapport avec l'icône, ex.
+        // changer juste le fournisseur), gonflant inutilement la liste des
+        // produits à synchroniser.
         if(familyVal && payload.familyIcon){
           products.forEach(function(p){
-            if(p.family === familyVal && p.id !== products[idx].id){
+            if(p.family === familyVal && p.id !== products[idx].id && p.familyIcon !== payload.familyIcon){
               p.familyIcon = payload.familyIcon;
               p.updatedAt = Date.now();
+              touchedForSync.push(p);
             }
           });
         }
@@ -234,6 +248,7 @@
           if(p.family === familyVal && !p.familyIcon){
             p.familyIcon = payload.familyIcon;
             p.updatedAt = Date.now();
+            touchedForSync.push(p);
           }
         });
       }
@@ -241,6 +256,7 @@
       payload.updatedAt = Date.now();
       payload.priceHistory = initialHistory;
       products.push(payload);
+      touchedForSync.push(payload);
     }
     // Animation 5 — flash vert sur le bouton enregistrer
     var btnSaveEl = document.getElementById('btnSave');
@@ -248,7 +264,7 @@
     void btnSaveEl.offsetWidth;
     btnSaveEl.classList.add('save-anim');
 
-    save();
+    save(false, touchedForSync);
     render();
     var savedId = editingId || products[products.length - 1].id;
     var savedRef = products.find(function(p){ return p.id === savedId; });
@@ -407,14 +423,6 @@
   var _syncInterval = null;
   var _recentlySaved = {}; // {ref: timestamp} - ignore conflits 60s après une sauvegarde locale
 
-  function getLastLocalTimestamp(){
-    if(!products || products.length === 0) return 0;
-    return products.reduce(function(max, p){
-      var ts = p.updatedAt || p.createdAt || 0;
-      return ts > max ? ts : max;
-    }, 0);
-  }
-
   // Sync complète pour détecter les suppressions côté serveur
   async function syncDeletions(){
     if(!serverUrl) return;
@@ -481,15 +489,21 @@
   // fonction avalait silencieusement toute erreur (token expiré, rejet
   // serveur, coupure réseau...), donnant l'illusion que tout avait bien
   // été synchronisé alors que rien n'était arrivé côté serveur.
-  async function pushToServer(){
+  async function pushToServer(changedProducts){
     if(!serverUrl) return true;
     try{
-      // Marquer tous les produits comme récemment sauvegardés
+      // `changedProducts` : sous-ensemble réellement modifié (voir save() dans
+      // storage.js) — n'envoyer que ça au lieu de tout le catalogue à chaque
+      // sauvegarde. Repli sur la totalité si non fourni (flux bulk existants).
+      var base = Array.isArray(changedProducts) && changedProducts.length
+        ? changedProducts
+        : products;
+      // Marquer les produits envoyés comme récemment sauvegardés
       var now = Date.now();
-      products.forEach(function(p){ if(p.ref) _recentlySaved[p.ref] = now; });
+      base.forEach(function(p){ if(p.ref) _recentlySaved[p.ref] = now; });
       // Pour forcer l'upsert des modifications, on envoie avec createdAt = now
       // Le serveur accepte le plus récent (createdAt) par ref
-      var toSend = products.map(function(p){
+      var toSend = base.map(function(p){
         return Object.assign({}, p, { createdAt: now });
       });
       var r = await fetch(serverUrl+'/pushDatas', {
@@ -733,6 +747,16 @@
   document.getElementById('btnTestServer').addEventListener('click', async function(){
     var url = serverUrlInput.value.trim().replace(/\/+$/,'');
     serverTestResult.style.display = 'block';
+    // Sans ce contrôle, un champ vide déclenchait quand même un fetch — vers
+    // une URL relative résolue sur la page elle-même — et affichait "HTTP
+    // 404" comme si un vrai serveur avait répondu, message trompeur (retour
+    // utilisateur).
+    if(!url){
+      serverTestResult.style.background = '#FEE2E2';
+      serverTestResult.style.color = '#991B1B';
+      serverTestResult.textContent = '✗ Entrez une URL avant de tester.';
+      return;
+    }
     serverTestResult.style.background = '#F1F5F9';
     serverTestResult.style.color = 'var(--ink)';
     serverTestResult.textContent = 'Connexion en cours…';
@@ -805,8 +829,7 @@
         localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
         // Fermer les paramètres et afficher la home proprement
         showSettingsMain();
-        var settingsOverlay = document.getElementById('settingsOverlay');
-        if(settingsOverlay) settingsOverlay.classList.remove('show');
+        if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
         document.body.classList.remove('modal-open');
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
@@ -848,8 +871,7 @@
       save(true);
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
       // Fermer les paramètres
-      var settingsOverlay = document.getElementById('settingsOverlay');
-      if(settingsOverlay) settingsOverlay.classList.remove('open');
+      if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
       document.body.classList.remove('modal-open');
       // Réinitialiser et afficher la home
       var homePage = document.getElementById('homePage');
@@ -1101,14 +1123,32 @@
 
   loadServerConfig();
 
+  // display posé puis reflow forcé avant .show : sans ça le navigateur
+  // fusionne "display:none→flex" et le déclenchement du transform dans la
+  // même passe et saute la transition de glissement (même technique que
+  // #menuSheet — retour utilisateur : Paramètres apparaissait sans
+  // l'animation des autres tiroirs mobiles). Symétriquement à la fermeture,
+  // on laisse le temps à l'animation de glissement de se terminer avant de
+  // repasser en display:none (sinon ça coupe l'animation inverse).
+  function openSettingsOverlay(){
+    settingsOverlay.style.display = 'flex';
+    settingsOverlay.offsetHeight;
+    settingsOverlay.classList.add('show');
+  }
+  function closeSettingsOverlay(){
+    settingsOverlay.classList.remove('show');
+    setTimeout(function(){
+      if(!settingsOverlay.classList.contains('show')) settingsOverlay.style.display = 'none';
+    }, 300);
+  }
+  window._closeSettingsOverlay = closeSettingsOverlay;
+
   btnSettings.addEventListener('click', function(){
     hdrMenu.classList.remove('open');
     showSettingsMain();
-    settingsOverlay.classList.add('show');
+    openSettingsOverlay();
   });
-  settingsClose.addEventListener('click', function(){
-    settingsOverlay.classList.remove('show');
-  });
+  settingsClose.addEventListener('click', closeSettingsOverlay);
   // Clic en dehors ne ferme pas la modale Paramètres — croix obligatoire
 
   var hdrMenuBtn = document.getElementById('hdrMenuBtn');
@@ -1951,14 +1991,16 @@
           familyIcons[_editedFamily] = icon;
           saveFamilyIcons();
           var _touchedRefs = [];
+          var _touchedProducts = [];
           products.forEach(function(p){
             if(p.family === _editedFamily){
               p.familyIcon = icon;
               p.updatedAt = Date.now(); // sans ça le serveur ignore l'envoi (pas plus récent que sa version)
               if(p.ref) _touchedRefs.push(p.ref);
+              _touchedProducts.push(p);
             }
           });
-          save(true);
+          save(true, _touchedProducts);
           var thumb = document.getElementById('settings-thumb-'+_editedFamily);
           if(thumb) thumb.innerHTML = renderFamilyIconHtml(icon);
           settingsEditingFamily = null;
@@ -2266,8 +2308,7 @@
       }
 
       function closeSettingsNow(){
-        var so=document.getElementById('settingsOverlay');
-        if(so) so.classList.remove('show');
+        if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
       }
 
       function closeArmoireConfigNow(){

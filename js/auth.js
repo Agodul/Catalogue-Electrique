@@ -57,13 +57,6 @@ function _defaultPermissions(isAdmin) {
   };
 }
 
-function authHasPermission(perm) {
-  var u = authGetCurrentUser();
-  if (!u) return false;
-  if (u.isAdmin) return true;
-  return u.permissions ? !!u.permissions[perm] : false;
-}
-
 // ── Authentification serveur ─────────────────────────────────────────────
 
 async function authLoginServer(username, password) {
@@ -605,8 +598,8 @@ function openAddUserModal() {
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_nuUsername" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_nuDisplay" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuUsername" type="text" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuDisplay" type="text" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_nuPassword" type="password" placeholder="Mot de passe" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:6px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_nuAdmin"> <strong>Administrateur</strong> (acc\u00e8s complet)</label>'
@@ -629,12 +622,28 @@ function openAddUserModal() {
     if (sec) sec.style.display = this.checked ? 'none' : '';
   });
 
+  // Repasser la bordure en gris dès que l'utilisateur corrige le champ
+  // concerné, plutôt que d'attendre un nouveau clic sur "Créer".
+  var REQ_BORDER = '1.5px solid #DC2626';
+  var OK_BORDER  = '1px solid var(--line)';
+  ov.querySelector('#_nuUsername').addEventListener('input', function() {
+    if (this.value.trim()) this.style.border = OK_BORDER;
+  });
+  ov.querySelector('#_nuPassword').addEventListener('input', function() {
+    if (this.value) this.style.border = OK_BORDER;
+  });
+
   ov.querySelector('#_nuSubmit').onclick = async function() {
-    var username    = ov.querySelector('#_nuUsername').value.trim();
+    var usernameEl  = ov.querySelector('#_nuUsername');
+    var passwordEl  = ov.querySelector('#_nuPassword');
+    var username    = usernameEl.value.trim();
     var displayName = ov.querySelector('#_nuDisplay').value.trim();
-    var password    = ov.querySelector('#_nuPassword').value;
+    var password    = passwordEl.value;
     var isAdminNew  = ov.querySelector('#_nuAdmin').checked;
     var errEl       = ov.querySelector('#_nuError');
+
+    usernameEl.style.border = username ? OK_BORDER : REQ_BORDER;
+    passwordEl.style.border = password ? OK_BORDER : REQ_BORDER;
 
     if (!username || !password) {
       errEl.textContent = 'Identifiant et mot de passe requis.';
@@ -706,7 +715,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_euDisplay" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_euDisplay" type="text" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_euPassword" type="password" placeholder="Nouveau mot de passe (vide = inchangé)" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'

@@ -577,6 +577,16 @@
   <button id="btnFabAdd" class="fab sans" aria-label="Ajouter un produit" title="Ajouter un produit">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
+  <!-- Bulle discrète pour rouvrir la bannière d'installation après qu'elle
+       ait été fermée une fois (voir js/pwa.js) — permet d'installer plus
+       tard sans que la bannière ne revienne s'imposer toute seule. Placée
+       juste après "Ajouter" (avant #btnScrollTop) : ce dernier reste dans
+       le flux flex même masqué (visibility:hidden, pas display:none, pour
+       son animation d'apparition), donc le mettre après ici évite un espace
+       vide entre deux boutons visibles. -->
+  <button id="btnFabInstall" class="fab sans" aria-label="Installer l'application" title="Installer l'application" style="display:none;">
+    <i class="ti ti-download" style="font-size:18px;"></i>
+  </button>
   <button id="btnScrollTop" class="fab sans" aria-label="Remonter en haut de la page" title="Remonter en haut">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
   </button>
@@ -706,7 +716,7 @@
           <div class="autocomplete-suggestions" id="familySuggestions"></div></div>
           <div class="family-icon-row" id="familyIconRow">
             <div class="family-icon-label">Icône de la famille</div>
-            <div class="family-icon-preview" id="familyIconPreview"><img src="assets/icons/families/svg-generique.svg" alt="" aria-hidden="true"></div>
+            <div class="family-icon-preview" id="familyIconPreview"><img src="assets/icons/families/svg-generique.png" alt="" aria-hidden="true"></div>
             <button type="button" class="family-icon-picker-btn" id="familyIconPickerBtn">
               <i class="ti ti-grid-dots"></i> Choisir une icône
             </button>
@@ -971,6 +981,22 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Bannière mise à jour disponible (nouvelle version du service worker déjà
+       active en arrière-plan — l'app se recharge seule dès que possible, ce
+       bouton permet de forcer tout de suite) -->
+  <div id="swUpdateBanner" style="
+    display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);
+    z-index:11500;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
+    border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
+    padding:10px 12px 10px 16px;max-width:340px;width:calc(100% - 24px);
+    align-items:center;gap:10px;font-family:inherit;">
+    <i class="ti ti-refresh" style="font-size:18px;color:var(--copper,#194093);flex-shrink:0;"></i>
+    <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink);">Nouvelle version disponible</div>
+    <button id="swUpdateBtn" class="copper" style="font-size:12px;padding:7px 12px;border-radius:8px;flex-shrink:0;white-space:nowrap;">
+      Mettre à jour
+    </button>
   </div>
 
 

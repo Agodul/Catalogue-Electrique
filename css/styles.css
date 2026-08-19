@@ -753,24 +753,6 @@
   /* Ancien bloc conservé masqué (rétrocompat) */
   .ref-check-msg{ display:none !important; }
 
-  .price-history{ margin-top:12px; }
-  .price-history table{
-    width:100%; border-collapse:collapse; font-size:14.5px;
-  }
-  .price-history td{
-    padding:5px 8px; border-bottom:1px solid var(--line);
-  }
-  .price-history td.ph-date{ color:var(--ink-soft); white-space:nowrap; }
-  .price-history td.ph-price{ font-weight:600; text-align:right; white-space:nowrap; }
-  .price-history .ph-current td{ background:#F9FAFB; font-style:italic; }
-  .price-history .ph-delta.up{ color:var(--warn); }
-  .price-history .ph-delta.down{ color:var(--moss); }
-  .price-history .ph-title{
-    font-size:13px; letter-spacing:.06em; text-transform:uppercase;
-    color:var(--ink-soft); margin-bottom:6px;
-    display:flex; align-items:center; justify-content:space-between;
-  }
-
   .extract-status{
     font-size:14px; padding:9px 11px; border-radius:3px; margin-top:10px;
     display:none;
@@ -1274,10 +1256,6 @@
     pointer-events:none;
   }
 
-  /* 6 — Cartes réapparaissent après filtre */
-  @keyframes cardFilterIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
-  .card.card-filter-in{ animation:cardFilterIn .28s ease forwards; }
-
   /* 7 — Point sauvegarde pulse */
   @keyframes savePulse{ 0%{ transform:scale(1); background:rgba(255,255,255,.4); } 30%{ transform:scale(1.8); background:#86efac; box-shadow:0 0 0 6px rgba(134,239,172,.25); } 65%{ transform:scale(1.2); background:#4ade80; } 100%{ transform:scale(1); background:rgba(255,255,255,.4); } }
   .filebar .dot.pulsing{ animation:savePulse .9s ease forwards; }
@@ -1285,7 +1263,7 @@
   @media(prefers-reduced-motion:reduce){
     .card, .card.card-visible, #viewOverlay.open, #viewOverlay.open #viewModal,
     .modal-overlay.open, .modal-overlay.open .modal, .discount-badge.badge-anim,
-    #btnSave.save-anim, .card.card-filter-in, .filebar .dot.pulsing
+    #btnSave.save-anim, .filebar .dot.pulsing
     { animation:none !important; opacity:1 !important; transform:none !important; }
   }
 
@@ -1793,7 +1771,6 @@
   .sort-price-btn .sort-icon{ font-size:14px; transition:transform .2s; }
 
   /* ── Safe area iPhone (notch / home bar) ────────────────────── */
-  .hdr{ padding-left:max(12px,env(safe-area-inset-left)); padding-right:max(12px,env(safe-area-inset-right)); }
   #pwaInstallBanner{ bottom:max(24px,env(safe-area-inset-bottom)); }
 
   /* ── Overflow global ─────────────────────────────────────────── */
@@ -1842,7 +1819,16 @@
       width:100%; max-width:100%;
       max-height:88dvh;
       border-radius:20px 20px 0 0;
+      /* Glissement depuis le bas comme .menu-sheet — retour utilisateur :
+         Paramètres apparaissait d'un coup, sans l'animation des autres
+         tiroirs mobiles. Le JS (btnSettings) doit poser display:flex puis
+         forcer un reflow avant d'ajouter .show, sinon le navigateur fusionne
+         les deux changements et saute la transition (même technique que
+         #menuSheet, voir js/actions.js). */
+      transform:translateY(100%);
+      transition:transform .3s cubic-bezier(.32,.72,0,1);
     }
+    #settingsOverlay.show .settings-box{ transform:translateY(0); }
     .settings-header{ padding:14px 16px 12px; }
     .settings-body{ padding:12px 16px; }
   }
@@ -2162,23 +2148,6 @@
   button.secondary .btn-spinner{ border-color:rgba(0,0,0,.2); border-top-color:var(--ink-soft); }
   button:disabled{ opacity:.6; cursor:not-allowed; }
 
-  /* PDF.js Text Layer */
-  #pdfTextLayer span {
-    color: transparent;
-    position: absolute;
-    white-space: pre;
-    cursor: text;
-    transform-origin: 0% 0%;
-    font-size: calc(var(--scale-factor) * 1px);
-  }
-  #pdfTextLayer mark.pdf-hl {
-    background: rgba(255, 210, 0, 0.55);
-    border-radius: 2px;
-    color: transparent;
-    display: inline;
-    position: relative;
-    mix-blend-mode: multiply;
-  }
   /* ===== PANNEAU DEMANDES ===== */
   .req-tab { transition: color .15s, border-color .15s; }
   .req-tab.active { color:#194093 !important; border-bottom-color:#194093 !important; }

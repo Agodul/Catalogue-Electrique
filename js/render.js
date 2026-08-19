@@ -132,7 +132,11 @@
     vmMeta.style.display = metaItems.length ? '' : 'none';
 
     // Description avec troncature + "Voir plus" / "Voir moins" (mobile et desktop)
-    var fullDesc = p.desc || '';
+    // Tags HTML retirés comme sur la carte catalogue (renderCard) — sans ça,
+    // une description contenant du HTML collé par erreur affichait les
+    // balises en clair ici alors que la carte les nettoyait déjà (retour
+    // utilisateur : incohérence entre les deux vues).
+    var fullDesc = (p.desc || '').replace(/<[^>]*>/g, '').trim();
     var isMobile = window.innerWidth <= 640;
     var CHAR_LIMIT = isMobile ? 160 : 300;
     vmDesc.style.display = fullDesc ? '' : 'none';
@@ -826,6 +830,17 @@
   async function deleteProduct(id){
     var p = products.find(function(x){return x.id===id;});
     if(!p) return;
+
+    // Le bouton "Supprimer" est déjà masqué sans ce droit (voir render.js
+    // plus haut), mais cette fonction est aussi accessible directement
+    // (console, autre appel) — vérifier ici aussi plutôt que de se reposer
+    // uniquement sur l'UI (retour utilisateur : vérifier que les
+    // permissions sont réellement appliquées, pas juste visuellement).
+    var _perms = window._userPerms || {};
+    if(!(_perms.canDelete || _perms.isAdmin)){
+      showToast('Droit de suppression requis', 'err', 3000);
+      return;
+    }
 
     var confirmed = await customConfirm('Supprimer ce produit ?', '« '+escapeHtml(p.name||p.ref)+' » sera supprimé définitivement du catalogue.', { okLabel: 'Supprimer', danger: true });
     if(confirmed){

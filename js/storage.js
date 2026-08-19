@@ -259,7 +259,15 @@
     }catch(e){ products = []; }
     loadFamilyIcons();
   }
-  function save(skipFileWrite){
+  // `changedProducts` (optionnel) : liste des produits réellement touchés par
+  // cet appel — quand elle est fournie, seuls ceux-ci sont envoyés au serveur
+  // au lieu de la totalité du catalogue. Sans ça, ajouter/modifier UN produit
+  // renvoyait les centaines de produits existants à chaque sauvegarde (gros
+  // payload, plus lent, et identifié avec le serveur comme cause du blocage
+  // 403 sur les comptes non-admin — retour utilisateur + dev). Omise (bulk
+  // import, nettoyage descriptions...) → comportement inchangé, catalogue
+  // complet envoyé, ces flux touchant légitimement beaucoup de produits.
+  function save(skipFileWrite, changedProducts){
     _lastRenderKey = '';
     _filterCache.version = -1;
     // Nettoyage : _score était un champ de score de recherche d'une version
@@ -279,7 +287,7 @@
     // (sinon un changement, ex. icône de famille, peut rester local sans
     // que personne ne s'en aperçoive avant la prochaine synchro).
     if(typeof pushToServer === 'function' && localStorage.getItem('cat_server_url')){
-      pushToServer().then(function(ok){
+      pushToServer(changedProducts).then(function(ok){
         if(!ok && typeof showToast === 'function'){
           showToast('Échec de synchronisation avec le serveur — modification enregistrée localement uniquement', 'warn', 5000);
         }
@@ -380,38 +388,6 @@
       .trim();
   }
 
-  // Surligne les termes de recherche dans un texte (retourne HTML)
-  function highlight(text, terms){
-    if(!terms || !terms.length || !text) return escapeHtml(text);
-    // Travailler caractère par caractère sur le texte original
-    // pour éviter les décalages d'index entre normalisé et original
-    var norm = normalizeSearch(text);
-    var lower = text.toLowerCase();
-    // Construire un tableau de positions à surligner
-    var marks = new Array(text.length).fill(false);
-    terms.forEach(function(t){
-      if(!t || t.length < 2) return;
-      var start = 0;
-      while(true){
-        var idx = norm.indexOf(t, start);
-        if(idx === -1) break;
-        // Marquer les positions dans le texte original
-        for(var k = idx; k < Math.min(idx + t.length, text.length); k++) marks[k] = true;
-        start = idx + 1;
-      }
-    });
-    // Construire le HTML avec les balises <mark>
-    var result = '';
-    var inMark = false;
-    for(var i = 0; i < text.length; i++){
-      var ch = escapeHtml(text[i]);
-      if(marks[i] && !inMark){ result += '<mark class="hl">'; inMark = true; }
-      if(!marks[i] && inMark){ result += '</mark>'; inMark = false; }
-      result += ch;
-    }
-    if(inMark) result += '</mark>';
-    return result;
-  }
 
   // ─────────────────────────────────────────────────────────────
   //  RECHERCHE PAR PERTINENCE
