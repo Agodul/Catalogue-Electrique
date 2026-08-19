@@ -910,7 +910,7 @@
         <div style="font-size:18px;font-weight:700;color:var(--ink);">Aperçu de l'import Excel</div>
         <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;" id="xlsxImportSummary"></div>
       </div>
-      <button onclick="document.getElementById('xlsxImportOverlay').style.display='none'" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
+      <button onclick="document.getElementById('xlsxImportOverlay').style.display='none';document.body.classList.remove('modal-open');" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:16px 24px;">
       <div style="overflow-x:auto;">
@@ -922,7 +922,7 @@
     </div>
     <div style="padding:14px 24px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;align-items:center;">
       <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>
-      <button class="secondary" onclick="document.getElementById('xlsxImportOverlay').style.display='none'">Annuler</button>
+      <button class="secondary" onclick="document.getElementById('xlsxImportOverlay').style.display='none';document.body.classList.remove('modal-open');">Annuler</button>
       <button class="copper" id="btnConfirmXlsxImport">✓ Confirmer l'import</button>
     </div>
   </div>

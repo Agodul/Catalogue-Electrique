@@ -1148,6 +1148,7 @@
     else renderSupplierSlots();
     compareResult.style.display = 'none';
     compareOverlay.classList.add('show');
+    document.body.classList.add('modal-open');
   });
   document.getElementById('btnResetCompare').addEventListener('click', function(){
     supplierSlots = [];
@@ -1155,7 +1156,7 @@
     addSupplierSlot();
     compareResult.style.display = 'none';
   });
-  compareClose.addEventListener('click', function(){ compareOverlay.classList.remove('show'); });
+  compareClose.addEventListener('click', function(){ compareOverlay.classList.remove('show'); document.body.classList.remove('modal-open'); });
 
   document.getElementById('btnResetFilters').addEventListener('click', function(){
     brandFilterEl.value  = '';
@@ -1603,6 +1604,7 @@
         });
 
         document.getElementById('xlsxImportOverlay').style.display = 'flex';
+        document.body.classList.add('modal-open');
       } catch(err){
         showToast('Erreur : ' + err.message, 'err', 5000);
       }
@@ -1675,6 +1677,7 @@
       }));
       btnConfirm.disabled = false;
       document.getElementById('xlsxImportOverlay').style.display = 'none';
+      document.body.classList.remove('modal-open');
       if(submitted){
         showToast(submitted + ' demande(s) envoyée(s) pour approbation' + (failed ? ', ' + failed + ' échec(s)' : ''), failed ? 'warn' : 'ok', 4500);
       } else {
@@ -1770,6 +1773,7 @@
     var homePageEl2 = document.getElementById('homePage');
     if(homePageEl2 && !homePageEl2.classList.contains('hidden')) renderHome();
     document.getElementById('xlsxImportOverlay').style.display = 'none';
+    document.body.classList.remove('modal-open');
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
     xlsxPendingData = [];
   });
