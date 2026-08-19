@@ -436,6 +436,12 @@
   /* .price empile maintenant catalogue barré / prix remisé / badges au lieu
      de tout laisser flotter en ligne (voir commentaire JS dans renderCard). */
   .card .price{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+  /* Gras explicite, indépendant du breakpoint — avant, seules les media
+     queries mobiles (<640px) mettaient .card .price en font-weight:700 ;
+     desktop/tablette n'avaient jamais eu de règle dédiée et retombaient sur
+     le poids par défaut du navigateur (retour utilisateur : le prix remisé
+     ne ressortait pas assez sur desktop). */
+  .price-main{ font-weight:700; }
   .price-original{
     display:block;
     font-size:12px; color:var(--ink-soft);
