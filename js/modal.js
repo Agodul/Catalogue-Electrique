@@ -750,13 +750,28 @@
   // non-vides (sinon la confirmation "Annuler la saisie" apparaît à chaque
   // fermeture, même sans la moindre modification — bug remonté par
   // l'utilisateur). Capturé dans openModal() juste après le pré-remplissage.
+  //
+  // Liste des champs couverts : doit rester alignée avec fillFormFromProduct()
+  // ci-dessus. Un champ éditable oublié ici = une modification silencieusement
+  // perdue en fermant par ✕/Échap, sans confirmation (bug remonté par
+  // l'utilisateur — seuls 10 champs "auto-extraction" étaient suivis au
+  // départ, oubliant fournisseur/délai/tags/3D/essentiel/specs/icône).
   var _formOriginalSnapshot = null;
   function _formSnapshotNow(){
     return {
       brand: fBrand.value.trim(), ref: fRef.value.trim(), family: fFamily.value.trim(),
       series: fSeries.value.trim(), url: fUrl.value.trim(), html: fHtml.value.trim(),
       name: fName.value.trim(), desc: fDesc.value.trim(), price: fPrice.value.trim(),
-      photo: fPhoto.value.trim()
+      photo: fPhoto.value.trim(),
+      supplier: fSupplier.value.trim(),
+      leadTime: fLeadTime ? fLeadTime.value.trim() : '',
+      tags: fTags.value.trim(),
+      available3DX: f3dAvailable.checked,
+      available3DXLink: f3dLink.value.trim(),
+      essential: fEssential ? fEssential.checked : false,
+      suggestions: _sugRefs.slice().sort().join('|'),
+      specs: JSON.stringify(_specsRows),
+      familyIcon: selectedFamilyIcon
     };
   }
   function hasUnsavedInput(){
@@ -765,7 +780,9 @@
       // Mode création : le formulaire démarre vide, tout champ rempli est une saisie à protéger.
       return !!(current.brand || current.ref || current.family || current.series ||
                 current.url || current.html || current.name || current.desc ||
-                current.price || current.photo);
+                current.price || current.photo || current.supplier || current.leadTime ||
+                current.tags || current.available3DX || current.available3DXLink ||
+                current.essential || current.suggestions || (current.specs && current.specs !== '[]'));
     }
     return Object.keys(current).some(function(k){ return current[k] !== _formOriginalSnapshot[k]; });
   }
