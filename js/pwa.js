@@ -44,13 +44,31 @@
           setTimeout(reloadWhenSafe, 4000);
         });
         if(swUpdateBtn){
-          swUpdateBtn.addEventListener('click', function(){
+          swUpdateBtn.addEventListener('click', async function(){
+            var hasUnsavedArmoireDraft = Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0;
+            if(hasUnsavedArmoireDraft && typeof customConfirm === 'function'){
+              var ok = await customConfirm(
+                'Configuration en cours non enregistrée',
+                'Mettre à jour maintenant effacera la configuration en cours dans le configurateur d\'armoire. Continuer ?',
+                { okLabel: 'Mettre à jour quand même', danger: true }
+              );
+              if(!ok) return;
+            }
             window.location.reload();
           });
         }
 
         function reloadWhenSafe(){
-          if(document.body.classList.contains('modal-open')){
+          // Une fenêtre ouverte (formulaire produit, réglages...) bloque déjà
+          // le rechargement via la classe 'modal-open'. Mais le configurateur
+          // d'armoire est un cas à part : sa configuration en cours
+          // (_armoireDraft) vit uniquement en mémoire, jamais sauvegardée
+          // tant qu'on n'a pas cliqué "Enregistrer comme bloc/configuration"
+          // — et elle survit à la fermeture du panneau (on peut le rouvrir
+          // plus tard pour continuer). Un rechargement auto pendant ce
+          // temps-là ferait tout perdre en silence, même panneau fermé.
+          var hasUnsavedArmoireDraft = Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0;
+          if(document.body.classList.contains('modal-open') || hasUnsavedArmoireDraft){
             setTimeout(reloadWhenSafe, 2000);
             return;
           }
