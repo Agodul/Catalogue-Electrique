@@ -135,7 +135,7 @@
         </button>
         <button class="hdr-menu-item" id="btnImportXlsx">
           <span class="mi-icon green"><i class="ti ti-file-import" aria-hidden="true"></i></span>
-          <span class="mi-texts"><span class="mi-title">Importer Excel</span><span class="mi-sub">Mise à jour des prix</span></span>
+          <span class="mi-texts"><span class="mi-title">Importer Excel</span><span class="mi-sub" id="btnImportXlsxSub">Mise à jour des prix</span></span>
         </button>
         <div class="hdr-menu-sep"></div>
         <button class="hdr-menu-item danger" id="btnCleanDescs">
@@ -153,7 +153,11 @@
             <i class="ti ti-bell" style="color:#194093;"></i>
             <span id="requestsBadgeMenu" style="display:none;position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 4px;min-width:14px;text-align:center;line-height:14px;"></span>
           </span>
-          <span class="mi-texts"><span class="mi-title">Demandes en attente</span><span class="mi-sub">Modifications proposées</span></span>
+          <span class="mi-texts"><span class="mi-title">Demandes en attente</span><span class="mi-sub" id="btnRequestsMenuSub">Modifications proposées</span></span>
+        </button>
+        <button class="hdr-menu-item" id="btnReportBug" style="display:none;">
+          <span class="mi-icon red"><i class="ti ti-bug" aria-hidden="true"></i></span>
+          <span class="mi-texts"><span class="mi-title">Signaler un bug</span><span class="mi-sub">Décrire un problème rencontré</span></span>
         </button>
         <div class="hdr-menu-sep" id="reqMenuSep" style="display:none;"></div>
         <button class="hdr-menu-item" id="btnSettings">
@@ -866,26 +870,38 @@
         </div>
       </div>
 
-      <!-- ===== SECTION PDF FORMULAIRE ===== -->
+      <!-- ===== SECTION PDF/IMAGES FORMULAIRE ===== -->
       <div id="modalPdfSection" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
-        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Documents PDF</div>
+        <div id="modalPdfSectionTitle" style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Documents</div>
         <!-- Liste des fichiers existants (multi-doc) -->
         <div id="modalPdfList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
         <!-- Zone d'ajout -->
         <label id="modalPdfUpload" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;">
-          <i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;"></i>
-          Ajouter un ou plusieurs PDF
-          <input type="file" id="modalPdfInput" accept=".pdf" multiple style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+          <i class="ti ti-file-plus" style="font-size:18px;color:var(--copper);"></i>
+          Ajouter un ou plusieurs PDF/images
+          <input type="file" id="modalPdfInput" accept=".pdf,application/pdf,image/*" multiple style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
         </label>
       </div>
       <!-- ===== FIN SECTION PDF FORMULAIRE ===== -->
 
+    </div>
+    <div id="modalNoSyncBanner" style="display:none;align-items:flex-start;gap:8px;background:#FEE2E2;border-top:1px solid #FECACA;color:#991B1B;padding:10px 20px;font-size:12.5px;line-height:1.4;">
+      <i class="ti ti-cloud-off" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i>
+      <span id="modalNoSyncBannerText"></span>
     </div>
     <div class="modal-foot" id="modalFoot">
       <div class="left-foot" id="modalLeftFoot"></div>
       <div style="display:flex; gap:10px;">
         <button class="secondary" id="btnCancel" type="button">Annuler</button>
         <button class="copper" id="btnSave" type="button">Enregistrer le produit</button>
+        <!-- Boutons de la vue "demande produit" verrouillée (consultation
+             avant décision) — remplacent Annuler/Enregistrer tant que
+             window._reviewLocked est vrai. "Modifier" déverrouille les
+             champs SUR CETTE MÊME fenêtre plutôt que d'en ouvrir une autre
+             (retour utilisateur : rester sur la même page). -->
+        <button class="secondary" id="btnReviewRefuse" type="button" style="display:none;color:#991B1B;border-color:#FECACA;"><i class="ti ti-x"></i> Refuser</button>
+        <button class="secondary" id="btnReviewUnlock" type="button" style="display:none;"><i class="ti ti-pencil"></i> Modifier</button>
+        <button class="copper" id="btnReviewAccept" type="button" style="display:none;"><i class="ti ti-check"></i> Accepter</button>
       </div>
     </div>
   </div>
@@ -938,7 +954,7 @@
   <!-- ── Popup installation PWA ────────────────────────────────────── -->
   <div id="pwaInstallBanner" style="
     display:none;position:fixed;bottom:75px;left:50%;transform:translateX(-50%);
-    z-index:9999;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
+    z-index:40;background:var(--paper-card,#fff);color:var(--ink,#1a1a2e);
     border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.18);
     padding:clamp(10px,4vw,18px);max-width:340px;width:calc(100% - 24px);
     flex-direction:column;gap:12px;font-family:inherit;">
@@ -1001,8 +1017,8 @@
 
 
 <!-- ===== PANNEAU DEMANDES ===== -->
-<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:flex-start;justify-content:flex-end;">
-  <div id="requestsPanel" style="background:var(--paper-card);width:100%;max-width:560px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.2);overflow:hidden;">
+<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:center;justify-content:center;padding:16px;">
+  <div id="requestsPanel" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1053,6 +1069,45 @@
   </div>
 </div>
 <!-- ===== FIN MODALE DÉTAIL DEMANDE ===== -->
+
+<!-- ===== MODALE SIGNALER UN BUG ===== -->
+<div class="modal-overlay" id="bugReportOverlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <h3>🐛 Signaler un bug</h3>
+      <button class="close sans" id="bugReportCloseBtn" type="button">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label for="bugReportDesc" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Décrivez le problème rencontré</label>
+      <textarea id="bugReportDesc" rows="6" placeholder="Ex. : le bouton Enregistrer ne répond pas quand je..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;resize:vertical;box-sizing:border-box;"></textarea>
+      <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4;">La page actuelle, votre navigateur et les éventuelles erreurs techniques récentes sont joints automatiquement pour aider au diagnostic.</div>
+
+      <label style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-top:16px;margin-bottom:6px;">Capture d'écran (facultatif)</label>
+      <input type="file" id="bugReportImageInput" accept="image/*" style="display:none;">
+      <!-- Même style de zone que "Ajouter un ou plusieurs PDF" dans la fiche
+           produit (retour utilisateur : cohérence entre les fenêtres) —
+           glisser-déposer et collage (Ctrl/Cmd+V) supportés en plus du clic. -->
+      <label id="bugReportImageDropzone" for="bugReportImageInput" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-photo-plus" style="font-size:18px;color:var(--copper);"></i>
+        Glisser une image, coller (Ctrl/Cmd+V) ou cliquer pour choisir
+      </label>
+      <div id="bugReportImagePreviewWrap" style="display:none;margin-top:10px;">
+        <div style="position:relative;width:fit-content;">
+          <img id="bugReportImagePreview" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid var(--line);display:block;cursor:zoom-in;">
+          <button type="button" id="bugReportImageRemove" title="Retirer l'image" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#1e293b;color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="left-foot"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="secondary" id="bugReportCancelBtn" type="button">Annuler</button>
+        <button class="copper" id="bugReportSubmitBtn" type="button">Envoyer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN MODALE SIGNALER UN BUG ===== -->
 
 <!-- ── Modale Login ─────────────────────────────────────── -->
 <div id="authOverlay">
@@ -1301,7 +1356,7 @@
       </span>
       <span class="menu-sheet-texts">
         <span class="menu-sheet-title">Demandes en attente</span>
-        <span class="menu-sheet-sub">Modifications proposées</span>
+        <span class="menu-sheet-sub" id="msRequestsSub">Modifications proposées</span>
       </span>
       <i class="ti ti-chevron-right menu-sheet-chevron"></i>
     </button>
@@ -1324,7 +1379,7 @@
     </button>
     <button class="menu-sheet-item" id="msImportXlsx">
       <span class="menu-sheet-icon" style="background:#F0FDF4;"><i class="ti ti-file-import" style="color:#16A34A;"></i></span>
-      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer Excel</span><span class="menu-sheet-sub">Mise à jour des prix</span></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Importer Excel</span><span class="menu-sheet-sub" id="msImportXlsxSub">Mise à jour des prix</span></span>
     </button>
 
     <div class="menu-sheet-sep"></div>

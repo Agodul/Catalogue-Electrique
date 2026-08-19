@@ -141,6 +141,10 @@
         var original = window._proposeOriginal || null;
         if(original) payload.ref = original.ref; // garder la ref originale pour la modif
         var ok = await window.reqSubmit(payload, original);
+        if(ok && Array.isArray(window._proposeAttachedFiles) && window._proposeAttachedFiles.length && typeof window.reqUploadAttachedFiles === 'function'){
+          await window.reqUploadAttachedFiles(payload.ref, window._proposeAttachedFiles);
+        }
+        window._proposeAttachedFiles = [];
         if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
         if(ok){
           showToast('Demande envoyée ✓', 'ok', 3000);
@@ -1183,6 +1187,10 @@
     seriesFilterEl.value = '';
     // Réinitialiser aussi le tri prix
     window._setPriceSort(null);
+    // .value= ne déclenche pas "change" → resynchroniser le badge de la
+    // bottom nav à la main (bouton ⊘ visible aussi sur tablette, en même
+    // temps que la bottom nav — voir window._syncBnFilterBadge, _initBottomNav).
+    if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
     _lastRenderKey = '';
     render();
   });
@@ -2411,9 +2419,14 @@
         // Fermer la fiche produit si ouverte
         var _vo=document.getElementById('viewOverlay');
         if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
-        // Fermer le panneau demandes si ouvert
+        // Fermer le panneau demandes si ouvert (passe par reqClosePanel pour
+        // retirer .show — sinon le tiroir resterait "ouvert" visuellement au
+        // prochain affichage, sans animation de glissement, voir js/requests.js)
         var _ro=document.getElementById('requestsOverlay');
-        if(_ro&&_ro.style.display!=='none'){_ro.style.display='none';document.body.classList.remove('modal-open');}
+        if(_ro&&_ro.style.display!=='none'){
+          if(typeof reqClosePanel === 'function') reqClosePanel();
+          else { _ro.style.display='none'; document.body.classList.remove('modal-open'); }
+        }
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir la barre de recherche mobile sticky
@@ -2599,6 +2612,12 @@
         if(bnFilterBadge){ bnFilterBadge.textContent=count||''; bnFilterBadge.style.display=count>0?'':'none'; }
         if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
       }
+      // Exposé globalement : le tiroir "Filtres" mobile (_initFilterSheet)
+      // applique ses filtres en écrivant directement .value sur les selects
+      // desktop, ce qui ne déclenche pas d'événement "change" — updateFilterBadge
+      // n'était donc jamais rappelée dans ce cas et le badge de la bottom nav
+      // restait à 0 malgré un filtre actif (retour utilisateur).
+      window._syncBnFilterBadge = updateFilterBadge;
 
       ['brandFilter','familyFilter','seriesFilter'].forEach(function(id){
         var el=document.getElementById(id);
@@ -2687,6 +2706,9 @@
       if(familyFilterEl&&selFamily) familyFilterEl.value=selFamily.value;
       if(seriesFilterEl&&selSeries) seriesFilterEl.value=selSeries.value;
       if(selSort && typeof window._setPriceSort==='function') window._setPriceSort(selSort.value || null);
+      // .value= ne déclenche pas "change" → resynchroniser le badge de la
+      // bottom nav à la main (voir window._syncBnFilterBadge, _initBottomNav).
+      if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
       closeSheet();
       if(typeof render==='function') render();
     }
@@ -2700,6 +2722,7 @@
       if(seriesFilterEl) seriesFilterEl.value='';
       if(searchInputEl) searchInputEl.value='';
       if(typeof window._setPriceSort==='function') window._setPriceSort(null);
+      if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
       closeSheet();
       if(typeof render==='function') render();
     }
@@ -2751,7 +2774,14 @@
       var loggedIn  = !!p.loggedIn;
       var isAdmin   = !!p.isAdmin;
       var canExport = !!p.canExport;
+      var canEdit   = !!p.canEdit;
       var sUrl      = localStorage.getItem('cat_server_url') || '';
+      // Même définition que js/auth.js (applyAuthUI) — non recopiée dans
+      // window._userPerms, donc recalculée ici pour garder ce tiroir mobile
+      // en phase avec le menu ⋮ desktop plutôt que de dupliquer une logique
+      // divergente (retour utilisateur : les permissions doivent se
+      // refléter à l'identique des deux côtés).
+      var canPropose = loggedIn && !canEdit && !!sUrl;
       var user      = typeof authGetCurrentUser==='function' ? authGetCurrentUser() : null;
 
       // Auth label
@@ -2768,15 +2798,30 @@
         if(msAuthSub)   msAuthSub.textContent   = 'Accès réservé';
       }
 
-      // Visibilité selon permissions
+      // Visibilité selon permissions — alignée sur le menu ⋮ desktop
+      // (js/auth.js, applyAuthUI) : Export/Import JSON réservés aux admins
+      // (écrase/fusionne tout le catalogue), Import Excel ouvert aussi aux
+      // "proposeurs" (passe par le circuit de demandes, jamais d'écriture
+      // directe), Demandes en attente ouvert à tout connecté avec serveur
+      // (onglet "Mes demandes" pour les non-admins — voir reqRefreshPanel()
+      // dans js/requests.js). Ces trois conditions divergeaient auparavant
+      // du desktop (retour utilisateur : les permissions doivent se
+      // refléter à l'identique, pas seulement pour les admins sur mobile).
       function show(id, v){ var el=document.getElementById(id); if(el) el.style.display=v?'':'none'; }
-      show('msExport',     loggedIn && (canExport||isAdmin));
-      show('msImport',     loggedIn && (canExport||isAdmin));
-      show('msExportXlsx', loggedIn && (canExport||isAdmin));
-      show('msImportXlsx', loggedIn && (canExport||isAdmin));
+      show('msExport',     isAdmin);
+      show('msImport',     isAdmin);
+      show('msExportXlsx', canExport);
+      show('msImportXlsx', canExport || canPropose);
       show('msCleanDescs', isAdmin);
       show('msCompare',    true);
-      show('msRequests',   isAdmin && !!sUrl);
+      show('msRequests',   loggedIn && !!sUrl);
+
+      // Sous-titres adaptés à la conséquence réelle pour CET utilisateur
+      // (retour utilisateur) — miroir exact de js/auth.js côté desktop.
+      var msImportXlsxSub = document.getElementById('msImportXlsxSub');
+      if(msImportXlsxSub) msImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
+      var msRequestsSub = document.getElementById('msRequestsSub');
+      if(msRequestsSub) msRequestsSub.textContent = isAdmin ? 'Modifications proposées' : 'Suivi de vos demandes';
 
       // Cacher sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
@@ -2816,10 +2861,23 @@
     ms('msCleanDescs','btnCleanDescs');
     ms('msSettings',  'btnSettings');
 
-    // Badge demandes
+    // Badge demandes — reflété sur bnMenuBadge (icône "Menu" de la bottom
+    // nav) ET sur msBadge (à côté de "Demandes en attente" DANS le tiroir
+    // menu mobile lui-même) : ce dernier n'était relié à aucun code, donc
+    // jamais mis à jour — la pastille de notification restait invisible en
+    // ouvrant le menu sur mobile/tablette (retour utilisateur). Synchronisé
+    // une première fois tout de suite (état déjà connu à cet instant), puis
+    // à chaque changement de requestsBadge (source de vérité, mise à jour
+    // par reqUpdateBadge() dans js/requests.js).
     var reqBadgeEl = document.getElementById('requestsBadge');
-    if(reqBadgeEl) new MutationObserver(function(){
-      var bnBadge = document.getElementById('bnMenuBadge');
-      if(bnBadge){ bnBadge.textContent=reqBadgeEl.textContent; bnBadge.style.display=reqBadgeEl.style.display; }
-    }).observe(reqBadgeEl, {childList:true, attributes:true, attributeFilter:['style']});
+    if(reqBadgeEl){
+      var _syncReqBadgesMobile = function(){
+        var bnBadge = document.getElementById('bnMenuBadge');
+        var msBadgeEl = document.getElementById('msBadge');
+        if(bnBadge){ bnBadge.textContent=reqBadgeEl.textContent; bnBadge.style.display=reqBadgeEl.style.display; }
+        if(msBadgeEl){ msBadgeEl.textContent=reqBadgeEl.textContent; msBadgeEl.style.display=reqBadgeEl.style.display; }
+      };
+      _syncReqBadgesMobile();
+      new MutationObserver(_syncReqBadgesMobile).observe(reqBadgeEl, {childList:true, attributes:true, attributeFilter:['style']});
+    }
   };

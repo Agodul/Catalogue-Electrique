@@ -1,5 +1,68 @@
 "use strict";
 
+// ── Capture des erreurs JS récentes (pour "Signaler un bug", requests.js) ──
+// Placé dans le tout premier script chargé pour attraper le plus tôt
+// possible. Tampon circulaire (dernières 25 entrées) exposé sur
+// window._bugErrorLog — lu par reqSubmitBug() au moment de l'envoi, pour
+// qu'un rapport de bug transmette de quoi diagnostiquer une vraie erreur de
+// code (message, fichier/ligne, stack) plutôt qu'une simple phrase.
+//
+// Persisté dans sessionStorage (pas juste en mémoire) : un premier essai
+// s'est révélé inutile en usage réel — l'utilisateur rencontre un bug,
+// recharge la page pour vérifier si ça persiste, PUIS va signaler le bug ;
+// un tampon uniquement en mémoire est vidé par ce rechargement et le
+// rapport arrivait sans aucun log (retour utilisateur, capture à l'appui).
+// sessionStorage survit au F5, se vide à la fermeture de l'onglet.
+var _BUG_LOG_KEY = 'cat_bug_error_log';
+try {
+  window._bugErrorLog = JSON.parse(sessionStorage.getItem(_BUG_LOG_KEY) || '[]');
+  if(!Array.isArray(window._bugErrorLog)) window._bugErrorLog = [];
+} catch(e){ window._bugErrorLog = []; }
+
+function _bugLogPush(entry){
+  entry.at = new Date().toISOString();
+  window._bugErrorLog.push(entry);
+  if(window._bugErrorLog.length > 25) window._bugErrorLog.shift();
+  try { sessionStorage.setItem(_BUG_LOG_KEY, JSON.stringify(window._bugErrorLog)); } catch(e){}
+}
+window.addEventListener('error', function(e){
+  _bugLogPush({
+    type: 'error',
+    message: e.message,
+    source: (e.filename || '') + (e.lineno ? ':' + e.lineno + ':' + (e.colno||0) : ''),
+    stack: e.error && e.error.stack ? String(e.error.stack).slice(0, 500) : ''
+  });
+});
+window.addEventListener('unhandledrejection', function(e){
+  var reason = e.reason;
+  _bugLogPush({
+    type: 'unhandledrejection',
+    message: reason && reason.message ? reason.message : String(reason),
+    stack: reason && reason.stack ? String(reason.stack).slice(0, 500) : ''
+  });
+});
+// console.log/warn/error sont la façon dont ce codebase remonte déjà la
+// plupart des erreurs "avalées" (catch silencieux avec juste un warn/log) —
+// les capturer couvre bien plus de cas réels que error/unhandledrejection
+// seuls (voir ex. pushToServer/syncFromServer dans actions.js, ou les
+// "[PDF] ..." console.log de render.js).
+['log','warn','error'].forEach(function(level){
+  var orig = console[level];
+  console[level] = function(){
+    try {
+      var args = Array.prototype.slice.call(arguments);
+      _bugLogPush({
+        type: 'console.' + level,
+        message: args.map(function(a){
+          if(a instanceof Error) return a.message;
+          try { return typeof a === 'string' ? a : JSON.stringify(a); } catch(e){ return String(a); }
+        }).join(' ').slice(0, 500)
+      });
+    } catch(e){}
+    return orig.apply(console, arguments);
+  };
+});
+
 // ── Popups custom (remplacent alert/confirm/prompt natifs) ─────────────────
 // Style unique et cohérent dans toute l'app (repris de la confirmation
 // "Annuler la saisie"). Toutes les fonctions retournent une Promise :

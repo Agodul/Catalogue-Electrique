@@ -599,6 +599,10 @@
   }
 
   function openModal(id){
+    // Garde-fou supplémentaire (en plus de resetReviewModeUI) : openModal()
+    // sert à "Ajouter un produit"/"Modifier le produit", jamais à la revue
+    // d'une demande — l'état verrouillé ne doit donc jamais y être visible.
+    if(typeof _reviewSetLocked === 'function') _reviewSetLocked(false);
     editingId = id || null;
     resetForm();
     if(editingId){
@@ -626,6 +630,35 @@
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
+
+    // ── Avertir AVANT la saisie si l'enregistrement ne pourrait pas être
+    // synchronisé (plutôt qu'après coup) ────────────────────────────────
+    // Un compte avec droit d'édition mais sans droit de synchro serveur
+    // (canSyncServer) voit son ajout/modif se sauvegarder en local avec
+    // succès apparent, alors que ça reste invisible pour tout le monde —
+    // retour utilisateur : mieux vaut bloquer et expliquer avant la saisie
+    // que de laisser croire que ça a marché. Ne s'applique pas en mode
+    // "Proposer" (_proposeMode) : c'est justement le circuit prévu pour ces
+    // comptes-là, qui passe par une demande, pas un push direct.
+    var noSyncBanner     = document.getElementById('modalNoSyncBanner');
+    var noSyncBannerText = document.getElementById('modalNoSyncBannerText');
+    var serverUrlCheck   = localStorage.getItem('cat_server_url');
+    var _perms2  = window._userPerms || {};
+    var canSync  = !!(_perms2.canSyncServer || _perms2.isAdmin);
+    var blockSave = !!serverUrlCheck && !canSync && !window._proposeMode;
+    if(noSyncBanner){
+      noSyncBanner.style.display = blockSave ? 'flex' : 'none';
+      if(blockSave && noSyncBannerText){
+        noSyncBannerText.textContent = 'Vous n\'avez pas les droits de synchronisation avec le serveur : cet enregistrement resterait local uniquement sur cet appareil, invisible pour les autres utilisateurs. Contactez un administrateur.';
+      }
+    }
+    var btnSaveForSyncCheck = document.getElementById('btnSave');
+    if(btnSaveForSyncCheck){
+      btnSaveForSyncCheck.disabled = blockSave;
+      btnSaveForSyncCheck.style.opacity = blockSave ? '0.5' : '';
+      btnSaveForSyncCheck.style.cursor = blockSave ? 'not-allowed' : '';
+    }
+
     // ── Section PDF multi-doc ────────────────────────────────────
     var sUrl = localStorage.getItem('cat_server_url');
     var canUploadPdf = window._userPerms ? (window._userPerms.canUploadDocs || window._userPerms.isAdmin) : (typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin);
@@ -649,8 +682,12 @@
           if(U) U.style.display = 'flex';
           if(!files || files.length === 0) return;
           L.innerHTML = files.map(function(f){
+            var isImg = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(f.filename||'');
+            var icon = isImg
+              ? '<i class="ti ti-photo" style="font-size:18px;color:var(--copper);flex-shrink:0;"></i>'
+              : '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>';
             return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
-              + '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>'
+              + icon
               + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(f.filename) + '</span>'
               + (f.uuid ? '<button data-uuid="' + escapeHtml(f.uuid) + '" class="pdf-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>' : '')
               + '</div>';
@@ -737,6 +774,48 @@
           _pdfRenderList(pForPdf._docFiles || []);
         }
       }
+    } else if(window._proposeMode){
+      // Mode "Proposer" : la ref n'existe pas encore côté serveur (nouveau
+      // produit) ou le compte n'a pas canUploadDocs — upload DIFFÉRÉ, comme
+      // pour un rapport de bug (voir reqSubmitBug dans requests.js) : les
+      // fichiers restent en mémoire, envoyés à /pushDocsReq juste après que
+      // btnSave ait confirmé l'enregistrement de la demande (voir actions.js),
+      // avec la ref du formulaire — connue dès maintenant même en création,
+      // c'est un champ obligatoire.
+      if(modalPdfSection) modalPdfSection.style.display = '';
+      var titleEl = document.getElementById('modalPdfSectionTitle');
+      if(titleEl) titleEl.textContent = 'Documents (joints à la demande)';
+      window._proposeAttachedFiles = [];
+
+      function _proposeRenderFiles(){
+        var L = document.getElementById('modalPdfList');
+        var U = document.getElementById('modalPdfUpload');
+        if(!L) return;
+        if(U) U.style.display = 'flex';
+        L.innerHTML = window._proposeAttachedFiles.map(function(f, i){
+          var isImg = /^image\//.test(f.type);
+          var icon = isImg
+            ? '<i class="ti ti-photo" style="font-size:18px;color:var(--copper);flex-shrink:0;"></i>'
+            : '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
+            + icon
+            + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(f.name) + '</span>'
+            + '<button data-idx="' + i + '" class="propose-file-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>'
+            + '</div>';
+        }).join('');
+        L.querySelectorAll('.propose-file-del-btn').forEach(function(btn){
+          btn.onclick = function(){
+            window._proposeAttachedFiles.splice(parseInt(btn.getAttribute('data-idx'), 10), 1);
+            _proposeRenderFiles();
+          };
+        });
+      }
+      _proposeRenderFiles();
+      if(modalPdfInput) modalPdfInput.onchange = function(){
+        Array.from(this.files || []).forEach(function(f){ window._proposeAttachedFiles.push(f); });
+        this.value = '';
+        _proposeRenderFiles();
+      };
     }
     // ── Fin section PDF ──
 
@@ -812,11 +891,33 @@
     // une deuxième.
     if(document.getElementById('_discardConfirmPopup')) return;
 
+    // Annuler depuis l'édition déverrouillée d'une demande : revenir à la
+    // vue verrouillée de CETTE MÊME demande (annule les modifs, sans les
+    // sauvegarder) plutôt que fermer toute la fenêtre — "Annuler" doit
+    // annuler l'édition, pas quitter la consultation (retour utilisateur).
+    // Avant resetProposeModeUI()/resetReviewModeUI() : on reste en mode
+    // revue, ces fonctions ne doivent donc pas s'exécuter ici.
+    if(window._reviewMode && window._reviewLocked === false && window._reviewItem){
+      window._openReviewModal(window._reviewItem, window._reviewUser, true);
+      return;
+    }
+
+    // Retenu AVANT resetReviewModeUI() (qui remet _reviewMode à false) —
+    // sert à réafficher "Demandes en attente" juste en dessous une fois
+    // cette fenêtre fermée (retour utilisateur : "ça doit faire comme si
+    // elle était restée cachée derrière la fenêtre nouveau produit").
+    // _reqRevealPanel (pas reqOpenPanel) : révélation instantanée d'un
+    // panneau seulement masqué (voir _reqHidePanel dans requests.js), sans
+    // le rouvrir/ré-animer/recharger sa liste depuis zéro — elle n'a pas
+    // changé puisqu'on n'a fait que consulter, pas accepter/refuser.
+    var wasReviewingFromRequestsList = !!window._reviewMode;
+
     // Réinitialiser le mode proposition / révision
     resetProposeModeUI();
     resetReviewModeUI();
     if(!hasUnsavedInput()){
      closeModal();
+     if(wasReviewingFromRequestsList && typeof _reqRevealPanel === 'function') _reqRevealPanel();
     return;
     }
 
@@ -1088,7 +1189,43 @@
   // Mode révision de demande (admin) : ouvre la modale standard "Modifier le
   // produit", pré-remplie avec les données soumises, pour permettre de tout
   // modifier avant de valider. `item` est l'entrée de la file de demandes.
-  window._openReviewModal = function(item, user){
+  // Verrouille/déverrouille le formulaire de revue d'une demande — fusionne
+  // ce qui était deux fenêtres séparées (résumé en lecture seule, puis un
+  // "Modifier" ouvrant le formulaire complet ailleurs) en une seule : on
+  // reste sur la même fenêtre, seul l'état verrouillé change (retour
+  // utilisateur). Cible tout ce qui est interactif dans le corps du
+  // formulaire et la section documents — pas l'entête/pied de page, gérés
+  // séparément par _reviewSetLocked ci-dessous.
+  function _reviewFormFields(){
+    // Scopé à #modalOverlay précisément (pas juste ".modal-body", classe
+    // générique réutilisée par d'autres fenêtres — ex. "Signaler un bug" —
+    // qui se retrouveraient sinon avec des champs restés désactivés après
+    // la fermeture de CETTE fenêtre-ci).
+    return document.querySelectorAll('#modalOverlay .modal-body input, #modalOverlay .modal-body textarea, #modalOverlay .modal-body select, #modalOverlay .modal-body button, #modalPdfSection input, #modalPdfSection button, #modalPdfSection label');
+  }
+  function _reviewSetLocked(locked){
+    window._reviewLocked = !!locked;
+    _reviewFormFields().forEach(function(el){
+      if(locked) el.setAttribute('disabled', 'disabled');
+      else el.removeAttribute('disabled');
+    });
+    var btnCancelEl        = document.getElementById('btnCancel');
+    var btnSaveEl          = document.getElementById('btnSave');
+    var btnReviewRefuseEl  = document.getElementById('btnReviewRefuse');
+    var btnReviewUnlockEl  = document.getElementById('btnReviewUnlock');
+    var btnReviewAcceptEl  = document.getElementById('btnReviewAccept');
+    if(btnCancelEl)       btnCancelEl.style.display       = locked ? 'none' : '';
+    if(btnSaveEl)          btnSaveEl.style.display        = locked ? 'none' : '';
+    if(btnReviewRefuseEl)  btnReviewRefuseEl.style.display = locked ? '' : 'none';
+    if(btnReviewUnlockEl)  btnReviewUnlockEl.style.display = locked ? '' : 'none';
+    if(btnReviewAcceptEl)  btnReviewAcceptEl.style.display = locked ? '' : 'none';
+  }
+
+  // locked (défaut true) : ouvre en consultation verrouillée avec
+  // Refuser/Modifier/Accepter — "Modifier" appelle _reviewSetLocked(false)
+  // pour déverrouiller SUR CETTE MÊME fenêtre plutôt que d'en ouvrir une
+  // autre.
+  window._openReviewModal = function(item, user, locked){
     var data     = item.data || {};
     var original = data._reqOriginal;
     var isNew    = !original;
@@ -1116,9 +1253,18 @@
     if(btnSave) btnSave.textContent = 'Valider et accepter';
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
+    _reviewSetLocked(locked !== false);
   };
 
   function resetReviewModeUI(){
+    // Toujours remettre l'état verrouillé (Refuser/Modifier/Accepter, champs
+    // désactivés) à zéro, MÊME si _reviewMode était déjà à false — sinon cet
+    // état pouvait fuiter vers un usage tout à fait normal du formulaire
+    // (ex. "Ajouter un produit" affichait Refuser/Modifier/Accepter à la
+    // place d'Annuler/Enregistrer). openModal() n'appelait jamais cette
+    // fonction, donc le seul filet de sécurité est ici, avant le early
+    // return ci-dessous (retour utilisateur, capture à l'appui).
+    _reviewSetLocked(false);
     if(!window._reviewMode) return;
     window._reviewMode = false;
     window._reviewItem = null;
@@ -1188,6 +1334,42 @@
   });
   document.getElementById('modalClose').addEventListener('click', requestCloseModal);
   document.getElementById('btnCancel').addEventListener('click', requestCloseModal);
+
+  // ── Boutons de la vue "demande produit" verrouillée ──────────────────
+  var btnReviewRefuseEl = document.getElementById('btnReviewRefuse');
+  var btnReviewUnlockEl = document.getElementById('btnReviewUnlock');
+  var btnReviewAcceptEl = document.getElementById('btnReviewAccept');
+  if(btnReviewUnlockEl) btnReviewUnlockEl.addEventListener('click', function(){ _reviewSetLocked(false); });
+  if(btnReviewRefuseEl) btnReviewRefuseEl.addEventListener('click', async function(){
+    if(!window._reviewItem) return;
+    btnReviewRefuseEl.disabled = true;
+    var ok = await window.reqRefuse(window._reviewItem.ref, window._reviewUser);
+    btnReviewRefuseEl.disabled = false;
+    if(ok){
+      showToast('Demande refusée', 'ok', 2500);
+      if(typeof window._resetReviewModeUI === 'function') window._resetReviewModeUI();
+      closeModal();
+      if(typeof reqOpenPanel === 'function') reqOpenPanel();
+      if(typeof reqUpdateBadge === 'function') reqUpdateBadge();
+    } else {
+      showToast('Erreur lors du refus', 'err', 3000);
+    }
+  });
+  if(btnReviewAcceptEl) btnReviewAcceptEl.addEventListener('click', async function(){
+    if(!window._reviewItem) return;
+    btnReviewAcceptEl.disabled = true;
+    var ok = await window.reqAccept(window._reviewItem.ref, window._reviewUser);
+    btnReviewAcceptEl.disabled = false;
+    if(ok){
+      showToast('Demande acceptée ✓', 'ok', 2500);
+      if(typeof window._resetReviewModeUI === 'function') window._resetReviewModeUI();
+      closeModal();
+      if(typeof reqOpenPanel === 'function') reqOpenPanel();
+      if(typeof reqUpdateBadge === 'function') reqUpdateBadge();
+    } else {
+      showToast('Erreur lors de l\'acceptation', 'err', 3000);
+    }
+  });
   // Un clic sur le fond gris ne ferme plus la fenêtre : seul un clic explicite
   // sur « Annuler » ou la croix peut fermer la fiche, pour éviter de perdre
   // une saisie en cours par erreur.

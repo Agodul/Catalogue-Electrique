@@ -94,6 +94,35 @@ async function authLogoutServer() {
   }
 }
 
+// ── Déconnexion automatique si le serveur ne reconnaît plus la session, ou
+// n'est plus joignable (retour utilisateur : ne pas laisser l'app croire
+// l'utilisateur connecté dans ces deux cas). Centralisé ici pour être
+// appelé aussi bien depuis authRefreshMe() (sondage périodique) que depuis
+// l'intercepteur fetch() global ci-dessous (réaction immédiate dès qu'une
+// requête authentifiée quelconque essuie un 401, sans attendre le prochain
+// sondage). Le flag évite le spam de toasts si plusieurs requêtes en 401
+// arrivent en parallèle.
+var _authForceLogoutInProgress = false;
+function _authForceLogout(reason) {
+  if (!authIsLoggedIn() || _authForceLogoutInProgress) return;
+  _authForceLogoutInProgress = true;
+  authClearUser();
+  applyAuthUI();
+  showAuthToast(reason);
+  if (typeof render === 'function') render();
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof showHome === 'function') showHome();
+  if (typeof window._reqStopPolling === 'function') window._reqStopPolling();
+  setTimeout(function(){ _authForceLogoutInProgress = false; }, 2000);
+}
+
+// Nombre d'échecs réseau consécutifs (serveur injoignable, pas une simple
+// réponse d'erreur) avant de considérer l'utilisateur déconnecté — évite de
+// délogger sur un simple accroc réseau ponctuel (bascule wifi/4G...), tout
+// en réagissant sans attendre indéfiniment si le serveur reste injoignable.
+var _authUnreachableCount = 0;
+var AUTH_UNREACHABLE_THRESHOLD = 2;
+
 async function authRefreshMe() {
   var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
   var token = authGetToken();
@@ -103,22 +132,68 @@ async function authRefreshMe() {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     if (!r.ok) {
-      // Token expiré
-      authClearUser();
-      applyAuthUI();
-      showAuthToast('Session expirée — veuillez vous reconnecter');
+      _authUnreachableCount = 0; // le serveur a répondu : il est joignable
+      if (r.status === 401) {
+        // Token explicitement rejeté (expiré, révoqué, compte supprimé...)
+        _authForceLogout('Session expirée — veuillez vous reconnecter');
+      }
+      // Autres codes (403, 5xx...) : erreur ponctuelle, pas forcément liée
+      // à la session — ne pas déconnecter sur la seule foi de ce statut.
       return false;
     }
+    _authUnreachableCount = 0;
     var user = await r.json();
     authSetSession(token, Object.assign({ permissions: _defaultPermissions(user.isAdmin) }, user));
     return true;
-  } catch(e) { return false; }
+  } catch(e) {
+    // Échec réseau (pas de réponse du tout) : serveur injoignable.
+    _authUnreachableCount++;
+    if (_authUnreachableCount >= AUTH_UNREACHABLE_THRESHOLD) {
+      _authForceLogout('Serveur injoignable — déconnexion automatique');
+    }
+    return false;
+  }
 }
 
-// Rafraîchir le token toutes les 30 min
+// Intercepte fetch() globalement : toute réponse 401 provenant du serveur
+// configuré, pendant qu'une session est active, signifie que ce serveur ne
+// reconnaît plus le token (compte supprimé, mot de passe changé ailleurs,
+// sessions perdues après redémarrage serveur...) — déconnexion immédiate au
+// lieu d'attendre le prochain sondage périodique. Volontairement limité au
+// 401 (non-authentifié) et pas au 403 (authentifié mais action refusée pour
+// raison de permission — ne doit jamais déclencher une déconnexion).
+(function _installAuthFetchGuard(){
+  var _origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    return _origFetch(input, init).then(function(res){
+      try {
+        var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
+        var urlStr = typeof input === 'string' ? input : (input && input.url) || '';
+        if (sUrl && res.status === 401 && urlStr.indexOf(sUrl) === 0 && authIsLoggedIn()) {
+          _authForceLogout('Session expirée — veuillez vous reconnecter');
+        }
+      } catch(e) {}
+      return res;
+    });
+  };
+})();
+
+// Sondage périodique : toutes les 3 min (au lieu de 30 min) — sert à la fois
+// à rafraîchir le token ET à détecter une perte de connexion serveur assez
+// tôt, sans attendre qu'une action utilisateur déclenche une requête.
 setInterval(function() {
   if (authIsLoggedIn() && authGetToken()) authRefreshMe();
-}, 30 * 60 * 1000);
+}, 3 * 60 * 1000);
+
+// Revérifier immédiatement au retour au premier plan (PWA rouverte après
+// avoir été mise en arrière-plan un moment) plutôt que d'attendre jusqu'à
+// 3 min — la session a pu devenir invalide ou le serveur injoignable
+// pendant l'absence.
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && authIsLoggedIn() && authGetToken()) {
+    authRefreshMe();
+  }
+});
 
 // ── Authentification locale (fallback hors ligne) ────────────────────────
 
@@ -324,6 +399,13 @@ function applyAuthUI() {
   var btnFabPropose = document.getElementById('btnFabPropose');
   if (btnFabPropose) btnFabPropose.style.display = canPropose ? '' : 'none';
 
+  // Bouton "Signaler un bug" : visible pour TOUT utilisateur connecté (avec
+  // serveur configuré), contrairement à "Proposer un produit" — un bug peut
+  // être trouvé par n'importe qui, pas seulement les comptes sans droit
+  // d'édition.
+  var btnReportBug = document.getElementById('btnReportBug');
+  if (btnReportBug) btnReportBug.style.display = (loggedIn && !!_sUrlReq) ? '' : 'none';
+
   // Champ suggestions : visible uniquement pour canEdit/admin
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
@@ -351,6 +433,12 @@ function applyAuthUI() {
   // d'écriture directe au catalogue pour ces utilisateurs).
   var btnImportXlsxEl = document.getElementById('btnImportXlsx');
   if(btnImportXlsxEl) btnImportXlsxEl.style.display = (canExport || canPropose) ? '' : 'none';
+  // Sous-titre adapté à la conséquence réelle pour CET utilisateur (retour
+  // utilisateur : le texte doit correspondre à la permission) — l'import
+  // écrit directement le catalogue pour canExport, mais passe par une
+  // demande à valider par un admin pour un simple "proposeur".
+  var btnImportXlsxSub = document.getElementById('btnImportXlsxSub');
+  if(btnImportXlsxSub) btnImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
   // Séparateur entre export et compare — cacher si pas canExport
   var _menuSeps = document.querySelectorAll('.hdr-menu-sep');
   // (les séparateurs restent visibles pour ne pas casser le layout)
@@ -373,6 +461,12 @@ function applyAuthUI() {
   var _showReq    = loggedIn && !!_sUrl;
   if(_btnReqMenu) _btnReqMenu.style.display = _showReq ? '' : 'none';
   if(_reqMenuSep) _reqMenuSep.style.display = _showReq ? '' : 'none';
+  // Sous-titre : les admins y traitent les demandes REÇUES des autres
+  // utilisateurs, un simple utilisateur n'y voit que le suivi des SIENNES
+  // (voir reqRefreshPanel() dans js/requests.js, qui bascule déjà le
+  // contenu du panneau lui-même de la même façon).
+  var _btnReqMenuSub = document.getElementById('btnRequestsMenuSub');
+  if(_btnReqMenuSub) _btnReqMenuSub.textContent = isAdmin ? 'Modifications proposées' : 'Suivi de vos demandes';
   if(!loggedIn){
     var _badge     = document.getElementById('requestsBadge');
     var _badgeMenu = document.getElementById('requestsBadgeMenu');
@@ -791,18 +885,35 @@ function openChangePasswordModal() {
     + '</div></div>';
   document.body.appendChild(ov);
 
+  // Même comportement que la modale "Ajouter un utilisateur" (openAddUserModal) :
+  // bordure rouge sur le champ fautif en plus du message d'erreur, qui repasse
+  // au gris dès que l'utilisateur corrige ce champ précis — au lieu du seul
+  // message générique d'avant, sans aucun repère visuel sur quel champ est en
+  // cause (retour utilisateur, capture à l'appui).
+  var REQ_BORDER = '1.5px solid #DC2626';
+  var OK_BORDER  = '1.5px solid var(--line)';
+  var cpCurrentEl = ov.querySelector('#_cpCurrent');
+  var cpNewEl     = ov.querySelector('#_cpNew');
+  var cpConfirmEl = ov.querySelector('#_cpConfirm');
+  [cpCurrentEl, cpNewEl, cpConfirmEl].forEach(function(el){
+    el.addEventListener('input', function(){ this.style.border = OK_BORDER; });
+  });
+
   ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
   ov.querySelector('#_cpSubmit').onclick = async function() {
-    var pwCur  = ov.querySelector('#_cpCurrent').value;
-    var pw1    = ov.querySelector('#_cpNew').value;
-    var pw2    = ov.querySelector('#_cpConfirm').value;
+    var pwCur  = cpCurrentEl.value;
+    var pw1    = cpNewEl.value;
+    var pw2    = cpConfirmEl.value;
     var errEl  = ov.querySelector('#_cpError');
     errEl.textContent = '';
+    cpCurrentEl.style.border = OK_BORDER;
+    cpNewEl.style.border     = OK_BORDER;
+    cpConfirmEl.style.border = OK_BORDER;
 
-    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
-    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; return; }
-    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; return; }
-    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+    if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; cpCurrentEl.style.border = REQ_BORDER; return; }
+    if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; cpNewEl.style.border = REQ_BORDER; return; }
+    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; cpNewEl.style.border = REQ_BORDER; return; }
+    if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; cpNewEl.style.border = REQ_BORDER; cpConfirmEl.style.border = REQ_BORDER; return; }
 
     try {
       var r = await fetch(sUrl + '/login', {
@@ -810,7 +921,7 @@ function openChangePasswordModal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username, password: pwCur })
       });
-      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; return; }
+      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; cpCurrentEl.style.border = REQ_BORDER; return; }
     } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
 
     var ok = await authUpdateUser(user.username, { password: pw1 });
@@ -825,8 +936,19 @@ function openChangePasswordModal() {
 
 function initAuth() {
   applyAuthUI();
-  // Notifier les composants (bottom nav, menu sheet) après applyAuthUI
-  setTimeout(function(){ document.dispatchEvent(new CustomEvent('spi_auth_changed')); }, 300);
+  // Notifier les composants (bottom nav, menu sheet) après applyAuthUI —
+  // même délai réutilisé pour démarrer le polling des demandes en attente
+  // sur une session déjà active (pas de authLogin() cette fois, la session
+  // vient de localStorage). initAuth() s'exécute avant que requests.js soit
+  // chargé (ordre des scripts) : window._reqStartPolling n'existe pas encore
+  // à cet instant précis, un appel direct ici ne fait donc rien silencieuse-
+  // ment — d'où le report dans ce setTimeout, exécuté une fois tous les
+  // scripts chargés (retour utilisateur, capture à l'appui : badge absent
+  // malgré de vraies demandes en attente pour un admin déjà connecté).
+  setTimeout(function(){
+    document.dispatchEvent(new CustomEvent('spi_auth_changed'));
+    if(authIsLoggedIn() && typeof window._reqStartPolling === 'function') window._reqStartPolling();
+  }, 300);
 
   // Bouton "Se connecter"
   async function doLogin() {

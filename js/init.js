@@ -209,6 +209,8 @@
       { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },
       { overlay: 'conflictOverlay',   close: 'conflictClose'    },
       { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
+      { overlay: 'requestsOverlay',   close: 'requestsPanelClose' },
+      { overlay: 'bugReportOverlay',  close: 'bugReportCloseBtn' },
       { overlay: 'compareOverlay',    close: 'compareClose',    classList: true },
       { overlay: 'iconPickerModal',   close: 'iconPickerClose', classList: true },
       { overlay: 'settingsOverlay',   close: 'settingsClose',   classList: true },

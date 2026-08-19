@@ -14,8 +14,7 @@
   function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
   // ── Badge notification ────────────────────────────────────────
-  var _reqLastCount   = 0;
-  var _reqLastCheckTs = 0;  // timestamp du dernier poll réussi (ms)
+  var _reqLastCount   = 0; // dernier total ABSOLU connu (voir reqUpdateBadge)
 
   function _reqNotifyAdmin(newCount){
     if(!reqIsAdmin()) return;
@@ -48,34 +47,34 @@
     if(!sUrl || !reqIsAdmin()) return;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      // Premier poll : pas de timestamp → compte tout
-      // Polls suivants : timestamp= pour ne compter que les nouvelles entrées
-      var tsParam = _reqLastCheckTs > 0 ? '?timestamp=' + _reqLastCheckTs : '';
-      var now = Date.now();
-      var [rData, rDocs] = await Promise.all([
-        fetch(sUrl + '/checkReq'     + tsParam, { headers: h }),
-        fetch(sUrl + '/checkDocsReq' + tsParam, { headers: h })
-      ]);
+      // Toujours le total ABSOLU actuel (pas de timestamp= filtrant sur les
+      // nouvelles entrées) — l'ancienne version cumulait un delta "nouvelles
+      // demandes depuis le dernier check" sans jamais rien soustraire quand
+      // une demande était résolue/acceptée/refusée : le badge ne pouvait que
+      // monter, jamais redescendre (retour utilisateur : badge resté affiché
+      // après avoir tout traité). Le payload {count} reste minuscule, pas de
+      // coût réel à le refaire à chaque poll plutôt qu'un delta.
+      //
+      // checkDocsReq n'est PAS ajouté au total : "refs" y compte les
+      // demandes ayant au moins un document joint — un sous-ensemble des
+      // demandes déjà comptées par checkReq, pas des demandes en plus.
+      // Un document joint appartient à une demande déjà comptée (aucun
+      // fichier_req n'existe sans son catalogue_req correspondant) — les
+      // additionner doublait le compte pour toute demande avec pièce jointe
+      // (retour utilisateur : "4 notifs alors que 2 demandes", les deux
+      // ayant chacune un fichier joint → 2+2).
+      var rData = await fetch(sUrl + '/checkReq', { headers: h, cache: 'no-store' });
       var dData = rData.ok ? await rData.json() : null;
-      var dDocs = rDocs.ok ? await rDocs.json() : null;
-      if(!dData && !dDocs) return; // serveur down, on ne met pas à jour
-      // Premier poll : total absolu ; polls suivants : delta (nouvelles depuis lastCheck)
-      var total;
-      if(_reqLastCheckTs === 0){
-        total = ((dData && dData.count) || 0) + ((dDocs && dDocs.refs) || 0);
-      } else {
-        // Des nouvelles demandes sont arrivées depuis le dernier check
-        var newData = (dData && dData.count) || 0;
-        var newDocs = (dDocs && dDocs.refs)  || 0;
-        // Si delta > 0, ajouter au total connu ; sinon garder le total actuel
-        total = _reqLastCount + newData + newDocs;
-      }
-      _reqLastCheckTs = now;
+      if(!dData) return; // serveur down, on ne met pas à jour
+      var total = (dData && dData.count) || 0;
       ['requestsBadge','requestsBadgeMenu'].forEach(function(id){
         var el = document.getElementById(id);
         if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
       });
-      _reqNotifyAdmin(total);
+      // Notif desktop seulement si le total a réellement augmenté depuis le
+      // dernier poll (comparaison de deux totaux absolus, donc fiable même
+      // si des demandes ont été traitées entretemps).
+      if(total > _reqLastCount) _reqNotifyAdmin(total);
       _reqLastCount = total;
     } catch(e) {}
   }
@@ -88,7 +87,7 @@
     reqUpdateBadge();
     _reqPollInterval = setInterval(reqUpdateBadge, 30000);
   }
-  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCheckTs = 0; _reqLastCount = 0; }
+  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCount = 0; }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
 
@@ -127,6 +126,43 @@
     } catch(e) { return false; }
   };
 
+  // ── Transfère les docs/images joints à une demande vers le vrai produit ──
+  // reqRef/reqUser : identifient la demande côté _req. productRef : ref du
+  // produit réel une fois accepté (généralement identique à reqRef, sauf cas
+  // rares de ref changée par l'admin en éditant avant validation).
+  // Limite connue : pullDocsReq renvoie un ZIP quand il y a 2+ fichiers, et
+  // ce codebase n'a pas de lib de dézippage côté client — seul le cas
+  // "1 fichier joint" (de très loin le plus courant) est migré automatique-
+  // ment ; au-delà, un avertissement est affiché plutôt que d'échouer en
+  // silence ou de risquer une migration incorrecte.
+  async function _reqMigrateDocsToProduct(reqRef, reqUser, productRef){
+    var sUrl = reqServerUrl(); if(!sUrl) return;
+    try {
+      var hGet = Object.assign({}, reqHeaders()); delete hGet['Content-Type'];
+      var rList = await fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
+      if(!rList.ok) return;
+      var dList = await rList.json();
+      var files = dList && dList.items ? dList.items : [];
+      if(!files.length) return;
+      if(files.length > 1){
+        console.warn('_reqMigrateDocsToProduct: ' + files.length + ' fichiers joints, migration auto limitée à 1 — à récupérer manuellement si besoin.');
+        if(typeof showToast === 'function') showToast(files.length + ' fichiers joints à cette demande — un seul a pu être transféré automatiquement', 'warn', 5000);
+      }
+      var rFile = await fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
+      if(!rFile.ok) return;
+      var blob = await rFile.blob();
+      var cd = rFile.headers.get('Content-Disposition') || '';
+      var m = /filename="([^"]*)"/.exec(cd);
+      var filename = m ? m[1] : (files[0].filename || 'document');
+      if(/\.zip$/i.test(filename)) return; // 2+ fichiers : cas non géré, déjà signalé ci-dessus
+      var fd = new FormData();
+      fd.append('ref', productRef);
+      fd.append('document', blob, filename);
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      await fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd });
+    } catch(e) { console.warn('_reqMigrateDocsToProduct:', e); }
+  }
+
   // ── Accepter une demande ──────────────────────────────────────
   // overrideData : si fourni (édition admin), utiliser directement ces données
   //                 au lieu de re-fetcher depuis le serveur
@@ -141,20 +177,122 @@
         item = Object.assign({}, overrideData);
       } else {
         // Cas normal : récupérer depuis le serveur
-        var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet });
+        var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet, cache: 'no-store' });
         if(!r.ok) return false;
         var d = await r.json();
         if(!d.items || !d.items.length) return false;
         item = d.items[0].data || {};
       }
+      // Garde-fou : un rapport de bug (type:"bug") n'est PAS un produit — ne
+      // doit jamais être poussé dans le vrai catalogue via /pushDatas.
+      // Nécessaire ici, au niveau le plus bas, car "Accepter tout" boucle
+      // sur toutes les demandes sans distinction (voir btnAcceptAllRequests) :
+      // un garde-fou seulement dans l'UI de détail n'aurait pas suffi.
+      if(item.type === 'bug') return await window.reqResolveBug(ref, user);
       delete item._reqUser; delete item._reqAt; delete item._reqOriginal; delete item.user;
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
       if(!r2.ok) return false;
+      // Transférer les documents/images joints à la demande vers le vrai
+      // produit avant de les supprimer côté _req — sinon ils disparaissent
+      // silencieusement à l'acceptation (retour utilisateur : les fichiers
+      // joints doivent suivre le produit une fois validé, pas se perdre).
+      await _reqMigrateDocsToProduct(ref, user, item.ref || ref);
       await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet });
       await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
+  };
+
+  // ── Joindre des fichiers (PDF/images) à une demande produit déjà envoyée ──
+  // Utilisé après reqSubmit() côté "Proposer un produit/une modification"
+  // (voir btnSave dans actions.js) — même endpoint et même logique
+  // d'upload différé que reqSubmitBug ci-dessous, réutilisé pour éviter la
+  // duplication. Un échec d'upload ne remet pas en cause la demande déjà
+  // enregistrée, juste signalé en console.
+  window.reqUploadAttachedFiles = async function(ref, files){
+    var sUrl = reqServerUrl(); if(!sUrl || !files || !files.length) return;
+    var user = reqCurrentUser(); if(!user) return;
+    var username = user.username || user.name || 'user';
+    var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+    for(var i = 0; i < files.length; i++){
+      try {
+        var fd = new FormData();
+        fd.append('ref', ref);
+        fd.append('req_user', username);
+        fd.append('document', files[i], files[i].name);
+        var r = await fetch(sUrl + '/pushDocsReq', { method:'POST', headers:h, body:fd });
+        if(!r.ok) console.warn('reqUploadAttachedFiles: échec pour', files[i].name, 'HTTP', r.status);
+      } catch(e) { console.warn('reqUploadAttachedFiles:', e); }
+    }
+  };
+
+  // ── Signaler un bug ───────────────────────────────────────────
+  // Réutilise la même tuyauterie serveur que les demandes produit
+  // (pushDatasReq accepte n'importe quel JSON libre, aucun schéma imposé
+  // côté serveur) mais avec type:"bug" et des champs différents — jamais
+  // mélangé avec un vrai produit (voir garde-fou dans reqAccept ci-dessus).
+  // imageBlob : fichier binaire déjà compressé (voir _bugCompressImage) ou
+  // null. Envoyé via /pushDocsReq (même endpoint multipart que les PDF
+  // produit) — jamais en base64 dans le JSON de /pushDatasReq, qui ne porte
+  // que l'indicateur hasImage.
+  window.reqSubmitBug = async function(description, imageBlob){
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
+    var user = reqCurrentUser(); if(!user) return false;
+    var username = user.username || user.name || 'user';
+    try {
+      var h = reqHeaders();
+      var now = Date.now();
+      var ref = 'BUG-' + now + '-' + Math.random().toString(36).substr(2,6);
+      var toSend = {
+        ref: ref,
+        id: ref,
+        user: username,
+        type: 'bug',
+        description: description,
+        hasImage: !!imageBlob,
+        context: {
+          page: location.href,
+          userAgent: navigator.userAgent,
+          viewport: window.innerWidth + 'x' + window.innerHeight,
+          // Dernières erreurs JS/console.warn/console.error capturées (voir
+          // popup.js) — vide si rien d'anormal ne s'est produit récemment.
+          recentLogs: Array.isArray(window._bugErrorLog) ? window._bugErrorLog.slice() : []
+        },
+        createdAt: now,
+        updatedAt: now,
+        _reqUser: username,
+        _reqAt: now
+      };
+      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
+      if(!r.ok) return false;
+      if(imageBlob){
+        var hUp = Object.assign({}, reqHeaders()); delete hUp['Content-Type']; // laisser fetch fixer le boundary multipart
+        var fd = new FormData();
+        fd.append('ref', ref);
+        fd.append('req_user', username);
+        fd.append('document', imageBlob, 'capture.jpg');
+        var rImg = await fetch(sUrl + '/pushDocsReq', { method:'POST', headers:hUp, body:fd });
+        // La demande elle-même est déjà enregistrée à ce stade — un échec
+        // d'upload de l'image ne doit pas faire perdre tout le rapport,
+        // juste signaler que l'image n'est pas jointe.
+        if(!rImg.ok) console.warn('reqSubmitBug: image non envoyée, HTTP', rImg.status);
+      }
+      return true;
+    } catch(e) { console.warn('reqSubmitBug:', e); return false; }
+  };
+
+  // ── Marquer un bug comme résolu (supprime la demande ET l'image jointe le
+  //     cas échéant, sans jamais toucher au catalogue produit — voir
+  //     garde-fou dans reqAccept) ──
+  window.reqResolveBug = async function(ref, user){
+    var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
+    try {
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h });
+      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+      return r.ok;
+    } catch(e) { console.warn('reqResolveBug:', e); return false; }
   };
 
   // ── Refuser une demande ───────────────────────────────────────
@@ -171,157 +309,145 @@
   // ── Modale détail demande ─────────────────────────────────────
   function reqOpenDetail(item, user){
     var data     = item.data || {};
-    var original = data._reqOriginal;
-    var isNew    = !original;
-    var overlay  = document.getElementById('reqDetailOverlay');
-    if(!overlay) return;
+    // Rapport de bug : rien à voir avec un produit (pas de nom/prix/famille…)
+    // — vue dédiée séparée plutôt que de forcer les champs produit ci-dessous
+    // sur des données qui n'en ont pas.
+    if(data.type === 'bug') return _reqOpenBugDetail(item, user);
+    // Produit : ouvre directement le formulaire complet, verrouillé par
+    // défaut (fusion de l'ancienne vue résumé + fenêtre "Modifier" séparée
+    // en une seule fenêtre — voir _openReviewModal/_reviewSetLocked dans
+    // js/modal.js). "Accepter"/"Refuser" agissent directement depuis cet
+    // état verrouillé ; "Modifier" déverrouille SUR CETTE MÊME fenêtre,
+    // sans en ouvrir une autre (retour utilisateur).
+    //
+    // Masquer (pas fermer) le panneau "Demandes en attente" AVANT d'ouvrir
+    // ce formulaire : #modalOverlay a un z-index bien plus bas (500) que
+    // #requestsOverlay (10800), donc il resterait caché derrière sinon
+    // (retour utilisateur répété : superposition persistante). _reqHidePanel
+    // (pas reqClosePanel) garde son état "ouvert" intact — au retour, elle
+    // réapparaît instantanément, comme si elle était restée cachée derrière
+    // la fiche plutôt que fermée puis rouverte (retour utilisateur).
+    if(typeof _reqHidePanel === 'function') _reqHidePanel();
+    if(typeof window._openReviewModal === 'function') window._openReviewModal(item, user, true);
+  }
 
-    // Remplir le titre
+  // Vue détail dédiée pour un rapport de bug — même fenêtre/animation que le
+  // détail d'une demande produit, mais un contenu et des actions totalement
+  // différents (pas de diff de champs, pas de bouton "Modifier le produit",
+  // "Accepter" devient "Marquer résolu" et ne touche jamais /pushDatas).
+  function _reqOpenBugDetail(item, user){
+    var data    = item.data || {};
+    var overlay = document.getElementById('reqDetailOverlay');
+    if(!overlay) return;
+    var ctx = data.context || {};
+
     var titleEl = document.getElementById('reqDetailTitle');
     var subtitleEl = document.getElementById('reqDetailSubtitle');
-    if(titleEl)    titleEl.textContent = (isNew ? 'Nouveau produit : ' : 'Modification : ') + escapeHtml(item.ref);
-    if(subtitleEl) subtitleEl.textContent = 'Soumis par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+    if(titleEl)    titleEl.textContent = '🐛 Bug signalé';
+    if(subtitleEl) subtitleEl.textContent = 'Signalé par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
 
-    // Construire le corps avec le même HTML que openView
     var body = document.getElementById('reqDetailBody');
     if(!body) return;
-
-    var p = isNew ? data : Object.assign({}, original, data, { _reqOriginal: original, _reqUser: data._reqUser, _reqAt: data._reqAt });
-    // Pour une modif : afficher les valeurs proposées
-    if(!isNew) {
-      Object.keys(data).forEach(function(k){
-        if(k !== '_reqOriginal' && k !== '_reqUser' && k !== '_reqAt') p[k] = data[k];
-      });
-    }
-
-    // Photo
-    var photoHtml = '';
-    if(p.photo){
-      photoHtml = '<div class="vm-photo" style="height:200px;border-radius:10px 10px 0 0;overflow:hidden;background:#eee;margin-bottom:16px;">'
-        + '<img src="' + escapeHtml(p.photo) + '" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
-        + '</div>';
-    }
-
-    // Référence + nom
-    var refHtml = '<div class="vm-ref" style="margin-bottom:4px;">' + escapeHtml((p.brand ? p.brand + ' — ' : '') + (p.ref || '')) + '</div>';
-    var nameHtml = '<div class="vm-name" style="margin-bottom:12px;">' + escapeHtml(p.name || '(Sans nom)') + '</div>';
-
-    // Méta
-    var metaItems = [];
-    if(p.brand)    metaItems.push(['MARQUE',       p.brand]);
-    if(p.ref)      metaItems.push(['RÉFÉRENCE',    p.ref]);
-    if(p.family)   metaItems.push(['FAMILLE',      p.family]);
-    if(p.series)   metaItems.push(['SÉRIE',        p.series]);
-    if(p.supplier) metaItems.push(['FOURNISSEUR',  p.supplier]);
-    if(p.leadTime) metaItems.push(['DÉLAI',        p.leadTime]);
-    if(p.url)      metaItems.push(['URL',          p.url]);
-
-    var metaHtml = '';
-    if(metaItems.length){
-      metaHtml = '<div class="vm-meta" style="margin-bottom:12px;">'
-        + metaItems.map(function(m){
-            var val = m[0] === 'URL'
-              ? '<a href="' + escapeHtml(m[1]) + '" target="_blank" style="color:var(--copper-deep)">Ouvrir la page</a>'
-              : '<span>' + escapeHtml(m[1]) + '</span>';
-            return '<div class="vm-meta-item"><label>' + escapeHtml(m[0]) + '</label>' + val + '</div>';
-          }).join('')
-        + '</div>';
-    }
-
-    // Description
-    var descHtml = p.desc ? '<div class="vm-desc" style="margin-bottom:12px;">' + escapeHtml(p.desc) + '</div>' : '';
-
-    // Prix
-    var priceHtml = '';
-    if(p.price){
-      var orig = p.priceCatalogue && p.priceCatalogue !== p.price ? p.priceCatalogue : '';
-      priceHtml = '<div class="vm-price-row"><div class="vm-price">'
-        + (orig ? '<span class="vm-price-original">' + escapeHtml(orig) + '</span>' : '')
-        + escapeHtml(p.price)
-        + '</div></div>';
-    }
-
-    // Historique prix
-    var histHtml = '';
-    if(p.priceHistory && p.priceHistory.length){
-      histHtml = '<div class="vm-price-history">'
-        + '<div style="font-size:13px;font-weight:700;margin:12px 0 8px;">Historique des prix</div>'
-        + p.priceHistory.map(function(h){
-            var d = h.date ? new Date(h.date).toLocaleDateString('fr-FR') : '';
-            return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid var(--line);">'
-              + '<span>' + escapeHtml(d || h.label || '') + '</span>'
-              + '<span>' + escapeHtml(h.price || '') + '</span>'
+    var ctxRows = [
+      ['PAGE', ctx.page],
+      ['NAVIGATEUR', ctx.userAgent],
+      ['FENÊTRE', ctx.viewport]
+    ].filter(function(r){ return !!r[1]; });
+    var ctxHtml = ctxRows.length
+      ? '<div class="vm-meta" style="margin-top:16px;">' + ctxRows.map(function(r){
+          return '<div class="vm-meta-item"><label>' + escapeHtml(r[0]) + '</label><span style="word-break:break-all;">' + escapeHtml(r[1]) + '</span></div>';
+        }).join('') + '</div>'
+      : '';
+    // Journal d'erreurs JS capturées juste avant l'envoi (voir popup.js) —
+    // utile pour diagnostiquer un vrai bug de code, pas juste un souci
+    // d'ergonomie. Vide si rien d'anormal ne s'est produit récemment.
+    // Toujours affiché (même vide) : sinon rien ne distingue "le mécanisme a
+    // tourné et n'a rien trouvé d'anormal" de "le mécanisme n'a pas marché",
+    // ce qui donnait l'impression que la capture de logs était cassée
+    // (retour utilisateur, capture à l'appui).
+    var logs = Array.isArray(ctx.recentLogs) ? ctx.recentLogs : [];
+    var logsHtml = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin:16px 0 6px;">Journal technique (' + logs.length + ')</div>';
+    if(logs.length){
+      logsHtml += '<div style="background:#0F172A;color:#E2E8F0;border-radius:8px;padding:10px 12px;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:1.6;max-height:220px;overflow-y:auto;">'
+        + logs.map(function(l){
+            var color = l.type === 'error' || l.type === 'unhandledrejection' || l.type === 'console.error' ? '#FCA5A5' : '#FCD34D';
+            return '<div style="margin-bottom:6px;"><span style="color:#64748B;">[' + escapeHtml(l.type) + ']</span> <span style="color:' + color + ';">' + escapeHtml(l.message||'') + '</span>'
+              + (l.source ? '<br><span style="color:#64748B;">' + escapeHtml(l.source) + '</span>' : '')
               + '</div>';
           }).join('')
         + '</div>';
+    } else {
+      logsHtml += '<div style="color:var(--ink-soft);font-size:12px;font-style:italic;">Aucune erreur ni avertissement récent au moment de l\'envoi.</div>';
+    }
+    var imageHtml = data.hasImage
+      ? '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin:16px 0 6px;">Capture d\'écran</div>'
+        + '<div id="reqBugImageWrap" style="color:var(--ink-soft);font-size:12.5px;"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i> Chargement…</div>'
+      : '';
+    body.innerHTML =
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:6px;">Description</div>'
+      + '<div class="vm-desc" style="white-space:pre-wrap;">' + escapeHtml(data.description || '(aucune description)') + '</div>'
+      + imageHtml
+      + ctxHtml
+      + logsHtml;
+
+    // L'image n'est jamais dans le JSON (voir reqSubmitBug) — récupérée à
+    // part depuis l'API fichiers, comme un PDF produit.
+    if(data.hasImage){
+      (function(){
+        var sUrl = reqServerUrl();
+        var hImg = Object.assign({}, reqHeaders()); delete hImg['Content-Type'];
+        fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(item.ref) + '&user=' + encodeURIComponent(user), { headers: hImg, cache: 'no-store' })
+          .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+          .then(function(blob){
+            var wrap = document.getElementById('reqBugImageWrap');
+            if(!wrap) return; // fenêtre déjà refermée entretemps
+            var url = URL.createObjectURL(blob);
+            wrap.innerHTML = '<img src="' + url + '" style="max-width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;">';
+            wrap.querySelector('img').addEventListener('click', function(){ window.open(url, '_blank'); });
+          })
+          .catch(function(e){
+            var wrap = document.getElementById('reqBugImageWrap');
+            if(wrap) wrap.textContent = 'Image indisponible (' + e.message + ')';
+          });
+      })();
     }
 
-    // Diff (pour modification) 
-    var diffHtml = '';
-    if(!isNew && original){
-      var FIELDS = { name:'Nom', brand:'Marque', family:'Famille', series:'Série', supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue', desc:'Description', url:'URL', leadTime:'Délai' };
-      var diffs = [];
-      Object.keys(FIELDS).forEach(function(k){
-        var ov = String(original[k]||''); var nv = String(data[k]||'');
-        if(ov !== nv) diffs.push({ label: FIELDS[k], old: ov, new: nv });
-      });
-      if(diffs.length){
-        diffHtml = '<div style="margin-bottom:16px;padding:12px;background:#FEF3C7;border-radius:8px;border:1px solid #FDE68A;">'
-          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400E;margin-bottom:8px;">Modifications proposées</div>'
-          + diffs.map(function(d){
-              return '<div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:4px 8px;align-items:center;padding:4px 0;border-bottom:1px solid #FDE68A;">'
-                + '<span style="font-size:11px;font-weight:600;color:#92400E;">' + escapeHtml(d.label) + '</span>'
-                + '<span style="font-size:12px;color:#991B1B;text-decoration:line-through;">' + escapeHtml(d.old||'—') + '</span>'
-                + '<span style="font-size:12px;color:#065F46;font-weight:600;">' + escapeHtml(d.new||'—') + '</span>'
-                + '</div>';
-            }).join('')
-          + '</div>';
-      }
-    }
-
-    body.innerHTML = photoHtml + diffHtml + refHtml + nameHtml + metaHtml + descHtml + priceHtml + histHtml;
-
-    // Boutons footer
     var btnAcc = document.getElementById('reqDetailAccept');
     var btnRef = document.getElementById('reqDetailRefuse');
-    if(btnAcc){ btnAcc.disabled=false; btnAcc.innerHTML='<i class="ti ti-check"></i> Accepter';
-      btnAcc.onclick = async function(){
-        btnAcc.disabled=true; btnAcc.textContent='…';
-        var ok = await window.reqAccept(item.ref, user);
-        if(ok){ overlay.style.display='none'; document.body.classList.remove('modal-open'); showToast('Demande acceptée ✓','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
-        else { btnAcc.disabled=false; btnAcc.innerHTML='<i class="ti ti-check"></i> Accepter'; }
-      };
-    }
-    if(btnRef){ btnRef.disabled=false; btnRef.innerHTML='<i class="ti ti-x"></i> Refuser';
-      btnRef.onclick = async function(){
-        btnRef.disabled=true;
-        var ok = await window.reqRefuse(item.ref, user);
-        if(ok){ overlay.style.display='none'; document.body.classList.remove('modal-open'); showToast('Demande refusée','ok',2500); reqOpenPanel(); reqUpdateBadge(); }
-        else { btnRef.disabled=false; btnRef.innerHTML='<i class="ti ti-x"></i> Refuser'; }
-      };
-    }
-
-    // Bouton Modifier — visible pour admins uniquement
-    // Ouvre la modale standard "Modifier le produit" (mêmes champs que
-    // l'édition normale : tags, 3DEXPERIENCE, essentiel, suggestions...)
-    // pré-remplie avec les données soumises, pour tout modifier avant validation.
     var btnEdit = document.getElementById('reqDetailEdit');
-    if(btnEdit){
-      btnEdit.style.display = reqIsAdmin() ? 'flex' : 'none';
-      btnEdit.onclick = function(){
-        overlay.style.display = 'none';
-        // Fermer aussi le panneau "Demandes en attente" derrière — sinon il
-        // reste visible à côté de la modale d'édition standard.
-        if(typeof reqClosePanel === 'function') reqClosePanel();
-        else document.body.classList.remove('modal-open');
-        if(typeof window._openReviewModal === 'function') window._openReviewModal(item, user);
+    // Pas de "Modifier le produit" ni de "Refuser" distinct pour un bug —
+    // une seule action : marquer résolu (= supprimer la remontée).
+    if(btnEdit) btnEdit.style.display = 'none';
+    if(btnRef)  btnRef.style.display  = 'none';
+    if(btnAcc){
+      btnAcc.style.display = '';
+      btnAcc.disabled = false;
+      btnAcc.innerHTML = '<i class="ti ti-check"></i> Marquer résolu';
+      btnAcc.onclick = async function(){
+        btnAcc.disabled = true; btnAcc.textContent = '…';
+        var ok = await window.reqResolveBug(item.ref, user);
+        if(ok){ _reqDetailClose(overlay); showToast('Bug marqué comme résolu ✓', 'ok', 2500); reqOpenPanel(); reqUpdateBadge(); }
+        else { btnAcc.disabled = false; btnAcc.innerHTML = '<i class="ti ti-check"></i> Marquer résolu'; }
       };
     }
 
-    document.getElementById('reqDetailClose').onclick = function(){ overlay.style.display='none'; document.body.classList.remove('modal-open'); };
+    document.getElementById('reqDetailClose').onclick = function(){ _reqDetailClose(overlay); };
     overlay.onclick = null;
     overlay.style.display = 'flex';
+    overlay.classList.add('open');
     document.body.classList.add('modal-open');
+  }
+
+  // Ferme la fenêtre détail demande avec la même animation de sortie que les
+  // autres fenêtres centrées — laisse la transition CSS se jouer avant de
+  // masquer complètement, sinon la prochaine ouverture réapparaîtrait
+  // instantanément (classe déjà présente, rien à (re)déclencher).
+  function _reqDetailClose(overlay){
+    overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    setTimeout(function(){
+      if(!overlay.classList.contains('open')) overlay.style.display = 'none';
+    }, 350);
   }
 
 
@@ -334,7 +460,7 @@
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
+      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
       if(!r.ok) throw new Error('HTTP ' + r.status);
       var d = await r.json();
       var items = d.items || [];
@@ -347,22 +473,36 @@
       var footer = document.getElementById('requestsFooter');
       if(footer) footer.style.display = 'flex';
 
-      // Grouper par user
-      var byUser = {};
-      items.forEach(function(it){
-        var data = it.data || {};
-        var u = data._reqUser || it.user || '?';
-        if(!byUser[u]) byUser[u] = [];
-        byUser[u].push({ ref: it.ref, data: data });
-      });
-
-      var html = '';
-      Object.keys(byUser).forEach(function(u){
-        html += '<div style="padding:10px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + ' demande(s)</div>';
-        byUser[u].forEach(function(item){
-          html += reqRenderAdminItem(item, u);
+      // Séparer d'abord demandes produit / rapports de bug (retour
+      // utilisateur : les deux catégories n'ont rien à voir, ne pas les
+      // mélanger dans la même liste), puis regrouper par utilisateur DANS
+      // chaque catégorie, comme avant.
+      function groupByUser(list){
+        var byUser = {};
+        list.forEach(function(it){
+          var data = it.data || {};
+          var u = data._reqUser || it.user || '?';
+          if(!byUser[u]) byUser[u] = [];
+          byUser[u].push({ ref: it.ref, data: data });
         });
-      });
+        return byUser;
+      }
+      function renderSection(title, iconHtml, list){
+        if(!list.length) return '';
+        var byUser = groupByUser(list);
+        var html = '<div style="padding:12px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);">' + iconHtml + ' ' + title + ' — ' + list.length + '</div>';
+        Object.keys(byUser).forEach(function(u){
+          html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + '</div>';
+          byUser[u].forEach(function(item){ html += reqRenderAdminItem(item, u); });
+        });
+        return html;
+      }
+
+      var productItems = items.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      var bugItems      = items.filter(function(it){ return (it.data||{}).type === 'bug'; });
+
+      var html = renderSection('Demandes produit', '<i class="ti ti-package"></i>', productItems)
+               + renderSection('Bugs signalés', '🐛', bugItems);
       body.innerHTML = html;
 
       // Clic → modale détail
@@ -382,17 +522,23 @@
   function reqRenderAdminItem(item, user){
     var data   = item.data || {};
     var reqAt  = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
-    var isNew  = !data._reqOriginal;
     var refKey = escapeHtml(item.ref);
     var userKey = escapeHtml(user);
+    var isBug  = data.type === 'bug';
+    var isNew  = !data._reqOriginal;
+    var titleText = isBug ? 'Bug signalé' : item.ref;
+    var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
+    var badgeBg   = isBug ? '#FEE2E2' : (isNew ? '#DCFCE7' : '#FEF3C7');
+    var badgeFg   = isBug ? '#991B1B' : (isNew ? '#065F46' : '#92400E');
+    var badgeText = isBug ? '🐛 Bug' : (isNew ? 'Nouveau' : 'Modification');
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
-      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(item.ref) + '</div>'
-      +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · ' + reqAt : '') + '</div>'
+      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
+      +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · ' + reqAt : '') + '</div>'
       +   '</div>'
       +   '<div style="display:flex;align-items:center;gap:8px;">'
-      +     '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + (isNew ? '#DCFCE7' : '#FEF3C7') + ';color:' + (isNew ? '#065F46' : '#92400E') + ';font-weight:700;">' + (isNew ? 'Nouveau' : 'Modification') + '</span>'
+      +     '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + badgeBg + ';color:' + badgeFg + ';font-weight:700;">' + badgeText + '</span>'
       +     '<i class="ti ti-chevron-right" style="font-size:14px;color:var(--ink-soft);"></i>'
       +   '</div>'
       + '</div>'
@@ -410,7 +556,7 @@
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h });
+      var r = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
       if(!r.ok) throw new Error('HTTP ' + r.status);
       var d = await r.json();
       var items = d.items || [];
@@ -420,18 +566,34 @@
         body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>Aucune demande en attente</div>';
         return;
       }
-      var html = items.map(function(it){
+      function renderMineItem(it){
         var data  = it.data || {};
+        var isBug = data.type === 'bug';
         var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
+        var titleText = isBug ? 'Bug signalé' : it.ref;
+        var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
         return '<div class="req-item">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;">'
-          +   '<div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(it.ref) + '</div>'
-          +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(data.name || '') + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
+          +   '<div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
+          +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
           +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
           + '</div>'
           + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
-      }).join('');
+      }
+      // Même séparation que côté admin : demandes produit et bugs signalés
+      // dans deux sections distinctes plutôt que mélangés.
+      var mineProduct = items.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      var mineBugs     = items.filter(function(it){ return (it.data||{}).type === 'bug'; });
+      var html = '';
+      if(mineProduct.length){
+        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);"><i class="ti ti-package"></i> Demandes produit</div>';
+        html += mineProduct.map(renderMineItem).join('');
+      }
+      if(mineBugs.length){
+        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);">🐛 Bugs signalés</div>';
+        html += mineBugs.map(renderMineItem).join('');
+      }
       body.innerHTML = html;
       body.querySelectorAll('[data-req-cancel]').forEach(function(btn){
         btn.addEventListener('click', async function(){
@@ -452,7 +614,23 @@
   function reqOpenPanel(){
     var overlay = document.getElementById('requestsOverlay');
     if(!overlay) return;
+    // Fermer la fiche produit si elle est déjà ouverte (ex. revue d'une
+    // demande) avant d'afficher ce panneau par-dessus — sinon les deux
+    // fenêtres restaient superposées (retour utilisateur, capture à
+    // l'appui : "Demandes en attente" ouvert derrière une fiche produit).
+    // Passe par requestCloseModal() plutôt qu'un close direct pour respecter
+    // la confirmation de saisie non enregistrée si le formulaire est
+    // déverrouillé avec des modifications en cours.
+    var modalOverlayEl = document.getElementById('modalOverlay');
+    if(modalOverlayEl && modalOverlayEl.classList.contains('open') && typeof requestCloseModal === 'function'){
+      requestCloseModal();
+    }
+    // Carte centrée comme les autres fenêtres de l'app (fiche produit,
+    // formulaire d'ajout, détail d'une demande) : classe .open déclenche
+    // fadeBgEdit + slideUp en CSS. Animation par @keyframes, pas besoin du
+    // forçage de reflow requis pour une transition (voir .settings-box).
     overlay.style.display = 'flex';
+    overlay.classList.add('open');
     document.body.classList.add('modal-open');
     reqRefreshPanel();
   }
@@ -479,16 +657,198 @@
     }
   }
 
-  function reqClosePanel(){
+  // Masque/révèle le panneau SANS le fermer (garde sa classe .open, son
+  // contenu déjà chargé, sa position de scroll) — utilisé quand la fiche
+  // produit s'ouvre par-dessus pour une simple consultation (pas
+  // accepter/refuser, qui eux changent la liste et doivent la rafraîchir
+  // via reqOpenPanel()). Donne l'impression que le panneau est resté "juste
+  // caché derrière" la fiche plutôt que fermé puis rouvert avec ré-
+  // animation et re-chargement (retour utilisateur).
+  function _reqHidePanel(){
     var overlay = document.getElementById('requestsOverlay');
     if(overlay) overlay.style.display = 'none';
+  }
+  function _reqRevealPanel(){
+    var overlay = document.getElementById('requestsOverlay');
+    if(overlay && overlay.classList.contains('open')){
+      overlay.style.display = 'flex';
+      document.body.classList.add('modal-open');
+    }
+  }
+
+  function reqClosePanel(){
+    var overlay = document.getElementById('requestsOverlay');
+    if(overlay){
+      overlay.classList.remove('open');
+      // Laisser l'animation de sortie se terminer avant de masquer
+      // complètement (même durée que slideUp/fadeBgEdit, ~350ms).
+      setTimeout(function(){
+        if(!overlay.classList.contains('open')) overlay.style.display = 'none';
+      }, 350);
+    }
     document.body.classList.remove('modal-open');
   }
 
   // ── Init listeners ────────────────────────────────────────────
+  // ── Fenêtre "Signaler un bug" ────────────────────────────────────
+  // Fichier binaire (Blob), pas du base64 — même logique que les PDF déjà
+  // gérés par l'app : l'image part sur /pushDocsReq (multipart), la demande
+  // elle-même sur /pushDatasReq ne porte qu'un indicateur (hasImage), jamais
+  // les octets. Base64 aurait gonflé le JSON d'~33% et alourdi le
+  // chargement de la liste admin (pullDatasReq renvoie tout le JSON, pour
+  // toutes les demandes, à chaque ouverture du panneau).
+  var _bugReportImageBlob = null;
+
+  function _bugReportResetImage(){
+    _bugReportImageBlob = null;
+    var wrap  = document.getElementById('bugReportImagePreviewWrap');
+    var img   = document.getElementById('bugReportImagePreview');
+    var input = document.getElementById('bugReportImageInput');
+    var zone  = document.getElementById('bugReportImageDropzone');
+    if(wrap)  wrap.style.display = 'none';
+    if(img){ if(img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); img.src = ''; }
+    if(input) input.value = '';
+    if(zone)  zone.style.display = 'flex';
+  }
+
+  // Redimensionne/recompresse côté client avant envoi — une capture d'écran
+  // de téléphone brute peut peser plusieurs Mo. 1280px de long côté max +
+  // JPEG qualité .72 reste largement lisible pour du diagnostic, jamais
+  // destiné à être zoomé au pixel.
+  function _bugCompressImage(file){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      var reader = new FileReader();
+      reader.onload = function(e){ img.src = e.target.result; };
+      reader.onerror = reject;
+      img.onload = function(){
+        var maxSide = 1280;
+        var w = img.width, h = img.height;
+        if(w > maxSide || h > maxSide){
+          if(w >= h){ h = Math.round(h * maxSide / w); w = maxSide; }
+          else { w = Math.round(w * maxSide / h); h = maxSide; }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob){
+          if(blob) resolve(blob); else reject(new Error('toBlob a échoué'));
+        }, 'image/jpeg', 0.72);
+      };
+      img.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function _bugReportOpen(){
+    var overlay = document.getElementById('bugReportOverlay');
+    var desc    = document.getElementById('bugReportDesc');
+    if(!overlay) return;
+    if(desc) desc.value = '';
+    _bugReportResetImage();
+    overlay.style.display = 'flex';
+    overlay.classList.add('open');
+    document.body.classList.add('modal-open');
+    if(desc) setTimeout(function(){ desc.focus(); }, 100);
+  }
+  function _bugReportClose(){
+    var overlay = document.getElementById('bugReportOverlay');
+    if(!overlay) return;
+    overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    setTimeout(function(){
+      if(!overlay.classList.contains('open')) overlay.style.display = 'none';
+    }, 350);
+  }
+
   function reqInitListeners(){
     var btnReqMenuEl = document.getElementById('btnRequestsMenu');
-    if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('show'); reqOpenPanel(); });
+    if(btnReqMenuEl) btnReqMenuEl.addEventListener('click', function(){ document.getElementById('hdrMenu').classList.remove('open'); reqOpenPanel(); });
+
+    var btnReportBugEl = document.getElementById('btnReportBug');
+    if(btnReportBugEl) btnReportBugEl.addEventListener('click', function(){
+      var hdrMenuEl = document.getElementById('hdrMenu');
+      if(hdrMenuEl) hdrMenuEl.classList.remove('open');
+      _bugReportOpen();
+    });
+    var bugCloseBtn  = document.getElementById('bugReportCloseBtn');
+    var bugCancelBtn = document.getElementById('bugReportCancelBtn');
+    var bugSubmitBtn = document.getElementById('bugReportSubmitBtn');
+    if(bugCloseBtn)  bugCloseBtn.addEventListener('click', _bugReportClose);
+    if(bugCancelBtn) bugCancelBtn.addEventListener('click', _bugReportClose);
+
+    var bugImageInput    = document.getElementById('bugReportImageInput');
+    var bugImageRemove   = document.getElementById('bugReportImageRemove');
+    var bugImageDropzone = document.getElementById('bugReportImageDropzone');
+
+    async function _bugHandleImageFile(file){
+      if(!file) return;
+      if(!/^image\//.test(file.type)){ showToast('Fichier non reconnu comme image', 'warn', 3000); return; }
+      try {
+        _bugReportImageBlob = await _bugCompressImage(file);
+        var wrap = document.getElementById('bugReportImagePreviewWrap');
+        var img  = document.getElementById('bugReportImagePreview');
+        if(img)  img.src = URL.createObjectURL(_bugReportImageBlob);
+        if(wrap) wrap.style.display = 'block';
+        if(bugImageDropzone) bugImageDropzone.style.display = 'none';
+      } catch(e){ showToast('Impossible de lire cette image', 'err', 3000); }
+    }
+
+    if(bugImageInput) bugImageInput.addEventListener('change', function(){ _bugHandleImageFile(bugImageInput.files[0]); });
+    if(bugImageRemove) bugImageRemove.addEventListener('click', _bugReportResetImage);
+    var bugImagePreviewEl = document.getElementById('bugReportImagePreview');
+    if(bugImagePreviewEl) bugImagePreviewEl.addEventListener('click', function(){
+      if(bugImagePreviewEl.src) window.open(bugImagePreviewEl.src, '_blank');
+    });
+
+    // Glisser-déposer directement sur la zone
+    if(bugImageDropzone){
+      ['dragenter','dragover'].forEach(function(evt){
+        bugImageDropzone.addEventListener(evt, function(e){
+          e.preventDefault(); e.stopPropagation();
+          bugImageDropzone.style.background = '#EFF6FF';
+          bugImageDropzone.style.borderColor = 'var(--copper)';
+        });
+      });
+      ['dragleave','drop'].forEach(function(evt){
+        bugImageDropzone.addEventListener(evt, function(e){
+          e.preventDefault(); e.stopPropagation();
+          bugImageDropzone.style.background = 'var(--paper)';
+          bugImageDropzone.style.borderColor = 'var(--line)';
+        });
+      });
+      bugImageDropzone.addEventListener('drop', function(e){
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if(file) _bugHandleImageFile(file);
+      });
+    }
+
+    // Coller une image depuis le presse-papiers (Ctrl/Cmd+V) — très pratique
+    // pour une capture d'écran déjà copiée (ex. Cmd+Maj+4 sur Mac), sans
+    // repasser par un enregistrement de fichier puis un sélecteur.
+    document.addEventListener('paste', function(e){
+      var overlay = document.getElementById('bugReportOverlay');
+      if(!overlay || !overlay.classList.contains('open')) return;
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for(var i = 0; i < items.length; i++){
+        if(items[i].type && items[i].type.indexOf('image/') === 0){
+          var file = items[i].getAsFile();
+          if(file){ e.preventDefault(); _bugHandleImageFile(file); }
+          break;
+        }
+      }
+    });
+
+    if(bugSubmitBtn) bugSubmitBtn.addEventListener('click', async function(){
+      var desc = document.getElementById('bugReportDesc');
+      var text = desc ? desc.value.trim() : '';
+      if(!text){ showToast('Décris le problème avant d\'envoyer', 'warn', 3000); return; }
+      bugSubmitBtn.disabled = true; bugSubmitBtn.textContent = 'Envoi…';
+      var ok = await window.reqSubmitBug(text, _bugReportImageBlob);
+      bugSubmitBtn.disabled = false; bugSubmitBtn.textContent = 'Envoyer';
+      if(ok){ _bugReportClose(); showToast('Bug signalé, merci ✓', 'ok', 3000); }
+      else { showToast('Échec de l\'envoi — réessayez', 'err', 3500); }
+    });
 
     // ── Boutons "Proposer un produit" ──
     ['btnProposeProduct','btnFabPropose'].forEach(function(id){
@@ -525,7 +885,7 @@
       if(!(await customConfirm('Accepter toutes les demandes ?', '', { okLabel: 'Accepter tout' }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
+      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
       if(!r.ok) return;
       var d = await r.json();
       var items = d.items || [];
@@ -543,7 +903,7 @@
       if(!(await customConfirm('Refuser toutes les demandes ?', '', { okLabel: 'Refuser tout', danger: true }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h });
+      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
       if(!r.ok) return;
       var d = await r.json();
       var items = d.items || [];

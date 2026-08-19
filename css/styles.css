@@ -1280,6 +1280,11 @@
   #viewOverlay.open #viewModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
   .modal-overlay.open{ animation:fadeBgEdit .25s ease forwards; }
   .modal-overlay.open .modal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+  /* Détail d'une demande en attente — même animation que la fiche produit /
+     le formulaire d'ajout, elle apparaissait d'un coup avant (retour
+     utilisateur : "elle n'est toujours pas comme les autres fenêtres"). */
+  #reqDetailOverlay.open{ animation:fadeBgEdit .25s ease forwards; }
+  #reqDetailOverlay.open #reqDetailModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
 
   /* 3 — FAB loupe → × */
   #btnFabSearch{ overflow:hidden; }
@@ -1307,7 +1312,10 @@
 
   @media(prefers-reduced-motion:reduce){
     .card, .card.card-visible, #viewOverlay.open, #viewOverlay.open #viewModal,
-    .modal-overlay.open, .modal-overlay.open .modal, .discount-badge.badge-anim,
+    .modal-overlay.open, .modal-overlay.open .modal,
+    #reqDetailOverlay.open, #reqDetailOverlay.open #reqDetailModal,
+    #requestsOverlay.open, #requestsOverlay.open #requestsPanel,
+    .discount-badge.badge-anim,
     #btnSave.save-anim, .filebar .dot.pulsing
     { animation:none !important; opacity:1 !important; transform:none !important; }
   }
@@ -1745,6 +1753,15 @@
   #serverSyncSlider.active #serverSyncTrack{ background:#194093; }
   #serverSyncSlider.active #serverSyncThumb{ transform:translateX(18px); }
 
+  /* ── Panneau Demandes ──────────────────────────────────────────────────
+     Était un tiroir plein écran collé au bord droit, sans coins arrondis ni
+     marge — visuellement différent de toutes les autres fenêtres de l'app
+     (retour utilisateur, capture à l'appui). Converti en carte centrée avec
+     la même animation fadeBg + slideUp que la fiche produit, le formulaire
+     d'ajout et le détail d'une demande (voir .modal-overlay.open plus haut). */
+  #requestsOverlay.open{ animation:fadeBgEdit .25s ease forwards; }
+  #requestsOverlay.open #requestsPanel{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+
   /* ── Modale Paramètres ── */
   #settingsOverlay{
     position:fixed; inset:0; z-index:var(--z-panel);
@@ -1817,6 +1834,16 @@
 
   /* ── Safe area iPhone (notch / home bar) ────────────────────── */
   #pwaInstallBanner{ bottom:max(24px,env(safe-area-inset-bottom)); }
+
+  /* Bannière d'installation PWA : z-index abaissé sous --z-overlay (500),
+     donc sous TOUTE fenêtre de l'app (fiche produit, panneaux, demandes...),
+     et masquée explicitement dès qu'une modale est ouverte — même pattern
+     que .fab-stack ci-dessus, en défense en profondeur (retour utilisateur :
+     la bannière passait devant toutes les fenêtres, y compris par-dessus
+     les modales ouvertes, car son z-index inline codé en dur (9999) était
+     au niveau de --z-panel, largement au-dessus de --z-overlay — voir aussi
+     le z-index inline corrigé dans index.html). */
+  body.modal-open #pwaInstallBanner{ display:none !important; }
 
   /* ── Overflow global ─────────────────────────────────────────── */
   body{ overflow-x:hidden; }
@@ -2419,11 +2446,16 @@
     border-radius: 10px;
   }
 
+  /* Rouge #E53E3E aligné sur le style des badges "Demandes en attente"
+     (requestsBadge/msBadge, voir js/actions.js) plutôt que le bleu --copper
+     d'origine — pour que toutes les pastilles de notif de la bottom nav
+     (Filtres actifs, Menu/Demandes) soient visuellement cohérentes entre
+     elles (retour utilisateur). */
   .bottom-nav-badge {
     position: absolute;
     top: 6px;
     right: calc(50% - 18px);
-    background: var(--copper);
+    background: #E53E3E;
     color: #fff;
     font-size: 9px;
     font-weight: 700;
@@ -2453,10 +2485,20 @@
   #conflictOverlay,
   #iconPickerModal,
   #docOverlay,
+  #requestsOverlay,
+  #modalOverlay,
+  #bugReportOverlay,
   #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
 
-  /* Panneau latéral demandes : hauteur complète → soustraire la nav */
-  #requestsPanel { height: 100dvh !important; padding-bottom: var(--nav-h, 56px); box-sizing: border-box; }
+  /* #modalOverlay/#bugReportOverlay : comme .settings-box ci-dessous, le
+     padding-bottom seul sur l'overlay ne suffit pas si le contenu (.modal)
+     est déjà plus haut que l'espace restant — sa propre max-height (fixée à
+     calc(100vh - 48px) en desktop, sans tenir compte de la bottom nav) doit
+     aussi être réduite pour ne pas passer derrière la nav (retour
+     utilisateur : boutons Refuser/Modifier/Accepter coupés par la bottom
+     nav sur tablette). */
+  #modalOverlay .modal,
+  #bugReportOverlay .modal { max-height: calc(92dvh - var(--nav-h, 56px)); }
 
   /* priceModalOverlay et reqDetailOverlay : inline style, on utilise padding-bottom */
   #priceModalOverlay { padding-bottom: var(--nav-h, 56px) !important; }
@@ -2854,10 +2896,16 @@
   .armoire-cfg-draft.armoire-mobile-hidden{ display:none !important; }
   /* Sur mobile le tiroir "Mes blocs" recouvre toute la colonne parcours
      (au lieu d'un panneau ancré à droite comme sur desktop) — pas assez
-     de largeur pour un tiroir partiel. */
+     de largeur pour un tiroir partiel. Coins arrondis + ombre latérale
+     hérités de la version desktop (pensés pour un panneau qui glisse
+     PARTIELLEMENT depuis la droite) n'ont plus de sens ici : le tiroir est
+     plaqué pile contre les onglets du dessus, sans aucun espace — ces coins
+     arrondis laissaient alors entrevoir la barre de recherche en dessous à
+     chaque coin, donnant l'impression d'une fenêtre décalée/flottante
+     (retour utilisateur, capture à l'appui). */
   .armoire-blocks-drawer{
     left:0 !important; width:100% !important; max-width:100% !important;
-    border-radius:16px 16px 0 0;
+    border-radius:0; box-shadow:none; border-left:none;
   }
 }
 #armoireMobileDraftBadge{
