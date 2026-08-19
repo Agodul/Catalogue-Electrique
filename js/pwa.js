@@ -7,7 +7,13 @@
   // indisponible sur un hébergement statique comme GitHub Pages).
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js').then(function(reg){
+      // updateViaCache:'none' → GitHub Pages sert sw.js avec Cache-Control:
+      // max-age=600 (pas d'en-tête custom possible sur cet hébergement) ;
+      // sans cette option, une vérification de mise à jour survenant moins
+      // de 10 min après la précédente pouvait recevoir la copie mise en
+      // cache localement par le navigateur au lieu d'aller revérifier
+      // auprès du serveur, et ne jamais voir la nouvelle version.
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){
         // ── Mise à jour automatique (façon YouTube) ────────────────────
         // sw.js appelle déjà self.skipWaiting() + self.clients.claim() côté
         // worker, donc la nouvelle version prend la main d'elle-même sans
