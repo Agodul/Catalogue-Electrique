@@ -510,7 +510,18 @@
       }
 
       var jobs = [];
-      if(hasChanged('catalogue')) jobs.push(syncFromServer(false));
+      if(hasChanged('catalogue')){
+        // syncFromServer fait un pull DIFFÉRENTIEL ("/pullDatas?date=...") :
+        // par nature, il ne peut jamais voir une suppression (un produit
+        // supprimé disparaît juste des résultats, aucun marqueur renvoyé).
+        // syncDeletions() fait le pull complet nécessaire pour ça. Avant,
+        // elle ne tournait que toutes les 5 min — un produit supprimé par
+        // un collègue pouvait donc rester visible jusqu'à 5 min, alors que
+        // les ajouts/modifs sont maintenant détectés en ~15s. On la lance
+        // ici aussi pour que suppressions et ajouts soient au même rythme.
+        jobs.push(syncFromServer(false));
+        jobs.push(syncDeletions());
+      }
       if(hasChanged('configBlocks') && typeof _armoireFetchBlocks === 'function') jobs.push(_armoireFetchBlocks());
       if(hasChanged('savedConfigs') && typeof _armoireFetchSavedConfigs === 'function') jobs.push(_armoireFetchSavedConfigs());
       if(jobs.length) await Promise.allSettled(jobs);
@@ -657,6 +668,14 @@
                 delete c.updatedAt;
                 delete c.id;
                 delete c.familyIcon;
+                // createdAt est réécrit à chaque push (pushToServer l'utilise comme
+                // marqueur d'upsert forcé, voir plus bas) même quand aucun champ
+                // éditable n'a changé — ex. propagation d'icône de famille sur des
+                // produits soeurs. Sans cette exclusion, toute autre session/appareil
+                // du même compte admin (qui n'a pas fait ce push et n'a donc pas le
+                // grace-period _recentlySaved) voyait un "conflit" à tort dès que
+                // createdAt différait, même sur un contenu par ailleurs identique.
+                delete c.createdAt;
                 if(!c.tags || c.tags.length === 0) delete c.tags;
                 if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
                 return JSON.stringify(c, Object.keys(c).sort());

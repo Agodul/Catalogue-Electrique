@@ -14,65 +14,48 @@
       // cache localement par le navigateur au lieu d'aller revérifier
       // auprès du serveur, et ne jamais voir la nouvelle version.
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){
-        // ── Mise à jour automatique (façon YouTube) ────────────────────
+        // ── Notification de mise à jour (pas de rechargement automatique) ──
         // sw.js appelle déjà self.skipWaiting() + self.clients.claim() côté
-        // worker, donc la nouvelle version prend la main d'elle-même sans
-        // attendre que tous les onglets soient fermés — il ne manquait que
-        // ce bout côté page : recharger quand le contrôleur change, pour que
-        // les fichiers déjà en mémoire (JS/CSS/images) passent aussi à la
-        // nouvelle version. Sans ça, une app PWA laissée ouverte plusieurs
-        // jours pouvait ne jamais voir les mises à jour (icônes de famille
-        // notamment — retour utilisateur).
-        //
-        // Un onglet en cours de saisie (formulaire produit ouvert) n'est
-        // jamais rechargé de force — on retarde jusqu'à la fermeture de la
-        // modale pour ne perdre aucune saisie en cours. Une petite bannière
-        // reste affichée entre-temps pour forcer la mise à jour tout de
-        // suite si l'utilisateur le préfère.
+        // worker, donc la nouvelle version prend la main en arrière-plan dès
+        // qu'elle est détectée — mais on ne recharge JAMAIS la page tout
+        // seul, quelle que soit la situation (fenêtre ouverte ou non,
+        // configurateur en cours ou non) : ça reste toujours un choix de
+        // l'utilisateur, via le bouton "Mettre à jour" ou un F5 manuel. La
+        // bannière reste affichée jusqu'à ce que l'un des deux arrive.
         var swUpdateBanner = document.getElementById('swUpdateBanner');
         var swUpdateBtn    = document.getElementById('swUpdateBtn');
-        var refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', function(){
-          if(refreshing) return;
-          refreshing = true;
           if(swUpdateBanner) swUpdateBanner.style.display = 'flex';
-          // Laisser la bannière visible quelques secondes avant le rechargement
-          // automatique : sans ce délai, la page se rechargeait dans la foulée
-          // et la bannière n'était visible qu'une fraction de seconde, sans
-          // laisser le temps de la voir ni de cliquer "Mettre à jour" soi-même
-          // (retour utilisateur — le rechargement paraissait instantané).
-          setTimeout(reloadWhenSafe, 4000);
         });
         if(swUpdateBtn){
           swUpdateBtn.addEventListener('click', async function(){
-            var hasUnsavedArmoireDraft = Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0;
-            if(hasUnsavedArmoireDraft && typeof customConfirm === 'function'){
+            // Réutilise les mêmes détections de saisie non enregistrée que
+            // celles déjà utilisées pour confirmer une fermeture au clic/Échap
+            // (formulaire produit, caractéristiques techniques, configurateur
+            // d'armoire) — un clic manuel sur "Mettre à jour" ne doit pas
+            // faire perdre en silence ce que ces fenêtres protègent déjà.
+            var warnings = [];
+            var mo = document.getElementById('modalOverlay');
+            if(mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+              warnings.push('le formulaire produit en cours');
+            }
+            var so = document.getElementById('specsOverlay');
+            if(so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges()){
+              warnings.push('les caractéristiques techniques en cours');
+            }
+            if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
+              warnings.push('la configuration d\'armoire en cours');
+            }
+            if(warnings.length && typeof customConfirm === 'function'){
               var ok = await customConfirm(
-                'Configuration en cours non enregistrée',
-                'Mettre à jour maintenant effacera la configuration en cours dans le configurateur d\'armoire. Continuer ?',
+                'Modifications non enregistrées',
+                'Mettre à jour maintenant effacera : ' + warnings.join(', ') + '. Continuer ?',
                 { okLabel: 'Mettre à jour quand même', danger: true }
               );
               if(!ok) return;
             }
             window.location.reload();
           });
-        }
-
-        function reloadWhenSafe(){
-          // Une fenêtre ouverte (formulaire produit, réglages...) bloque déjà
-          // le rechargement via la classe 'modal-open'. Mais le configurateur
-          // d'armoire est un cas à part : sa configuration en cours
-          // (_armoireDraft) vit uniquement en mémoire, jamais sauvegardée
-          // tant qu'on n'a pas cliqué "Enregistrer comme bloc/configuration"
-          // — et elle survit à la fermeture du panneau (on peut le rouvrir
-          // plus tard pour continuer). Un rechargement auto pendant ce
-          // temps-là ferait tout perdre en silence, même panneau fermé.
-          var hasUnsavedArmoireDraft = Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0;
-          if(document.body.classList.contains('modal-open') || hasUnsavedArmoireDraft){
-            setTimeout(reloadWhenSafe, 2000);
-            return;
-          }
-          window.location.reload();
         }
 
         // Vérifier explicitement les mises à jour à chaque retour au
