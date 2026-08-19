@@ -1191,7 +1191,19 @@
   // Un clic sur le fond gris ne ferme plus la fenêtre : seul un clic explicite
   // sur « Annuler » ou la croix peut fermer la fiche, pour éviter de perdre
   // une saisie en cours par erreur.
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && overlay.classList.contains('open')) requestCloseModal(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape' || !overlay.classList.contains('open')) return;
+    // Des fenêtres s'ouvrent PAR-DESSUS la fiche produit (caractéristiques
+    // techniques, historique des prix, aperçu photo) sans se fermer elles-
+    // mêmes avant que ce listener ne s'exécute — sans ce garde-fou, Échap
+    // fermait/demandait confirmation sur la fenêtre imbriquée ET sur la
+    // fiche produit en dessous en même temps (retour utilisateur).
+    var nestedOpen = (specsOverlay && specsOverlay.style.display !== 'none')
+      || (priceModalOverlay && priceModalOverlay.style.display !== 'none')
+      || (imgPreviewOverlay && imgPreviewOverlay.classList.contains('show'));
+    if(nestedOpen) return;
+    requestCloseModal();
+  });
 
   // ---------- Tabs ----------
   function switchTab(name){

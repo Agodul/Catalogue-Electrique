@@ -206,6 +206,7 @@
       { overlay: 'sugOverlay',        close: 'sugCloseBtn'      },
       { overlay: 'armoireConfigOverlay', close: 'armoireConfigCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
+      { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },
       { overlay: 'conflictOverlay',   close: 'conflictClose'    },
       { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
       { overlay: 'compareOverlay',    close: 'compareClose',    classList: true },
