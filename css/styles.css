@@ -74,6 +74,15 @@
     -webkit-text-size-adjust:100%;
     height:-webkit-fill-available;
     background:var(--paper);
+    /* Réserve en permanence la largeur de la scrollbar verticale, qu'elle
+       soit affichée ou non. Sans ça, ouvrir une fenêtre (qui passe le body
+       en overflow:hidden, retirant la scrollbar) ou faire apparaître un
+       contenu qui allonge la page fait "sauter" toute la mise en page
+       horizontalement d'une poignée de pixels (largeur de la scrollbar) —
+       sensible surtout sur Windows/scrollbars classiques, invisible avec des
+       scrollbars overlay (Mac par défaut) mais bien réel pour les autres
+       (retour utilisateur : le site doit rester fixe comme une vraie app). */
+    scrollbar-gutter:stable;
   }
   body{
     margin:0;
@@ -350,15 +359,25 @@
     font-size:15px; letter-spacing:.04em; color:var(--copper);
     text-transform:uppercase; font-weight:700;
   }
+  /* min-height en em (relatif à la ligne, pas en px figé) : réserve toujours
+     la place du nombre max de lignes (-webkit-line-clamp), que le produit
+     ait un nom/description courts, longs, ou absents (le <div> est
+     maintenant toujours généré, même vide — voir renderCard() dans
+     render.js). Sans ça, un nom sur 1 ligne ou une fiche sans description
+     rendait cette carte plus courte que ses voisines, donc les blocs prix
+     de deux produits ne tombaient jamais à la même hauteur d'une carte à
+     l'autre dans toute la grille (retour utilisateur : "je voudrais que
+     tous les produits soient à la même hauteur"). En em pour rester juste
+     automatiquement à chaque changement de font-size par breakpoint. */
   .card .name{
     font-size:14px; font-weight:700; line-height:1.25;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    overflow:hidden;
+    overflow:hidden; min-height:calc(1.25em * 2);
   }
   .card .desc{
     font-size:12px; color:var(--ink-soft); line-height:1.4;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    overflow:hidden;
+    overflow:hidden; min-height:calc(1.4em * 2);
   }
   .card .body-bottom{
     display:flex; flex-direction:column;
@@ -366,13 +385,19 @@
     margin-top:auto; padding-top:8px;
     flex-shrink:0;
   }
-  /* min-height : réserve la place du pire cas (remise + hausse tarifaire
-     forçant un retour à la ligne, ex. nombres à 5 chiffres) pour que les tags
-     famille/série démarrent toujours à la même hauteur d'une carte à l'autre
-     dans la même rangée, que le prix tienne sur 1 ou 2 lignes (retour
-     utilisateur — mesuré en pratique : ~28px sur 1 ligne, ~49px sur 2). */
-  .card .body-bottom .price-row{ display:flex; align-items:center; gap:5px; flex-shrink:0; min-height:50px; }
-  .card .tags{ display:flex; gap:6px; flex-wrap:wrap; overflow:visible; align-items:baseline; }
+  /* min-height : réserve la place du pire cas (catalogue barré + prix +
+     badges, soit 3 lignes empilées) pour que les tags famille/série
+     démarrent toujours à la même hauteur d'une carte à l'autre dans la même
+     rangée, qu'il y ait 1 ou 3 lignes de prix (mesuré en pratique : ~50px
+     sur 1 ligne, ~63.5px sur 3 — desktop/tablette). */
+  .card .body-bottom .price-row{ display:flex; align-items:center; gap:5px; flex-shrink:0; min-height:65px; }
+  /* min-height : réserve la place du pire cas (famille + série = 2 lignes de
+     tags si ça ne tient pas sur 1) — dernière pièce manquante pour que toute
+     la grille (pas juste une rangée) ait des cartes à hauteur identique :
+     photo (aspect-ratio fixe), ref/nom/desc (min-height ci-dessus) et prix
+     (min-height plus haut) sont déjà réservés, il ne restait que les tags.
+     Mesuré : ~20px sur 1 ligne, ~46px sur 2 (desktop/tablette). */
+  .card .tags{ display:flex; gap:6px; flex-wrap:wrap; overflow:visible; align-items:baseline; min-height:46px; }
   .card .tag{
     font-size:11px; letter-spacing:.02em;
     padding:2px 8px; border-radius:20px; white-space:nowrap;
@@ -408,21 +433,23 @@
   .card .price-row{
     display:flex; align-items:center; gap:5px; flex-shrink:0;
   }
+  /* .price empile maintenant catalogue barré / prix remisé / badges au lieu
+     de tout laisser flotter en ligne (voir commentaire JS dans renderCard). */
+  .card .price{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
   .price-original{
+    display:block;
     font-size:12px; color:var(--ink-soft);
     text-decoration:line-through; font-weight:400;
-    margin-right:4px;
   }
+  .price-badges{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
   .vm-price-original{
     font-size:16px; color:var(--ink-soft);
     text-decoration:line-through; font-weight:400;
     margin-right:6px;
   }
-  /* Taille resserrée pour que prix + remise + hausse tiennent sur une seule
-     ligne dans une carte du catalogue (~200px) — un produit avec remise ET
-     hausse de prix simultanées débordait sur 2 lignes, ce qui décalait les
-     tags famille/série vers le bas et cassait l'alignement avec les cartes
-     voisines de la même rangée (retour utilisateur). */
+  /* Taille resserrée pour une carte du catalogue (~200px) — les badges
+     remise/hausse sont maintenant sur leur propre ligne (.price-badges),
+     empilés sous le prix plutôt que de se disputer la ligne avec lui. */
   .price-jump-badge{
     font-size: 11.5px;
     display:inline-flex; align-items:center; gap:2px; margin-left:4px;
@@ -486,6 +513,7 @@
   .vm-scroll{
     flex:1; overflow-y:auto; overflow-x:hidden; min-width:0; min-height:0;
     -webkit-overflow-scrolling:touch;
+    scrollbar-gutter:stable;
   }
 
   /* Bouton fermer mobile dans la vue produit */
@@ -611,6 +639,11 @@
     overflow-y:auto;
     flex:1;
     -webkit-overflow-scrolling:touch;
+    /* Même raison que sur html : le contenu grandit dynamiquement ici
+       (suggestions famille/marque, lien 3D conditionnel...) et faisait
+       bouger les champs horizontalement à l'apparition/disparition de la
+       scrollbar interne. */
+    scrollbar-gutter:stable;
   }
   .tabs{ display:flex; gap:6px; margin-bottom:14px; }
   .tab-btn{
@@ -1035,6 +1068,7 @@
       font-size:10.5px; line-height:1.2;
       display:-webkit-box; -webkit-line-clamp:2;
       -webkit-box-orient:vertical; overflow:hidden;
+      min-height:calc(1.2em * 2);
     }
     .card .tag.three-d img, .vm-meta-item .three-d-badge img {
       width: 50px;
@@ -1049,6 +1083,7 @@
       font-size:9.5px; line-height:1.3;
       display:-webkit-box; -webkit-line-clamp:1;
       -webkit-box-orient:vertical; overflow:hidden;
+      min-height:calc(1.3em * 1);
     }
     .card .body-bottom{ padding-top:5px; gap:2px; margin-top:auto; }
     .card .price{ font-size:11px; font-weight:700; }
@@ -1056,8 +1091,12 @@
     .discount-badge{ font-size:9px; padding:1px 3px; }
     .price-jump-badge{ font-size:9.5px; padding: 2px 6px 0px 5px; }
     /* Réserve mobile plus petite (texte plus compact qu'en desktop) — voir
-       .card .body-bottom .price-row en base pour le raisonnement complet. */
-    .card .body-bottom .price-row{ min-height:42px; }
+       .card .body-bottom .price-row en base pour le raisonnement complet.
+       Mesuré : ~41px sur 1 ligne, ~51.5px sur 3. */
+    .card .body-bottom .price-row{ min-height:52px; }
+    /* Idem pour les tags — voir .card .tags en base. Mesuré : ~15.5px sur
+       1 ligne, ~37px sur 2 (famille + série). */
+    .card .tags{ min-height:37px; }
     .card .tag{ font-size:8px; padding:1px 3px; }
 
     /* ── Fiche produit : bottom sheet ── */
@@ -1626,7 +1665,7 @@
     flex-shrink:0;
   }
   .compare-header h3{ font-size:16px; font-weight:700; color:var(--ink); margin:0; }
-  .compare-body{ padding:20px; overflow-y:auto; max-height:80vh; }
+  .compare-body{ padding:20px; overflow-y:auto; max-height:80vh; scrollbar-gutter:stable; }
 
   /* Zone import fournisseurs */
   .compare-suppliers{
@@ -1726,7 +1765,7 @@
     border-bottom:1px solid var(--line);
   }
   .settings-header h3{ font-size:16px; font-weight:700; color:var(--ink); margin:0; }
-  .settings-body{ overflow-y:auto; padding:16px 20px; flex:1; }
+  .settings-body{ overflow-y:auto; padding:16px 20px; flex:1; scrollbar-gutter:stable; }
   .family-icon-row-settings{
     display:flex; align-items:center; gap:10px;
     padding:8px 0;

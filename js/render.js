@@ -774,8 +774,14 @@
     // utilisateur : ne pas l'isoler sur la photo). Pour garder l'alignement
     // entre cartes même quand elle retombe sur une 2e ligne (prix + remise +
     // hausse ne tiennent pas toujours sur une seule ligne selon la longueur
-    // des nombres), .price-row réserve une hauteur fixe pour 2 lignes — voir
-    // règle CSS .card .body-bottom .price-row.
+    // des nombres) — plutôt que d'espérer que tout tienne sur une ligne et
+    // gérer le débordement en secours (ancien comportement : le prix barré,
+    // le prix et les badges se disputaient la même ligne et cassaient au
+    // milieu d'un nombre selon la largeur dispo, retour utilisateur), la
+    // structure est maintenant TOUJOURS empilée : prix catalogue barré, puis
+    // prix remisé juste en dessous, puis les badges (remise/hausse) côte à
+    // côte sur leur propre ligne. Prévisible dans tous les cas plutôt que
+    // dépendant de la largeur de carte et du nombre de chiffres.
     var jumpPct = getLastPriceJumpPct(p);
     var priceJumpBadge = jumpPct !== null && jumpPct >= PRICE_ALERT_THRESHOLD
       ? '<span class="price-jump-badge" title="Hausse de '+jumpPct.toFixed(1)+' % depuis le dernier prix"><i class="ti ti-alert-triangle" aria-hidden="true"></i> +'+jumpPct.toFixed(0)+'%</span>'
@@ -786,7 +792,8 @@
       ? '<span class="discount-badge badge-anim">-'+Math.abs(discPct).toFixed(0)+' %</span>'
       : '';
     var priceHtml = (origPrice ? '<span class="price-original" title="Prix catalogue fabricant">'+escapeHtml(origPrice)+'</span>' : '')+
-                    escapeHtml(p.price||'—')+discBadge+priceJumpBadge;
+                    '<span class="price-main">'+escapeHtml(p.price||'—')+'</span>'+
+                    ((discBadge || priceJumpBadge) ? '<span class="price-badges">'+discBadge+priceJumpBadge+'</span>' : '');
     var supplierHtml = p.supplier
       ? '<div class="card-supplier">'+escapeHtml(p.supplier)+'</div>'
       : '';
@@ -814,8 +821,8 @@
       '<div class="body">'+
         '<div class="body-top">'+
           '<div class="ref">'+escapeHtml(p.ref||'—')+'</div>'+
-          (displayName ? '<div class="name">'+escapeHtml(p.name||'')+'</div>' : '')+
-          (shortDesc ? '<div class="desc">'+escapeHtml(shortDesc)+'</div>' : '')+
+          '<div class="name">'+(displayName ? escapeHtml(p.name||'') : '')+'</div>'+
+          '<div class="desc">'+(shortDesc ? escapeHtml(shortDesc) : '')+'</div>'+
         '</div>'+
         '<div class="body-bottom">'+
           '<div class="price-row">'+
