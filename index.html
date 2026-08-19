@@ -1136,9 +1136,15 @@
       <button id="specsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:20px;min-height:0;">
+      <div id="specsColHeaders" style="display:none;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;padding:0 2px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">
+        <span>Nom</span><span>Valeur</span><span></span>
+      </div>
       <div id="specsRows" style="display:flex;flex-direction:column;gap:8px;"></div>
       <button type="button" id="btnAddSpecRow" style="margin-top:12px;background:none;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink-soft);cursor:pointer;font-size:12.5px;font-weight:600;padding:8px 14px;font-family:var(--font-sans);">+ Ajouter une caractéristique</button>
       <datalist id="specKeyOptions"></datalist>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">
+      <button type="button" id="specsSaveBtn" style="width:100%;padding:10px;border:none;border-radius:9px;background:var(--copper);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1167,11 +1173,11 @@
       <div class="armoire-cfg-browse" style="flex:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden;position:relative;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;gap:8px;align-items:center;">
           <input type="text" id="armoireConfigSearch" placeholder="Rechercher un produit (réf, nom)…" style="flex:1;min-width:0;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--paper);color:var(--ink);">
-          <button type="button" id="armoireBlocksDrawerTrigger" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Mes blocs</button>
+          <button type="button" id="armoireBlocksDrawerTrigger" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Blocs enregistrés</button>
         </div>
         <div id="armoireConfigSearchResults" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:120px;"></div>
 
-        <!-- Tiroir "Mes blocs / Mes configurations" — masqué par défaut, ouvert
+        <!-- Tiroir "Blocs enregistrés / Configurations enregistrées" — masqué par défaut, ouvert
              à la demande par-dessus la liste de familles au lieu d'être empilé
              en permanence dessous (retour utilisateur : ça compressait la liste
              de familles). Voir _armoireOpenBlocksDrawer/_armoireCloseBlocksDrawer
@@ -1179,8 +1185,8 @@
         <div id="armoireBlocksDrawer" class="armoire-blocks-drawer" style="display:none;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;">
             <div class="tabs">
-              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks">📦 Mes blocs</button>
-              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs">📋 Mes configurations</button>
+              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks">📦 Blocs enregistrés</button>
+              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs">📋 Configurations enregistrées</button>
             </div>
             <button type="button" id="armoireBlocksDrawerClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;flex-shrink:0;">✕</button>
           </div>

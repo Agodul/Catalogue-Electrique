@@ -266,6 +266,14 @@
 
     save(false, touchedForSync);
     render();
+    // render() ne met à jour que la grille catalogue — si on enregistre
+    // depuis la page d'accueil (bouton + de la home), la fiche produit
+    // s'ouvre par-dessus puis se referme sur la home, jamais rafraîchie :
+    // le compteur de produits/familles y restait figé jusqu'à un F5 (retour
+    // utilisateur). deleteProduct()/syncFromServer() faisaient déjà cette
+    // vérification, pas ce point d'enregistrement.
+    var homePageEl = document.getElementById('homePage');
+    if(homePageEl && !homePageEl.classList.contains('hidden')) renderHome();
     var savedId = editingId || products[products.length - 1].id;
     var savedRef = products.find(function(p){ return p.id === savedId; });
     savedRef = savedRef ? savedRef.ref : null;
@@ -389,6 +397,7 @@
 
   var SERVER_KEY           = 'cat_server_url';
   var SERVER_LAST_SYNC_KEY = 'cat_server_last_sync';
+  var CHECKALL_KEY         = 'cat_server_checkall_state'; // dernier snapshot /checkAll connu (par collection)
   var serverUrl  = '';
 
   function loadServerConfig(){
@@ -397,7 +406,7 @@
     if(serverUrl){
       setTimeout(function(){
         if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
-        doSyncCheck();
+        doCheckAllSync();
         syncDeletions();
         startSyncPolling();
       }, 1500);
@@ -473,11 +482,48 @@
     }catch(e){ /* silencieux */ }
   }
 
+  // Vérifie en UNE requête l'état (révision/nombre/date) de chaque collection
+  // côté serveur (catalogue, blocs, configurations) et ne relance que les
+  // requêtes de rafraîchissement dont la collection a réellement changé
+  // depuis le dernier check connu (comparaison locale, pas de refetch aveugle).
+  async function doCheckAllSync(){
+    if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+    try{
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(serverUrl + '/checkAll', { headers: h });
+      if(!r.ok){
+        // Ancien serveur sans /checkAll : repli sur l'ancien /check (catalogue seul)
+        if(r.status === 404) return doSyncCheck();
+        return;
+      }
+      var data = await r.json();
+      var prev = {};
+      try{ prev = JSON.parse(localStorage.getItem(CHECKALL_KEY) || '{}'); }catch(e){}
+
+      function hasChanged(key){
+        var now = data[key], before = prev[key];
+        if(!now) return false;
+        if(!before) return true; // pas de référence locale → on rattrape par sécurité
+        return now.revision !== before.revision || now.count !== before.count || now.changedAt !== before.changedAt;
+      }
+
+      var jobs = [];
+      if(hasChanged('catalogue')) jobs.push(syncFromServer(false));
+      if(hasChanged('configBlocks') && typeof _armoireFetchBlocks === 'function') jobs.push(_armoireFetchBlocks());
+      if(hasChanged('savedConfigs') && typeof _armoireFetchSavedConfigs === 'function') jobs.push(_armoireFetchSavedConfigs());
+      if(jobs.length) await Promise.allSettled(jobs);
+
+      localStorage.setItem(CHECKALL_KEY, JSON.stringify(data));
+    }catch(e){ /* silencieux, comme l'ancien doSyncCheck */ }
+  }
+
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
     if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
-    _syncInterval = setInterval(doSyncCheck, 15000);
+    _syncInterval = setInterval(doCheckAllSync, 15000);
   }
 
   function stopSyncPolling(){
@@ -1718,6 +1764,11 @@
     });
 
     save(); render();
+    // Même correctif que pour l'enregistrement d'un produit : rafraîchir
+    // aussi la home si l'import a été lancé depuis là (compteur figé sinon
+    // jusqu'à un F5 — retour utilisateur).
+    var homePageEl2 = document.getElementById('homePage');
+    if(homePageEl2 && !homePageEl2.classList.contains('hidden')) renderHome();
     document.getElementById('xlsxImportOverlay').style.display = 'none';
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
     xlsxPendingData = [];

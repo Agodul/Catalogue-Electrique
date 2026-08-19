@@ -251,14 +251,24 @@ function _armoireFetchBlocks(){
   return _armoireApi('/configBlocks').then(function(list){
     _armoireBlocks = Array.isArray(list) ? list : [];
     _armoireRenderBlocksList();
-  }).catch(function(){ /* pas grave — liste vide affichée */ });
+  }).catch(function(e){
+    // Échec silencieux auparavant — impossible de savoir si la liste
+    // affichée est juste vide ou périmée suite à une requête ratée (retour
+    // utilisateur : oblige à F5 pour voir un bloc qu'on vient de créer,
+    // signe d'un échec de ce fetch avalé sans message).
+    console.warn('_armoireFetchBlocks:', e && e.message);
+    if(typeof showToast === 'function') showToast('Liste des blocs non actualisée — réessayez', 'warn', 3000);
+  });
 }
 
 function _armoireFetchSavedConfigs(){
   return _armoireApi('/configSavedConfigs').then(function(list){
     _armoireSavedConfigs = Array.isArray(list) ? list : [];
     _armoireRenderSavedList();
-  }).catch(function(){ /* pas grave — liste vide affichée */ });
+  }).catch(function(e){
+    console.warn('_armoireFetchSavedConfigs:', e && e.message);
+    if(typeof showToast === 'function') showToast('Liste des configurations non actualisée — réessayez', 'warn', 3000);
+  });
 }
 
 function _armoireListItemHtml(entry, kind){
@@ -551,7 +561,9 @@ function _armoireSwitchTab(tab){
   if(savedEl) savedEl.style.display = tab === 'configs' ? '' : 'none';
 }
 
-// ── Tiroir "Mes blocs / Mes configurations" ──────────────────────────────
+// ── Tiroir "Blocs enregistrés / Configurations enregistrées" — partagés
+// entre tous les utilisateurs connectés, pas propres à chacun (d'où le
+// libellé neutre plutôt que "Mes...", retour utilisateur). ─────────────
 // Ouvert à la demande par-dessus la liste de familles (voir CSS
 // .armoire-blocks-drawer) au lieu d'être empilé en permanence dessous.
 
