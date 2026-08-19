@@ -601,7 +601,7 @@ function openAddUserModal() {
   }).join('');
 
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
@@ -702,7 +702,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   }).join('');
 
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
@@ -767,7 +767,7 @@ function openChangePasswordModal() {
   if (!user || !sUrl) return;
 
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Changer mon mot de passe</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'

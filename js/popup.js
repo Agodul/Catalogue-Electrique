@@ -12,7 +12,7 @@
 function _popupOverlay(innerHtml){
   var overlay = document.createElement('div');
   overlay.style.cssText =
-    'position:fixed;inset:0;z-index:var(--z-popup,11000);background:rgba(28,26,23,.5);' +
+    'position:fixed;inset:0;z-index:var(--z-popup,11000);background:var(--overlay-scrim);' +
     'display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML =
     '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;' +

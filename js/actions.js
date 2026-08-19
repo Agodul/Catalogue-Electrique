@@ -1102,7 +1102,7 @@
   loadServerConfig();
 
   btnSettings.addEventListener('click', function(){
-    hdrMenu.classList.remove('show');
+    hdrMenu.classList.remove('open');
     showSettingsMain();
     settingsOverlay.classList.add('show');
   });
@@ -1176,7 +1176,7 @@
       var _pendingImport = imported;
       // Utiliser une mini modale inline
       var overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
       overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
         + '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px;">Importer '+count+' produit(s)</div>'
         + '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Comment voulez-vous importer ce fichier ?</div>'

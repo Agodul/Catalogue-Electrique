@@ -26,6 +26,13 @@
     /* Échelle d'élévation — réutiliser plutôt que créer une nouvelle valeur d'ombre */
     --shadow-card-hover: 0 6px 20px rgba(25,64,147,.10);
     --shadow-modal: 0 20px 60px rgba(0,0,0,.25);
+    /* Fond commun à tous les overlays de fenêtre/panneau — gris neutre très
+       transparent, réutilisé partout plutôt qu'un noir/brun opaque par
+       fenêtre (retour utilisateur : uniformiser + donner un fond aux
+       fenêtres qui n'en avaient pas, ex. #settingsOverlay). Exclus
+       volontairement : #imgPreviewOverlay et #pdfViewerOverlay (visionneuses
+       média, besoin de contraste fort — restent sombres). */
+    --overlay-scrim: rgba(100,100,100,.18);
 
     /* Échelle de z-index — réutiliser un palier existant plutôt que d'en
        improviser un nouveau. Paliers du plus bas au plus haut :
@@ -446,7 +453,7 @@
   /* Modale de consultation */
   #viewOverlay{
     position:fixed; left:0; right:0; top:0; bottom:0;
-    background:rgba(28,26,23,.48);
+    background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:20px;
     z-index:var(--z-overlay);
@@ -572,7 +579,7 @@
 
   /* ===== MODAL ===== */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(28,26,23,.45);
+    position:fixed; inset:0; background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:24px 20px; z-index:var(--z-overlay);
   }
@@ -1240,8 +1247,8 @@
 
   /* 2 — Modales glissent depuis le bas */
   @keyframes slideUp{ from{ opacity:0; transform:translateY(40px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
-  @keyframes fadeBg{  from{ background:rgba(28,26,23,0); } to{ background:rgba(28,26,23,.48); } }
-  @keyframes fadeBgEdit{ from{ background:rgba(28,26,23,0); } to{ background:rgba(28,26,23,.45); } }
+  @keyframes fadeBg{  from{ background:rgba(100,100,100,0); } to{ background:var(--overlay-scrim); } }
+  @keyframes fadeBgEdit{ from{ background:rgba(100,100,100,0); } to{ background:var(--overlay-scrim); } }
   #viewOverlay.open{ animation:fadeBg .25s ease forwards; }
   #viewOverlay.open #viewModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
   .modal-overlay.open{ animation:fadeBgEdit .25s ease forwards; }
@@ -1580,7 +1587,7 @@
      égale qui ne gagnerait que par coïncidence d'ordre dans le HTML. */
   #iconPickerModal{
     position:fixed; inset:0; z-index:var(--z-panel-nested);
-    background:rgba(0,0,0,.45);
+    background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:16px;
   }
@@ -1620,7 +1627,7 @@
   /* ── Modale Comparaison ── */
   #compareOverlay{
     position:fixed; inset:0; z-index:var(--z-panel);
-    background:rgba(0,0,0,.45);
+    background:var(--overlay-scrim);
     display:none; align-items:flex-start; justify-content:center;
     padding:16px; overflow-y:auto;
   }
@@ -1718,7 +1725,7 @@
   /* ── Modale Paramètres ── */
   #settingsOverlay{
     position:fixed; inset:0; z-index:var(--z-panel);
-    background:transparent;
+    background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:16px;
     pointer-events:none;
@@ -1823,7 +1830,13 @@
   /* ── Modales bottom sheet responsive ────────────────────────── */
   @media(max-width:640px){
     #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
-    /* settings : bottom sheet sur mobile */
+  }
+  /* Paramètres : bottom sheet sur mobile ET tablette — même seuil que
+     .menu-sheet (max-width:1024px, voir plus haut) pour que les deux
+     panneaux se comportent pareil sur toute la plage mobile/tablette
+     (retour utilisateur : Paramètres restait en modale centrée sur
+     tablette alors que le Menu passait déjà en tiroir bas). */
+  @media(max-width:1024px){
     #settingsOverlay{ padding:0; align-items:flex-end; justify-content:center; padding-bottom:var(--nav-h, 56px); }
     .settings-box{
       width:100%; max-width:100%;
@@ -1902,7 +1915,7 @@
 
   #authOverlay{
     position:fixed; inset:0; z-index:var(--z-modal-top);
-    background:rgba(0,0,0,.55);
+    background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:20px; box-sizing:border-box;
   }
@@ -2298,7 +2311,7 @@
     top: 0 !important;
     align-items: flex-end !important;
     padding: 0 !important;
-    background: rgba(0,0,0,.5) !important;
+    background: var(--overlay-scrim) !important;
   }
   #viewModal {
     border-radius: 20px 20px 0 0 !important;
@@ -2474,6 +2487,20 @@
 /* Formulaire login inline */
 
 /* Items menu */
+
+/* Fonds des tiroirs bas mobile — ces 3 overlays n'avaient jusqu'ici aucun
+   style (juste display:none inline, basculé en display:block par le JS),
+   donc aucun fond visible derrière le tiroir. z-index juste sous celui du
+   tiroir qu'ils accompagnent (voir échelle --z-sheet-high/--z-nav en tête
+   de fichier) pour rester cliquables en arrière-plan sans passer devant. */
+#filterSheetOverlay, #menuSheetOverlay{
+  position:fixed; inset:0; z-index:9550;
+  background:var(--overlay-scrim);
+}
+#floatingSearchOverlay{
+  position:fixed; inset:0; z-index:9800;
+  background:var(--overlay-scrim);
+}
 
 .menu-sheet {
   display: none;

@@ -210,6 +210,8 @@
       { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
       { overlay: 'compareOverlay',    close: 'compareClose',    classList: true },
       { overlay: 'iconPickerModal',   close: 'iconPickerClose', classList: true },
+      { overlay: 'settingsOverlay',   close: 'settingsClose',   classList: true },
+      { overlay: 'authOverlay',       close: 'authCloseBtn',    classList: true },
     ];
 
     function isVisible(el){

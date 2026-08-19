@@ -781,6 +781,15 @@
   window._resetProposeModeUI = resetProposeModeUI;
 
   function requestCloseModal(){
+    // Garde-fou : X, "Annuler" et Escape appellent tous requestCloseModal(),
+    // sans qu'aucun ne désactive le formulaire pendant que la confirmation
+    // est affichée — un appel répété (Escape maintenu, double-clic...)
+    // créait une nouvelle popup "Annuler la saisie" à chaque fois, empilées
+    // les unes sur les autres (retour utilisateur : superposition de
+    // fenêtres). Si une confirmation est déjà affichée, ne pas en recréer
+    // une deuxième.
+    if(document.getElementById('_discardConfirmPopup')) return;
+
     // Réinitialiser le mode proposition / révision
     resetProposeModeUI();
     resetReviewModeUI();
@@ -790,8 +799,9 @@
     }
 
     var popup = document.createElement('div');
+    popup.id = '_discardConfirmPopup';
     popup.style.cssText =
-      'position:fixed;inset:0;background:rgba(28,26,23,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
+      'position:fixed;inset:0;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
 
     popup.innerHTML =
      '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
