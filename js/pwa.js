@@ -36,7 +36,12 @@
           if(refreshing) return;
           refreshing = true;
           if(swUpdateBanner) swUpdateBanner.style.display = 'flex';
-          reloadWhenSafe();
+          // Laisser la bannière visible quelques secondes avant le rechargement
+          // automatique : sans ce délai, la page se rechargeait dans la foulée
+          // et la bannière n'était visible qu'une fraction de seconde, sans
+          // laisser le temps de la voir ni de cliquer "Mettre à jour" soi-même
+          // (retour utilisateur — le rechargement paraissait instantané).
+          setTimeout(reloadWhenSafe, 4000);
         });
         if(swUpdateBtn){
           swUpdateBtn.addEventListener('click', function(){
