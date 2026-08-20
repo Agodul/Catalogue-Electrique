@@ -763,8 +763,21 @@
                 // "encore trop de problèmes de conflit").
                 delete c.suggestions;
                 delete c.suggestionsHidden;
-                if(!c.tags || c.tags.length === 0) delete c.tags;
-                if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
+                // Normalise TOUS les champs vides (chaîne vide, null,
+                // undefined, tableau vide) en les retirant complètement —
+                // avant, seuls tags/priceHistory avaient ce traitement. Sans
+                // ça, une valeur '' en local face à une clé absente côté
+                // serveur (un backend omet souvent les champs vides dans ses
+                // réponses JSON) ressortait comme une vraie différence de
+                // contenu à chaque comparaison — même sur un produit tout
+                // juste ajouté et jamais modifié depuis (retour utilisateur :
+                // "à chaque fois que j'ajoute un produit sur un compte,
+                // l'autre le voit comme un conflit").
+                Object.keys(c).forEach(function(k){
+                  var v = c[k];
+                  if(v === undefined || v === null || v === '') delete c[k];
+                  else if(Array.isArray(v) && v.length === 0) delete c[k];
+                });
                 return JSON.stringify(c, Object.keys(c).sort());
               }
               if(withoutServerFields(lp) !== withoutServerFields(sp)){
@@ -2425,66 +2438,6 @@
     });
     if(overlay)   overlay.addEventListener('click', function(e){ if(e.target===overlay) closeConflictModal(); });
   })();
-  // ── Bouton test modale conflits ────────────────────────────────────
-  var btnTestConflict = document.getElementById('btnTestConflictModal');
-  if(btnTestConflict){
-    btnTestConflict.addEventListener('click', function(){
-      var settingsBox = document.querySelector('.settings-box');
-      if(settingsBox) settingsBox.classList.remove('open');
-      document.body.classList.remove('modal-open');
-
-      var fakeConflicts = [
-        {
-          ref: 'BNI00L3',
-          local: {
-            ref:'BNI00L3', name:'Module IO-Link BALLUFF v2 (local)', brand:'BALLUFF',
-            family:'Master', series:'BNI', supplier:'BALLUFF',
-            price:'154.50 EUR', priceCatalogue:'415 EUR',
-            desc:'Version modifiée localement hors ligne.',
-            url:'https://www.balluff.com/bni00l3', photo:'',
-            createdAt: Date.now()-7200000, updatedAt: Date.now()-1200000,
-            priceHistory:[{date:Date.now()-7200000, price:'415 EUR'}]
-          },
-          server: {
-            ref:'BNI00L3', name:'Module IO-Link BALLUFF (serveur)', brand:'BALLUFF',
-            family:'Master', series:'BNI', supplier:'BALLUFF',
-            price:'160.00 EUR', priceCatalogue:'415 EUR',
-            desc:'BNI00L3 (BNI XG3-508-0B5-R067) - Modules réseau multiprotocoles.',
-            url:'https://www.balluff.com/bni00l3', photo:'',
-            createdAt: Date.now()-7200000, updatedAt: Date.now()-600000,
-            priceHistory:[{date:Date.now()-7200000, price:'415 EUR'}]
-          }
-        },
-        {
-          ref: 'BMF00JC',
-          local: {
-            ref:'BMF00JC', name:'Capteur magnétique (local)', brand:'BALLUFF',
-            family:'Capteur magnétique', series:'BMF', supplier:'BALLUFF',
-            price:'20 EUR', priceCatalogue:'64.67 EUR',
-            desc:'Version locale avec note ajoutée manuellement.',
-            url:'https://www.balluff.com/bmf00jc', photo:'',
-            createdAt: Date.now()-3600000, updatedAt: Date.now()-1800000,
-            priceHistory:[]
-          },
-          server: {
-            ref:'BMF00JC', name:'Capteur magnétique BMF (serveur)', brand:'BALLUFF',
-            family:'Capteur magnétique', series:'BMF', supplier:'BALLUFF',
-            price:'22 EUR', priceCatalogue:'64.67 EUR',
-            desc:'BMF00JC (BMF 235K-PS-C-2A-SA5-S49-00,3) - Interrupteur cylindrique.',
-            url:'https://www.balluff.com/bmf00jc', photo:'',
-            createdAt: Date.now()-3600000, updatedAt: Date.now()-900000,
-            priceHistory:[]
-          }
-        }
-      ];
-
-      if(typeof openConflictModal === 'function'){
-        openConflictModal(fakeConflicts);
-      } else {
-        showToast('La modale de conflits sera disponible après le prochain déploiement complet.', 'warn', 4000);
-      }
-    });
-  };
   // ── Fermeture mutuelle des sheets ────────────────────────────
   // Ouvre le tiroir menu mobile/tablette — extrait du click handler de
   // bnMenu (bottom nav) pour être réutilisable, notamment pour rouvrir le
