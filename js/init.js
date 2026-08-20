@@ -76,6 +76,9 @@
         showToast('Connexion requise pour ajouter un produit', 'warn', 4000);
         return;
       }
+      // ── Protection anti-perte : refuser si une fiche produit est déjà
+      // en cours d'édition ou de création (modale déjà ouverte) ─────────
+      if(_extensionGuardBlocked()) return;
       // Basculer vers le catalogue si on est sur l'accueil
       if(homePage && !homePage.classList.contains('hidden')){
         showCatalogueAll();
@@ -127,6 +130,19 @@
   })();
   // showHome() déjà appelé en début d'init
 
+  // ── Protection anti-perte partagée (extension + partage) ───────────
+  // Refuse toute ouverture automatique de la modale produit si une fiche
+  // est déjà en cours de modification OU de création (modale déjà ouverte),
+  // pour ne jamais écraser une saisie non enregistrée.
+  function _extensionGuardBlocked(){
+    var modalEl = document.getElementById('modalOverlay');
+    if(modalEl && modalEl.classList.contains('open')){
+      showToast('Une fiche produit est déjà en cours de modification. Fermez-la ou enregistrez-la avant de continuer.', 'warn', 5000);
+      return true;
+    }
+    return false;
+  }
+
   // ═══════════════════════════════════════════════════════════════
   //  EXTENSION CHROME — Injection via localStorage
   //  Le content script de l'extension écrit le HTML complet de la
@@ -139,6 +155,11 @@
       showToast('Connexion requise pour importer via l\'extension', 'warn', 4000);
       return;
     }
+    // ── Protection anti-perte : refuser si une fiche est déjà en cours
+    // d'édition ou de création — mais on laisse les données en attente
+    // dans localStorage (elles seront reprises au prochain déclenchement
+    // tant qu'elles ne dépassent pas la limite de 5 min ci-dessous).
+    if(_extensionGuardBlocked()) return;
     var html = '';
     var url  = '';
     try{

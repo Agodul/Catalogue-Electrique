@@ -1003,7 +1003,7 @@
   #btnScrollTop svg{ width:20px; height:20px; }
   
   /* ── Toolbar ≤768px : 2 lignes fixes ────────────────────────── */
-  @media(max-width:768px){
+  @media(max-width:768px) and (pointer: coarse) {
     .toolbar{ flex-wrap:wrap; gap:6px; margin-bottom:12px; }
     .search-field{ display:none; }
     /* 🔍 | Marques | Familles | Séries | ⊘ | ↕Prix */
@@ -1025,7 +1025,7 @@
     .filters-visible select#familyFilter{ display:flex; }
   }
 
-  @media (max-width:640px){
+  @media (max-width:640px) and (pointer: coarse) {
 
     /* ── Header compact ── */
     header{ padding:0 12px; height:50px; gap:8px; flex-wrap:nowrap; }
@@ -1211,7 +1211,7 @@
 
   
   
-  @media (max-width:380px){
+  @media (max-width:380px) and (pointer: coarse) {
     /* Header encore plus compact */
     header{ height:50px; padding:0 10px; gap:5px; }
     .brandmark .logo-mark{ height:24px; }
@@ -1260,7 +1260,7 @@
   }
 
   
-  @media (max-width:320px){
+  @media (max-width:320px) and (pointer: coarse) {
     header{ height:48px; padding:0 8px; gap:4px; }
     .brandmark .logo-mark{ height:20px; }
     .hdr-sep{ margin:0 6px; height:14px; }
@@ -1492,7 +1492,7 @@
     border-color:var(--copper);
     background:#EEF4FF;
   }
-  @media(max-width:640px){
+  @media(max-width:640px) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stats{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stat-val{ font-size:20px; }
@@ -1503,7 +1503,7 @@
     .home-family-count{ font-size:10px; }
     #homePage{ padding:16px 12px 32px; }
   }
-  @media(max-width:380px){
+  @media(max-width:380px) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:5px; }
     .home-stats{ gap:5px; }
     .home-stat{ padding:10px 6px; }
@@ -1535,7 +1535,7 @@
   /* ── Champ URL adaptatif mobile ── */
   .url-field-desktop{ display:flex; }
   .url-field-mobile{ display:none; }
-  @media(max-width:768px){
+  @media(max-width:768px) and (pointer: coarse) {
     .url-field-desktop{ display:none; }
     .url-field-mobile{ display:block; }
     /* iOS : masquer le bouton Android, afficher le champ URL */
@@ -1544,7 +1544,7 @@
   }
 
   /* ── Zone code source : desktop seulement ── */
-  @media(max-width:768px){
+  @media(max-width:768px) and (pointer: coarse) {
     .html-source-zone{ display:none !important; }
   }
 
@@ -1898,19 +1898,19 @@
   .card .name, .card .ref, .card .price{ user-select:text; -webkit-user-select:text; }
 
   /* ── Touch targets min 44px mobile ──────────────────────────── */
-  @media(max-width:768px){
+  @media(max-width:768px) and (pointer: coarse) {
     .tab-btn{ min-height:40px; }
   }
 
   /* ── PWA Banner petit écran ──────────────────────────────────── */
   #pwaInstallBanner{ max-width:min(340px, calc(100vw - 24px)); }
-  @media(max-width:380px){
+  @media(max-width:380px) and (pointer: coarse) {
     #pwaInstallBanner{ border-radius:12px; padding:12px 14px 10px; }
     #pwaInstallBanner img{ width:36px; height:36px; }
   }
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
-  @media(max-width:640px){
+  @media(max-width:640px) and (pointer: coarse) {
     #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
   }
   /* Paramètres : bottom sheet sur mobile ET tablette — même seuil que
@@ -1918,7 +1918,7 @@
      panneaux se comportent pareil sur toute la plage mobile/tablette
      (retour utilisateur : Paramètres restait en modale centrée sur
      tablette alors que le Menu passait déjà en tiroir bas). */
-  @media(max-width:1024px){
+  @media(max-width:1024px) and (pointer: coarse) {
     #settingsOverlay{ padding:0; align-items:flex-end; justify-content:center; padding-bottom:var(--nav-h, 56px); }
     .settings-box{
       width:100%; max-width:100%;
@@ -1939,13 +1939,13 @@
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
-  @media(max-width:380px){
+  @media(max-width:380px) and (pointer: coarse) {
     .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
     .tab-btn{ flex-shrink:0; }
   }
 
   /* ── Grille tablette 641-1024px ──────────────────────────────── */
-  @media(min-width:769px) and (max-width:1024px){
+  @media(min-width:769px) and (max-width:1024px) and (pointer: coarse) {
     /* Grande tablette (iPad, Galaxy Tab...) */
     .grid{ grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
     header{ padding:0 20px; height:64px; }
@@ -1962,7 +1962,7 @@
     #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
   }
 
-  @media(min-width:641px) and (max-width:768px){
+  @media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
     /* Petite tablette (641-768px) */
     .grid{ grid-template-columns:repeat(3,1fr); gap:10px; }
     header{ padding:0 16px; height:58px; }
@@ -1971,14 +1971,14 @@
   }
 
   /* ── Cartes très petit écran 320px ──────────────────────────── */
-  @media(max-width:320px){
+  @media(max-width:320px) and (pointer: coarse) {
     .card .name{ font-size:11px; }
     .card .price{ font-size:12px; }
     .card .tags{ display:none; }
   }
 
   /* ── Éviter zoom iOS sur focus input (<16px) ─────────────────── */
-  @media(max-width:768px){
+  @media(max-width:768px) and (pointer: coarse) {
     input[type="text"], input[type="url"], input[type="number"],
     input[type="search"], input[type="password"], textarea, select{
       font-size:max(16px,1em) !important;
@@ -2126,7 +2126,7 @@
     font-weight:700;
   }
 
-  @media(max-width:640px){
+  @media(max-width:640px) and (pointer: coarse) {
     /* ── Modale conflit mobile ───────────────────── */
     #conflictOverlay{
       padding:8px;
@@ -2291,7 +2291,7 @@
 .filter-sheet {
   display: none;
 }
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (pointer: coarse) {
   .filter-sheet {
     display: block;
     position: fixed;
@@ -2380,7 +2380,7 @@
 }
 
 /* Fiche produit : animation slide-up sur mobile */
-@media (max-width: 640px) {
+@media (max-width: 640px) and (pointer: coarse) {
   #viewOverlay {
     top: 0 !important;
     align-items: flex-end !important;
@@ -2420,7 +2420,7 @@
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (pointer: coarse) {
   :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
   .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: var(--z-sheet-high) !important; }
   .bottom-nav {
@@ -2638,7 +2638,7 @@
 .menu-sheet {
   display: none;
 }
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (pointer: coarse) {
   .menu-sheet {
     position: fixed;
     bottom: 0;
@@ -2711,7 +2711,7 @@
   font-size: 16px; color: var(--ink-soft); flex-shrink: 0;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (pointer: coarse) {
   /* Masquer les 3 petits points header sur mobile */
   #hdrMenuWrap { display: none !important; }
 }
@@ -2799,7 +2799,7 @@
 }
 
 /* Tablette grande 769-1024px */
-@media(min-width:769px) and (max-width:1024px){
+@media(min-width:769px) and (max-width:1024px) and (pointer: coarse) {
   .essential-badge{
     font-size:10px;
     padding:2px 7px;
@@ -2808,7 +2808,7 @@
 }
 
 /* Tablette petite 641-768px */
-@media(min-width:641px) and (max-width:768px){
+@media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
   .essential-badge{
     font-size:9px;
     padding:2px 6px;
@@ -2817,7 +2817,7 @@
 }
 
 /* Mobile ≤640px : 3 colonnes (~110px/carte) — badge très compact */
-@media(max-width:640px){
+@media(max-width:640px) and (pointer: coarse) {
   .essential-badge{
     font-size:8px;
     padding:2px 5px;
@@ -2828,7 +2828,7 @@
 }
 
 /* Mobile ≤380px : 2 colonnes (~160px/carte) — un peu plus de place */
-@media(max-width:380px){
+@media(max-width:380px) and (pointer: coarse) {
   .essential-badge{
     font-size:8.5px;
     padding:2px 5px;
@@ -2907,7 +2907,7 @@
 .sheet-handle-bar{
   display: none;
 }
-@media(max-width: 640px){
+@media(max-width: 640px) and (pointer: coarse) {
   .sheet-handle-bar{
     display: block;
     width: 40px; height: 4px;
@@ -2945,7 +2945,7 @@
 /* !important nécessaire : les éléments de cette modale sont stylés en
    inline (style="..."), qui prime toujours sur une règle externe sans
    !important — même convention que .fab-stack plus haut dans ce fichier. */
-@media(max-width:768px){
+@media(max-width:768px) and (pointer: coarse) {
   /* La modale est calée en position:fixed avec top/bottom explicites au
      lieu d'une hauteur calculée en vh/dvh : sur iOS Safari, 100vh (et même
      100dvh sur certaines versions/contextes PWA) peut être plus grand que
