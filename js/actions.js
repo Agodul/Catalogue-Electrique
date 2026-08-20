@@ -81,7 +81,47 @@
     return result;
   }
 
+  // Rattrape les liens de suggestions à sens unique (A → B sans B → A) sur
+  // TOUT le tableau donné — utilisé après un import JSON (Fusionner ou
+  // Remplacer), qui écrit les produits directement sans repasser par le
+  // formulaire d'édition (seul endroit qui applique déjà cette réciprocité
+  // au moment d'Enregistrer, voir _sugLinkReciprocal dans le handler de
+  // btnSave). Idempotent : rejouer cette passe plusieurs fois ne change
+  // rien de plus après la première fois. N'écrase jamais un lien existant,
+  // ne supprime jamais rien — ajoute seulement ce qui manque.
+  function reconcileSuggestionsReciprocally(prods){
+    var byRef = {};
+    prods.forEach(function(p){ if(p.ref) byRef[p.ref] = p; });
+    var touched = [];
+    prods.forEach(function(p){
+      if(!p.ref || !Array.isArray(p.suggestions)) return;
+      p.suggestions.forEach(function(otherRef){
+        var other = byRef[otherRef];
+        if(!other || other.ref === p.ref) return;
+        if(!Array.isArray(other.suggestions)) other.suggestions = [];
+        if(other.suggestions.indexOf(p.ref) === -1){
+          other.suggestions.push(p.ref);
+          other.updatedAt = Date.now();
+          if(touched.indexOf(other) === -1) touched.push(other);
+        }
+      });
+    });
+    return touched;
+  }
+
   document.getElementById('btnSave').addEventListener('click', function(){
+    // Garde-fou défensif : si le formulaire était déjà ouvert avant une
+    // déconnexion (forcée ou manuelle), applyAuthUI() ne le referme pas tout
+    // seul (voir _authCloseSensitiveUI dans js/auth.js, qui s'en charge côté
+    // déconnexion) — ce test protège en plus contre tout cas limite où le
+    // bouton resterait cliquable malgré tout (retour utilisateur : actions
+    // encore possibles après une déconnexion tant que la page n'est pas
+    // rechargée).
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
+      showToast('Vous avez été déconnecté — veuillez vous reconnecter.', 'err', 4000);
+      if(typeof closeModal === 'function') closeModal();
+      return;
+    }
     var brand = canonicalizeBrand(fBrand.value.trim());
     var ref = fRef.value.trim();
     if(!brand || !ref){
@@ -1363,6 +1403,12 @@
           }
         });
 
+        // Rattrape les liens de suggestions à sens unique (voir commentaire
+        // sur reconcileSuggestionsReciprocally) — retour utilisateur : un
+        // import doit se comporter comme le formulaire, pas seulement les
+        // ajouts un par un.
+        reconcileSuggestionsReciprocally(products);
+
         save();
         // Forcer retour à la home
         var homePage = document.getElementById('homePage');
@@ -1389,6 +1435,8 @@
       });
       overlay.querySelector('#_importReplace').addEventListener('click', async function(){
         products = _pendingImport;
+        // Voir commentaire équivalent dans #_importMerge ci-dessus.
+        reconcileSuggestionsReciprocally(products);
         save();
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
@@ -2917,6 +2965,9 @@
       if(msImportXlsxSub) msImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
       var msRequestsSub = document.getElementById('msRequestsSub');
       if(msRequestsSub) msRequestsSub.textContent = isAdmin ? 'Modifications proposées' : 'Suivi de vos demandes';
+      // Miroir exact de btnSettingsSub côté desktop (js/auth.js).
+      var msSettingsSub = document.getElementById('msSettingsSub');
+      if(msSettingsSub) msSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
 
       // Cacher sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }

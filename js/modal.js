@@ -1037,7 +1037,7 @@
       item.addEventListener('mousedown', function(e){
         e.preventDefault();
         var ref = item.getAttribute('data-ref');
-        if(_sugRefs.length >= 10){ showToast('Maximum 10 suggestions atteint.', 'warn', 2500); return; }
+        if(_sugRefs.length >= 20){ showToast('Maximum 20 suggestions atteint.', 'warn', 2500); return; }
         if(_sugRefs.indexOf(ref) === -1) _sugRefs.push(ref);
         _sugRenderChips();
         fSuggestionsSearch.value = '';

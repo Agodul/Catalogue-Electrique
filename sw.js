@@ -1,13 +1,13 @@
-const CACHE = "spi-catalogue-v472";
+const CACHE = "spi-catalogue-v477";
 
 const FILES = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./favicon.ico",
-  "./apple-touch-icon.png",
-  "./icon-192.png",
-  "./icon-512.png",
+  "./assets/favicon.ico",
+  "./assets/apple-touch-icon.png",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png",
   "./css/styles.css",
   "./js/popup.js",
   "./js/actions.js",

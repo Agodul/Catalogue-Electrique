@@ -103,11 +103,36 @@ async function authLogoutServer() {
 // sondage). Le flag évite le spam de toasts si plusieurs requêtes en 401
 // arrivent en parallèle.
 var _authForceLogoutInProgress = false;
+
+// Ferme les fenêtres qui nécessitent d'être connecté et qui pouvaient déjà
+// être ouvertes AVANT la déconnexion (forcée ou manuelle) — applyAuthUI()
+// ne fait que cacher/griser des boutons pour un prochain affichage, il ne
+// referme jamais une fenêtre déjà ouverte à l'écran. Sans ça, un formulaire
+// produit ouvert avant la coupure restait pleinement utilisable (champs
+// actifs, bouton Enregistrer cliquable) tant que la page n'était pas
+// rechargée — l'utilisateur pouvait continuer à modifier/enregistrer alors
+// qu'il n'était plus authentifié (retour utilisateur : "je pouvais encore
+// faire des modifications... même des trucs pas dispo sans connexion").
+function _authCloseSensitiveUI() {
+  var modalOverlay = document.getElementById('modalOverlay');
+  if (modalOverlay && modalOverlay.classList.contains('open')) {
+    if (typeof closeModal === 'function') closeModal();
+    else modalOverlay.classList.remove('open');
+  }
+  if (typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
+  if (typeof _armoireClose === 'function') _armoireClose();
+  if (typeof reqClosePanel === 'function') reqClosePanel();
+  var compareOverlay = document.getElementById('compareOverlay');
+  if (compareOverlay) compareOverlay.classList.remove('show');
+  document.body.classList.remove('modal-open');
+}
+
 function _authForceLogout(reason) {
   if (!authIsLoggedIn() || _authForceLogoutInProgress) return;
   _authForceLogoutInProgress = true;
   authClearUser();
   applyAuthUI();
+  _authCloseSensitiveUI();
   showAuthToast(reason);
   if (typeof render === 'function') render();
   if (typeof renderHome === 'function') renderHome();
@@ -240,6 +265,7 @@ function authLogout() {
   authLogoutServer(); // async, non bloquant
   authClearUser();
   applyAuthUI();
+  _authCloseSensitiveUI();
   showAuthToast('Déconnecté');
   // Rafraîchir le rendu
   if (typeof render === 'function') render();
@@ -355,6 +381,14 @@ function applyAuthUI() {
 
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
+
+  // Sous-titre du menu "Paramètres" adapté à ce que CET utilisateur y voit
+  // réellement — "Icônes des familles" n'est visible que pour un admin
+  // (juste au-dessus) ; un non-admin n'y trouve que "Mon compte" et le
+  // serveur (retour utilisateur : le sous-titre restait figé, pas à jour
+  // avec les permissions, contrairement aux autres déjà corrigés).
+  var btnSettingsSub = document.getElementById('btnSettingsSub');
+  if (btnSettingsSub) btnSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
 
   var serverButtonsSection = document.getElementById('serverButtonsSection');
   if (serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';

@@ -56,10 +56,10 @@
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans/index.css">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
 <meta name="theme-color" content="#F9F9F9">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -162,7 +162,7 @@
         <div class="hdr-menu-sep" id="reqMenuSep" style="display:none;"></div>
         <button class="hdr-menu-item" id="btnSettings">
           <span class="mi-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
-          <span class="mi-texts"><span class="mi-title">Paramètres</span><span class="mi-sub">Icônes des familles, Serveur</span></span>
+          <span class="mi-texts"><span class="mi-title">Paramètres</span><span class="mi-sub" id="btnSettingsSub">Icônes des familles, Serveur</span></span>
         </button>
       </div>
     </div>
@@ -757,7 +757,7 @@
 
       <!-- ===== CHAMP SUGGESTIONS ===== -->
       <div class="field" id="fSuggestionsRow">
-        <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 10)</span></label>
+        <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 20)</span></label>
         <div class="sug-autocomplete-wrap" style="position:relative;">
           <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
           <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
@@ -1414,7 +1414,7 @@
     <!-- Paramètres -->
     <button class="menu-sheet-item" id="msSettings">
       <span class="menu-sheet-icon" style="background:#F1F5F9;"><i class="ti ti-settings" style="color:#64748B;"></i></span>
-      <span class="menu-sheet-texts"><span class="menu-sheet-title">Paramètres</span></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Paramètres</span><span class="menu-sheet-sub" id="msSettingsSub">Icônes des familles, Serveur</span></span>
       <i class="ti ti-chevron-right menu-sheet-chevron"></i>
     </button>
 

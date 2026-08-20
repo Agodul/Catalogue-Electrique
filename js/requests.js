@@ -27,7 +27,12 @@
         body: diff === 1
           ? 'Une nouvelle demande est en attente de validation.'
           : diff + ' nouvelles demandes sont en attente de validation.',
-        icon: '/assets/icon-192.png',
+        // Chemin relatif (pas de "/" en tête) : l'app est déployée dans un
+        // sous-dossier (ex. GitHub Pages, /Catalogue-Electrique/ — voir
+        // manifest.webmanifest start_url/scope) — un chemin absolu depuis la
+        // racine du domaine pointait à côté (bug préexistant, découvert en
+        // déplaçant icon-192.png vers assets/).
+        icon: 'assets/icon-192.png',
         tag: 'spi-req-badge',
         renotify: true,
         silent: false
