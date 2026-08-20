@@ -717,10 +717,16 @@
               var hasAny = pForPdf._docFiles.length > 0;
               pForPdf.hasDoc      = hasAny;
               pForPdf.docFilename = hasAny ? pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ') : '';
+              // Rendre AVANT save() : save() retire _docFiles de tous les
+              // produits (champ local uniquement, jamais persisté — voir
+              // js/storage.js) et pForPdf pointe vers le même objet que
+              // products[idx2], donc _docFiles serait déjà effacé si on
+              // l'utilisait après l'appel à save().
+              var _filesSnapshot = pForPdf._docFiles;
+              _pdfRenderList(_filesSnapshot);
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
               if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
               showToast('Fichier supprimé ✓', 'ok', 2000);
-              _pdfRenderList(pForPdf._docFiles);
             })
             .catch(function(e){ showToast('Erreur suppression : '+e, 'err', 4000); });
         }
@@ -744,10 +750,12 @@
             pForPdf._docFiles = (pForPdf._docFiles || []).concat(newFiles);
             pForPdf.hasDoc = true;
             pForPdf.docFilename = pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ');
+            // Rendre AVANT save() — voir commentaire équivalent dans _pdfDeleteOne.
+            var _filesSnapshot = pForPdf._docFiles;
+            _pdfRenderList(_filesSnapshot);
             var idx2 = products.findIndex(function(x){ return x.id === editingId; });
             if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
             showToast(arr.length+' PDF envoyé'+(arr.length>1?'s':'')+' ✓', 'ok', 2500);
-            _pdfRenderList(pForPdf._docFiles);
             if(modalPdfInput) modalPdfInput.value = '';
           })
           .catch(function(e){ showToast('Erreur envoi PDF : '+e, 'err', 4000); });
@@ -1097,9 +1105,15 @@
     var colHeaders = document.getElementById('specsColHeaders');
     if(colHeaders) colHeaders.style.display = _specsRows.length ? 'grid' : 'none';
     specsRowsEl.innerHTML = _specsRows.map(function(row, ri){
-      return '<div class="spec-row" data-ri="'+ri+'" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;align-items:center;">'
+      return '<div class="spec-row" data-ri="'+ri+'" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;align-items:start;">'
         + '  <input type="text" class="spec-key" data-ri="'+ri+'" list="specKeyOptions" placeholder="Nom (ex: Entrées)" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
-        + '  <input type="text" class="spec-value" data-ri="'+ri+'" placeholder="Valeur (ex: 8)" value="'+escapeHtml(row.value||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
+        // textarea (pas input) : permet le retour à la ligne (Entrée) dans la
+        // valeur — utile pour une caractéristique qui regroupe plusieurs
+        // sous-valeurs (ex. une puissance différente par tension) qui
+        // formaient sinon un seul long paragraphe illisible d'un bloc
+        // (retour utilisateur, capture à l'appui). rows="1" + resize
+        // vertical : reste compact par défaut, s'agrandit à la demande.
+        + '  <textarea class="spec-value" data-ri="'+ri+'" placeholder="Valeur (ex: 8) — Entrée pour un retour à la ligne" rows="1" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:34px;">'+escapeHtml(row.value||'')+'</textarea>'
         + '  <button type="button" class="spec-row-del" data-ri="'+ri+'" aria-label="Supprimer" style="width:32px;height:32px;flex-shrink:0;background:none;border:1.5px solid var(--line);border-radius:7px;color:var(--ink-soft);cursor:pointer;font-size:13px;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>'
         + '</div>';
     }).join('');

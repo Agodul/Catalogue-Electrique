@@ -287,8 +287,16 @@
           var sugModalTitle = document.getElementById('sugModalTitle');
           if(sugModalTitle) sugModalTitle.textContent = '🔧 Caractéristiques techniques';
           if(sugList){
+            // Classe dédiée (pas .vm-meta-item directement, réutilisée ailleurs
+            // dans une grille 2 colonnes différente) : séparateur entre chaque
+            // ligne + white-space:pre-wrap pour respecter les retours à la
+            // ligne saisis dans la valeur (voir textarea .spec-value dans
+            // js/modal.js) — avant, une caractéristique regroupant plusieurs
+            // sous-valeurs (ex. puissance par tension) formait un seul long
+            // paragraphe illisible, sans distinction visuelle claire entre
+            // chaque ligne (retour utilisateur, capture à l'appui).
             sugList.innerHTML = specEntries.map(function(entry){
-              return '<div class="vm-meta-item"><label>'+escapeHtml(entry[0])+'</label><span>'+escapeHtml(entry[1])+'</span></div>';
+              return '<div class="spec-list-item"><label>'+escapeHtml(entry[0])+'</label><span>'+escapeHtml(entry[1])+'</span></div>';
             }).join('');
           }
           if(sugOverlay){

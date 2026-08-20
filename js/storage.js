@@ -284,7 +284,17 @@
     // Nettoyage : _score était un champ de score de recherche d'une version
     // précédente, jamais recalculé aujourd'hui — on le retire au passage pour
     // qu'il disparaisse progressivement des fiches plutôt que de rester figé.
-    products.forEach(function(p){ if('_score' in p) delete p._score; });
+    // _docFiles (préfixe "_" = local uniquement, même convention) : liste des
+    // fichiers joints mise en cache pendant que la sous-modale PDF d'un
+    // produit est ouverte (voir js/modal.js) — jamais destinée à être
+    // persistée. Une session gardait une valeur différente d'une autre selon
+    // ce qu'elle avait ouvert/chargé, ce qui déclenchait un faux conflit à
+    // chaque synchro (retour utilisateur, capture à l'appui : "hasDoc
+    // _docFiles docFilename").
+    products.forEach(function(p){
+      if('_score' in p) delete p._score;
+      if('_docFiles' in p) delete p._docFiles;
+    });
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
     }catch(e){

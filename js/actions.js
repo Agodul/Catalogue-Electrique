@@ -763,6 +763,17 @@
                 // "encore trop de problèmes de conflit").
                 delete c.suggestions;
                 delete c.suggestionsHidden;
+                // hasDoc/docFilename : mis à jour par un flux SÉPARÉ (envoi/
+                // suppression de PDF, voir js/modal.js _pdfUploadFiles/
+                // _pdfDeleteOne) qui n'est pas le formulaire d'édition
+                // principal — une différence ici n'est pas un vrai conflit
+                // éditorial (retour utilisateur, capture à l'appui :
+                // "hasDoc _docFiles docFilename"). _docFiles lui-même est
+                // déjà retiré en amont par save() (voir js/storage.js), donc
+                // jamais présent ici, mais on l'exclut par sécurité.
+                delete c.hasDoc;
+                delete c.docFilename;
+                delete c._docFiles;
                 // Normalise TOUS les champs vides (chaîne vide, null,
                 // undefined, tableau vide) en les retirant complètement —
                 // avant, seuls tags/priceHistory avaient ce traitement. Sans
@@ -2367,8 +2378,16 @@
     var choice  = _conflictChoices[ref] || 'local';
     var detail  = document.getElementById('conflictDetail');
     if(!detail) return;
+    // Même liste d'exclusion que withoutServerFields() plus haut — sinon ces
+    // champs (jamais responsables du conflit lui-même) apparaissaient quand
+    // même dans le tableau avec un "≠", laissant croire à tort qu'ils en
+    // étaient la cause (retour utilisateur : "la raison c'est hasDoc
+    // _docFiles docFilename" — alors qu'un vrai conflit se déclenchait sur
+    // un autre champ, ces trois-là étant juste incidemment différents aussi).
     var allKeys = Object.keys(Object.assign({}, c.local, c.server))
-      .filter(function(k){ return k !== 'id' && k !== 'familyIcon'; });
+      .filter(function(k){
+        return ['id','familyIcon','updatedAt','createdAt','suggestions','suggestionsHidden','hasDoc','docFilename','_docFiles'].indexOf(k) === -1;
+      });
     var rowsHtml = allKeys.map(function(key){
       var lv     = c.local[key];
       var sv     = c.server[key];
