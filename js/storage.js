@@ -241,9 +241,20 @@
       var raw = localStorage.getItem(FAMILY_ICONS_KEY);
       familyIcons = raw ? JSON.parse(raw) : {};
     }catch(e){ familyIcons = {}; }
-    // Enrichir depuis les produits (source de vérité)
+    // Enrichir depuis les produits (source de vérité) — uniquement les
+    // icônes PNG modernes (FAMILY_ICON_CHOICES). Sans ce filtre, une
+    // ancienne valeur "ti-xxx" (police Tabler, d'avant l'introduction des
+    // icônes PNG) enregistrée sur un seul produit était recopiée telle
+    // quelle dans ce cache de session, où elle gagnait alors TOUJOURS face
+    // à la correspondance exacte moderne de getFamilyIcon() (priorité 1
+    // prioritaire sur priorité 3) — la famille restait donc bloquée sur son
+    // icône Tabler indéfiniment, même une fois getFamilyIcon() corrigé pour
+    // préférer une icône moderne connue (retour utilisateur : "les icônes
+    // sont encore les icônes ti-ti-, jamais rafraîchies après un
+    // changement"). Affichage uniquement : aucune donnée produit modifiée.
     products.forEach(function(p){
-      if(p.family && p.familyIcon && !familyIcons[p.family]){
+      if(p.family && p.familyIcon && !familyIcons[p.family]
+         && typeof FAMILY_ICON_CHOICES !== 'undefined' && FAMILY_ICON_CHOICES.indexOf(p.familyIcon) !== -1){
         familyIcons[p.family] = p.familyIcon;
       }
     });

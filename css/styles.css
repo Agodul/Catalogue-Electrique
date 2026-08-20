@@ -1151,11 +1151,23 @@
       border-radius:16px 16px 0 0;
       max-width:100%; width:100%;
       max-height:calc(92vh - var(--nav-h, 56px)); flex-direction:column;
-      margin-bottom: var(--nav-h, 56px);
+      /* padding-bottom (pas margin-bottom) : voir la règle @media
+         max-width:1024px plus bas — le dégagement nav doit être un padding
+         INTERNE à la boîte, pas une marge qui la décale vers le haut et
+         laisse un espace vide visible avant la bottom nav (retour
+         utilisateur, capture à l'appui : fenêtre flottant au-dessus de la
+         nav au lieu d'être accrochée dessus). */
+      padding-bottom: var(--nav-h, 56px);
     }
     .modal-head{ padding:12px 14px 10px; border-radius:16px 16px 0 0; flex-shrink:0; }
     .modal-head h3{ font-size:15px; }
-    .modal-body{ padding:10px 14px 4px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
+    /* padding-bottom généreux (16px, pas 4px) : sans ça, le dernier élément
+       visible en fin de scroll (ex. les onglets "Extraction automatique" /
+       "Saisie manuelle") se retrouve collé contre le pied de page — donne
+       l'impression d'être coupé/chevauché par les boutons Annuler/
+       Enregistrer alors qu'il n'y a aucun vrai chevauchement DOM (retour
+       utilisateur, capture à l'appui). */
+    .modal-body{ padding:10px 14px 16px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
     .modal-foot{ padding:10px 14px 12px; flex-wrap:wrap; gap:6px; flex-shrink:0; }
     .modal-foot .left-foot{ width:100%; font-size:10px; order:-1; }
     .modal-foot > div:last-child{ width:100%; gap:6px; }
@@ -2361,10 +2373,15 @@
     max-height: calc(95vh - var(--nav-h, 56px)) !important;
     transform: translateY(100%);
     transition: transform .35s cubic-bezier(.32,.72,0,1);
-    /* margin-bottom (--nav-h) réserve déjà l'espace de la nav + la safe-area —
-       un padding-bottom supplémentaire créait une bande blanche vide en trop
-       en bas de la fiche, au-dessus de la barre de navigation. */
-    margin-bottom: var(--nav-h, 56px);
+    /* padding-bottom (pas margin-bottom) : le dégagement nav doit être un
+       padding INTERNE à la carte, pas une marge qui la décale vers le haut
+       et laisse un espace vide (fond assombri) visible avant la bottom nav
+       — elle avait alors l'air de flotter au-dessus plutôt que d'être
+       vraiment accrochée dessus (retour utilisateur, capture à l'appui :
+       "aucune des fenêtres n'est contre la barre de navigation"). Le bord
+       extérieur de la carte (fond, coins arrondis) va donc jusqu'au tout
+       bas de l'écran, derrière la bottom nav. */
+    padding-bottom: var(--nav-h, 56px);
   }
   #viewOverlay.open #viewModal {
     transform: translateY(0);
@@ -2478,38 +2495,77 @@
   #bottomNav { z-index: var(--z-nav) !important; }
 
   /* ── Correction overlays coupés par la bottom nav ────────── */
-  /* Overlays centrés : padding-bottom pour décaler le contenu vers le haut */
-  #compareOverlay,
-  #settingsOverlay,
-  #authOverlay,
-  #conflictOverlay,
-  #iconPickerModal,
-  #docOverlay,
-  #requestsOverlay,
-  #modalOverlay,
-  #bugReportOverlay,
+  /* #pdfViewerOverlay reste une boîte centrée (visionneuse plein écran,
+     jamais convertie en feuille ancrée en bas ci-dessous) : le
+     padding-bottom sur l'OVERLAY reste la bonne technique pour décaler son
+     contenu centré vers le haut. */
   #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
 
-  /* #modalOverlay/#bugReportOverlay : comme .settings-box ci-dessous, le
-     padding-bottom seul sur l'overlay ne suffit pas si le contenu (.modal)
-     est déjà plus haut que l'espace restant — sa propre max-height (fixée à
-     calc(100vh - 48px) en desktop, sans tenir compte de la bottom nav) doit
-     aussi être réduite pour ne pas passer derrière la nav (retour
-     utilisateur : boutons Refuser/Modifier/Accepter coupés par la bottom
-     nav sur tablette). */
-  #modalOverlay .modal,
-  #bugReportOverlay .modal { max-height: calc(92dvh - var(--nav-h, 56px)); }
+  /* ── Style uniforme "feuille ancrée en bas" pour toutes les fenêtres
+     disponibles sur mobile/tablette ─────────────────────────────────
+     Jusqu'ici seules #settingsOverlay et (en dessous de 640px seulement)
+     #modalOverlay/#viewOverlay étaient ancrées en bas — toutes les autres
+     fenêtres ci-dessous restaient des boîtes de dialogue centrées : un
+     style différent des premières (retour utilisateur : "les fenêtres
+     dispo sur mobile et tablette doivent être toutes du même style,
+     accroché en bas de la page").
+     Le dégagement pour la bottom nav (padding-bottom) va sur la BOÎTE
+     elle-même, pas sur l'overlay qui la contient : mis sur l'overlay, il
+     décale toute la boîte vers le haut et laisse un espace vide visible
+     entre son bas et la bottom nav — elle a alors l'air de flotter
+     au-dessus au lieu d'être vraiment accrochée (retour utilisateur,
+     capture à l'appui : "aucune des fenêtres n'est contre la barre de
+     navigation"). Mis sur la boîte, son bord extérieur (fond, coins
+     arrondis) va jusqu'au tout bas de l'écran, derrière la bottom nav —
+     seul le padding interne réservé protège les boutons réels de passer
+     dessous. box-sizing:border-box (règle globale) garantit que ce padding
+     ne fait pas dépasser la max-height déjà réservée. */
+  /* padding:0 sur TOUS les côtés, pas seulement padding-bottom : sinon le
+     padding gauche/droite/haut de la règle de base (ex. padding:16px)
+     restait actif, empêchant la boîte (déjà à width:100% de l'espace
+     restant) d'atteindre le bord réel de l'écran (retour utilisateur,
+     capture à l'appui : "sur mobile la fenêtre ne prend pas toute la
+     largeur"). */
+  #requestsOverlay, #docOverlay, #priceModalOverlay, #specsOverlay,
+  #sugOverlay, #conflictOverlay, #reqDetailOverlay, #xlsxImportOverlay,
+  #authOverlay, #iconPickerModal, #settingsOverlay{
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  #compareOverlay{ align-items: flex-end; padding: 0; }
 
-  /* priceModalOverlay et reqDetailOverlay : inline style, on utilise padding-bottom */
-  #priceModalOverlay { padding-bottom: var(--nav-h, 56px) !important; }
-  #reqDetailOverlay  { padding-bottom: var(--nav-h, 56px) !important; }
+  #requestsPanel, #docModal, #priceModalOverlay > div, #specsModal,
+  #sugModal, #conflictModal, #reqDetailModal, #xlsxImportOverlay > div,
+  .auth-box, .compare-box, .icon-picker-box, .settings-box{
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: calc(85dvh - var(--nav-h, 56px)) !important;
+    padding-bottom: var(--nav-h, 56px) !important;
+  }
 
-  /* xlsxImportOverlay */
-  #xlsxImportOverlay { padding-bottom: var(--nav-h, 56px) !important; }
-
-  /* .settings-box centrée → déjà corrigée via l'overlay parent, mais sécurité */
-  #settingsOverlay { padding-bottom: var(--nav-h, 56px); }
-  .settings-box { max-height: calc(85dvh - var(--nav-h, 56px)); }
+  /* #modalOverlay/#bugReportOverlay (.modal-overlay) et #viewOverlay
+     étaient déjà ancrées en bas sur téléphone (@media max-width:640px plus
+     haut) — même ancrage étendu à la tablette (641-1024px), qui restait
+     centrée jusqu'ici. Même raisonnement ci-dessus : dégagement nav en
+     padding sur .modal/#viewModal (la boîte), pas sur l'overlay. */
+  .modal-overlay{ align-items: flex-end !important; padding: 0 !important; }
+  .modal{
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: calc(92dvh - var(--nav-h, 56px)) !important;
+    padding-bottom: var(--nav-h, 56px) !important;
+  }
+  .modal-head{ border-radius: 16px 16px 0 0 !important; }
+  #viewOverlay{
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  #viewModal{
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: calc(85dvh - var(--nav-h, 56px)) !important;
+    padding-bottom: var(--nav-h, 56px) !important;
+  }
 }
 
 .account-sheet {
@@ -2769,11 +2825,31 @@
   color:var(--copper-deep); border-radius:20px;
   font-size:12px; font-weight:600; padding:3px 10px;
 }
+/* Décochée (masquée sur cette fiche, lien conservé) : grisée pour la
+   distinguer visuellement des suggestions réellement affichées. */
+.sug-chip-hidden{
+  border-color:var(--line); background:var(--paper);
+  color:var(--ink-soft); font-weight:500;
+}
+/* Taille explicite obligatoire : sans width/height fixes, la case native
+   peut s'afficher bien plus grande que prévu selon l'appareil (réglages
+   d'accessibilité "Texte plus grand" sur iOS notamment), faisant exploser
+   toute la puce autour d'elle (retour utilisateur, capture à l'appui) —
+   même principe que .field.field-checkbox input[type="checkbox"] déjà
+   utilisé partout ailleurs dans ce formulaire. */
+.sug-chip-visible{
+  -webkit-box-sizing:content-box; box-sizing:content-box;
+  width:14px !important; height:14px !important; min-width:14px; max-width:14px;
+  flex:0 0 14px; flex-shrink:0;
+  margin:0; padding:0; cursor:pointer; accent-color:var(--copper);
+  display:inline-block;
+}
 .sug-chip-del{
   background:none; border:none; cursor:pointer;
   color:var(--copper); font-size:13px; line-height:1;
   padding:0 0 0 2px; margin:0;
 }
+.sug-chip-hidden .sug-chip-del{ color:var(--ink-soft); }
 .sug-chip-del:hover{ color:var(--warn); }
 
 /* ── Suggestions : liste compacte (même langage que la modale Documents) ── */

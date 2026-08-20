@@ -403,8 +403,15 @@ function applyAuthUI() {
   // serveur configuré), contrairement à "Proposer un produit" — un bug peut
   // être trouvé par n'importe qui, pas seulement les comptes sans droit
   // d'édition.
+  // MASQUÉ TEMPORAIREMENT (demande utilisateur) : le backend dédié aux bugs
+  // est en cours de développement côté serveur (nouvelle table + API,
+  // séparée des demandes produit — voir mémoire "bug-report-api-migration").
+  // Le bouton réutilise encore l'ancienne API des demandes produit
+  // (/pushDatasReq etc.) en attendant. À réactiver — remettre la ligne
+  // ci-dessous à `(loggedIn && !!_sUrlReq)` — dès le début du chantier de
+  // migration vers la nouvelle API.
   var btnReportBug = document.getElementById('btnReportBug');
-  if (btnReportBug) btnReportBug.style.display = (loggedIn && !!_sUrlReq) ? '' : 'none';
+  if (btnReportBug) btnReportBug.style.display = 'none'; // TODO: (loggedIn && !!_sUrlReq) une fois la migration commencée
 
   // Champ suggestions : visible uniquement pour canEdit/admin
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');

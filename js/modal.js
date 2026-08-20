@@ -40,7 +40,14 @@
   var fSuggestionsSearch = document.getElementById('fSuggestionsSearch');
   var fSuggestionsChips  = document.getElementById('fSuggestionsChips');
   var fSuggestionsDrop   = document.getElementById('fSuggestionsDrop');
-  var _sugRefs = []; // tableau des refs sélectionnées
+  var _sugRefs = []; // tableau des refs sélectionnées (liaison bidirectionnelle avec ces produits)
+  // Sous-ensemble de _sugRefs masqué sur CETTE fiche uniquement (la liaison
+  // reste connue des deux côtés — voir la case à cocher par puce plus bas et
+  // le lien automatique réciproque dans js/actions.js — mais l'affichage sur
+  // la fiche produit reste indépendant par fiche : pour masquer une réf. sur
+  // l'autre fiche, il faut aller la décocher là-bas, à la main — retour
+  // utilisateur).
+  var _sugHidden = [];
   var _specsRows = []; // [{key, value}] — caractéristiques techniques libres
   var fTags             = document.getElementById('fTags');
   var tagSuggestionsEl  = document.getElementById('tagSuggestions');
@@ -407,6 +414,7 @@
     f3dLinkRow.style.display = 'none';
     if(fEssential) fEssential.checked = false;
     _sugRefs = [];
+    _sugHidden = [];
     _sugRenderChips();
     _specsRows = [];
     _specsRenderRows();
@@ -583,6 +591,7 @@
     update3dLinkVisibility();
     if(fEssential) fEssential.checked = !!p.essential;
     _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
+    _sugHidden = Array.isArray(p.suggestionsHidden) ? p.suggestionsHidden.slice() : [];
     _sugRenderChips();
     _specsRows = (p.specs && typeof p.specs === 'object')
       ? Object.keys(p.specs).map(function(k){ return { key: k, value: p.specs[k] }; })
@@ -854,6 +863,7 @@
       available3DXLink: f3dLink.value.trim(),
       essential: fEssential ? fEssential.checked : false,
       suggestions: _sugRefs.slice().sort().join('|'),
+      suggestionsHidden: _sugHidden.slice().sort().join('|'),
       specs: JSON.stringify(_specsRows),
       familyIcon: selectedFamilyIcon
     };
@@ -961,16 +971,33 @@
     fSuggestionsChips.innerHTML = _sugRefs.map(function(ref){
       var p = prods.find(function(x){ return x.ref === ref; });
       var label = p ? (p.ref + (p.name ? ' — ' + p.name.substring(0,30) : '')) : ref;
-      return '<span class="sug-chip">'
+      var visible = _sugHidden.indexOf(ref) === -1;
+      // Case à cocher : affiche/masque cette suggestion SUR CETTE FICHE
+      // uniquement, sans casser la liaison (réversible en un clic, contraire
+      // au ✕ qui retire complètement le lien — voir commentaire sur
+      // _sugHidden plus haut). Pour masquer côté produit lié, il faut la
+      // décocher directement sur SA fiche (retour utilisateur).
+      return '<span class="sug-chip'+(visible?'':' sug-chip-hidden')+'">'
+        + (canEdit ? '<input type="checkbox" class="sug-chip-visible" data-ref="'+escapeHtml(ref)+'" title="Afficher sur cette fiche"'+(visible?' checked':'')+'>' : '')
         + escapeHtml(label)
-        + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer">✕</button>' : '')
+        + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer le lien">✕</button>' : '')
         + '</span>';
     }).join('');
-    // Listeners suppression
+    // Listeners suppression (retire complètement le lien de CETTE fiche)
     fSuggestionsChips.querySelectorAll('.sug-chip-del').forEach(function(btn){
       btn.addEventListener('click', function(){
         var ref = btn.getAttribute('data-ref');
         _sugRefs = _sugRefs.filter(function(r){ return r !== ref; });
+        _sugHidden = _sugHidden.filter(function(r){ return r !== ref; });
+        _sugRenderChips();
+      });
+    });
+    // Listeners case à cocher (affiche/masque sans retirer le lien)
+    fSuggestionsChips.querySelectorAll('.sug-chip-visible').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var ref = cb.getAttribute('data-ref');
+        if(cb.checked) _sugHidden = _sugHidden.filter(function(r){ return r !== ref; });
+        else if(_sugHidden.indexOf(ref) === -1) _sugHidden.push(ref);
         _sugRenderChips();
       });
     });
@@ -1028,6 +1055,7 @@
 
   // Exposer _sugRefs pour actions.js
   window._getSugRefs = function(){ return _sugRefs.slice(); };
+  window._getSugHidden = function(){ return _sugHidden.slice(); };
 
   // ── Logique caractéristiques techniques (clé/valeur libres) ─────
   var specsOverlay   = document.getElementById('specsOverlay');

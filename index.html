@@ -1361,6 +1361,20 @@
       <i class="ti ti-chevron-right menu-sheet-chevron"></i>
     </button>
 
+    <!-- Signaler un bug : absent du tiroir menu mobile alors que présent dans
+         le menu ⋮ desktop (btnReportBug, index.html) — aucun moyen pour un
+         utilisateur mobile/tablette de signaler un bug (retour audit
+         interface). Mêmes icône/couleur/texte/logique de visibilité que la
+         version desktop, voir applyAuthUI() dans js/auth.js. -->
+    <button class="menu-sheet-item" id="msReportBug" style="display:none;">
+      <span class="menu-sheet-icon" style="background:#FEF2F2;"><i class="ti ti-bug" style="color:#991b1b;"></i></span>
+      <span class="menu-sheet-texts">
+        <span class="menu-sheet-title">Signaler un bug</span>
+        <span class="menu-sheet-sub">Décrire un problème rencontré</span>
+      </span>
+      <i class="ti ti-chevron-right menu-sheet-chevron"></i>
+    </button>
+
     <div class="menu-sheet-sep"></div>
 
     <!-- Export / Import -->

@@ -203,11 +203,14 @@
     var sugLabel   = document.getElementById('vmSuggestionsToggleLabel');
     var sugOverlay = document.getElementById('sugOverlay');
     var sugList    = document.getElementById('sugList');
-    // Filtrer les refs vides ET vérifier que les produits existent réellement
+    // Filtrer les refs vides, masquées SUR CETTE FICHE (p.suggestionsHidden —
+    // voir la case à cocher par puce dans le formulaire, js/modal.js) ET
+    // vérifier que les produits existent réellement
     var _allProds = window.products || [];
+    var _hiddenSugs = Array.isArray(p.suggestionsHidden) ? p.suggestionsHidden : [];
     var sugRefs = Array.isArray(p.suggestions)
       ? p.suggestions.filter(function(r){
-          return r && r.trim() && _allProds.some(function(x){ return x.ref === r; });
+          return r && r.trim() && _hiddenSugs.indexOf(r) === -1 && _allProds.some(function(x){ return x.ref === r; });
         })
       : [];
 

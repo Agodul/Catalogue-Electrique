@@ -24,9 +24,23 @@
         // bannière reste affichée jusqu'à ce que l'un des deux arrive.
         var swUpdateBanner = document.getElementById('swUpdateBanner');
         var swUpdateBtn    = document.getElementById('swUpdateBtn');
+        // Positionne la bannière juste sous le header plutôt qu'un top:12px
+        // fixe en dur — sur mobile/tablette elle se retrouvait collée tout en
+        // haut de l'écran, par-dessus le header (retour utilisateur, capture
+        // à l'appui). Même technique que _positionToastStack() (js/storage.js).
+        function _positionUpdateBanner(){
+          if(!swUpdateBanner) return;
+          var header = document.querySelector('header');
+          var top = header ? header.getBoundingClientRect().bottom + 12 : 12;
+          swUpdateBanner.style.top = top + 'px';
+        }
         navigator.serviceWorker.addEventListener('controllerchange', function(){
-          if(swUpdateBanner) swUpdateBanner.style.display = 'flex';
+          if(swUpdateBanner){
+            _positionUpdateBanner();
+            swUpdateBanner.style.display = 'flex';
+          }
         });
+        window.addEventListener('resize', _positionUpdateBanner);
         if(swUpdateBtn){
           swUpdateBtn.addEventListener('click', async function(){
             // Réutilise les mêmes détections de saisie non enregistrée que

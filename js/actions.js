@@ -127,6 +127,7 @@
       available3DXLink: f3dLink.value.trim(),
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
       suggestions: typeof window._getSugRefs === 'function' ? window._getSugRefs() : [],
+      suggestionsHidden: typeof window._getSugHidden === 'function' ? window._getSugHidden() : [],
       specs: typeof window._getSpecsObj === 'function' ? window._getSpecsObj() : {},
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
@@ -262,6 +263,37 @@
       products.push(payload);
       touchedForSync.push(payload);
     }
+
+    // ── Liaison réciproque des suggestions ────────────────────────────
+    // Ajouter B dans les suggestions de A crée automatiquement le lien A
+    // dans les suggestions de B — sans ça, il fallait aller l'ajouter à la
+    // main des deux côtés (retour utilisateur). Uniquement dans le sens
+    // "nouvellement ajouté" : on ne touche jamais aux refs déjà présentes
+    // avant cet enregistrement, ni à celles retirées côté A (retirer un
+    // lien ou le masquer reste local à la fiche éditée — pour le masquer
+    // aussi côté B, il faut le décocher directement sur la fiche B, à la
+    // main, voir la case à cocher par puce dans js/modal.js). Si B a déjà
+    // A dans sa propre liste (retiré puis re-proposé, ou ajouté à la main
+    // des deux côtés), on ne le re-rajoute pas.
+    (function _sugLinkReciprocal(){
+      var previousSuggestions = (typeof existing !== 'undefined' && existing && Array.isArray(existing.suggestions))
+        ? existing.suggestions : [];
+      var finalSuggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+      var finalRef = payload.ref;
+      finalSuggestions.forEach(function(otherRef){
+        if(previousSuggestions.indexOf(otherRef) !== -1) return; // déjà lié avant cet enregistrement
+        var other = products.find(function(p){ return p.ref === otherRef; });
+        if(!other || other.ref === finalRef) return;
+        var otherSugs = Array.isArray(other.suggestions) ? other.suggestions : [];
+        if(otherSugs.indexOf(finalRef) !== -1) return; // déjà lié côté B
+        other.suggestions = otherSugs.concat([finalRef]);
+        other.updatedAt = Date.now();
+        // Éviter un doublon si ce produit a déjà été ajouté à touchedForSync
+        // plus haut (ex. propagation d'icône de famille sur ce même produit).
+        if(touchedForSync.indexOf(other) === -1) touchedForSync.push(other);
+      });
+    })();
+
     // Animation 5 — flash vert sur le bouton enregistrer
     var btnSaveEl = document.getElementById('btnSave');
     btnSaveEl.classList.remove('save-anim');
@@ -1886,15 +1918,34 @@
   function getFamilyIcon(name){
     // Priorité 1 : icône stockée dans localStorage (choix session courante)
     if(familyIcons[name]) return familyIcons[name];
-    // Priorité 2 : icône stockée dans un produit existant de cette famille
+    // Priorité 2 : icône PNG moderne déjà enregistrée sur un produit de cette
+    // famille (FAMILY_ICON_CHOICES). Les anciennes valeurs "ti-xxx" (police
+    // Tabler, d'avant l'introduction des icônes PNG) ne comptent PAS ici —
+    // voir priorité 3bis plus bas : sans ce filtre, une famille connue
+    // (correspondance exacte disponible) restait bloquée indéfiniment sur
+    // son ancienne icône Tabler tant que personne ne la re-choisissait à la
+    // main dans Paramètres (retour utilisateur : "les icônes sont encore
+    // les icônes ti-ti-, jamais rafraîchies même après un changement").
+    // Affichage uniquement : aucune donnée produit modifiée ici, aucun push
+    // serveur déclenché — un vrai choix admin (priorité 1) reste prioritaire.
     for(var i=0;i<products.length;i++){
-      if(products[i].family === name && products[i].familyIcon){
+      if(products[i].family === name && products[i].familyIcon
+         && FAMILY_ICON_CHOICES.indexOf(products[i].familyIcon) !== -1){
         return products[i].familyIcon;
       }
     }
     // Priorité 3 : correspondance exacte pour les familles réelles connues
     if(typeof FAMILY_NAME_TO_ICON !== 'undefined' && FAMILY_NAME_TO_ICON[name]){
       return FAMILY_NAME_TO_ICON[name];
+    }
+    // Priorité 3bis (repli) : ancienne valeur "ti-xxx" enregistrée sur un
+    // produit, seulement si aucune correspondance moderne n'existe pour
+    // cette famille (comportement historique inchangé pour les familles
+    // hors des 54 connues).
+    for(var i=0;i<products.length;i++){
+      if(products[i].family === name && products[i].familyIcon){
+        return products[i].familyIcon;
+      }
     }
     // Fallback : détection par mots-clés
     var lower = name.toLowerCase();
@@ -1982,7 +2033,23 @@
 
     if(families.length === 0){
       homeFamilies.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:20px 0;">Aucune famille définie — ajoutez des familles à vos produits pour les voir ici.</div>';
+      homeFamilies.dataset.sig = '';
     } else {
+      // renderHome() est rappelée très souvent (sync serveur en arrière-plan
+      // ~1,5s après le chargement via loadServerConfig(), tout ajout/suppr.
+      // de produit...) — reconstruire tout le innerHTML à chaque fois détruit
+      // et recrée CHAQUE <img> d'icône, qui doit alors se recharger depuis
+      // zéro même si rien n'a changé pour cette famille. Sur mobile (CPU/
+      // réseau plus lents), ce second rendu tombe plus près du premier
+      // affichage et se voit clairement : icônes qui "rechargent", cartes
+      // qui semblent bouger (retour utilisateur : "les icônes chargent en
+      // dernier, la taille des catégories bouge" au rafraîchissement,
+      // beaucoup plus visible sur mobile/tablette que sur desktop). On ne
+      // touche donc la grille que si son contenu a réellement changé.
+      var sig = families.map(function(f){ return f+'|'+familyCounts[f]+'|'+getFamilyIcon(f); }).join(';');
+      if(homeFamilies.dataset.sig === sig) return;
+      homeFamilies.dataset.sig = sig;
+
       homeFamilies.innerHTML = families.map(function(f){
         var icon = getFamilyIcon(f);
         var count = familyCounts[f];
@@ -2142,7 +2209,15 @@
     if(key === 'createdAt' || key === 'updatedAt') return new Date(val).toLocaleString('fr-FR');
     if(key === 'priceHistory' && Array.isArray(val)){
       if(val.length === 0) return '<em style="color:var(--ink-soft)">Aucun</em>';
-      return val.map(function(h){ return new Date(h.date).toLocaleDateString('fr-FR')+' → '+h.price; }).join('<br>');
+      return val.map(function(h){ return new Date(h.date).toLocaleDateString('fr-FR')+' → '+(typeof _displayPrice==='function'?_displayPrice(h.price):h.price); }).join('<br>');
+    }
+    // Prix affichés au même format que partout ailleurs dans l'app (virgule
+    // + €, via _displayPrice() dans render.js) plutôt que la valeur brute
+    // stockée — qui peut être au format point + "EUR" selon la source
+    // (retour utilisateur, capture à l'appui : "154.50 EUR" dans la fenêtre
+    // de conflits alors que le reste de l'app affiche "154,50 €").
+    if((key === 'price' || key === 'priceCatalogue') && typeof _displayPrice === 'function'){
+      return escapeHtml(String(_displayPrice(val)));
     }
     if(Array.isArray(val)) return val.join(', ') || '<em style="color:var(--ink-soft)">—</em>';
     if(typeof val === 'boolean') return val ? 'Oui' : 'Non';
@@ -2327,6 +2402,28 @@
     });
   };
   // ── Fermeture mutuelle des sheets ────────────────────────────
+  // Ouvre le tiroir menu mobile/tablette — extrait du click handler de
+  // bnMenu (bottom nav) pour être réutilisable, notamment pour rouvrir le
+  // menu quand on ferme "Demandes en attente" après y être entré depuis ce
+  // menu (voir reqClosePanel dans js/requests.js — retour utilisateur).
+  window._openMenuSheet = function(){
+    var sheet   = document.getElementById('menuSheet');
+    var overlay = document.getElementById('menuSheetOverlay');
+    if(!sheet) return;
+    overlay.style.display='block';
+    sheet.style.display='block';
+    sheet.offsetHeight;
+    sheet.classList.add('open');
+    document.body.classList.add('modal-open');
+    if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
+    var bnMenuBtn = document.getElementById('bnMenu');
+    if(bnMenuBtn){
+      [document.getElementById('bnHome'),document.getElementById('bnSearch'),document.getElementById('bnFilter'),bnMenuBtn]
+        .forEach(function(b){ if(b) b.classList.remove('active'); });
+      bnMenuBtn.classList.add('active');
+    }
+  };
+
   window._closeAllSheets = function(){
     // Filter sheet
     var fs = document.getElementById('filterSheet');
@@ -2454,22 +2551,11 @@
       });
 
       bnMenu.addEventListener('click', function(){
-        var sheet=document.getElementById('menuSheet');
-        var overlay=document.getElementById('menuSheetOverlay');
-        if(!sheet) return;
         closeFloatingSearchNow();
         closeFilterSheetNow();
         closeSettingsNow();
         closeArmoireConfigNow();
-        // Ouvrir le menu sheet
-        overlay.style.display='block';
-        sheet.style.display='block';
-        sheet.offsetHeight;
-        sheet.classList.add('open');
-        document.body.classList.add('modal-open');
-        // Sync permissions à chaque ouverture
-        if(typeof window._syncMenuAuth === 'function') window._syncMenuAuth();
-        setActive(bnMenu);
+        if(typeof window._openMenuSheet === 'function') window._openMenuSheet();
       });
 
       // Floating search logic
@@ -2815,6 +2901,15 @@
       show('msCleanDescs', isAdmin);
       show('msCompare',    true);
       show('msRequests',   loggedIn && !!sUrl);
+      // Signaler un bug : ouvert à TOUT utilisateur connecté avec serveur
+      // (pas seulement les admins) — un bug peut être trouvé par n'importe
+      // qui, même sans droit d'édition. Miroir exact de btnReportBug côté
+      // desktop (js/auth.js).
+      // MASQUÉ TEMPORAIREMENT (demande utilisateur) — même raison et même
+      // TODO que btnReportBug dans js/auth.js : à réactiver
+      // (`loggedIn && !!sUrl`) dès le début du chantier de migration vers
+      // la nouvelle API dédiée aux bugs.
+      show('msReportBug',  false); // TODO: loggedIn && !!sUrl une fois la migration commencée
 
       // Sous-titres adaptés à la conséquence réelle pour CET utilisateur
       // (retour utilisateur) — miroir exact de js/auth.js côté desktop.
@@ -2831,7 +2926,7 @@
       var seps   = document.querySelectorAll('#menuSheet .menu-sheet-sep');
       if(titles[0]) titles[0].style.display = allHidden(dataIds) ? 'none' : '';
       if(titles[1]) titles[1].style.display = allHidden(toolIds) ? 'none' : '';
-      if(seps[0]) seps[0].style.display = allHidden(['msRequests'])&&allHidden(dataIds) ? 'none' : '';
+      if(seps[0]) seps[0].style.display = allHidden(['msRequests','msReportBug'])&&allHidden(dataIds) ? 'none' : '';
       if(seps[1]) seps[1].style.display = allHidden(dataIds) ? 'none' : '';
       if(seps[2]) seps[2].style.display = allHidden(toolIds)  ? 'none' : '';
     }
@@ -2852,7 +2947,22 @@
       var tgt=document.getElementById(targetId);
       if(btn&&tgt) btn.onclick = function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
     }
-    ms('msRequests',  'btnRequestsMenu');
+    // Cas spécial (pas via le délégateur ms() générique) : mémorise qu'on
+    // entre dans "Demandes en attente" DEPUIS ce menu mobile, pour pouvoir
+    // le rouvrir automatiquement à la fermeture du panneau — voir
+    // reqClosePanel() dans js/requests.js (retour utilisateur : fermer la
+    // croix devrait "revenir" au menu, pas juste retomber sur la page du
+    // dessous).
+    (function(){
+      var btn = document.getElementById('msRequests');
+      var tgt = document.getElementById('btnRequestsMenu');
+      if(btn && tgt) btn.onclick = function(){
+        window._reqOpenedFromMobileMenu = true;
+        closeSheet();
+        setTimeout(function(){ tgt.click(); }, 320);
+      };
+    })();
+    ms('msReportBug', 'btnReportBug');
     ms('msExport',    'btnExport');
     ms('msImport',    'btnImport');
     ms('msExportXlsx','btnExportXlsx');

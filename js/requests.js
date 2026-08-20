@@ -687,6 +687,16 @@
       }, 350);
     }
     document.body.classList.remove('modal-open');
+    // Sur mobile/tablette, si "Demandes en attente" a été ouvert DEPUIS le
+    // tiroir menu (voir js/actions.js), la croix doit "revenir" au menu
+    // plutôt que de retomber sur la page du dessous (retour utilisateur).
+    // Ne se déclenche que pour cette entrée précise — pas pour un accepter/
+    // refuser (qui rafraîchit la liste sans fermer) ni pour une fermeture
+    // depuis le menu ⋮ desktop (jamais mis à true dans ce cas).
+    if(window._reqOpenedFromMobileMenu){
+      window._reqOpenedFromMobileMenu = false;
+      if(typeof window._openMenuSheet === 'function') window._openMenuSheet();
+    }
   }
 
   // ── Init listeners ────────────────────────────────────────────
