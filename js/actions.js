@@ -717,6 +717,7 @@
       products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
 
       var added = 0;
+      var sugMergedProducts = []; // produits dont seules les suggestions ont changé (fusion)
       var conflicts = [];
       serverItems.forEach(function(sp){
         if(!sp || !sp.ref) return;
@@ -752,6 +753,16 @@
                 // grace-period _recentlySaved) voyait un "conflit" à tort dès que
                 // createdAt différait, même sur un contenu par ailleurs identique.
                 delete c.createdAt;
+                // suggestions/suggestionsHidden : un produit peut être modifié
+                // "silencieusement" par l'édition d'un AUTRE produit (liaison
+                // réciproque automatique — voir reconcileSuggestionsReciprocally
+                // et _sugLinkReciprocal). Une différence ici n'est jamais un
+                // vrai conflit éditorial, juste un lien à fusionner (fait plus
+                // bas) — sans cette exclusion, toute session qui n'a pas encore
+                // cette liaison voyait un "conflit" à tort (retour utilisateur :
+                // "encore trop de problèmes de conflit").
+                delete c.suggestions;
+                delete c.suggestionsHidden;
                 if(!c.tags || c.tags.length === 0) delete c.tags;
                 if(!c.priceHistory || c.priceHistory.length === 0) delete c.priceHistory;
                 return JSON.stringify(c, Object.keys(c).sort());
@@ -760,16 +771,41 @@
                 conflicts.push({ ref: sp.ref, local: lp, server: sp });
               }
             }
-            // Local conservé par défaut pour l'admin
+            // Local conservé par défaut pour l'admin — sauf les suggestions,
+            // toujours fusionnées (union local+serveur) qu'il y ait conflit ou
+            // non sur les autres champs : jamais perdues silencieusement d'un
+            // côté juste parce qu'une autre session ne les a pas encore vues.
+            var mergedSugs = Array.prototype.concat.apply([],
+              [Array.isArray(lp.suggestions) ? lp.suggestions : [], Array.isArray(sp.suggestions) ? sp.suggestions : []]
+            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i; });
+            var mergedHidden = Array.prototype.concat.apply([],
+              [Array.isArray(lp.suggestionsHidden) ? lp.suggestionsHidden : [], Array.isArray(sp.suggestionsHidden) ? sp.suggestionsHidden : []]
+            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i && mergedSugs.indexOf(r) !== -1; });
+            var sugChanged = false;
+            if(mergedSugs.length && mergedSugs.length !== (Array.isArray(lp.suggestions)?lp.suggestions.length:0)){
+              lp.suggestions = mergedSugs; sugChanged = true;
+            }
+            if(mergedHidden.length && mergedHidden.length !== (Array.isArray(lp.suggestionsHidden)?lp.suggestionsHidden.length:0)){
+              lp.suggestionsHidden = mergedHidden; sugChanged = true;
+            }
+            if(sugChanged){
+              lp.updatedAt = Date.now();
+              sugMergedProducts.push(lp);
+            }
           }
         }
       });
 
-      if(added > 0){
-        save(true);
+      if(added > 0 || sugMergedProducts.length > 0){
+        // sugMergedProducts seul (sans nouveau produit) doit quand même être
+        // persisté et repoussé au serveur — sinon la fusion des suggestions
+        // reste en mémoire jusqu'au prochain rechargement de page, sans
+        // jamais être sauvegardée (retour utilisateur : creusé en répondant
+        // à "j'ai encore trop de problèmes de conflit").
+        save(true, added > 0 ? undefined : sugMergedProducts);
         var isModalOpen = document.body.classList.contains('modal-open');
         if(isModalOpen){
-          if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
+          if(added > 0 && !silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         } else {
           // Re-render uniquement la vue active
           var homePage = document.getElementById('homePage');
