@@ -2586,6 +2586,7 @@
     border-radius: 20px 20px 0 0 !important;
     max-height: calc(85dvh - var(--nav-h, 56px)) !important;
     padding-bottom: var(--nav-h, 56px) !important;
+    margin-bottom: calc(56px + env(safe-area-inset-bottom));
   }
 }
 
