@@ -2565,9 +2565,10 @@
   .auth-box, .compare-box, .icon-picker-box, .settings-box{
     width: 100% !important; max-width: 100% !important;
     border-radius: 16px 16px 0 0 !important;
-    max-height: calc(85dvh - var(--nav-h, 56px)) !important;
+    /* Bottom-nav réservée une seule fois : dans le padding interne. */
+    max-height: 85dvh !important;
     padding-bottom: var(--nav-h, 56px) !important;
-    margin-bottom: calc(56px + env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
   }
 
   /* #modalOverlay/#bugReportOverlay (.modal-overlay) et #viewOverlay
@@ -2579,8 +2580,10 @@
   .modal{
     width: 100% !important; max-width: 100% !important;
     border-radius: 16px 16px 0 0 !important;
-    max-height: calc(92dvh - var(--nav-h, 56px)) !important;
+    /* Même stratégie que les autres sheets : pas de double déduction. */
+    max-height: 92dvh !important;
     padding-bottom: var(--nav-h, 56px) !important;
+    margin: 0 !important;
   }
   .modal-head{ border-radius: 16px 16px 0 0 !important; }
   #viewOverlay{
