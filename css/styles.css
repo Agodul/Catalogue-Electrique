@@ -1132,10 +1132,12 @@
       display:flex; flex-direction:column;
       border-radius:16px 16px 16px 16px;
       width:100%; max-width:100%;
-      max-height:calc(88vh - var(--nav-h, 56px));
+      max-height:88dvh;
       box-shadow:0 -4px 24px rgba(0,0,0,.18);
       overflow:hidden;
-      margin: 10px 10px var(--nav-h, 56px) 10px;
+      /* Le dégagement de la bottom-nav est géré par padding-bottom dans
+         les règles tactiles plus bas. Ne pas cumuler avec une marge. */
+      margin:0;
     }
     .vm-inner{ display:flex; flex-direction:column; flex:1; overflow:hidden; min-height:0; }
     .vm-photo{
@@ -2391,7 +2393,10 @@
     border-radius: 20px 20px 0 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: calc(95vh - var(--nav-h, 56px)) !important;
+    /* La hauteur inclut la zone réservée à la bottom-nav.
+       padding-bottom ci-dessous protège le contenu sans réduire deux fois
+       la hauteur disponible. */
+    max-height: 95dvh !important;
     transform: translateY(100%);
     transition: transform .35s cubic-bezier(.32,.72,0,1);
     /* padding-bottom (pas margin-bottom) : le dégagement nav doit être un
@@ -2585,8 +2590,12 @@
   #viewModal{
     width: 100% !important; max-width: 100% !important;
     border-radius: 20px 20px 0 0 !important;
-    max-height: calc(85dvh - var(--nav-h, 56px)) !important;
+    /* Une seule réservation pour la bottom-nav : padding-bottom.
+       Ne pas retrancher --nav-h dans max-height, sinon la nav est comptée
+       deux fois et la zone scrollable est artificiellement réduite. */
+    max-height: 85dvh !important;
     padding-bottom: var(--nav-h, 56px) !important;
+    margin: 0 !important;
   }
 }
 
