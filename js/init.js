@@ -225,6 +225,7 @@
       { overlay: 'viewOverlay',       close: 'vmCloseBtn',      classList: true },
       { overlay: 'docOverlay',        close: 'docCloseBtn'      },
       { overlay: 'sugOverlay',        close: 'sugCloseBtn'      },
+      { overlay: 'sugPickerOverlay',  close: 'sugPickerCloseBtn' },
       { overlay: 'armoireConfigOverlay', close: 'armoireConfigCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
       { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },

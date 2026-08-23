@@ -743,9 +743,14 @@
       <!-- ===== CHAMP SUGGESTIONS ===== -->
       <div class="field" id="fSuggestionsRow">
         <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 20)</span></label>
-        <div class="sug-autocomplete-wrap" style="position:relative;">
-          <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
-          <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div class="sug-autocomplete-wrap" style="position:relative;flex:1;min-width:0;">
+            <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
+            <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
+          </div>
+          <button type="button" id="btnSugBrowse" class="sug-browse-btn" title="Parcourir le catalogue par catégorie">
+            <i class="ti ti-category-2"></i>
+          </button>
         </div>
         <div class="sug-chips" id="fSuggestionsChips"></div>
       </div>
@@ -1167,6 +1172,28 @@
   </div>
 </div>
 <!-- ===== FIN MODALE SUGGESTIONS ===== -->
+
+<!-- ===== MODALE PARCOURIR LE CATALOGUE (sélection de suggestions) ===== -->
+<div id="sugPickerOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10650;align-items:center;justify-content:center;padding:20px;">
+  <div id="sugPickerModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:880px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;color:var(--ink);">📂 Parcourir le catalogue</div>
+      <button id="sugPickerCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
+    </div>
+    <div style="padding:14px 24px 0;flex-shrink:0;">
+      <input type="text" id="sugPickerSearch" placeholder="Filtrer par réf, nom, marque…" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-size:14px;">
+    </div>
+    <div id="sugPickerList" style="flex:1;overflow-y:auto;padding:16px 24px;min-height:0;"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;">
+      <span id="sugPickerCount" style="font-size:13px;color:var(--ink-soft);">0 sélectionné</span>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="secondary" id="sugPickerCancelBtn">Annuler</button>
+        <button type="button" class="copper" id="sugPickerSaveBtn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== FIN MODALE PARCOURIR LE CATALOGUE ===== -->
 
 <!-- ===== MODALE CARACTÉRISTIQUES TECHNIQUES ===== -->
 <div id="specsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">

@@ -1065,6 +1065,145 @@
   window._getSugRefs = function(){ return _sugRefs.slice(); };
   window._getSugHidden = function(){ return _sugHidden.slice(); };
 
+  // ── Parcourir le catalogue par catégorie (sélection multiple → Enregistrer) ──
+  // Alternative au champ de recherche ci-dessus : navigation par famille au
+  // lieu de taper une réf/nom (retour utilisateur). Sélection en 2 temps —
+  // les clics dans la fenêtre construisent une liste TEMPORAIRE
+  // (_sugPickerSelected), qui n'est ajoutée aux suggestions réelles (_sugRefs)
+  // qu'au clic sur "Enregistrer" (comme demandé : "une fois la liste finie
+  // on clique sur enregistrer et ça ajoute au produit suggéré").
+  var btnSugBrowse       = document.getElementById('btnSugBrowse');
+  var sugPickerOverlay   = document.getElementById('sugPickerOverlay');
+  var sugPickerList      = document.getElementById('sugPickerList');
+  var sugPickerSearch    = document.getElementById('sugPickerSearch');
+  var sugPickerCount     = document.getElementById('sugPickerCount');
+  var sugPickerCloseBtn  = document.getElementById('sugPickerCloseBtn');
+  var sugPickerCancelBtn = document.getElementById('sugPickerCancelBtn');
+  var sugPickerSaveBtn   = document.getElementById('sugPickerSaveBtn');
+  var _sugPickerSelected = []; // refs cochés dans CETTE session de la fenêtre, pas encore appliqués
+
+  function _sugPickerUpdateCount(){
+    if(!sugPickerCount) return;
+    var n = _sugPickerSelected.length;
+    var remaining = 20 - _sugRefs.length;
+    sugPickerCount.textContent = n + ' sélectionné' + (n>1?'s':'') + (n >= remaining ? ' (max atteint)' : '');
+  }
+
+  function _sugPickerToggle(ref, itemEl){
+    var idx = _sugPickerSelected.indexOf(ref);
+    if(idx !== -1){
+      _sugPickerSelected.splice(idx, 1);
+      itemEl.classList.remove('selected');
+      var chk = itemEl.querySelector('.sug-picker-item-check');
+      if(chk) chk.parentNode.removeChild(chk);
+    } else {
+      if(_sugRefs.length + _sugPickerSelected.length >= 20){
+        showToast('Maximum 20 suggestions atteint.', 'warn', 2500);
+        return;
+      }
+      _sugPickerSelected.push(ref);
+      itemEl.classList.add('selected');
+      itemEl.insertAdjacentHTML('beforeend', '<i class="ti ti-check sug-picker-item-check"></i>');
+    }
+    _sugPickerUpdateCount();
+  }
+
+  // Catégories repliées par défaut (retour utilisateur) — état conservé
+  // pendant que la fenêtre reste ouverte, réinitialisé (tout replié) à
+  // chaque ouverture. Pendant une recherche, les catégories avec résultat
+  // sont dépliées automatiquement pour rester utilisables, sans modifier
+  // cet état mémorisé (qui reprend dès que le filtre est vidé).
+  var _sugPickerOpenGroups = {};
+  function _sugPickerRender(q){
+    if(!sugPickerList) return;
+    var prods = window.products || [];
+    var editingRef = fRef ? fRef.value.trim() : '';
+    q = (q||'').trim().toLowerCase();
+    var visible = prods.filter(function(p){
+      if(p.ref === editingRef) return false; // pas soi-même
+      if(_sugRefs.indexOf(p.ref) !== -1) return false; // déjà une suggestion liée
+      if(!q) return true;
+      return (p.ref||'').toLowerCase().indexOf(q) !== -1
+          || (p.name||'').toLowerCase().indexOf(q) !== -1
+          || (p.brand||'').toLowerCase().indexOf(q) !== -1
+          || (p.family||'').toLowerCase().indexOf(q) !== -1;
+    });
+    if(!visible.length){
+      sugPickerList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><strong>Aucun résultat</strong></div>';
+      return;
+    }
+    var grouped = groupByField(visible, 'family', 'Sans famille');
+    sugPickerList.innerHTML = grouped.order.map(function(fam){
+      var items = grouped.groups[fam];
+      var open = !!q || !!_sugPickerOpenGroups[fam];
+      return '<div class="sug-picker-group'+(open?' open':'')+'" data-fam="'+escapeHtml(fam)+'">'
+        + '<div class="sug-picker-group-title">'
+        +   '<i class="ti ti-chevron-right sug-picker-group-chevron"></i>'
+        +   escapeHtml(fam)+' <span class="sug-picker-group-count">('+items.length+')</span>'
+        + '</div>'
+        + '<div class="sug-picker-grid">'
+        + items.map(function(p){
+            var selected = _sugPickerSelected.indexOf(p.ref) !== -1;
+            var thumb = p.photo
+              ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+              : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
+            return '<div class="sug-picker-item'+(selected?' selected':'')+'" data-ref="'+escapeHtml(p.ref)+'">'
+              + '<div class="sug-drop-thumb">'+thumb+'</div>'
+              + '<div class="sug-drop-text">'
+              +   '<div class="sug-drop-ref">'+escapeHtml(p.ref)+'</div>'
+              +   (p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,40))+'</div>' : '')
+              + '</div>'
+              + (selected ? '<i class="ti ti-check sug-picker-item-check"></i>' : '')
+              + '</div>';
+          }).join('')
+        + '</div></div>';
+    }).join('');
+    sugPickerList.querySelectorAll('.sug-picker-item').forEach(function(el){
+      el.addEventListener('click', function(){
+        _sugPickerToggle(el.getAttribute('data-ref'), el);
+      });
+    });
+    sugPickerList.querySelectorAll('.sug-picker-group-title').forEach(function(el){
+      el.addEventListener('click', function(){
+        var groupEl = el.parentNode;
+        var fam = groupEl.getAttribute('data-fam');
+        var nowOpen = !groupEl.classList.contains('open');
+        groupEl.classList.toggle('open', nowOpen);
+        _sugPickerOpenGroups[fam] = nowOpen;
+      });
+    });
+  }
+
+  function _sugPickerOpen(){
+    if(!sugPickerOverlay) return;
+    _sugPickerSelected = [];
+    _sugPickerOpenGroups = {};
+    if(sugPickerSearch) sugPickerSearch.value = '';
+    _sugPickerRender('');
+    _sugPickerUpdateCount();
+    sugPickerOverlay.style.display = 'flex';
+    document.body.classList.add('modal-open');
+  }
+  function _sugPickerClose(){
+    if(!sugPickerOverlay) return;
+    sugPickerOverlay.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
+  if(btnSugBrowse)       btnSugBrowse.addEventListener('click', _sugPickerOpen);
+  if(sugPickerCloseBtn)  sugPickerCloseBtn.addEventListener('click', _sugPickerClose);
+  if(sugPickerCancelBtn) sugPickerCancelBtn.addEventListener('click', _sugPickerClose);
+  if(sugPickerSearch)    sugPickerSearch.addEventListener('input', function(){ _sugPickerRender(this.value); });
+  if(sugPickerSaveBtn)   sugPickerSaveBtn.addEventListener('click', function(){
+    _sugPickerSelected.forEach(function(ref){
+      if(_sugRefs.length >= 20) return;
+      if(_sugRefs.indexOf(ref) === -1) _sugRefs.push(ref);
+    });
+    _sugPickerSelected = [];
+    _sugRenderChips();
+    _sugPickerClose();
+  });
+
   // ── Logique caractéristiques techniques (clé/valeur libres) ─────
   var specsOverlay   = document.getElementById('specsOverlay');
   var specsRowsEl    = document.getElementById('specsRows');
