@@ -631,6 +631,12 @@
             <span id="vmSpecsToggleLabel">Voir les caractéristiques</span>
           </button>
         </div>
+        <div id="vmSparePartsSection" style="display:none;margin-top:8px;">
+          <button id="vmSparePartsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
+            <i class="ti ti-tool" style="font-size:17px;"></i>
+            <span id="vmSparePartsToggleLabel">Voir les pièces de rechange</span>
+          </button>
+        </div>
       </div>
       <!-- ===== FIN BOUTONS DOC + SUGGESTIONS ===== -->
 
@@ -742,7 +748,7 @@
 
       <!-- ===== CHAMP SUGGESTIONS ===== -->
       <div class="field" id="fSuggestionsRow">
-        <label>Produits suggérés <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(max 20)</span></label>
+        <label>Produits suggérés</label>
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <div class="sug-autocomplete-wrap" style="position:relative;flex:1;min-width:0;">
             <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
@@ -755,6 +761,22 @@
         <div class="sug-chips" id="fSuggestionsChips"></div>
       </div>
       <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
+
+      <!-- ===== CHAMP PIÈCES DE RECHANGE ===== -->
+      <div class="field" id="fSparePartsRow">
+        <label>Pièces de rechange</label>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div class="sug-autocomplete-wrap" style="position:relative;flex:1;min-width:0;">
+            <input type="text" id="fSparePartsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
+            <div class="autocomplete-suggestions" id="fSparePartsDrop" style="display:none;"></div>
+          </div>
+          <button type="button" id="btnSparePartsBrowse" class="sug-browse-btn" title="Parcourir le catalogue par catégorie">
+            <i class="ti ti-category-2"></i>
+          </button>
+        </div>
+        <div class="sug-chips" id="fSparePartsChips"></div>
+      </div>
+      <!-- ===== FIN CHAMP PIÈCES DE RECHANGE ===== -->
 
       <!-- ===== CHAMP CARACTÉRISTIQUES (fenêtre dédiée) ===== -->
       <div class="field" id="fSpecsRow">
@@ -1177,7 +1199,7 @@
 <div id="sugPickerOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10650;align-items:center;justify-content:center;padding:20px;">
   <div id="sugPickerModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:880px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">📂 Parcourir le catalogue</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugPickerTitle">📂 Parcourir le catalogue</div>
       <button id="sugPickerCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div style="padding:14px 24px 0;flex-shrink:0;">

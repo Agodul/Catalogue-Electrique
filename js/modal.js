@@ -48,6 +48,13 @@
   // l'autre fiche, il faut aller la décocher là-bas, à la main — retour
   // utilisateur).
   var _sugHidden = [];
+  // ── Pièces de rechange — même mécanique que Produits suggérés ci-dessus
+  // (champ + suggestions, liaison réciproque, case à cocher par puce). ──
+  var fSparePartsSearch = document.getElementById('fSparePartsSearch');
+  var fSparePartsChips  = document.getElementById('fSparePartsChips');
+  var fSparePartsDrop   = document.getElementById('fSparePartsDrop');
+  var _sparePartsRefs = [];
+  var _sparePartsHidden = [];
   var _specsRows = []; // [{key, value}] — caractéristiques techniques libres
   var fTags             = document.getElementById('fTags');
   var tagSuggestionsEl  = document.getElementById('tagSuggestions');
@@ -416,6 +423,9 @@
     _sugRefs = [];
     _sugHidden = [];
     _sugRenderChips();
+    _sparePartsRefs = [];
+    _sparePartsHidden = [];
+    _sparePartsRenderChips();
     _specsRows = [];
     _specsRenderRows();
     photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
@@ -593,6 +603,9 @@
     _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
     _sugHidden = Array.isArray(p.suggestionsHidden) ? p.suggestionsHidden.slice() : [];
     _sugRenderChips();
+    _sparePartsRefs = Array.isArray(p.spareParts) ? p.spareParts.slice() : [];
+    _sparePartsHidden = Array.isArray(p.sparePartsHidden) ? p.sparePartsHidden.slice() : [];
+    _sparePartsRenderChips();
     _specsRows = (p.specs && typeof p.specs === 'object')
       ? Object.keys(p.specs).map(function(k){ return { key: k, value: p.specs[k] }; })
       : [];
@@ -872,6 +885,8 @@
       essential: fEssential ? fEssential.checked : false,
       suggestions: _sugRefs.slice().sort().join('|'),
       suggestionsHidden: _sugHidden.slice().sort().join('|'),
+      spareParts: _sparePartsRefs.slice().sort().join('|'),
+      sparePartsHidden: _sparePartsHidden.slice().sort().join('|'),
       specs: JSON.stringify(_specsRows),
       familyIcon: selectedFamilyIcon
     };
@@ -884,7 +899,7 @@
                 current.url || current.html || current.name || current.desc ||
                 current.price || current.photo || current.supplier || current.leadTime ||
                 current.tags || current.available3DX || current.available3DXLink ||
-                current.essential || current.suggestions || (current.specs && current.specs !== '[]'));
+                current.essential || current.suggestions || current.spareParts || (current.specs && current.specs !== '[]'));
     }
     return Object.keys(current).some(function(k){ return current[k] !== _formOriginalSnapshot[k]; });
   }
@@ -978,18 +993,24 @@
     var canEdit = !!(window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin));
     fSuggestionsChips.innerHTML = _sugRefs.map(function(ref){
       var p = prods.find(function(x){ return x.ref === ref; });
-      var label = p ? (p.ref + (p.name ? ' — ' + p.name.substring(0,30) : '')) : ref;
       var visible = _sugHidden.indexOf(ref) === -1;
+      var thumb = p && p.photo
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+        : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
       // Case à cocher : affiche/masque cette suggestion SUR CETTE FICHE
       // uniquement, sans casser la liaison (réversible en un clic, contraire
       // au ✕ qui retire complètement le lien — voir commentaire sur
       // _sugHidden plus haut). Pour masquer côté produit lié, il faut la
       // décocher directement sur SA fiche (retour utilisateur).
-      return '<span class="sug-chip'+(visible?'':' sug-chip-hidden')+'">'
+      return '<div class="sug-linked-item'+(visible?'':' sug-linked-item-hidden')+'" data-ref="'+escapeHtml(ref)+'"'+(canEdit?' draggable="true" title="Glisser vers l\'autre liste pour déplacer"':'')+'>'
+        + '<div class="sug-drop-thumb">'+thumb+'</div>'
+        + '<div class="sug-drop-text">'
+        +   '<div class="sug-drop-ref">'+escapeHtml(ref)+'</div>'
+        +   (p && p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,45))+'</div>' : '')
+        + '</div>'
         + (canEdit ? '<input type="checkbox" class="sug-chip-visible" data-ref="'+escapeHtml(ref)+'" title="Afficher sur cette fiche"'+(visible?' checked':'')+'>' : '')
-        + escapeHtml(label)
         + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer le lien">✕</button>' : '')
-        + '</span>';
+        + '</div>';
     }).join('');
     // Listeners suppression (retire complètement le lien de CETTE fiche)
     fSuggestionsChips.querySelectorAll('.sug-chip-del').forEach(function(btn){
@@ -1045,7 +1066,6 @@
       item.addEventListener('mousedown', function(e){
         e.preventDefault();
         var ref = item.getAttribute('data-ref');
-        if(_sugRefs.length >= 20){ showToast('Maximum 20 suggestions atteint.', 'warn', 2500); return; }
         if(_sugRefs.indexOf(ref) === -1) _sugRefs.push(ref);
         _sugRenderChips();
         fSuggestionsSearch.value = '';
@@ -1054,26 +1074,256 @@
     });
   }
 
+  // Touche Entrée : ajoute le résultat correspondant sans devoir cliquer
+  // dessus à la souris/au tactile — sans ça, taper une réf exacte puis
+  // Entrée (ou passer au champ suivant) ne l'ajoutait jamais silencieusement
+  // (retour utilisateur : "je rentre une réf... j'enregistre... je réouvre...
+  // le réf n'y est plus" — en fait jamais ajoutée du tout, la réf tapée
+  // restait juste dans le champ de recherche). Résout la référence tapée
+  // vers l'un des résultats actuellement affichés dans le menu déroulant :
+  // correspondance exacte en priorité, sinon le seul résultat s'il n'y en a
+  // qu'un (pas d'ambiguïté possible).
+  function _wireSearchEnterKey(inputEl, dropEl){
+    if(!inputEl || !dropEl) return;
+    inputEl.addEventListener('keydown', function(e){
+      if(e.key !== 'Enter') return;
+      var q = (inputEl.value||'').trim();
+      if(!q) return;
+      var items = dropEl.querySelectorAll('.autocomplete-item[data-ref]');
+      if(!items.length){
+        // Rien à ajouter : soit le menu n'est pas ouvert (champ pas encore
+        // tapé), soit aucun produit du catalogue ne correspond au texte —
+        // avertir plutôt que laisser Entrée ne rien faire silencieusement
+        // (retour utilisateur : une réf tapée disparaissait sans explication).
+        showToast('Aucun produit du catalogue ne correspond — seules des références déjà présentes dans le catalogue peuvent être liées.', 'warn', 3500);
+        return;
+      }
+      e.preventDefault();
+      var qLower = q.toLowerCase();
+      var target = null;
+      items.forEach(function(item){
+        if(item.getAttribute('data-ref').toLowerCase() === qLower) target = item;
+      });
+      if(!target && items.length === 1) target = items[0];
+      if(target){
+        target.dispatchEvent(new Event('mousedown', {bubbles:true}));
+      } else {
+        showToast('Plusieurs résultats correspondent — cliquez sur celui voulu dans la liste.', 'warn', 3000);
+      }
+    });
+  }
+
   if(fSuggestionsSearch){
     fSuggestionsSearch.addEventListener('input', function(){ _sugSearch(this.value); });
     fSuggestionsSearch.addEventListener('blur', function(){
       setTimeout(function(){ if(fSuggestionsDrop) fSuggestionsDrop.style.display='none'; }, 150);
     });
+    _wireSearchEnterKey(fSuggestionsSearch, fSuggestionsDrop);
   }
 
   // Exposer _sugRefs pour actions.js
   window._getSugRefs = function(){ return _sugRefs.slice(); };
   window._getSugHidden = function(){ return _sugHidden.slice(); };
 
+  // ── Pièces de rechange — même mécanique que Produits suggérés ci-dessus
+  // (champ + suggestions, puces, case à cocher, liaison réciproque côté
+  // js/actions.js) — retour utilisateur : "ajouter une rubrique pièce de
+  // rechange comme pour les suggestions". ──
+  function _sparePartsRenderChips(){
+    if(!fSparePartsChips) return;
+    var prods = window.products || [];
+    var canEdit = !!(window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin));
+    fSparePartsChips.innerHTML = _sparePartsRefs.map(function(ref){
+      var p = prods.find(function(x){ return x.ref === ref; });
+      var visible = _sparePartsHidden.indexOf(ref) === -1;
+      var thumb = p && p.photo
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+        : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
+      return '<div class="sug-linked-item'+(visible?'':' sug-linked-item-hidden')+'" data-ref="'+escapeHtml(ref)+'"'+(canEdit?' draggable="true" title="Glisser vers l\'autre liste pour déplacer"':'')+'>'
+        + '<div class="sug-drop-thumb">'+thumb+'</div>'
+        + '<div class="sug-drop-text">'
+        +   '<div class="sug-drop-ref">'+escapeHtml(ref)+'</div>'
+        +   (p && p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,45))+'</div>' : '')
+        + '</div>'
+        + (canEdit ? '<input type="checkbox" class="sug-chip-visible" data-ref="'+escapeHtml(ref)+'" title="Afficher sur cette fiche"'+(visible?' checked':'')+'>' : '')
+        + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer le lien">✕</button>' : '')
+        + '</div>';
+    }).join('');
+    fSparePartsChips.querySelectorAll('.sug-chip-del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var ref = btn.getAttribute('data-ref');
+        _sparePartsRefs = _sparePartsRefs.filter(function(r){ return r !== ref; });
+        _sparePartsHidden = _sparePartsHidden.filter(function(r){ return r !== ref; });
+        _sparePartsRenderChips();
+      });
+    });
+    fSparePartsChips.querySelectorAll('.sug-chip-visible').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var ref = cb.getAttribute('data-ref');
+        if(cb.checked) _sparePartsHidden = _sparePartsHidden.filter(function(r){ return r !== ref; });
+        else if(_sparePartsHidden.indexOf(ref) === -1) _sparePartsHidden.push(ref);
+        _sparePartsRenderChips();
+      });
+    });
+  }
+
+  function _sparePartsSearch(q){
+    if(!fSparePartsDrop) return;
+    q = (q||'').trim().toLowerCase();
+    if(!q){ fSparePartsDrop.style.display='none'; return; }
+    var prods = window.products || [];
+    var editingRef = document.getElementById('fRef') ? document.getElementById('fRef').value.trim() : '';
+    var results = prods.filter(function(p){
+      if(_sparePartsRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté
+      if(p.ref === editingRef) return false; // pas soi-même
+      return (p.ref||'').toLowerCase().indexOf(q) !== -1
+          || (p.name||'').toLowerCase().indexOf(q) !== -1
+          || (p.family||'').toLowerCase().indexOf(q) !== -1
+          || (p.brand||'').toLowerCase().indexOf(q) !== -1
+          || (p.series||'').toLowerCase().indexOf(q) !== -1;
+    });
+    if(!results.length){ fSparePartsDrop.style.display='none'; return; }
+    fSparePartsDrop.innerHTML = results.map(function(p){
+      var thumb = p.photo
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+        : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
+      return '<div class="autocomplete-item sug-drop-item" data-ref="'+escapeHtml(p.ref)+'">'
+        + '<div class="sug-drop-thumb">'+thumb+'</div>'
+        + '<div class="sug-drop-text">'
+        +   '<div class="sug-drop-ref">'+escapeHtml(p.ref)+'</div>'
+        +   (p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,45))+'</div>' : '')
+        +   (p.brand ? '<div class="sug-drop-brand">'+escapeHtml(p.brand)+'</div>' : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+    fSparePartsDrop.style.display = 'block';
+    fSparePartsDrop.querySelectorAll('.autocomplete-item').forEach(function(item){
+      item.addEventListener('mousedown', function(e){
+        e.preventDefault();
+        var ref = item.getAttribute('data-ref');
+        if(_sparePartsRefs.indexOf(ref) === -1) _sparePartsRefs.push(ref);
+        _sparePartsRenderChips();
+        fSparePartsSearch.value = '';
+        fSparePartsDrop.style.display = 'none';
+      });
+    });
+  }
+
+  if(fSparePartsSearch){
+    fSparePartsSearch.addEventListener('input', function(){ _sparePartsSearch(this.value); });
+    fSparePartsSearch.addEventListener('blur', function(){
+      setTimeout(function(){ if(fSparePartsDrop) fSparePartsDrop.style.display='none'; }, 150);
+    });
+    _wireSearchEnterKey(fSparePartsSearch, fSparePartsDrop);
+  }
+
+  window._getSparePartsRefs = function(){ return _sparePartsRefs.slice(); };
+  window._getSparePartsHidden = function(){ return _sparePartsHidden.slice(); };
+
+  // ── Glisser-déposer une puce entre Suggestions et Pièces de rechange ──
+  // (retour utilisateur : "pouvoir drag and drop les références de
+  // suggestion vers pièce de rechange et vice versa") — déplace le lien
+  // d'une liste à l'autre (retiré de la source, ajouté à la destination),
+  // sans toucher à la liaison réciproque côté produit lié (elle sera mise à
+  // jour normalement au prochain Enregistrer, comme n'importe quel ajout).
+  var _linkFieldDefs = {
+    suggestions: {
+      getRefs: function(){ return _sugRefs; }, setRefs: function(v){ _sugRefs = v; },
+      getHidden: function(){ return _sugHidden; }, setHidden: function(v){ _sugHidden = v; },
+      renderChips: function(){ _sugRenderChips(); },
+      chipsEl: function(){ return fSuggestionsChips; },
+      noun: 'suggestions'
+    },
+    spareParts: {
+      getRefs: function(){ return _sparePartsRefs; }, setRefs: function(v){ _sparePartsRefs = v; },
+      getHidden: function(){ return _sparePartsHidden; }, setHidden: function(v){ _sparePartsHidden = v; },
+      renderChips: function(){ _sparePartsRenderChips(); },
+      chipsEl: function(){ return fSparePartsChips; },
+      noun: 'pièces de rechange'
+    }
+  };
+  function _moveChipBetweenFields(ref, fromKey, toKey){
+    var fromDef = _linkFieldDefs[fromKey], toDef = _linkFieldDefs[toKey];
+    if(!fromDef || !toDef) return;
+    if(toDef.getRefs().indexOf(ref) !== -1){
+      showToast('Déjà présent dans ' + toDef.noun + '.', 'warn', 2200);
+      return;
+    }
+    fromDef.setRefs(fromDef.getRefs().filter(function(r){ return r !== ref; }));
+    fromDef.setHidden(fromDef.getHidden().filter(function(r){ return r !== ref; }));
+    toDef.setRefs(toDef.getRefs().concat([ref]));
+    fromDef.renderChips();
+    toDef.renderChips();
+  }
+  (function _wireChipDragDrop(){
+    Object.keys(_linkFieldDefs).forEach(function(key){
+      var container = _linkFieldDefs[key].chipsEl();
+      if(!container) return;
+      // Écouteurs délégués sur le CONTENEUR (stable) plutôt que sur chaque
+      // puce (recréées à chaque rendu) — pas besoin de re-brancher après
+      // chaque _sugRenderChips()/_sparePartsRenderChips().
+      container.addEventListener('dragstart', function(e){
+        var chip = e.target.closest && e.target.closest('.sug-linked-item');
+        if(!chip){ e.preventDefault(); return; }
+        var ref = chip.getAttribute('data-ref');
+        if(!ref){ e.preventDefault(); return; }
+        e.dataTransfer.setData('text/plain', JSON.stringify({ref:ref, from:key}));
+        e.dataTransfer.effectAllowed = 'move';
+        chip.classList.add('dragging');
+      });
+      container.addEventListener('dragend', function(e){
+        var chip = e.target.closest && e.target.closest('.sug-linked-item');
+        if(chip) chip.classList.remove('dragging');
+        // Filet de sécurité : quelle que soit la façon dont le glisser se
+        // termine (déposé ailleurs qu'une zone valide, annulé à l'Échap,
+        // relâché hors de la fenêtre…), 'dragend' se déclenche toujours sur
+        // la puce source — on en profite pour nettoyer le contour de survol
+        // sur LES DEUX listes, sinon il pouvait rester affiché en continu
+        // (retour utilisateur : "le contour est encore affiché").
+        Object.keys(_linkFieldDefs).forEach(function(k){
+          var el = _linkFieldDefs[k].chipsEl();
+          if(el) el.classList.remove('sug-chips-dragover');
+        });
+      });
+      container.addEventListener('dragover', function(e){
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        container.classList.add('sug-chips-dragover');
+      });
+      container.addEventListener('dragleave', function(e){
+        // Ne pas restreindre à e.target===container : avec des puces
+        // enfants, 'dragleave' se déclenche aussi en survolant une puce à
+        // l'intérieur du conteneur, et la vérification stricte empêchait le
+        // contour de disparaître dans ce cas (retour utilisateur : contour
+        // qui reste affiché). Un léger scintillement en survolant les puces
+        // est un compromis acceptable face à un contour bloqué en continu.
+        container.classList.remove('sug-chips-dragover');
+      });
+      container.addEventListener('drop', function(e){
+        e.preventDefault();
+        container.classList.remove('sug-chips-dragover');
+        var raw;
+        try{ raw = JSON.parse(e.dataTransfer.getData('text/plain')); }catch(err){ return; }
+        if(!raw || !raw.ref || !raw.from || raw.from === key) return; // déposé sur sa liste d'origine
+        _moveChipBetweenFields(raw.ref, raw.from, key);
+      });
+    });
+  })();
+
   // ── Parcourir le catalogue par catégorie (sélection multiple → Enregistrer) ──
   // Alternative au champ de recherche ci-dessus : navigation par famille au
   // lieu de taper une réf/nom (retour utilisateur). Sélection en 2 temps —
   // les clics dans la fenêtre construisent une liste TEMPORAIRE
-  // (_sugPickerSelected), qui n'est ajoutée aux suggestions réelles (_sugRefs)
-  // qu'au clic sur "Enregistrer" (comme demandé : "une fois la liste finie
-  // on clique sur enregistrer et ça ajoute au produit suggéré").
-  var btnSugBrowse       = document.getElementById('btnSugBrowse');
+  // (_sugPickerSelected), qui n'est ajoutée à la liste réelle qu'au clic sur
+  // "Enregistrer" (comme demandé : "une fois la liste finie on clique sur
+  // enregistrer et ça ajoute au produit suggéré"). Fenêtre PARTAGÉE entre
+  // "Produits suggérés" et "Pièces de rechange" (retour utilisateur : "une
+  // rubrique pièces de rechange comme pour les suggestions") — _sugPickerTarget
+  // détermine sur quelle liste elle agit à un instant donné.
+  var btnSugBrowse        = document.getElementById('btnSugBrowse');
+  var btnSparePartsBrowse = document.getElementById('btnSparePartsBrowse');
   var sugPickerOverlay   = document.getElementById('sugPickerOverlay');
+  var sugPickerTitleEl   = document.getElementById('sugPickerTitle');
   var sugPickerList      = document.getElementById('sugPickerList');
   var sugPickerSearch    = document.getElementById('sugPickerSearch');
   var sugPickerCount     = document.getElementById('sugPickerCount');
@@ -1081,12 +1331,28 @@
   var sugPickerCancelBtn = document.getElementById('sugPickerCancelBtn');
   var sugPickerSaveBtn   = document.getElementById('sugPickerSaveBtn');
   var _sugPickerSelected = []; // refs cochés dans CETTE session de la fenêtre, pas encore appliqués
+  var _sugPickerTarget = 'suggestions'; // 'suggestions' | 'spareParts'
+  var _sugPickerDefs = {
+    suggestions: {
+      title: '📂 Parcourir le catalogue — Produits suggérés',
+      noun: 'suggestions',
+      getRefs: function(){ return _sugRefs; },
+      addRefs: function(refs){ refs.forEach(function(r){ if(_sugRefs.indexOf(r)===-1) _sugRefs.push(r); }); },
+      renderChips: function(){ _sugRenderChips(); }
+    },
+    spareParts: {
+      title: '📂 Parcourir le catalogue — Pièces de rechange',
+      noun: 'pièces de rechange',
+      getRefs: function(){ return _sparePartsRefs; },
+      addRefs: function(refs){ refs.forEach(function(r){ if(_sparePartsRefs.indexOf(r)===-1) _sparePartsRefs.push(r); }); },
+      renderChips: function(){ _sparePartsRenderChips(); }
+    }
+  };
 
   function _sugPickerUpdateCount(){
     if(!sugPickerCount) return;
     var n = _sugPickerSelected.length;
-    var remaining = 20 - _sugRefs.length;
-    sugPickerCount.textContent = n + ' sélectionné' + (n>1?'s':'') + (n >= remaining ? ' (max atteint)' : '');
+    sugPickerCount.textContent = n + ' sélectionné' + (n>1?'s':'');
   }
 
   function _sugPickerToggle(ref, itemEl){
@@ -1097,10 +1363,6 @@
       var chk = itemEl.querySelector('.sug-picker-item-check');
       if(chk) chk.parentNode.removeChild(chk);
     } else {
-      if(_sugRefs.length + _sugPickerSelected.length >= 20){
-        showToast('Maximum 20 suggestions atteint.', 'warn', 2500);
-        return;
-      }
       _sugPickerSelected.push(ref);
       itemEl.classList.add('selected');
       itemEl.insertAdjacentHTML('beforeend', '<i class="ti ti-check sug-picker-item-check"></i>');
@@ -1116,12 +1378,14 @@
   var _sugPickerOpenGroups = {};
   function _sugPickerRender(q){
     if(!sugPickerList) return;
+    var def = _sugPickerDefs[_sugPickerTarget];
+    var currentRefs = def.getRefs();
     var prods = window.products || [];
     var editingRef = fRef ? fRef.value.trim() : '';
     q = (q||'').trim().toLowerCase();
     var visible = prods.filter(function(p){
       if(p.ref === editingRef) return false; // pas soi-même
-      if(_sugRefs.indexOf(p.ref) !== -1) return false; // déjà une suggestion liée
+      if(currentRefs.indexOf(p.ref) !== -1) return false; // déjà lié
       if(!q) return true;
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
@@ -1174,8 +1438,10 @@
     });
   }
 
-  function _sugPickerOpen(){
+  function _sugPickerOpen(target){
     if(!sugPickerOverlay) return;
+    _sugPickerTarget = (target === 'spareParts') ? 'spareParts' : 'suggestions';
+    if(sugPickerTitleEl) sugPickerTitleEl.textContent = _sugPickerDefs[_sugPickerTarget].title;
     _sugPickerSelected = [];
     _sugPickerOpenGroups = {};
     if(sugPickerSearch) sugPickerSearch.value = '';
@@ -1190,17 +1456,16 @@
     document.body.classList.remove('modal-open');
   }
 
-  if(btnSugBrowse)       btnSugBrowse.addEventListener('click', _sugPickerOpen);
+  if(btnSugBrowse)        btnSugBrowse.addEventListener('click', function(){ _sugPickerOpen('suggestions'); });
+  if(btnSparePartsBrowse) btnSparePartsBrowse.addEventListener('click', function(){ _sugPickerOpen('spareParts'); });
   if(sugPickerCloseBtn)  sugPickerCloseBtn.addEventListener('click', _sugPickerClose);
   if(sugPickerCancelBtn) sugPickerCancelBtn.addEventListener('click', _sugPickerClose);
   if(sugPickerSearch)    sugPickerSearch.addEventListener('input', function(){ _sugPickerRender(this.value); });
   if(sugPickerSaveBtn)   sugPickerSaveBtn.addEventListener('click', function(){
-    _sugPickerSelected.forEach(function(ref){
-      if(_sugRefs.length >= 20) return;
-      if(_sugRefs.indexOf(ref) === -1) _sugRefs.push(ref);
-    });
+    var def = _sugPickerDefs[_sugPickerTarget];
+    def.addRefs(_sugPickerSelected);
     _sugPickerSelected = [];
-    _sugRenderChips();
+    def.renderChips();
     _sugPickerClose();
   });
 

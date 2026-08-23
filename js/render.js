@@ -270,6 +270,67 @@
       document.body.classList.remove('modal-open');
     };
 
+    // ── Section Pièces de rechange — même mécanique que Suggestions
+    // ci-dessus, réutilise la même modale (sugOverlay/sugList), juste avec
+    // un titre et une source de données différents (retour utilisateur :
+    // "une rubrique pièces de rechange comme pour les suggestions"). ──
+    var sparePartsSection = document.getElementById('vmSparePartsSection');
+    var sparePartsToggle  = document.getElementById('vmSparePartsToggle');
+    var sparePartsLabel   = document.getElementById('vmSparePartsToggleLabel');
+    var _hiddenSpareParts = Array.isArray(p.sparePartsHidden) ? p.sparePartsHidden : [];
+    var sparePartsRefs = Array.isArray(p.spareParts)
+      ? p.spareParts.filter(function(r){
+          return r && r.trim() && _hiddenSpareParts.indexOf(r) === -1 && _allProds.some(function(x){ return x.ref === r; });
+        })
+      : [];
+
+    if(sparePartsSection){
+      if(sparePartsRefs.length){
+        sparePartsSection.style.display = '';
+        if(sparePartsLabel) sparePartsLabel.textContent = 'Voir les pièces de rechange (' + sparePartsRefs.length + ')';
+
+        if(sparePartsToggle) sparePartsToggle.onclick = function(){
+          var sugModalTitle = document.getElementById('sugModalTitle');
+          if(sugModalTitle) sugModalTitle.textContent = '🔧 Pièces de rechange';
+          if(sugList){
+            var prods = window.products || [];
+            sugList.innerHTML = sparePartsRefs.map(function(ref){
+              var sp = prods.find(function(x){ return x.ref === ref; });
+              if(!sp) return ''; // produit supprimé
+              var photoHtml = sp.photo
+                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+                : '<i class="ti ti-photo-off"></i>';
+              return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
+                '<div class="sug-list-photo">'+photoHtml+'</div>'+
+                '<div class="sug-list-body">'+
+                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                  '<div class="sug-list-name">'+escapeHtml((sp.name||'').substring(0,60))+'</div>'+
+                '</div>'+
+                '<i class="ti ti-chevron-right sug-list-chevron"></i>'+
+              '</div>';
+            }).join('');
+
+            sugList.querySelectorAll('.sug-list-item[data-id]').forEach(function(row){
+              row.addEventListener('click', function(){
+                var pid = row.getAttribute('data-id');
+                if(pid){
+                  _viewHistory.push(id);
+                  if(sugOverlay) sugOverlay.style.display = 'none';
+                  openView(pid);
+                }
+              });
+            });
+          }
+          if(sugOverlay){
+            sugOverlay.style.display = 'flex';
+            document.body.classList.add('modal-open');
+          }
+        };
+      } else {
+        sparePartsSection.style.display = 'none';
+      }
+    }
+
     // ── Section Caractéristiques (réutilise le même overlay/liste que Suggestions) ──
     var specsSection = document.getElementById('vmSpecsSection');
     var specsToggle  = document.getElementById('vmSpecsToggle');

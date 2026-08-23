@@ -2928,41 +2928,65 @@
   }
 }
 
-/* ── Suggestions : chips dans le formulaire ──────────────────── */
+/* ── Suggestions/Pièces de rechange : liste liée dans le formulaire ──────
+   Rangées compactes avec vignette photo (même langage visuel que la liste
+   déroulante de recherche juste au-dessus et que la fenêtre "Voir les
+   suggestions") plutôt que des pastilles de texte — retour utilisateur :
+   "c'est pas très joli". */
 .sug-chips{
-  display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;
+  display:flex; flex-direction:column; gap:4px; margin-top:8px;
+  /* Hauteur mini même vide : sans ça, une liste vide (0px de haut) ne
+     peut pas recevoir de dépôt glisser-déposer venant de l'autre champ
+     (retour utilisateur : glisser-déposer une réf entre Suggestions et
+     Pièces de rechange). */
+  min-height:26px;
+  /* Hauteur maxi + défilement interne : avec jusqu'à 20 lignes, la liste
+     pouvait rendre toute la fenêtre d'édition très longue (retour
+     utilisateur, capture à l'appui). Au-delà, on scrolle DANS la liste
+     plutôt que d'agrandir la fenêtre. */
+  max-height:220px;
+  overflow-y:auto;
+  padding:2px;
+  border-radius:8px;
+  transition:background .12s, outline-color .12s;
 }
-.sug-chip{
-  display:inline-flex; align-items:center; gap:5px;
-  background:var(--paper-card); border:1px solid var(--copper);
-  color:var(--copper-deep); border-radius:20px;
-  font-size:12px; font-weight:600; padding:3px 10px;
+/* Survol pendant un glisser-déposer venant de l'AUTRE liste — retour
+   visuel indiquant une zone de dépôt valide. */
+.sug-chips-dragover{
+  outline:2px dashed var(--copper); outline-offset:4px;
+  background:rgba(180,110,60,.06);
 }
+.sug-linked-item{
+  display:flex; align-items:center; gap:10px;
+  background:var(--paper-card); border:1px solid var(--line);
+  border-radius:8px; padding:5px 8px;
+}
+.sug-linked-item[draggable="true"]{ cursor:grab; }
+.sug-linked-item.dragging{ opacity:.4; cursor:grabbing; }
 /* Décochée (masquée sur cette fiche, lien conservé) : grisée pour la
    distinguer visuellement des suggestions réellement affichées. */
-.sug-chip-hidden{
-  border-color:var(--line); background:var(--paper);
-  color:var(--ink-soft); font-weight:500;
+.sug-linked-item-hidden{
+  background:var(--paper); opacity:.6;
 }
+.sug-linked-item .sug-drop-thumb{ width:34px; height:34px; }
 /* Taille explicite obligatoire : sans width/height fixes, la case native
    peut s'afficher bien plus grande que prévu selon l'appareil (réglages
    d'accessibilité "Texte plus grand" sur iOS notamment), faisant exploser
-   toute la puce autour d'elle (retour utilisateur, capture à l'appui) —
+   toute la ligne autour d'elle (retour utilisateur, capture à l'appui) —
    même principe que .field.field-checkbox input[type="checkbox"] déjà
    utilisé partout ailleurs dans ce formulaire. */
 .sug-chip-visible{
   -webkit-box-sizing:content-box; box-sizing:content-box;
-  width:14px !important; height:14px !important; min-width:14px; max-width:14px;
-  flex:0 0 14px; flex-shrink:0;
+  width:15px !important; height:15px !important; min-width:15px; max-width:15px;
+  flex:0 0 15px; flex-shrink:0;
   margin:0; padding:0; cursor:pointer; accent-color:var(--copper);
   display:inline-block;
 }
 .sug-chip-del{
   background:none; border:none; cursor:pointer;
-  color:var(--copper); font-size:13px; line-height:1;
-  padding:0 0 0 2px; margin:0;
+  color:var(--ink-soft); font-size:15px; line-height:1;
+  padding:0; margin:0; flex-shrink:0;
 }
-.sug-chip-hidden .sug-chip-del{ color:var(--ink-soft); }
 .sug-chip-del:hover{ color:var(--warn); }
 
 /* ── Suggestions : liste compacte (même langage que la modale Documents) ── */

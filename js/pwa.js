@@ -68,7 +68,15 @@
               );
               if(!ok) return;
             }
-            window.location.reload();
+            // location.reload() peut laisser une PWA en mode standalone
+            // (ajoutée à l'écran d'accueil, notamment iOS) sur un état
+            // figé/blanc une fois le nouveau service worker aux commandes —
+            // obligeant à fermer complètement l'app puis la rouvrir pour
+            // voir la mise à jour (retour utilisateur). Réassigner
+            // location.href force une VRAIE navigation complète plutôt
+            // qu'un simple rechargement du document courant, plus fiable
+            // dans ce contexte-là.
+            window.location.href = window.location.pathname + window.location.search + window.location.hash;
           });
         }
 

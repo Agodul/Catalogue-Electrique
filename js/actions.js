@@ -81,26 +81,29 @@
     return result;
   }
 
-  // Rattrape les liens de suggestions à sens unique (A → B sans B → A) sur
-  // TOUT le tableau donné — utilisé après un import JSON (Fusionner ou
-  // Remplacer), qui écrit les produits directement sans repasser par le
-  // formulaire d'édition (seul endroit qui applique déjà cette réciprocité
-  // au moment d'Enregistrer, voir _sugLinkReciprocal dans le handler de
+  // Rattrape les liens à sens unique (A → B sans B → A) sur TOUT le tableau
+  // donné, pour un champ de liaison donné (suggestions ou spareParts —
+  // même mécanique de liaison réciproque pour les deux, retour utilisateur :
+  // "une rubrique pièces de rechange comme pour les suggestions") — utilisé
+  // après un import JSON (Fusionner ou Remplacer), qui écrit les produits
+  // directement sans repasser par le formulaire d'édition (seul endroit qui
+  // applique déjà cette réciprocité au moment d'Enregistrer, voir
+  // _sugLinkReciprocal/_sparePartsLinkReciprocal dans le handler de
   // btnSave). Idempotent : rejouer cette passe plusieurs fois ne change
   // rien de plus après la première fois. N'écrase jamais un lien existant,
   // ne supprime jamais rien — ajoute seulement ce qui manque.
-  function reconcileSuggestionsReciprocally(prods){
+  function reconcileLinksReciprocally(prods, field){
     var byRef = {};
     prods.forEach(function(p){ if(p.ref) byRef[p.ref] = p; });
     var touched = [];
     prods.forEach(function(p){
-      if(!p.ref || !Array.isArray(p.suggestions)) return;
-      p.suggestions.forEach(function(otherRef){
+      if(!p.ref || !Array.isArray(p[field])) return;
+      p[field].forEach(function(otherRef){
         var other = byRef[otherRef];
         if(!other || other.ref === p.ref) return;
-        if(!Array.isArray(other.suggestions)) other.suggestions = [];
-        if(other.suggestions.indexOf(p.ref) === -1){
-          other.suggestions.push(p.ref);
+        if(!Array.isArray(other[field])) other[field] = [];
+        if(other[field].indexOf(p.ref) === -1){
+          other[field].push(p.ref);
           other.updatedAt = Date.now();
           if(touched.indexOf(other) === -1) touched.push(other);
         }
@@ -108,6 +111,8 @@
     });
     return touched;
   }
+  function reconcileSuggestionsReciprocally(prods){ return reconcileLinksReciprocally(prods, 'suggestions'); }
+  function reconcileSparePartsReciprocally(prods){ return reconcileLinksReciprocally(prods, 'spareParts'); }
 
   document.getElementById('btnSave').addEventListener('click', function(){
     // Garde-fou défensif : si le formulaire était déjà ouvert avant une
@@ -168,6 +173,8 @@
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
       suggestions: typeof window._getSugRefs === 'function' ? window._getSugRefs() : [],
       suggestionsHidden: typeof window._getSugHidden === 'function' ? window._getSugHidden() : [],
+      spareParts: typeof window._getSparePartsRefs === 'function' ? window._getSparePartsRefs() : [],
+      sparePartsHidden: typeof window._getSparePartsHidden === 'function' ? window._getSparePartsHidden() : [],
       specs: typeof window._getSpecsObj === 'function' ? window._getSpecsObj() : {},
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
@@ -304,35 +311,38 @@
       touchedForSync.push(payload);
     }
 
-    // ── Liaison réciproque des suggestions ────────────────────────────
-    // Ajouter B dans les suggestions de A crée automatiquement le lien A
-    // dans les suggestions de B — sans ça, il fallait aller l'ajouter à la
-    // main des deux côtés (retour utilisateur). Uniquement dans le sens
-    // "nouvellement ajouté" : on ne touche jamais aux refs déjà présentes
-    // avant cet enregistrement, ni à celles retirées côté A (retirer un
-    // lien ou le masquer reste local à la fiche éditée — pour le masquer
-    // aussi côté B, il faut le décocher directement sur la fiche B, à la
-    // main, voir la case à cocher par puce dans js/modal.js). Si B a déjà
-    // A dans sa propre liste (retiré puis re-proposé, ou ajouté à la main
-    // des deux côtés), on ne le re-rajoute pas.
-    (function _sugLinkReciprocal(){
-      var previousSuggestions = (typeof existing !== 'undefined' && existing && Array.isArray(existing.suggestions))
-        ? existing.suggestions : [];
-      var finalSuggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+    // ── Liaison réciproque des suggestions ET des pièces de rechange ──────
+    // Ajouter B dans la liste de A crée automatiquement le lien A dans la
+    // liste de B — sans ça, il fallait aller l'ajouter à la main des deux
+    // côtés (retour utilisateur, étendu aux pièces de rechange : "une
+    // rubrique pièces de rechange comme pour les suggestions"). Uniquement
+    // dans le sens "nouvellement ajouté" : on ne touche jamais aux refs déjà
+    // présentes avant cet enregistrement, ni à celles retirées côté A
+    // (retirer un lien ou le masquer reste local à la fiche éditée — pour le
+    // masquer aussi côté B, il faut le décocher directement sur la fiche B,
+    // à la main, voir la case à cocher par puce dans js/modal.js). Si B a
+    // déjà A dans sa propre liste (retiré puis re-proposé, ou ajouté à la
+    // main des deux côtés), on ne le re-rajoute pas.
+    function _linkReciprocal(field){
+      var previous = (typeof existing !== 'undefined' && existing && Array.isArray(existing[field]))
+        ? existing[field] : [];
+      var final = Array.isArray(payload[field]) ? payload[field] : [];
       var finalRef = payload.ref;
-      finalSuggestions.forEach(function(otherRef){
-        if(previousSuggestions.indexOf(otherRef) !== -1) return; // déjà lié avant cet enregistrement
+      final.forEach(function(otherRef){
+        if(previous.indexOf(otherRef) !== -1) return; // déjà lié avant cet enregistrement
         var other = products.find(function(p){ return p.ref === otherRef; });
         if(!other || other.ref === finalRef) return;
-        var otherSugs = Array.isArray(other.suggestions) ? other.suggestions : [];
-        if(otherSugs.indexOf(finalRef) !== -1) return; // déjà lié côté B
-        other.suggestions = otherSugs.concat([finalRef]);
+        var otherList = Array.isArray(other[field]) ? other[field] : [];
+        if(otherList.indexOf(finalRef) !== -1) return; // déjà lié côté B
+        other[field] = otherList.concat([finalRef]);
         other.updatedAt = Date.now();
         // Éviter un doublon si ce produit a déjà été ajouté à touchedForSync
         // plus haut (ex. propagation d'icône de famille sur ce même produit).
         if(touchedForSync.indexOf(other) === -1) touchedForSync.push(other);
       });
-    })();
+    }
+    _linkReciprocal('suggestions');
+    _linkReciprocal('spareParts');
 
     // Animation 5 — flash vert sur le bouton enregistrer
     var btnSaveEl = document.getElementById('btnSave');
@@ -753,16 +763,18 @@
                 // grace-period _recentlySaved) voyait un "conflit" à tort dès que
                 // createdAt différait, même sur un contenu par ailleurs identique.
                 delete c.createdAt;
-                // suggestions/suggestionsHidden : un produit peut être modifié
-                // "silencieusement" par l'édition d'un AUTRE produit (liaison
-                // réciproque automatique — voir reconcileSuggestionsReciprocally
-                // et _sugLinkReciprocal). Une différence ici n'est jamais un
-                // vrai conflit éditorial, juste un lien à fusionner (fait plus
-                // bas) — sans cette exclusion, toute session qui n'a pas encore
-                // cette liaison voyait un "conflit" à tort (retour utilisateur :
-                // "encore trop de problèmes de conflit").
+                // suggestions/suggestionsHidden et spareParts/sparePartsHidden :
+                // un produit peut être modifié "silencieusement" par l'édition
+                // d'un AUTRE produit (liaison réciproque automatique — voir
+                // reconcileLinksReciprocally et _linkReciprocal). Une différence
+                // ici n'est jamais un vrai conflit éditorial, juste un lien à
+                // fusionner (fait plus bas) — sans cette exclusion, toute session
+                // qui n'a pas encore cette liaison voyait un "conflit" à tort
+                // (retour utilisateur : "encore trop de problèmes de conflit").
                 delete c.suggestions;
                 delete c.suggestionsHidden;
+                delete c.spareParts;
+                delete c.sparePartsHidden;
                 // hasDoc/docFilename : mis à jour par un flux SÉPARÉ (envoi/
                 // suppression de PDF, voir js/modal.js _pdfUploadFiles/
                 // _pdfDeleteOne) qui n'est pas le formulaire d'édition
@@ -795,23 +807,28 @@
                 conflicts.push({ ref: sp.ref, local: lp, server: sp });
               }
             }
-            // Local conservé par défaut pour l'admin — sauf les suggestions,
-            // toujours fusionnées (union local+serveur) qu'il y ait conflit ou
-            // non sur les autres champs : jamais perdues silencieusement d'un
-            // côté juste parce qu'une autre session ne les a pas encore vues.
-            var mergedSugs = Array.prototype.concat.apply([],
-              [Array.isArray(lp.suggestions) ? lp.suggestions : [], Array.isArray(sp.suggestions) ? sp.suggestions : []]
-            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i; });
-            var mergedHidden = Array.prototype.concat.apply([],
-              [Array.isArray(lp.suggestionsHidden) ? lp.suggestionsHidden : [], Array.isArray(sp.suggestionsHidden) ? sp.suggestionsHidden : []]
-            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i && mergedSugs.indexOf(r) !== -1; });
+            // Local conservé par défaut pour l'admin — sauf les suggestions et
+            // pièces de rechange, toujours fusionnées (union local+serveur)
+            // qu'il y ait conflit ou non sur les autres champs : jamais
+            // perdues silencieusement d'un côté juste parce qu'une autre
+            // session ne les a pas encore vues.
             var sugChanged = false;
-            if(mergedSugs.length && mergedSugs.length !== (Array.isArray(lp.suggestions)?lp.suggestions.length:0)){
-              lp.suggestions = mergedSugs; sugChanged = true;
+            function _mergeLinkField(field, hiddenField){
+              var merged = Array.prototype.concat.apply([],
+                [Array.isArray(lp[field]) ? lp[field] : [], Array.isArray(sp[field]) ? sp[field] : []]
+              ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i; });
+              var mergedHidden = Array.prototype.concat.apply([],
+                [Array.isArray(lp[hiddenField]) ? lp[hiddenField] : [], Array.isArray(sp[hiddenField]) ? sp[hiddenField] : []]
+              ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i && merged.indexOf(r) !== -1; });
+              if(merged.length && merged.length !== (Array.isArray(lp[field])?lp[field].length:0)){
+                lp[field] = merged; sugChanged = true;
+              }
+              if(mergedHidden.length && mergedHidden.length !== (Array.isArray(lp[hiddenField])?lp[hiddenField].length:0)){
+                lp[hiddenField] = mergedHidden; sugChanged = true;
+              }
             }
-            if(mergedHidden.length && mergedHidden.length !== (Array.isArray(lp.suggestionsHidden)?lp.suggestionsHidden.length:0)){
-              lp.suggestionsHidden = mergedHidden; sugChanged = true;
-            }
+            _mergeLinkField('suggestions', 'suggestionsHidden');
+            _mergeLinkField('spareParts', 'sparePartsHidden');
             if(sugChanged){
               lp.updatedAt = Date.now();
               sugMergedProducts.push(lp);
@@ -1468,6 +1485,7 @@
         // import doit se comporter comme le formulaire, pas seulement les
         // ajouts un par un.
         reconcileSuggestionsReciprocally(products);
+        reconcileSparePartsReciprocally(products);
 
         save();
         // Forcer retour à la home
@@ -1497,6 +1515,7 @@
         products = _pendingImport;
         // Voir commentaire équivalent dans #_importMerge ci-dessus.
         reconcileSuggestionsReciprocally(products);
+        reconcileSparePartsReciprocally(products);
         save();
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
@@ -2386,7 +2405,7 @@
     // un autre champ, ces trois-là étant juste incidemment différents aussi).
     var allKeys = Object.keys(Object.assign({}, c.local, c.server))
       .filter(function(k){
-        return ['id','familyIcon','updatedAt','createdAt','suggestions','suggestionsHidden','hasDoc','docFilename','_docFiles'].indexOf(k) === -1;
+        return ['id','familyIcon','updatedAt','createdAt','suggestions','suggestionsHidden','spareParts','sparePartsHidden','hasDoc','docFilename','_docFiles'].indexOf(k) === -1;
       });
     var rowsHtml = allKeys.map(function(key){
       var lv     = c.local[key];
