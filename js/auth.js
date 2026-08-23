@@ -443,9 +443,16 @@ function applyAuthUI() {
   var btnReportBug = document.getElementById('btnReportBug');
   if (btnReportBug) btnReportBug.style.display = 'none'; // TODO: (loggedIn && !!_sUrlReq) une fois la migration commencée
 
-  // Champ suggestions : visible uniquement pour canEdit/admin
+  // Champs suggestions / pièces de rechange : visibles uniquement pour
+  // canEdit/admin — la 2e ligne manquait à l'ajout de "Pièces de rechange"
+  // (calqué sur Suggestions mais cette permission n'avait pas été reportée),
+  // laissant ce champ visible pour tout le monde alors que Suggestions
+  // restait masqué pour les comptes sans droit d'édition : incohérence
+  // repérée en revoyant l'agencement de la fenêtre.
   var fSuggestionsRow = document.getElementById('fSuggestionsRow');
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
+  var fSparePartsRow = document.getElementById('fSparePartsRow');
+  if(fSparePartsRow) fSparePartsRow.style.display = canEdit ? '' : 'none';
 
   // Bouton "Proposer une modification" sur la fiche produit
   var btnVmPropose = document.getElementById('vmProposeBtn');

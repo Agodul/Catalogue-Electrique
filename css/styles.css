@@ -2934,12 +2934,14 @@
    suggestions") plutôt que des pastilles de texte — retour utilisateur :
    "c'est pas très joli". */
 .sug-chips{
-  display:flex; flex-direction:column; gap:4px; margin-top:8px;
-  /* Hauteur mini même vide : sans ça, une liste vide (0px de haut) ne
-     peut pas recevoir de dépôt glisser-déposer venant de l'autre champ
-     (retour utilisateur : glisser-déposer une réf entre Suggestions et
-     Pièces de rechange). */
-  min-height:26px;
+  display:flex; flex-direction:column; gap:4px;
+  /* Pas de hauteur mini par défaut : vide, la liste ne prend aucune place —
+     évitait un vide inesthétique entre "Produits suggérés" et "Pièces de
+     rechange" quand les deux sont vides (repéré en revoyant l'agencement
+     de la fenêtre). La hauteur mini nécessaire pour rester une cible de
+     dépôt valide n'est ajoutée dynamiquement (.drag-active, via JS) que
+     PENDANT un glisser-déposer réellement en cours. */
+  min-height:0;
   /* Hauteur maxi + défilement interne : avec jusqu'à 20 lignes, la liste
      pouvait rendre toute la fenêtre d'édition très longue (retour
      utilisateur, capture à l'appui). Au-delà, on scrolle DANS la liste
@@ -2950,6 +2952,13 @@
   border-radius:8px;
   transition:background .12s, outline-color .12s;
 }
+/* Espace au-dessus seulement s'il y a au moins une ligne à afficher —
+   sinon la marge à elle seule recréait le vide qu'on cherche à éviter. */
+.sug-chips:not(:empty){ margin-top:8px; }
+/* Cible de dépôt valide même vide, mais UNIQUEMENT pendant un glisser-
+   déposer réellement en cours (voir _wireChipDragDrop) — sinon une liste
+   vide reste à hauteur nulle. */
+.sug-chips.drag-active{ min-height:26px; }
 /* Survol pendant un glisser-déposer venant de l'AUTRE liste — retour
    visuel indiquant une zone de dépôt valide. */
 .sug-chips-dragover{

@@ -1270,6 +1270,15 @@
         e.dataTransfer.setData('text/plain', JSON.stringify({ref:ref, from:key}));
         e.dataTransfer.effectAllowed = 'move';
         chip.classList.add('dragging');
+        // Donne une hauteur mini aux DEUX listes (même vides) le temps du
+        // glisser, pour qu'une liste vide reste une cible de dépôt valide —
+        // seulement pendant le glisser, pour ne pas laisser ce vide en
+        // permanence à l'écran (repéré en revoyant l'agencement de la
+        // fenêtre : "produits suggérés"/"pièces de rechange" trop serrés).
+        Object.keys(_linkFieldDefs).forEach(function(k){
+          var el = _linkFieldDefs[k].chipsEl();
+          if(el) el.classList.add('drag-active');
+        });
       });
       container.addEventListener('dragend', function(e){
         var chip = e.target.closest && e.target.closest('.sug-linked-item');
@@ -1282,7 +1291,7 @@
         // (retour utilisateur : "le contour est encore affiché").
         Object.keys(_linkFieldDefs).forEach(function(k){
           var el = _linkFieldDefs[k].chipsEl();
-          if(el) el.classList.remove('sug-chips-dragover');
+          if(el){ el.classList.remove('sug-chips-dragover'); el.classList.remove('drag-active'); }
         });
       });
       container.addEventListener('dragover', function(e){
