@@ -389,7 +389,9 @@
       if(imageBlob && bugId){
         var hUp = Object.assign({}, reqHeaders()); delete hUp['Content-Type']; // laisser fetch fixer le boundary multipart
         var fd = new FormData();
-        fd.append('bug_id', bugId);
+        // "bugId" (camelCase) — CONFIRMÉ par un test direct du Swagger,
+        // pas "bug_id" comme documenté ailleurs par erreur.
+        fd.append('bugId', bugId);
         fd.append('attachment', imageBlob, 'capture.jpg');
         var rImg = await fetch(sUrl + '/pushBugsFiles', { method:'POST', headers:hUp, body:fd });
         // Le rapport lui-même est déjà enregistré à ce stade — un échec
@@ -533,7 +535,7 @@
             if(!wrap) return; // fenêtre déjà refermée entretemps
             var url = URL.createObjectURL(blob);
             wrap.innerHTML = '<img src="' + url + '" style="max-width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;">';
-            wrap.querySelector('img').addEventListener('click', function(){ window.open(url, '_blank'); });
+            wrap.querySelector('img').addEventListener('click', function(){ window._showImageLightbox(url); });
           })
           .catch(function(e){
             var wrap = document.getElementById('reqBugImageWrap');
@@ -990,7 +992,7 @@
     if(bugImageRemove) bugImageRemove.addEventListener('click', _bugReportResetImage);
     var bugImagePreviewEl = document.getElementById('bugReportImagePreview');
     if(bugImagePreviewEl) bugImagePreviewEl.addEventListener('click', function(){
-      if(bugImagePreviewEl.src) window.open(bugImagePreviewEl.src, '_blank');
+      if(bugImagePreviewEl.src) window._showImageLightbox(bugImagePreviewEl.src);
     });
 
     // Glisser-déposer directement sur la zone

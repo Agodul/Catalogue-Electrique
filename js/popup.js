@@ -47,6 +47,34 @@ window.addEventListener('unhandledrejection', function(e){
 // debug déjà présents dans le code (ex. les "[PDF] ..." de render.js), qui
 // noyait le vrai signal.
 
+// ── Visionneuse plein écran pour une image (aperçu bug signalé, capture
+//    jointe au formulaire…) ── Volontairement PAS un window.open(url,
+//    '_blank') sur l'URL blob: de l'image : plusieurs navigateurs/contextes
+//    PWA déclenchent alors un téléchargement du fichier au lieu d'afficher
+//    l'image dans un nouvel onglet (retour utilisateur, capture à l'appui).
+//    Un simple calque plein écran reste dans la page — jamais de
+//    navigation, donc jamais de téléchargement déclenché.
+function _showImageLightbox(url){
+  if(!url) return;
+  var overlay = document.createElement('div');
+  overlay.style.cssText =
+    'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.85);' +
+    'display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+  var img = document.createElement('img');
+  img.src = url;
+  img.style.cssText = 'max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);cursor:zoom-out;';
+  overlay.appendChild(img);
+  function close(){
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  overlay.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(overlay);
+}
+window._showImageLightbox = _showImageLightbox;
+
 // ── Popups custom (remplacent alert/confirm/prompt natifs) ─────────────────
 // Style unique et cohérent dans toute l'app (repris de la confirmation
 // "Annuler la saisie"). Toutes les fonctions retournent une Promise :
