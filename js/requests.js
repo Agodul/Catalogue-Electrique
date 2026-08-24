@@ -72,6 +72,25 @@
       var dData = rData.ok ? await rData.json() : null;
       if(!dData) return; // serveur down, on ne met pas à jour
       var total = (dData && dData.count) || 0;
+      // + rapports de bug (API dédiée, comptés séparément — voir mémoire
+      // "bug-report-api-migration"). Un échec de /checkBugs (pas encore
+      // disponible côté serveur, etc.) ne doit pas empêcher d'afficher au
+      // moins le compte des demandes produit.
+      // /checkBugs (API dédiée aux bugs) : {count:N} CONFIRMÉ par un test
+      // direct du Swagger (la doc ne montrait qu'un exemple générique
+      // "string", trompeur). Fallback nombre/chaîne brute conservé par
+      // sécurité, mais ne devrait normalement jamais servir.
+      try {
+        var rBugs = await fetch(sUrl + '/checkBugs', { headers: h, cache: 'no-store' });
+        if(rBugs.ok){
+          var dBugs = await rBugs.json();
+          var nBugs = (dBugs && typeof dBugs === 'object' && typeof dBugs.count === 'number') ? dBugs.count
+                    : (typeof dBugs === 'number') ? dBugs
+                    : (typeof dBugs === 'string' && dBugs.trim() !== '' && !isNaN(Number(dBugs))) ? Number(dBugs)
+                    : 0;
+          total += nBugs;
+        }
+      } catch(eBugs){}
       ['requestsBadge','requestsBadgeMenu'].forEach(function(id){
         var el = document.getElementById(id);
         if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
@@ -127,6 +146,25 @@
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h });
       await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
+      return r.ok;
+    } catch(e) { return false; }
+  };
+
+  // ── Annuler SON PROPRE rapport de bug (API bugs — équivalent de reqCancel
+  // ci-dessus pour les demandes produit) ── Pas de garde admin, comme
+  // reqCancel : n'importe quel utilisateur connecté peut retirer son propre
+  // rapport, contrairement à reqResolveBug (réservé à l'admin).
+  // bugId : UUID du bug (champ "id" généré serveur, adressage réel de l'API
+  // documentée — ce n'était PAS "ref"+"user" comme l'ancienne API demandes).
+  // attachmentId : UUID de la pièce jointe éventuelle, une ressource séparée
+  // avec son propre identifiant — peut être null/undefined si aucune image.
+  window.reqCancelBug = async function(bugId, attachmentId){
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
+    var user = reqCurrentUser(); if(!user) return false;
+    try {
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/deleteBugs?id=' + encodeURIComponent(bugId), { method:'DELETE', headers:h });
+      if(attachmentId) await fetch(sUrl + '/deleteBugsFiles?attachmentId=' + encodeURIComponent(attachmentId), { method:'DELETE', headers:h }).catch(function(){});
       return r.ok;
     } catch(e) { return false; }
   };
@@ -192,8 +230,12 @@
       // doit jamais être poussé dans le vrai catalogue via /pushDatas.
       // Nécessaire ici, au niveau le plus bas, car "Accepter tout" boucle
       // sur toutes les demandes sans distinction (voir btnAcceptAllRequests) :
-      // un garde-fou seulement dans l'UI de détail n'aurait pas suffi.
-      if(item.type === 'bug') return await window.reqResolveBug(ref, user);
+      // un garde-fou seulement dans l'UI de détail n'aurait pas suffi. Ne
+      // devrait normalement plus jamais se déclencher depuis la migration
+      // vers l'API bugs dédiée (les rapports ne transitent plus par
+      // /pullDatasReq) — conservé par sécurité pour d'éventuels rapports
+      // historiques encore présents côté serveur dans l'ancien stockage.
+      if(item.type === 'bug') return await window.reqResolveBug(ref, item.attachmentId || null);
       delete item._reqUser; delete item._reqAt; delete item._reqOriginal; delete item.user;
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
@@ -232,70 +274,133 @@
     }
   };
 
+  // ── Version affichée de l'app, envoyée comme "appVersion" côté API bugs ──
+  // Lue directement dans le Cache Storage plutôt que dupliquée en dur ici :
+  // le nom du cache ouvert par sw.js EST déjà la source de vérité de la
+  // version ("spi-catalogue-vNNN", voir CACHE dans sw.js) — la relire évite
+  // un second numéro de version à maintenir manuellement en synchro.
+  async function _reqAppVersion(){
+    try {
+      if(typeof caches === 'undefined') return '';
+      var keys = await caches.keys();
+      var match = keys.find(function(k){ return /^spi-catalogue-v\d+$/.test(k); });
+      return match ? match.replace('spi-catalogue-', '') : '';
+    } catch(e) { return ''; }
+  }
+
+  // Normalise un enregistrement brut renvoyé par /pullBugs vers la même
+  // forme {ref, user, data} que les items de /pullDatasReq, pour que
+  // l'affichage/les actions (déjà écrits pour les demandes produit) restent
+  // partagés sans dupliquer tout le rendu.
+  // Forme réelle CONFIRMÉE côté serveur (test direct "Try it out" du
+  // Swagger, pas juste la doc) : {id, data:{title,description,severity,
+  // stepsToReproduce,appVersion}, createdBy, createdAt, updatedAt,
+  // attachments:[...]} — même enveloppe que /pullDatasReq (champs à plat
+  // enveloppés dans "data"), PAS les champs à plat qu'on aurait pu déduire
+  // de la seule doc des paramètres d'entrée. createdAt/updatedAt sont en
+  // epoch millisecondes (nombre), pas en chaîne ISO.
+  // "attachments" vu vide dans le test (aucune pièce jointe) — la forme de
+  // chaque entrée n'a donc pas pu être confirmée : lecture défensive sur
+  // "attachmentId"/"id" au cas où, en tolérant aussi une chaîne brute.
+  function _reqNormalizeBugItem(b){
+    b = b || {};
+    var raw = b.data || b; // tolère aussi une forme à plat si jamais elle diffère un jour
+    var attachments = Array.isArray(b.attachments) ? b.attachments : [];
+    var attId = null;
+    if(attachments.length){
+      var first = attachments[0];
+      attId = (typeof first === 'string') ? first : (first.attachmentId || first.id || null);
+    }
+    var authorName = b.createdBy || b.user || b.username || b.reportedBy || raw._reqUser || '';
+    var atMs = null;
+    if(typeof b.createdAt === 'number') atMs = b.createdAt;
+    else if(b.createdAt) atMs = Date.parse(b.createdAt) || null;
+    else if(b._reqAt) atMs = b._reqAt;
+    var data = {
+      type: 'bug',
+      title: raw.title || '',
+      description: raw.description || '',
+      severity: raw.severity || '',
+      stepsToReproduce: Array.isArray(raw.stepsToReproduce) ? raw.stepsToReproduce : [],
+      appVersion: raw.appVersion || '',
+      hasImage: !!attId,
+      attachmentId: attId,
+      _reqUser: authorName,
+      _reqAt: atMs
+    };
+    return { ref: b.id, user: authorName || '—', data: data, attachmentId: attId };
+  }
+
   // ── Signaler un bug ───────────────────────────────────────────
-  // Réutilise la même tuyauterie serveur que les demandes produit
-  // (pushDatasReq accepte n'importe quel JSON libre, aucun schéma imposé
-  // côté serveur) mais avec type:"bug" et des champs différents — jamais
-  // mélangé avec un vrai produit (voir garde-fou dans reqAccept ci-dessus).
+  // API dédiée aux bugs (checkBugs/pushBugs/pullBugs/deleteBugs +
+  // pushBugsFiles/pullBugsFiles/deleteBugsFiles), séparée de celle des
+  // demandes produit — voir mémoire "bug-report-api-migration". Payload en
+  // OBJET UNIQUE (pas un tableau comme /pushDatasReq) avec des champs figés
+  // par la doc Swagger : title/description/severity/stepsToReproduce/
+  // appVersion. Les IDs sont générés côté serveur (champ "id" renvoyé),
+  // contrairement à l'ancienne API où le client générait "ref".
   // imageBlob : fichier binaire déjà compressé (voir _bugCompressImage) ou
-  // null. Envoyé via /pushDocsReq (même endpoint multipart que les PDF
-  // produit) — jamais en base64 dans le JSON de /pushDatasReq, qui ne porte
-  // que l'indicateur hasImage.
-  window.reqSubmitBug = async function(description, imageBlob){
+  // null. Envoyé séparément via /pushBugsFiles (ressource distincte, avec
+  // son propre attachmentId) — jamais en base64 dans le JSON de /pushBugs.
+  window.reqSubmitBug = async function(title, description, severity, imageBlob){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     var user = reqCurrentUser(); if(!user) return false;
-    var username = user.username || user.name || 'user';
     try {
       var h = reqHeaders();
-      var now = Date.now();
-      var ref = 'BUG-' + now + '-' + Math.random().toString(36).substr(2,6);
+      // stepsToReproduce : pas de champ dédié dans le formulaire (pour ne
+      // pas surcharger l'UI sans confirmation des besoins réels) — dérivé
+      // au mieux de la description, une ligne = une étape. Le champ étant
+      // probablement requis côté API (tableau, pas nullable), on retombe
+      // sur la description entière comme étape unique si elle tient sur
+      // une seule ligne.
+      var steps = (description || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+      if(!steps.length) steps = [description || ''];
+      var appVersion = await _reqAppVersion();
       var toSend = {
-        ref: ref,
-        id: ref,
-        user: username,
-        type: 'bug',
+        title: title,
         description: description,
-        hasImage: !!imageBlob,
-        context: {
-          page: location.href,
-          userAgent: navigator.userAgent,
-          viewport: window.innerWidth + 'x' + window.innerHeight,
-          // Dernières erreurs JS/console.warn/console.error capturées (voir
-          // popup.js) — vide si rien d'anormal ne s'est produit récemment.
-          recentLogs: Array.isArray(window._bugErrorLog) ? window._bugErrorLog.slice() : []
-        },
-        createdAt: now,
-        updatedAt: now,
-        _reqUser: username,
-        _reqAt: now
+        severity: severity || 'medium',
+        stepsToReproduce: steps,
+        appVersion: appVersion
       };
-      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
+      var r = await fetch(sUrl + '/pushBugs', { method:'POST', headers:h, body:JSON.stringify(toSend) });
       if(!r.ok) return false;
-      if(imageBlob){
+      // Réponse attendue : l'UUID du bug créé (exemple Swagger "string",
+      // donc soit une chaîne JSON brute soit un objet {id:...}) — lecture
+      // défensive des deux formes.
+      var bugId = null;
+      try {
+        var created = await r.json();
+        bugId = (typeof created === 'string') ? created : (created && (created.id || created.bugId)) || null;
+      } catch(eParse){}
+      if(imageBlob && bugId){
         var hUp = Object.assign({}, reqHeaders()); delete hUp['Content-Type']; // laisser fetch fixer le boundary multipart
         var fd = new FormData();
-        fd.append('ref', ref);
-        fd.append('req_user', username);
-        fd.append('document', imageBlob, 'capture.jpg');
-        var rImg = await fetch(sUrl + '/pushDocsReq', { method:'POST', headers:hUp, body:fd });
-        // La demande elle-même est déjà enregistrée à ce stade — un échec
+        fd.append('bug_id', bugId);
+        fd.append('attachment', imageBlob, 'capture.jpg');
+        var rImg = await fetch(sUrl + '/pushBugsFiles', { method:'POST', headers:hUp, body:fd });
+        // Le rapport lui-même est déjà enregistré à ce stade — un échec
         // d'upload de l'image ne doit pas faire perdre tout le rapport,
         // juste signaler que l'image n'est pas jointe.
         if(!rImg.ok) console.warn('reqSubmitBug: image non envoyée, HTTP', rImg.status);
+      } else if(imageBlob && !bugId){
+        console.warn('reqSubmitBug: bug créé mais id introuvable dans la réponse — image non envoyée');
       }
       return true;
     } catch(e) { console.warn('reqSubmitBug:', e); return false; }
   };
 
-  // ── Marquer un bug comme résolu (supprime la demande ET l'image jointe le
-  //     cas échéant, sans jamais toucher au catalogue produit — voir
-  //     garde-fou dans reqAccept) ──
-  window.reqResolveBug = async function(ref, user){
+  // ── Marquer un bug comme résolu (supprime le rapport ET l'image jointe le
+  //     cas échéant, sans jamais toucher au catalogue produit — API bugs
+  //     entièrement séparée de celle des demandes produit) ──
+  // bugId : UUID renvoyé par /pushBugs (champ "id"). attachmentId : UUID de
+  // la pièce jointe éventuelle (ressource séparée, peut être null).
+  window.reqResolveBug = async function(bugId, attachmentId){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+      var r = await fetch(sUrl + '/deleteBugs?id=' + encodeURIComponent(bugId), { method:'DELETE', headers:h });
+      if(attachmentId) await fetch(sUrl + '/deleteBugsFiles?attachmentId=' + encodeURIComponent(attachmentId), { method:'DELETE', headers:h }).catch(function(){});
       return r.ok;
     } catch(e) { console.warn('reqResolveBug:', e); return false; }
   };
@@ -348,8 +453,14 @@
 
     var titleEl = document.getElementById('reqDetailTitle');
     var subtitleEl = document.getElementById('reqDetailSubtitle');
-    if(titleEl)    titleEl.textContent = '🐛 Bug signalé';
-    if(subtitleEl) subtitleEl.textContent = 'Signalé par ' + escapeHtml(user) + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+    if(titleEl)    titleEl.innerHTML = '<i class="ti ti-bug"></i> ' + escapeHtml(data.title || 'Bug signalé');
+    if(subtitleEl){
+      var subParts = [];
+      if(user && user !== '—') subParts.push('Signalé par ' + user);
+      if(data.severity) subParts.push('Gravité : ' + data.severity);
+      if(data._reqAt) subParts.push(new Date(data._reqAt).toLocaleString('fr-FR'));
+      subtitleEl.textContent = subParts.join(' · ');
+    }
 
     var body = document.getElementById('reqDetailBody');
     if(!body) return;
@@ -396,12 +507,13 @@
       + logsHtml;
 
     // L'image n'est jamais dans le JSON (voir reqSubmitBug) — récupérée à
-    // part depuis l'API fichiers, comme un PDF produit.
-    if(data.hasImage){
+    // part depuis l'API fichiers dédiée aux bugs, via l'UUID de la pièce
+    // jointe (attachmentId), distinct de l'UUID du bug lui-même.
+    if(data.hasImage && data.attachmentId){
       (function(){
         var sUrl = reqServerUrl();
         var hImg = Object.assign({}, reqHeaders()); delete hImg['Content-Type'];
-        fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(item.ref) + '&user=' + encodeURIComponent(user), { headers: hImg, cache: 'no-store' })
+        fetch(sUrl + '/pullBugsFiles?attachmentId=' + encodeURIComponent(data.attachmentId), { headers: hImg, cache: 'no-store' })
           .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
           .then(function(blob){
             var wrap = document.getElementById('reqBugImageWrap');
@@ -430,7 +542,7 @@
       btnAcc.innerHTML = '<i class="ti ti-check"></i> Marquer résolu';
       btnAcc.onclick = async function(){
         btnAcc.disabled = true; btnAcc.textContent = '…';
-        var ok = await window.reqResolveBug(item.ref, user);
+        var ok = await window.reqResolveBug(item.ref, data.attachmentId || null);
         if(ok){ _reqDetailClose(overlay); showToast('Bug marqué comme résolu ✓', 'ok', 2500); reqOpenPanel(); reqUpdateBadge(); }
         else { btnAcc.disabled = false; btnAcc.innerHTML = '<i class="ti ti-check"></i> Marquer résolu'; }
       };
@@ -457,7 +569,13 @@
 
 
   // ── Charger les demandes admin ────────────────────────────────
-  // ── Charger les demandes admin ────────────────────────────────
+  // Deux sources désormais séparées : /pullDatasReq (demandes produit) et
+  // /pullBugs (rapports de bug, API dédiée — voir mémoire
+  // "bug-report-api-migration") — combinées côté client pour l'affichage.
+  // Le filtre type==="bug" sur les items de /pullDatasReq est conservé par
+  // sécurité (d'éventuels anciens rapports encore présents côté serveur
+  // depuis avant cette migration), mais ne devrait plus jamais rien
+  // attraper pour les nouveaux rapports, tous envoyés via /pushBugs.
   async function reqLoadAdminList(){
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
@@ -465,10 +583,25 @@
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      var d = await r.json();
-      var items = d.items || [];
+      var rProd = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
+      if(!rProd.ok) throw new Error('HTTP ' + rProd.status);
+      var dProd = await rProd.json();
+      var prodRaw = dProd.items || [];
+
+      // Forme de la réponse non confirmée par la doc Swagger (au-delà des
+      // champs de chaque bug) — lecture défensive : tableau brut, {items:},
+      // ou {data:}.
+      var bugItemsRaw = [];
+      try {
+        var rBugs = await fetch(sUrl + '/pullBugs', { headers: h, cache: 'no-store' });
+        if(rBugs.ok){
+          var dBugs = await rBugs.json();
+          bugItemsRaw = Array.isArray(dBugs) ? dBugs : (dBugs && (dBugs.items || dBugs.data)) || [];
+        }
+      } catch(eBugs){ console.warn('reqLoadAdminList: /pullBugs indisponible', eBugs); }
+      var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem);
+
+      var items = prodRaw.concat(bugRaw);
       if(items.length === 0){
         body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>Aucune demande en attente</div>';
         var footer = document.getElementById('requestsFooter');
@@ -503,11 +636,14 @@
         return html;
       }
 
-      var productItems = items.filter(function(it){ return (it.data||{}).type !== 'bug'; });
-      var bugItems      = items.filter(function(it){ return (it.data||{}).type === 'bug'; });
+      var productItems = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      // bugRaw (déjà normalisé ci-dessus) d'abord, puis d'éventuels rapports
+      // historiques encore présents côté /pullDatasReq depuis avant la
+      // migration (garde-fou, voir commentaire en tête de fonction).
+      var bugItems = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
 
       var html = renderSection('Demandes produit', '<i class="ti ti-package"></i>', productItems)
-               + renderSection('Bugs signalés', '🐛', bugItems);
+               + renderSection('Bugs signalés', '<i class="ti ti-bug"></i>', bugItems);
       body.innerHTML = html;
 
       // Clic → modale détail
@@ -531,11 +667,11 @@
     var userKey = escapeHtml(user);
     var isBug  = data.type === 'bug';
     var isNew  = !data._reqOriginal;
-    var titleText = isBug ? 'Bug signalé' : item.ref;
+    var titleText = isBug ? (data.title || 'Bug signalé') : item.ref;
     var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
     var badgeBg   = isBug ? '#FEE2E2' : (isNew ? '#DCFCE7' : '#FEF3C7');
     var badgeFg   = isBug ? '#991B1B' : (isNew ? '#065F46' : '#92400E');
-    var badgeText = isBug ? '🐛 Bug' : (isNew ? 'Nouveau' : 'Modification');
+    var badgeText = isBug ? '<i class="ti ti-bug"></i> Bug' : (isNew ? 'Nouveau' : 'Modification');
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
@@ -551,6 +687,7 @@
   }
 
   // ── Charger mes demandes ──────────────────────────────────────
+  // Deux sources séparées, comme reqLoadAdminList — voir son commentaire.
   async function reqLoadMineList(){
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
@@ -561,10 +698,28 @@
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      var d = await r.json();
-      var items = d.items || [];
+      var rProd = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
+      if(!rProd.ok) throw new Error('HTTP ' + rProd.status);
+      var dProd = await rProd.json();
+      var prodRaw = dProd.items || [];
+
+      // /pullBugs ne documente aucun paramètre "user" (seulement id/date) —
+      // contrairement à /pullDatasReq. Hypothèse : le serveur scope déjà la
+      // réponse via le token d'auth envoyé dans les headers (admin = tout,
+      // utilisateur normal = ses propres rapports), comme c'est l'usage pour
+      // une API dédiée avec authentification. À vérifier côté serveur si
+      // cette liste s'avère incomplète ou trop large en pratique.
+      var bugItemsRaw = [];
+      try {
+        var rBugs = await fetch(sUrl + '/pullBugs', { headers: h, cache: 'no-store' });
+        if(rBugs.ok){
+          var dBugs = await rBugs.json();
+          bugItemsRaw = Array.isArray(dBugs) ? dBugs : (dBugs && (dBugs.items || dBugs.data)) || [];
+        }
+      } catch(eBugs){ console.warn('reqLoadMineList: /pullBugs indisponible', eBugs); }
+      var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem);
+
+      var items = prodRaw.concat(bugRaw);
       var footer = document.getElementById('requestsFooter');
       if(footer) footer.style.display = 'none';
       if(items.length === 0){
@@ -575,7 +730,7 @@
         var data  = it.data || {};
         var isBug = data.type === 'bug';
         var reqAt = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
-        var titleText = isBug ? 'Bug signalé' : it.ref;
+        var titleText = isBug ? (data.title || 'Bug signalé') : it.ref;
         var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
         return '<div class="req-item">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;">'
@@ -583,29 +738,34 @@
           +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
           +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
           + '</div>'
-          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '"><i class="ti ti-trash"></i> Annuler</button></div>'
+          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
       }
       // Même séparation que côté admin : demandes produit et bugs signalés
       // dans deux sections distinctes plutôt que mélangés.
-      var mineProduct = items.filter(function(it){ return (it.data||{}).type !== 'bug'; });
-      var mineBugs     = items.filter(function(it){ return (it.data||{}).type === 'bug'; });
+      var mineProduct = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      var mineBugs     = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
       var html = '';
       if(mineProduct.length){
         html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);"><i class="ti ti-package"></i> Demandes produit</div>';
         html += mineProduct.map(renderMineItem).join('');
       }
       if(mineBugs.length){
-        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);">🐛 Bugs signalés</div>';
+        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);"><i class="ti ti-bug"></i> Bugs signalés</div>';
         html += mineBugs.map(renderMineItem).join('');
       }
       body.innerHTML = html;
       body.querySelectorAll('[data-req-cancel]').forEach(function(btn){
         btn.addEventListener('click', async function(){
           var ref = btn.getAttribute('data-req-cancel');
+          var isBug = btn.getAttribute('data-req-cancel-bug') === '1';
+          var attachmentId = btn.getAttribute('data-req-cancel-attachment') || null;
           if(!(await customConfirm('Annuler la demande ?', 'Annuler la demande pour ' + escapeHtml(ref) + ' ?', { okLabel: 'Annuler la demande', danger: true }))) return;
           btn.disabled = true;
-          var ok = await window.reqCancel(ref);
+          // Rapport de bug → API dédiée (reqCancelBug), sinon demande
+          // produit classique (reqCancel) — deux stockages désormais
+          // distincts côté serveur.
+          var ok = isBug ? await window.reqCancelBug(ref, attachmentId) : await window.reqCancel(ref);
           if(ok){ showToast('Demande annulée', 'ok', 2000); reqLoadMineList(); }
           else { showToast('Erreur', 'err', 3000); btn.disabled = false; }
         });
@@ -756,15 +916,19 @@
   }
 
   function _bugReportOpen(){
-    var overlay = document.getElementById('bugReportOverlay');
-    var desc    = document.getElementById('bugReportDesc');
+    var overlay  = document.getElementById('bugReportOverlay');
+    var title    = document.getElementById('bugReportTitle');
+    var severity = document.getElementById('bugReportSeverity');
+    var desc     = document.getElementById('bugReportDesc');
     if(!overlay) return;
-    if(desc) desc.value = '';
+    if(title)    title.value = '';
+    if(severity) severity.value = 'medium';
+    if(desc)     desc.value = '';
     _bugReportResetImage();
     overlay.style.display = 'flex';
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
-    if(desc) setTimeout(function(){ desc.focus(); }, 100);
+    if(title) setTimeout(function(){ title.focus(); }, 100);
   }
   function _bugReportClose(){
     var overlay = document.getElementById('bugReportOverlay');
@@ -855,11 +1019,16 @@
     });
 
     if(bugSubmitBtn) bugSubmitBtn.addEventListener('click', async function(){
-      var desc = document.getElementById('bugReportDesc');
-      var text = desc ? desc.value.trim() : '';
+      var titleEl    = document.getElementById('bugReportTitle');
+      var severityEl = document.getElementById('bugReportSeverity');
+      var desc       = document.getElementById('bugReportDesc');
+      var titleText  = titleEl ? titleEl.value.trim() : '';
+      var text       = desc ? desc.value.trim() : '';
+      var severity   = severityEl ? severityEl.value : 'medium';
+      if(!titleText){ showToast('Indique un titre avant d\'envoyer', 'warn', 3000); if(titleEl) titleEl.focus(); return; }
       if(!text){ showToast('Décris le problème avant d\'envoyer', 'warn', 3000); return; }
       bugSubmitBtn.disabled = true; bugSubmitBtn.textContent = 'Envoi…';
-      var ok = await window.reqSubmitBug(text, _bugReportImageBlob);
+      var ok = await window.reqSubmitBug(titleText, text, severity, _bugReportImageBlob);
       bugSubmitBtn.disabled = false; bugSubmitBtn.textContent = 'Envoyer';
       if(ok){ _bugReportClose(); showToast('Bug signalé, merci ✓', 'ok', 3000); }
       else { showToast('Échec de l\'envoi — réessayez', 'err', 3500); }

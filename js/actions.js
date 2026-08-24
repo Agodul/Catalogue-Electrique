@@ -2981,12 +2981,9 @@
       // Signaler un bug : ouvert à TOUT utilisateur connecté avec serveur
       // (pas seulement les admins) — un bug peut être trouvé par n'importe
       // qui, même sans droit d'édition. Miroir exact de btnReportBug côté
-      // desktop (js/auth.js).
-      // MASQUÉ TEMPORAIREMENT (demande utilisateur) — même raison et même
-      // TODO que btnReportBug dans js/auth.js : à réactiver
-      // (`loggedIn && !!sUrl`) dès le début du chantier de migration vers
-      // la nouvelle API dédiée aux bugs.
-      show('msReportBug',  false); // TODO: loggedIn && !!sUrl une fois la migration commencée
+      // desktop (js/auth.js). Réactivé — voir commentaire équivalent dans
+      // js/auth.js (API dédiée aux bugs en place côté serveur).
+      show('msReportBug',  loggedIn && !!sUrl);
 
       // Sous-titres adaptés à la conséquence réelle pour CET utilisateur
       // (retour utilisateur) — miroir exact de js/auth.js côté desktop.

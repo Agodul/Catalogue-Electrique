@@ -1086,10 +1086,21 @@
 <div class="modal-overlay" id="bugReportOverlay">
   <div class="modal" style="max-width:480px;">
     <div class="modal-head">
-      <h3>🐛 Signaler un bug</h3>
+      <h3><i class="ti ti-bug"></i> Signaler un bug</h3>
       <button class="close sans" id="bugReportCloseBtn" type="button">&times;</button>
     </div>
     <div class="modal-body">
+      <label for="bugReportTitle" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Titre</label>
+      <input type="text" id="bugReportTitle" placeholder="Ex. : Le bouton Enregistrer ne répond pas" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;box-sizing:border-box;margin-bottom:14px;">
+
+      <label for="bugReportSeverity" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Gravité</label>
+      <select id="bugReportSeverity" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;box-sizing:border-box;margin-bottom:14px;background:var(--paper);color:var(--ink);">
+        <option value="low">Faible</option>
+        <option value="medium" selected>Moyenne</option>
+        <option value="high">Élevée</option>
+        <option value="critical">Critique — bloquant</option>
+      </select>
+
       <label for="bugReportDesc" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Décrivez le problème rencontré</label>
       <textarea id="bugReportDesc" rows="6" placeholder="Ex. : le bouton Enregistrer ne répond pas quand je..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;resize:vertical;box-sizing:border-box;"></textarea>
       <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4;">La page actuelle, votre navigateur et les éventuelles erreurs techniques récentes sont joints automatiquement pour aider au diagnostic.</div>

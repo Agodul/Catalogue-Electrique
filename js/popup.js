@@ -41,27 +41,11 @@ window.addEventListener('unhandledrejection', function(e){
     stack: reason && reason.stack ? String(reason.stack).slice(0, 500) : ''
   });
 });
-// console.log/warn/error sont la façon dont ce codebase remonte déjà la
-// plupart des erreurs "avalées" (catch silencieux avec juste un warn/log) —
-// les capturer couvre bien plus de cas réels que error/unhandledrejection
-// seuls (voir ex. pushToServer/syncFromServer dans actions.js, ou les
-// "[PDF] ..." console.log de render.js).
-['log','warn','error'].forEach(function(level){
-  var orig = console[level];
-  console[level] = function(){
-    try {
-      var args = Array.prototype.slice.call(arguments);
-      _bugLogPush({
-        type: 'console.' + level,
-        message: args.map(function(a){
-          if(a instanceof Error) return a.message;
-          try { return typeof a === 'string' ? a : JSON.stringify(a); } catch(e){ return String(a); }
-        }).join(' ').slice(0, 500)
-      });
-    } catch(e){}
-    return orig.apply(console, arguments);
-  };
-});
+// PAS d'interception de console.log/warn/error : sur retour du dev, seule
+// une vraie erreur JS (exception non attrapée / promesse rejetée) doit
+// remonter dans le rapport de bug, pas le bruit des console.log/warn de
+// debug déjà présents dans le code (ex. les "[PDF] ..." de render.js), qui
+// noyait le vrai signal.
 
 // ── Popups custom (remplacent alert/confirm/prompt natifs) ─────────────────
 // Style unique et cohérent dans toute l'app (repris de la confirmation

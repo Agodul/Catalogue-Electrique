@@ -432,16 +432,12 @@ function applyAuthUI() {
   // Bouton "Signaler un bug" : visible pour TOUT utilisateur connecté (avec
   // serveur configuré), contrairement à "Proposer un produit" — un bug peut
   // être trouvé par n'importe qui, pas seulement les comptes sans droit
-  // d'édition.
-  // MASQUÉ TEMPORAIREMENT (demande utilisateur) : le backend dédié aux bugs
-  // est en cours de développement côté serveur (nouvelle table + API,
-  // séparée des demandes produit — voir mémoire "bug-report-api-migration").
-  // Le bouton réutilise encore l'ancienne API des demandes produit
-  // (/pushDatasReq etc.) en attendant. À réactiver — remettre la ligne
-  // ci-dessous à `(loggedIn && !!_sUrlReq)` — dès le début du chantier de
-  // migration vers la nouvelle API.
+  // d'édition. Réactivé : le backend dédié aux bugs (checkBugs/pushBugs/
+  // pullBugs/deleteBugs + BugsFiles) est en place côté serveur — voir
+  // mémoire "bug-report-api-migration" et js/requests.js (reqSubmitBug
+  // etc.), migrés hors de l'ancienne API des demandes produit.
   var btnReportBug = document.getElementById('btnReportBug');
-  if (btnReportBug) btnReportBug.style.display = 'none'; // TODO: (loggedIn && !!_sUrlReq) une fois la migration commencée
+  if (btnReportBug) btnReportBug.style.display = (loggedIn && !!_sUrlReq) ? '' : 'none';
 
   // Champs suggestions / pièces de rechange : visibles uniquement pour
   // canEdit/admin — la 2e ligne manquait à l'ajout de "Pièces de rechange"

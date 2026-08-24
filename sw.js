@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v513";
+const CACHE = "spi-catalogue-v519";
 
 const FILES = [
   "./",
@@ -79,14 +79,6 @@ const FILES = [
   "./assets/splash-mobile.mp4"
 ];
 
-// Origines à ne jamais intercepter (CDN, API externe)
-const PASSTHROUGH = [
-  'cdn.jsdelivr.net',
-  'cdnjs.cloudflare.com',
-  'spice-api.spiservices.fr',
-  'blob:'
-];
-
 self.addEventListener("install", event => {
   // Précharger les fichiers statiques en parallèle
   event.waitUntil(
@@ -125,8 +117,18 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
 
-  // ── Bypass : CDN et API externe passent directement au réseau ───
-  if(PASSTHROUGH.some(function(h){ return event.request.url.startsWith('blob:') || url.hostname === h; })){
+  // ── Bypass : toute requête CROSS-ORIGIN (API serveur, CDN, blob:) passe
+  // directement au réseau, sans jamais transiter par le cache du SW. Testé
+  // par comparaison d'ORIGINE plutôt que par une liste de noms d'hôtes en
+  // dur : l'URL du serveur API est configurable par l'utilisateur (Réglages
+  // → voir cat_server_url / serverUrlInput dans actions.js), donc figée à
+  // la compilation elle se désynchronisait silencieusement dès qu'un autre
+  // serveur était configuré — les requêtes API auraient alors pu être
+  // servies depuis le cache du SW (stale-while-revalidate ci-dessous),
+  // potentiellement avec des données obsolètes. Toutes les ressources de
+  // l'app elle-même (FILES ci-dessus) sont en chemin relatif, donc
+  // same-origin — aucune n'est concernée par ce bypass.
+  if(event.request.url.startsWith('blob:') || url.origin !== self.location.origin){
     event.respondWith(fetch(event.request));
     return;
   }

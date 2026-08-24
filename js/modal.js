@@ -1076,6 +1076,12 @@
         _sugRenderChips();
         fSuggestionsSearch.value = '';
         fSuggestionsDrop.style.display = 'none';
+        // e.preventDefault() ci-dessus (nécessaire pour que le clic sur la
+        // suggestion s'exécute avant le blur natif du champ) a pour effet de
+        // bord de laisser le champ focus après la sélection — visible par
+        // son contour bleu qui restait affiché même une fois le champ vide
+        // et l'action terminée (retour utilisateur, capture à l'appui).
+        fSuggestionsSearch.blur();
       });
     });
   }
@@ -1214,6 +1220,7 @@
         _sparePartsRenderChips();
         fSparePartsSearch.value = '';
         fSparePartsDrop.style.display = 'none';
+        fSparePartsSearch.blur(); // voir commentaire équivalent dans _sugSearch
       });
     });
   }
