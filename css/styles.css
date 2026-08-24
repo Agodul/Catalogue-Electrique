@@ -2957,8 +2957,14 @@
 .sug-chips:not(:empty){ margin-top:8px; }
 /* Cible de dépôt valide même vide, mais UNIQUEMENT pendant un glisser-
    déposer réellement en cours (voir _wireChipDragDrop) — sinon une liste
-   vide reste à hauteur nulle. */
-.sug-chips.drag-active{ min-height:26px; }
+   vide reste à hauteur nulle. margin-bottom réserve la place du contour en
+   pointillés (outline-offset ci-dessous) : sans elle, ce contour — qui ne
+   participe pas à la mise en page puisqu'un outline ne fait jamais bouger
+   les éléments voisins — venait chevaucher/couper le champ juste en
+   dessous quand la liste était vide donc très basse (retour utilisateur,
+   capture à l'appui : "le cercle bleu est coupé quand c'est la première
+   réf"). */
+.sug-chips.drag-active{ min-height:26px; margin-top:8px; margin-bottom:8px; }
 /* Survol pendant un glisser-déposer venant de l'AUTRE liste — retour
    visuel indiquant une zone de dépôt valide. */
 .sug-chips-dragover{
