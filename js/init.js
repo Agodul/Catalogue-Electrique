@@ -229,7 +229,7 @@
       { overlay: 'armoireConfigOverlay', close: 'armoireConfigCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
       { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },
-      { overlay: 'conflictOverlay',   close: 'conflictClose'    },
+      { overlay: 'conflictOverlay',   close: 'conflictCloseBtn' },
       { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
       { overlay: 'requestsOverlay',   close: 'requestsPanelClose' },
       { overlay: 'bugReportOverlay',  close: 'bugReportCloseBtn' },
@@ -237,6 +237,7 @@
       { overlay: 'iconPickerModal',   close: 'iconPickerClose', classList: true },
       { overlay: 'settingsOverlay',   close: 'settingsClose',   classList: true },
       { overlay: 'authOverlay',       close: 'authCloseBtn',    classList: true },
+      { overlay: 'modalOverlay',      close: 'modalClose',      classList: true },
     ];
 
     function isVisible(el){
@@ -252,6 +253,30 @@
       var btn = document.getElementById(closeId);
       if(btn) btn.click();
     }
+
+    // ── Fermeture générale (bottom nav) ─────────────────────────────────
+    // Changer d'onglet dans la barre de navigation mobile ne fermait que
+    // Paramètres/Configurateur d'armoire/tiroirs/connexion (traités au cas
+    // par cas dans _initBottomNav, js/actions.js) — toutes les AUTRES
+    // fenêtres de cette liste (caractéristiques, documents, suggestions,
+    // demandes, conflits, etc.) restaient ouvertes derrière, invisibles
+    // mais toujours actives (retour utilisateur : vérifié sur les autres
+    // fenêtres mobiles, plusieurs ne se fermaient pas). Réutilise CETTE
+    // même liste MODALS (clic sur le vrai bouton fermer de chacune, pour
+    // repasser par sa logique de fermeture propre — ex. confirmation de
+    // saisie non enregistrée sur la fiche produit) plutôt que de dupliquer
+    // une seconde liste dans actions.js. viewOverlay est volontairement
+    // exclu : son bouton fermer peut REMONTER d'un niveau au lieu de
+    // fermer (navigation depuis une suggestion, voir closeView() dans
+    // js/render.js) — _initBottomNav le ferme donc directement de son côté.
+    window._closeAllOverlays = function(exceptOverlayIds){
+      var except = exceptOverlayIds || [];
+      MODALS.forEach(function(m){
+        if(m.overlay === 'viewOverlay') return; // cas spécial, voir commentaire ci-dessus
+        if(except.indexOf(m.overlay) !== -1) return;
+        if(isVisible(document.getElementById(m.overlay))) triggerClose(m.close);
+      });
+    };
 
     // Escape : ferme la modale la plus haute (z-index) visible
     document.addEventListener('keydown', function(e){
@@ -275,6 +300,58 @@
         // Bloquer — ne rien faire si on clique en dehors de la modale
         e.stopPropagation();
       });
+    });
+  })();
+
+  // ── Remise à zéro du défilement à l'ouverture, pour TOUTES les fenêtres ──
+  // Une fenêtre reste dans le DOM entre deux ouvertures (juste masquée) —
+  // son scrollTop n'est donc jamais réinitialisé tout seul par le
+  // navigateur : la rouvrir (même sur un autre produit/une autre entrée)
+  // reprenait exactement là où on l'avait laissée au lieu de repartir du
+  // début (retour utilisateur : "corrige la mémorisation de la position du
+  // scroll pour tous" — déjà fait au cas par cas pour la fiche produit,
+  // généralisé ici à toutes les fenêtres d'un coup plutôt qu'une par une).
+  // Générique et à l'épreuve du temps : surveille chaque overlay connu et,
+  // dès qu'il passe de masqué à visible (quelle que soit la méthode —
+  // style.display ou classList — utilisée pour l'ouvrir), remet à zéro
+  // TOUTES les zones défilantes qu'il contient, sans avoir à connaître leur
+  // classe exacte ni à modifier chaque fonction d'ouverture éparpillée dans
+  // le code.
+  ;(function _initScrollReset(){
+    var OVERLAY_IDS = [
+      'modalOverlay', 'viewOverlay', 'settingsOverlay', 'requestsOverlay',
+      'docOverlay', 'priceModalOverlay', 'specsOverlay', 'sugOverlay',
+      'sugPickerOverlay', 'conflictOverlay', 'reqDetailOverlay',
+      'xlsxImportOverlay', 'authOverlay', 'iconPickerModal', 'compareOverlay',
+      'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay',
+      'filterSheet', 'menuSheet'
+    ];
+    function isVisible(el){
+      var cs = getComputedStyle(el);
+      if(cs.display === 'none') return false;
+      // .open/.show pilotent la visibilité via transform/opacity sur
+      // certaines fenêtres (feuilles mobiles) plutôt que display — s'appuyer
+      // aussi sur ces classes en plus de display.
+      return true;
+    }
+    function resetScrollables(root){
+      var all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+      all.forEach(function(el){
+        if(el.scrollTop <= 0) return;
+        var cs = getComputedStyle(el);
+        if(cs.overflowY === 'auto' || cs.overflowY === 'scroll') el.scrollTop = 0;
+      });
+    }
+    OVERLAY_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      var wasVisible = isVisible(el) && (el.classList.contains('open') || el.classList.contains('show') || el.style.display !== 'none');
+      var mo = new MutationObserver(function(){
+        var nowVisible = isVisible(el) && (el.classList.contains('open') || el.classList.contains('show') || el.style.display === 'flex' || el.style.display === 'block');
+        if(nowVisible && !wasVisible) resetScrollables(el);
+        wasVisible = nowVisible;
+      });
+      mo.observe(el, { attributes: true, attributeFilter: ['style', 'class'] });
     });
   })();
 

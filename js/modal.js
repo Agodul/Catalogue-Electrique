@@ -851,15 +851,8 @@
 
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
-    // Revenir en haut du formulaire à chaque ouverture — le défilement
-    // n'est jamais réinitialisé par le navigateur puisque .modal-body reste
-    // dans le DOM entre deux ouvertures (juste caché) : sans ça, ouvrir une
-    // fiche après avoir défilé dans une précédente (ou dans celle-ci)
-    // rouvrait exactement là où on s'était arrêté au lieu de repartir du
-    // début (retour utilisateur : "je ne tombe pas directement tout en haut
-    // de la fenêtre").
-    var modalBodyEl = overlay.querySelector('.modal-body');
-    if(modalBodyEl) modalBodyEl.scrollTop = 0;
+    // Remise à zéro du défilement : gérée génériquement pour toutes les
+    // fenêtres par _initScrollReset() dans js/init.js.
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
     var inputs = overlay.querySelectorAll('input, textarea, select');
     inputs.forEach(function(el){ el.setAttribute('readonly', 'readonly'); });
@@ -1048,7 +1041,11 @@
     var prods = window.products || [];
     var editingRef = document.getElementById('fRef') ? document.getElementById('fRef').value.trim() : '';
     var results = prods.filter(function(p){
-      if(_sugRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté
+      if(_sugRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté ici
+      // Déjà lié comme pièce de rechange : une même réf n'a pas de sens
+      // dans les deux listes à la fois (même règle que le glisser-déposer,
+      // qui bloque déjà ce cas — étendue ici à l'ajout par recherche).
+      if(_sparePartsRefs.indexOf(p.ref) !== -1) return false;
       if(p.ref === editingRef) return false; // pas soi-même
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
@@ -1183,7 +1180,10 @@
     var prods = window.products || [];
     var editingRef = document.getElementById('fRef') ? document.getElementById('fRef').value.trim() : '';
     var results = prods.filter(function(p){
-      if(_sparePartsRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté
+      if(_sparePartsRefs.indexOf(p.ref) !== -1) return false; // déjà ajouté ici
+      // Déjà lié comme suggestion : même règle que le glisser-déposer, voir
+      // le commentaire équivalent dans _sugSearch.
+      if(_sugRefs.indexOf(p.ref) !== -1) return false;
       if(p.ref === editingRef) return false; // pas soi-même
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
@@ -1414,12 +1414,18 @@
     if(!sugPickerList) return;
     var def = _sugPickerDefs[_sugPickerTarget];
     var currentRefs = def.getRefs();
+    // Exclut aussi ce qui est déjà lié dans l'AUTRE liste — une même réf
+    // n'a pas de sens à la fois en suggestion et en pièce de rechange
+    // (même règle que le glisser-déposer et la recherche directe).
+    var otherKey = _sugPickerTarget === 'suggestions' ? 'spareParts' : 'suggestions';
+    var otherRefs = _sugPickerDefs[otherKey].getRefs();
     var prods = window.products || [];
     var editingRef = fRef ? fRef.value.trim() : '';
     q = (q||'').trim().toLowerCase();
     var visible = prods.filter(function(p){
       if(p.ref === editingRef) return false; // pas soi-même
-      if(currentRefs.indexOf(p.ref) !== -1) return false; // déjà lié
+      if(currentRefs.indexOf(p.ref) !== -1) return false; // déjà lié ici
+      if(otherRefs.indexOf(p.ref) !== -1) return false; // déjà lié dans l'autre liste
       if(!q) return true;
       return (p.ref||'').toLowerCase().indexOf(q) !== -1
           || (p.name||'').toLowerCase().indexOf(q) !== -1
@@ -1743,8 +1749,6 @@
     if(btnSave) btnSave.textContent = 'Valider et accepter';
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
-    var modalBodyElReview = overlay.querySelector('.modal-body');
-    if(modalBodyElReview) modalBodyElReview.scrollTop = 0;
     _reviewSetLocked(locked !== false);
   };
 

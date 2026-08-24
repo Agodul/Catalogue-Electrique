@@ -2561,20 +2561,33 @@
         document.body.classList.remove('modal-open');
       }
 
-      function closeSettingsNow(){
-        if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
+      // Fermeture générale de TOUTES les autres fenêtres ouvertes (Paramètres,
+      // configurateur d'armoire, connexion, documents, caractéristiques,
+      // suggestions, demandes, conflits, etc.) — remplace les fermetures au
+      // cas par cas qui ne couvraient que Paramètres/Armoire/Connexion et
+      // laissaient toutes les autres ouvertes derrière (retour utilisateur :
+      // vérifié sur les autres fenêtres mobiles, plusieurs ne se fermaient
+      // pas). Réutilise la liste centralisée dans js/init.js
+      // (_initModalEscape) — voir window._closeAllOverlays, qui exclut déjà
+      // viewOverlay (traité séparément juste en dessous : son bouton fermer
+      // peut remonter d'un niveau au lieu de fermer, voir closeView()).
+      function closeAllOverlaysNow(){
+        if(typeof window._closeAllOverlays === 'function') window._closeAllOverlays();
       }
 
-      function closeArmoireConfigNow(){
-        if(typeof _armoireClose === 'function') _armoireClose();
+      // Ferme complètement la fiche produit (jamais la navigation "retour
+      // en arrière" de closeView() lors d'un changement d'onglet nav).
+      function closeViewOverlayNow(){
+        var _vo=document.getElementById('viewOverlay');
+        if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
       }
 
       bnHome.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeSettingsNow();
-        closeArmoireConfigNow();
+        closeAllOverlaysNow();
+        closeViewOverlayNow();
         showHome();
         setActive(bnHome);
         // Remonter en haut de page
@@ -2586,19 +2599,8 @@
       bnSearch.addEventListener('click', function(){
         closeMenuSheet();
         closeFilterSheetNow();
-        closeSettingsNow();
-        closeArmoireConfigNow();
-        // Fermer la fiche produit si ouverte
-        var _vo=document.getElementById('viewOverlay');
-        if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
-        // Fermer le panneau demandes si ouvert (passe par reqClosePanel pour
-        // retirer .show — sinon le tiroir resterait "ouvert" visuellement au
-        // prochain affichage, sans animation de glissement, voir js/requests.js)
-        var _ro=document.getElementById('requestsOverlay');
-        if(_ro&&_ro.style.display!=='none'){
-          if(typeof reqClosePanel === 'function') reqClosePanel();
-          else { _ro.style.display='none'; document.body.classList.remove('modal-open'); }
-        }
+        closeAllOverlaysNow();
+        closeViewOverlayNow();
         var home = document.getElementById('homePage');
         if(home && !home.classList.contains('hidden')) showCatalogueAll();
         // Ouvrir la barre de recherche mobile sticky
@@ -2609,8 +2611,8 @@
       bnFilter.addEventListener('click', function(){
         closeMenuSheet();
         closeFloatingSearchNow();
-        closeSettingsNow();
-        closeArmoireConfigNow();
+        closeAllOverlaysNow();
+        closeViewOverlayNow();
         var home=document.getElementById('homePage');
         var wasHome = home && !home.classList.contains('hidden');
         if(wasHome){
@@ -2628,8 +2630,8 @@
       bnMenu.addEventListener('click', function(){
         closeFloatingSearchNow();
         closeFilterSheetNow();
-        closeSettingsNow();
-        closeArmoireConfigNow();
+        closeAllOverlaysNow();
+        closeViewOverlayNow();
         if(typeof window._openMenuSheet === 'function') window._openMenuSheet();
       });
 
