@@ -338,6 +338,52 @@
     object-fit:contain;
     display:block;
   }
+  /* Même badge que sur la carte catalogue, mais sur la photo de la fiche
+     produit (.vm-photo) — retour utilisateur : "Essentiel"/3DEXPERIENCE
+     devraient aussi être visibles en consultant une fiche, pas seulement
+     dans la grille. .vm-photo a déjà position:relative (voir plus haut). */
+  .vm-photo .three-d-overlay{
+    position:absolute;
+    right:10px;
+    bottom:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:2;
+  }
+  .vm-photo .three-d-overlay img{
+    width:24px;
+    height:24px;
+    object-fit:contain;
+    display:block;
+    /* .vm-photo img{transform:scale(1.12)} (photo principale, plus haut
+       dans ce fichier) matchait AUSSI cette image (sélecteur ".vm-photo
+       img" moins spécifique mais "transform" n'était pas redéfini
+       ci-dessus) — l'icône 3D héritait donc quand même de ce zoom 1.12,
+       ce qui l'agrandissait visuellement à ~27px et décalait son haut/bas
+       de ~1.4px par rapport au badge "Essentiel" malgré les 24px déclarés
+       ci-dessus (retour utilisateur : toujours pas à la même hauteur).
+       Neutralisé explicitement pour ne garder QUE les 24px déclarés. */
+    transform:none;
+  }
+  /* Alignement avec le badge "Essentiel" (.essential-badge, taille de base
+     définie plus bas dans ce fichier) — retour utilisateur : les deux
+     badges de la fiche produit doivent être à la même hauteur et de la
+     même taille, et le badge "Essentiel" doit être plus large. Padding et
+     taille de police fixés ici (pas seulement bottom/left/height) : sans
+     ça, les règles responsive de .essential-badge plus bas (mobile ≤640,
+     ≤380…) continuaient à réduire son padding/sa police et donc sa
+     largeur — cette règle est plus spécifique (.vm-photo .essential-badge)
+     donc l'emporte à tous les gabarits, y compris mobile/tablette. */
+  .vm-photo .essential-badge{
+    bottom:10px; left:10px;
+    height:24px; box-sizing:border-box;
+    display:flex; align-items:center; gap:4px;
+    padding:0 14px;
+    font-size:11px;
+    letter-spacing:.03em;
+    border-radius:20px;
+  }
   .card .tag.three-d{
     display:inline-flex; align-items:center; justify-content:center;
     width:32px; height:32px; padding:0;
@@ -500,14 +546,14 @@
   #viewModal{
     background:var(--paper-card); border-radius:12px;
     width:100%; max-width:760px;
-    /* Hauteur FIXE (pas max-height) : toutes les fiches produit doivent
-       occuper la même taille peu importe la quantité de contenu (description,
-       specs, produits suggérés…) — retour utilisateur. La photo elle-même ne
-       peut jamais faire déborder cette hauteur : .vm-photo a un ratio fixe
-       et son <img> utilise object-fit:contain (voir plus bas), qui réduit
-       TOUJOURS l'image pour qu'elle tienne entièrement dans sa case, jamais
-       l'inverse. */
-    height:80vh;
+    /* max-height (pas height fixe) : un essai de hauteur fixe pour que
+       toutes les fiches produit fassent la même taille a été fait puis
+       annulé (retour utilisateur, capture à l'appui) — pour un produit avec
+       peu de contenu, ça laissait un grand vide sous le dernier bouton
+       ("Voir les pièces de rechange" ne touchait plus le bas de la
+       fenêtre comme avant). La fiche s'ajuste donc de nouveau à son
+       contenu, plafonnée à 80vh avec défilement interne au-delà. */
+    max-height:80vh;
     box-shadow:var(--shadow-modal);
     overflow:hidden; position:relative;
     display:flex; flex-direction:column;
@@ -1151,7 +1197,7 @@
       display:flex; flex-direction:column;
       border-radius:16px 16px 16px 16px;
       width:100%; max-width:100%;
-      height:88dvh;
+      max-height:88dvh;
       box-shadow:0 -4px 24px rgba(0,0,0,.18);
       overflow:hidden;
       /* Le dégagement de la bottom-nav est géré par padding-bottom dans
@@ -1330,6 +1376,11 @@
   @keyframes slideUp{ from{ opacity:0; transform:translateY(40px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
   @keyframes fadeBg{  from{ background:rgba(100,100,100,0); } to{ background:var(--overlay-scrim); } }
   @keyframes fadeBgEdit{ from{ background:rgba(100,100,100,0); } to{ background:var(--overlay-scrim); } }
+  /* Variante sans scale() de slideUp, pour les tiroirs mobile dont le
+     contenu peut se charger juste après l'ouverture (voir règle mobile
+     plus bas, ≤1024px pointer:coarse) — translation verticale pure afin
+     que rien n'ait l'air "déformé" pendant l'animation. */
+  @keyframes sheetSlideUp{ from{ opacity:0; transform:translateY(28px); } to{ opacity:1; transform:translateY(0); } }
   #viewOverlay.open{ animation:fadeBg .25s ease forwards; }
   #viewOverlay.open #viewModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
   .modal-overlay.open{ animation:fadeBgEdit .25s ease forwards; }
@@ -2411,6 +2462,7 @@
   width: 40px; height: 4px;
   background: var(--line); border-radius: 2px;
   margin: 10px auto 0;
+  touch-action: none; /* glisser-pour-fermer (js/actions.js, _initSheetDragHandles) */
 }
 .filter-sheet-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2489,9 +2541,11 @@
     max-width: 100% !important;
     /* La hauteur inclut la zone réservée à la bottom-nav.
        padding-bottom ci-dessous protège le contenu sans réduire deux fois
-       la hauteur disponible. height (pas max-height) : toutes les fiches
-       produit à la même taille peu importe leur contenu (retour utilisateur). */
-    height: 95dvh !important;
+       la hauteur disponible. max-height (pas height fixe) : voir
+       commentaire sur la règle de base #viewModal plus haut dans ce
+       fichier — la fiche s'ajuste à son contenu, jamais un grand vide en
+       dessous du dernier bouton. */
+    max-height: 95dvh !important;
     transform: translateY(100%);
     transition: transform .35s cubic-bezier(.32,.72,0,1);
     /* padding-bottom (pas margin-bottom) : le dégagement nav doit être un
@@ -2702,14 +2756,48 @@
     width: 100% !important; max-width: 100% !important;
     border-radius: 20px 20px 0 0 !important;
     /* Une seule réservation pour la bottom-nav : padding-bottom.
-       Ne pas retrancher --nav-h dans height, sinon la nav est comptée
+       Ne pas retrancher --nav-h dans max-height, sinon la nav est comptée
        deux fois et la zone scrollable est artificiellement réduite.
-       height (pas max-height) : voir commentaire sur la règle de base
-       #viewModal plus haut dans ce fichier — toutes les fiches produit à
-       la même taille peu importe leur contenu. */
-    height: 85dvh !important;
+       max-height (pas height fixe) : voir commentaire sur la règle de base
+       #viewModal plus haut dans ce fichier. */
+    max-height: 85dvh !important;
     padding-bottom: var(--nav-h, 56px) !important;
     margin: 0 !important;
+  }
+
+  /* ── Animation d'ouverture pour les tiroirs restés sans transition ──
+     Documents, suggestions, parcourir le catalogue, caractéristiques,
+     configurateur d'armoire, prix, conflits, import xlsx, visionneuse
+     PDF, comparaison, sélecteur d'icône, connexion : tous basculaient
+     jusqu'ici d'un coup (display:none → flex, ou classe .show posée sans
+     règle d'animation associée), contrairement aux autres fenêtres
+     (fiche produit, formulaires, demandes…) qui ont déjà fadeBg/slideUp
+     (voir plus haut dans ce fichier). Retour utilisateur : "ajouter des
+     animations à l'ouverture de toutes les fenêtres sur mobile".
+     Technique : "animation" (et non "transition") rejoue automatiquement
+     à chaque passage display:none → flex, sans code JS supplémentaire —
+     fonctionne aussi bien pour les overlays pilotés en style inline
+     (docOverlay, sugOverlay, sugPickerOverlay, specsOverlay,
+     armoireConfigOverlay, priceModalOverlay, conflictOverlay,
+     xlsxImportOverlay, pdfViewerOverlay) que pour ceux pilotés par une
+     classe .show (compareOverlay, iconPickerModal, authOverlay).
+     Translation verticale SEULE (pas de scale() comme le slideUp
+     "desktop" ci-dessus) : demande explicite de l'utilisateur pour que
+     le contenu qui peut se charger juste après l'ouverture (liste de
+     documents, grille d'icônes, étapes d'import…) n'ait jamais l'air
+     "déformé" pendant l'animation. */
+  #docOverlay, #sugOverlay, #sugPickerOverlay, #specsOverlay,
+  #armoireConfigOverlay, #priceModalOverlay, #conflictOverlay,
+  #xlsxImportOverlay, #pdfViewerOverlay,
+  #compareOverlay.show, #iconPickerModal.show, #authOverlay.show{
+    animation: fadeBgEdit .25s ease forwards;
+  }
+  #docModal, #sugModal, #sugPickerModal, #specsModal, #armoireConfigModal,
+  #priceModalOverlay > div, #conflictModal, #xlsxImportOverlay > div,
+  #pdfViewerOverlay > div,
+  #compareOverlay.show .compare-box, #iconPickerModal.show .icon-picker-box,
+  #authOverlay.show .auth-box{
+    animation: sheetSlideUp .3s cubic-bezier(.32,.72,0,1) forwards;
   }
 }
 
@@ -3078,6 +3166,7 @@
     border-radius: 4px;
     margin: 10px auto 4px;
     flex-shrink: 0;
+    touch-action: none; /* glisser-pour-fermer (js/actions.js, _initSheetDragHandles) */
   }
 }
 

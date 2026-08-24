@@ -550,6 +550,25 @@
       seriesFilterEl.value = opts.series.indexOf(origSeries) !== -1 ? origSeries : '';
     }
 
+    // Ignorer un rendu strictement identique au précédent (même filtre/
+    // recherche/tri déjà affiché) — _lastRenderKey est explicitement remis
+    // à '' par save() à CHAQUE modification du catalogue (voir plus haut),
+    // ce raccourci ne peut donc jamais rater un vrai changement de contenu,
+    // seulement les déclenchements redondants. Retour utilisateur : sur
+    // mobile/tablette, rappliquer le même filtre (tiroir de filtres, ou
+    // cliquer deux fois la même catégorie) recréait toute la grille — donc
+    // rechargeait visuellement toutes les images — sans que rien n'ait
+    // changé. La grille HTML seule est concernée (coûteuse, avec les
+    // images) ; le rafraîchissement des <select> juste au-dessus reste
+    // systématique, pour toujours refléter une marque/famille/série qui
+    // vient d'apparaître ailleurs.
+    var renderKey = JSON.stringify([
+      brandFilterEl.value, familyFilterEl.value, seriesFilterEl.value,
+      searchInputEl.value, window._priceSort, viewAll
+    ]);
+    if(renderKey === _lastRenderKey) return;
+    _lastRenderKey = renderKey;
+
     var filtered = getFilteredProducts();
     var hdrChip = document.getElementById('hdrCountChip');
     if(hdrChip) hdrChip.textContent = filtered.length + (filtered.length > 1 ? ' produits' : ' produit');

@@ -377,6 +377,7 @@
   if(typeof window._initFilterSheet === 'function') window._initFilterSheet();
   if(typeof window._initBottomNav   === 'function') window._initBottomNav();
   if(typeof window._initMenuSheet   === 'function') window._initMenuSheet();
+  if(typeof window._initSheetDragHandles === 'function') window._initSheetDragHandles();
 
   // ── Bloquer le menu contextuel (clic droit / appui long) et le drag sur les images ──
   document.addEventListener('contextmenu', function(e){

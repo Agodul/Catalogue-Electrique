@@ -516,6 +516,28 @@ function applyAuthUI() {
 
   // Rafraîchir la page utilisateurs si ouverte (admin uniquement)
   if (isAdmin && typeof renderUserPage === 'function') renderUserPage();
+
+  // ── Nettoyage des séparateurs orphelins du menu ⋮ ──────────────────
+  // Un .hdr-menu-sep sans AUCUN item visible juste avant OU juste après lui
+  // (boutons masqués par manque de permission / déconnexion) laissait un
+  // fin liseré gris sous le coin arrondi du menu — quelques px à peine en
+  // isolation, mais bien visible une fois arrondi par le border-radius du
+  // menu (retour utilisateur, capture à l'appui : "zone grise" en haut du
+  // menu quand peu d'items restent visibles, desktop). Recalculé en entier
+  // à chaque appel (pas seulement masqué, aussi réaffiché si besoin) :
+  // couvre toute combinaison de permissions sans avoir à lister chaque cas
+  // à la main comme reqMenuSep le faisait pour le sien.
+  document.querySelectorAll('#hdrMenu .hdr-menu-sep').forEach(function(sep){
+    var hasVisiblePrev = false;
+    for(var prev = sep.previousElementSibling; prev; prev = prev.previousElementSibling){
+      if(getComputedStyle(prev).display !== 'none'){ hasVisiblePrev = true; break; }
+    }
+    var hasVisibleNext = false;
+    for(var next = sep.nextElementSibling; next; next = next.nextElementSibling){
+      if(getComputedStyle(next).display !== 'none'){ hasVisibleNext = true; break; }
+    }
+    sep.style.display = (hasVisiblePrev && hasVisibleNext) ? '' : 'none';
+  });
 }
 
 function updateAuthHeaderBtn(loggedIn, user) {

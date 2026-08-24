@@ -25,6 +25,14 @@ var _armoireCollapsedFolders = { block: {}, config: {} };
 // "Enregistrer" écrase alors l'entrée d'origine (POST le nouveau contenu
 // PUIS DELETE l'ancien) plutôt que d'en créer une nouvelle en double.
 var _armoireEditingEntry = null;
+// Sauvegarde de _armoireDraft pendant l'édition d'un bloc/config (voir
+// _armoireStartEditEntry) — retour utilisateur : éditer un bloc ne doit
+// JAMAIS obliger à vider/perdre la configuration en cours de composition.
+// _armoireDraft est temporairement remplacé par le contenu de l'entrée
+// éditée (pour réutiliser tel quel tout le reste de l'UI de composition —
+// recherche, +/-, retrait), puis restauré ici à l'annulation ou à la fin de
+// l'édition.
+var _armoireDraftBackup = null;
 
 function _armoireProductByRef(ref){
   return (window.products || []).find(function(p){ return p.ref === ref; });
@@ -648,7 +656,11 @@ async function _armoireSaveBlock(){
     .then(function(){
       if(typeof showToast === 'function') showToast('Bloc « ' + name + ' » ' + (editing ? 'mis à jour' : 'enregistré') + ' ✓', 'ok');
       _armoireEditingEntry = null;
-      _armoireDraft = [];
+      // En édition, restaurer la configuration en cours mise de côté (voir
+      // _armoireStartEditEntry) — jamais perdue. Hors édition, comportement
+      // inchangé : le brouillon se vide après avoir enregistré un bloc.
+      if(editing){ _armoireDraft = _armoireDraftBackup || []; _armoireDraftBackup = null; }
+      else { _armoireDraft = []; }
       _armoireRenderDraft();
       _armoireUpdateEditingBanner();
       _armoireFetchBlocks();
@@ -680,6 +692,13 @@ async function _armoireSaveConfig(){
     .then(function(){
       if(typeof showToast === 'function') showToast('Configuration « ' + name + ' » ' + (editing ? 'mise à jour' : 'enregistrée') + ' ✓', 'ok');
       _armoireEditingEntry = null;
+      // En édition, restaurer la configuration en cours mise de côté (voir
+      // _armoireStartEditEntry) — jamais perdue. Hors édition, vider le
+      // brouillon (retour utilisateur : même comportement qu'un bloc, pas
+      // besoin de "Vider" à la main après avoir enregistré).
+      if(editing){ _armoireDraft = _armoireDraftBackup || []; _armoireDraftBackup = null; }
+      else { _armoireDraft = []; }
+      _armoireRenderDraft();
       _armoireUpdateEditingBanner();
       _armoireFetchSavedConfigs();
     })
@@ -721,12 +740,15 @@ async function _armoireLoadSavedConfig(config){
 }
 
 // ── Modifier un bloc/une configuration existant ──────────────────────────
-// Charge son contenu dans la zone de composition pour l'éditer (ajouter/
-// retirer des produits, changer les quantités), plus nom/dossier au moment
-// de "Mettre à jour" (voir _armoireSaveBlock/_armoireSaveConfig) — retour
-// utilisateur : pouvoir éditer un bloc/une config, pas juste le recréer.
+// Met de côté _armoireDraft (jamais vidé/perdu, voir _armoireDraftBackup)
+// et le remplace TEMPORAIREMENT par le contenu de l'entrée éditée, pour
+// réutiliser telle quelle toute l'UI de composition (recherche, +/-,
+// retrait) — restauré par _armoireCancelEditEntry ou à la fin de
+// _armoireSaveBlock/_armoireSaveConfig. Retour utilisateur : éditer un
+// bloc/une config ne doit jamais obliger à supprimer/vider une
+// configuration en cours de création.
 async function _armoireStartEditEntry(entry, kind){
-  if(_armoireDraft.length && !(await customConfirm('Remplacer la configuration en cours ?', 'Modifier « ' + escapeHtml(entry.name) + ' » remplacera la configuration en cours (non enregistrée). Continuer ?', { okLabel: 'Continuer' }))) return;
+  _armoireDraftBackup = _armoireDraft;
   _armoireDraft = entry.items.map(function(it){ return { ref: it.ref, qty: it.qty || 1 }; });
   _armoireEditingEntry = { id: entry.id, kind: kind, name: entry.name, folder: entry.folder || '' };
   _armoireRenderDraft();
@@ -738,9 +760,13 @@ async function _armoireStartEditEntry(entry, kind){
   if(typeof _armoireSetMobileView === 'function') _armoireSetMobileView('draft');
 }
 
+// Restaure la configuration en cours telle qu'elle était avant l'édition —
+// aucune donnée de l'utilisateur n'est jamais perdue, qu'il annule
+// explicitement ou qu'il vide/ferme pendant l'édition.
 function _armoireCancelEditEntry(){
   _armoireEditingEntry = null;
-  _armoireDraft = [];
+  _armoireDraft = _armoireDraftBackup || [];
+  _armoireDraftBackup = null;
   _armoireRenderDraft();
   _armoireUpdateEditingBanner();
 }
@@ -936,6 +962,11 @@ function _armoireOpen(){
 }
 
 function _armoireClose(){
+  // Filet de sécurité : fermer le configurateur en pleine édition d'un
+  // bloc/config ne doit jamais laisser la vraie configuration en cours
+  // remplacée par le contenu édité — restaure silencieusement (voir
+  // _armoireCancelEditEntry, jamais perdre la configuration de l'utilisateur).
+  if(_armoireEditingEntry) _armoireCancelEditEntry();
   var overlay = document.getElementById('armoireConfigOverlay');
   if(overlay) overlay.style.display = 'none';
   document.body.classList.remove('modal-open');
@@ -1018,11 +1049,16 @@ function _armoireClose(){
   if(clearBtn) clearBtn.addEventListener('click', async function(){
     if(!_armoireDraft.length) return;
     if(!(await customConfirm('Vider la configuration en cours ?', '', { okLabel: 'Vider', danger: true }))) return;
+    if(_armoireEditingEntry){
+      // Vider pendant une édition = l'abandonner — restaure la
+      // configuration en cours mise de côté (voir _armoireCancelEditEntry)
+      // plutôt que de la remplacer par du vide : jamais perdre la vraie
+      // configuration de l'utilisateur (retour utilisateur).
+      _armoireCancelEditEntry();
+      return;
+    }
     _armoireDraft = [];
     _armoireRenderDraft();
-    // Vider abandonne aussi une édition en cours (voir _armoireStartEditEntry)
-    // — plus rien à "Mettre à jour" une fois le contenu vidé.
-    if(_armoireEditingEntry){ _armoireEditingEntry = null; _armoireUpdateEditingBanner(); }
   });
 
   var exportBtn = document.getElementById('armoireConfigExportBtn');
