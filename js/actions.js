@@ -713,7 +713,13 @@
     try {
       var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
       delete h['Content-Type'];
-      var r = await fetch(serverUrl + '/pullDatas', { headers: h, cache: 'no-store' });
+      // ?ref= : filtrer sur CE produit plutôt qu'un /pullDatas sans
+      // paramètre (dump complet du catalogue) — confirmé fonctionnel côté
+      // serveur réel (retour utilisateur, capture Swagger à l'appui), et
+      // bien plus fiable/rapide qu'un dump complet à chaque clic sur
+      // "Modifier" pour un catalogue de plusieurs centaines de produits.
+      var url = serverUrl + '/pullDatas' + (p.ref ? '?ref=' + encodeURIComponent(p.ref) : '');
+      var r = await fetch(url, { headers: h, cache: 'no-store' });
       if(!r.ok) return { fetched:false, state:null };
       var data = await r.json();
       var items = (data && Array.isArray(data.items)) ? data.items.map(function(it){ return it.data; }) : (Array.isArray(data) ? data : []);
