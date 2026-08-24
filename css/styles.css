@@ -678,7 +678,14 @@
     border:1px solid var(--line); font-size:13.5px; padding:7px;
   }
   .tab-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  .armoire-tab-btn.active, .armoire-mobile-tab.active{ background:var(--copper); color:#fff; border-color:var(--copper); }
+  /* Variante cuivre du même .tab-btn — celle utilisée dans le configurateur
+     d'armoire ("Blocs enregistrés"/"Configurations enregistrées", onglets
+     mobiles "Parcourir"/"Ma configuration"). .tab-btn-copper est le nom
+     générique à réutiliser pour toute nouvelle paire d'onglets qui doit
+     reprendre CE style précis (ex. panneau Demandes) — .armoire-tab-btn/
+     .armoire-mobile-tab restent car lus par js/armoireConfig.js comme
+     sélecteurs, pas seulement pour le style. */
+  .armoire-tab-btn.active, .armoire-mobile-tab.active, .tab-btn-copper.active{ background:var(--copper); color:#fff; border-color:var(--copper); }
   .tab-pane{ display:none; }
   .tab-pane.active{ display:block; }
 
@@ -2327,9 +2334,13 @@
   button:disabled{ opacity:.6; cursor:not-allowed; }
 
   /* ===== PANNEAU DEMANDES ===== */
-  .req-tab { transition: color .15s, border-color .15s; }
-  .req-tab.active { color:#194093 !important; border-bottom-color:#194093 !important; }
-  .req-tab:not(.active) { color:var(--ink-soft) !important; border-bottom-color:transparent !important; }
+  /* Style repris de .tab-btn (mêmes boutons que "Blocs enregistrés"/
+     "Configurations enregistrées" dans le configurateur d'armoire, ou
+     "Extraction automatique"/"Saisie manuelle" — retour utilisateur : les
+     onglets doivent respecter le style des autres boutons de l'app plutôt
+     que le style "soulignement" ad-hoc d'origine). Plus de règles ici : tout
+     vient de .tab-btn/.tab-btn.active (voir plus haut dans ce fichier),
+     .req-tab ne sert plus qu'au sélecteur JS (querySelectorAll('.req-tab')).
 
   .req-item {
     padding:14px 20px;
@@ -2641,6 +2652,11 @@
     padding-bottom: var(--nav-h, 56px) !important;
     margin: 0 !important;
   }
+  /* #requestsPanel seul (pas les autres modales de la liste ci-dessus) :
+     hauteur FIXE plutôt que simple max-height — sinon la fenêtre change de
+     taille selon le nombre d'éléments à chaque changement d'onglet Demandes
+     produit/Bugs signalés (retour utilisateur). */
+  #requestsPanel{ height: 85dvh !important; }
   /* .auth-box : le bouton "Se connecter" est le dernier élément de la boîte
      (pas de champ après lui) — avec juste le dégagement nav (56px), il
      touchait visuellement le haut de la bottom nav sans aucune respiration

@@ -390,7 +390,7 @@
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
           <button id="btnTestServer" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);">
-            ⚡ Tester la connexion
+            <i class="ti ti-bolt"></i> Tester la connexion
           </button>
           <button id="btnSaveServer" class="copper" style="flex:1;padding:9px;border-radius:8px;font-size:13px;cursor:pointer;">
             Enregistrer
@@ -808,7 +808,7 @@
           <div class="url-field-mobile" style="margin-top:6px;">
             <button type="button" id="btnPasteExtract" class="copper"
               style="width:100%;padding:12px;font-size:15px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
-              📋 Coller le lien et extraire
+              <i class="ti ti-clipboard-text"></i> Coller le lien et extraire
             </button>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
@@ -1030,7 +1030,7 @@
 
 <!-- ===== PANNEAU DEMANDES ===== -->
 <div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:center;justify-content:center;padding:16px;">
-  <div id="requestsPanel" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;">
+  <div id="requestsPanel" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1042,10 +1042,10 @@
       </div>
       <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
     </div>
-    <!-- Onglets Admin / Mes demandes -->
-    <div id="requestsTabs" style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0;">
-      <button class="req-tab active" data-tab="admin" id="reqTabAdmin" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#194093;border-bottom:2px solid #194093;cursor:pointer;font-family:inherit;">Demandes reçues</button>
-      <button class="req-tab" data-tab="mine" id="reqTabMine" style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:var(--ink-soft);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">Mes demandes</button>
+    <!-- Onglets Demandes produit / Bugs signalés -->
+    <div id="requestsTabs" class="tabs" style="padding:12px 20px 10px;border-bottom:1px solid var(--line);flex-shrink:0;margin-bottom:0;">
+      <button class="req-tab tab-btn tab-btn-copper active" data-tab="product" id="reqTabProduct"><i class="ti ti-package"></i> Demandes produit</button>
+      <button class="req-tab tab-btn tab-btn-copper" data-tab="bug" id="reqTabBug"><i class="ti ti-bug"></i> Bugs signalés</button>
     </div>
     <!-- Corps -->
     <div id="requestsBody" style="flex:1;overflow-y:auto;"></div>
@@ -1164,7 +1164,7 @@
   <div id="conflictModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.32);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--ink);">⚠️ Conflits de synchronisation</div>
+        <div style="font-size:16px;font-weight:700;color:var(--ink);"><i class="ti ti-alert-triangle"></i> Conflits de synchronisation</div>
         <div id="conflictSubtitle" style="font-size:13px;color:var(--ink-soft);margin-top:2px;"></div>
       </div>
       <button id="conflictCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
@@ -1186,7 +1186,7 @@
 <div id="docOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
   <div id="docModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">📄 Documents produit</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);"><i class="ti ti-files"></i> Documents produit</div>
       <button id="docCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div id="docList" style="flex:1;overflow-y:auto;padding:20px;min-height:0;"></div>
@@ -1198,7 +1198,7 @@
 <div id="sugOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
   <div id="sugModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugModalTitle">💡 Produits suggérés</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugModalTitle"><i class="ti ti-bulb"></i> Produits suggérés</div>
       <button id="sugCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div id="sugList" style="flex:1;overflow-y:auto;padding:20px;min-height:0;"></div>
@@ -1210,7 +1210,7 @@
 <div id="sugPickerOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10650;align-items:center;justify-content:center;padding:20px;">
   <div id="sugPickerModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:880px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugPickerTitle">📂 Parcourir le catalogue</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugPickerTitle"><i class="ti ti-folder-open"></i> Parcourir le catalogue</div>
       <button id="sugPickerCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div style="padding:14px 24px 0;flex-shrink:0;">
@@ -1232,7 +1232,7 @@
 <div id="specsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
   <div id="specsModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">🔧 Caractéristiques techniques</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);"><i class="ti ti-tool"></i> Caractéristiques techniques</div>
       <button id="specsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:20px;min-height:0;">
@@ -1253,7 +1253,7 @@
 <div id="armoireConfigOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:16px;">
   <div id="armoireConfigModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:1120px;height:min(820px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
     <div style="padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);">🛠️ Configurateur d'armoire</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);"><i class="ti ti-tools"></i> Configurateur d'armoire</div>
       <button id="armoireConfigCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
     </div>
 
@@ -1261,8 +1261,8 @@
          (caché sur desktop où les deux colonnes restent côte à côte). -->
     <div class="armoire-mobile-switch" style="display:none;padding:10px 16px 0;flex-shrink:0;">
       <div class="tabs">
-        <button type="button" class="armoire-mobile-tab tab-btn active" data-view="browse">🔍 Parcourir</button>
-        <button type="button" class="armoire-mobile-tab tab-btn" data-view="draft">🛒 Ma configuration<span id="armoireMobileDraftBadge" style="display:none;"></span></button>
+        <button type="button" class="armoire-mobile-tab tab-btn active" data-view="browse"><i class="ti ti-search"></i> Parcourir</button>
+        <button type="button" class="armoire-mobile-tab tab-btn" data-view="draft"><i class="ti ti-shopping-cart"></i> Ma configuration<span id="armoireMobileDraftBadge" style="display:none;"></span></button>
       </div>
     </div>
 
@@ -1284,8 +1284,8 @@
         <div id="armoireBlocksDrawer" class="armoire-blocks-drawer" style="display:none;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;">
             <div class="tabs">
-              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks">📦 Blocs enregistrés</button>
-              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs">📋 Configurations enregistrées</button>
+              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks"><i class="ti ti-package"></i> Blocs enregistrés</button>
+              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs"><i class="ti ti-clipboard-list"></i> Configurations enregistrées</button>
             </div>
             <button type="button" id="armoireBlocksDrawerClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;flex-shrink:0;">✕</button>
           </div>

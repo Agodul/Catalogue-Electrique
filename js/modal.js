@@ -443,9 +443,21 @@
     switchTab('auto');
   }
   function closeModal(){
+    var wasEditingId = editingId;
     overlay.classList.remove('open');
     document.body.classList.remove('modal-open');
     editingId = null;
+    // Libère un éventuel verrou "en cours d'édition" (voir
+    // _tryLockProductForEdit/_releaseProductEditLock dans js/actions.js).
+    // Couvre Enregistrer (déjà nettoyé explicitement côté payload, donc sans
+    // effet ici) ET Annuler/fermeture directe (seul cas réellement utile,
+    // sinon le verrou resterait posé jusqu'à expiration de son TTL). Sans
+    // danger si aucun verrou n'a été posé ici (mode proposition/révision,
+    // "Ajouter un produit"…) : _releaseProductEditLock ne touche jamais un
+    // verrou qui n'est pas le nôtre.
+    if(wasEditingId && typeof window._releaseProductEditLock === 'function'){
+      window._releaseProductEditLock(wasEditingId);
+    }
   }
 
   // ---------- Vérification de référence en doublon ----------
@@ -1375,14 +1387,14 @@
   var _sugPickerTarget = 'suggestions'; // 'suggestions' | 'spareParts'
   var _sugPickerDefs = {
     suggestions: {
-      title: '📂 Parcourir le catalogue — Produits suggérés',
+      title: '<i class="ti ti-folder-open"></i> Parcourir le catalogue — Produits suggérés',
       noun: 'suggestions',
       getRefs: function(){ return _sugRefs; },
       addRefs: function(refs){ refs.forEach(function(r){ if(_sugRefs.indexOf(r)===-1) _sugRefs.push(r); }); },
       renderChips: function(){ _sugRenderChips(); }
     },
     spareParts: {
-      title: '📂 Parcourir le catalogue — Pièces de rechange',
+      title: '<i class="ti ti-folder-open"></i> Parcourir le catalogue — Pièces de rechange',
       noun: 'pièces de rechange',
       getRefs: function(){ return _sparePartsRefs; },
       addRefs: function(refs){ refs.forEach(function(r){ if(_sparePartsRefs.indexOf(r)===-1) _sparePartsRefs.push(r); }); },
@@ -1488,7 +1500,7 @@
   function _sugPickerOpen(target){
     if(!sugPickerOverlay) return;
     _sugPickerTarget = (target === 'spareParts') ? 'spareParts' : 'suggestions';
-    if(sugPickerTitleEl) sugPickerTitleEl.textContent = _sugPickerDefs[_sugPickerTarget].title;
+    if(sugPickerTitleEl) sugPickerTitleEl.innerHTML = _sugPickerDefs[_sugPickerTarget].title;
     _sugPickerSelected = [];
     _sugPickerOpenGroups = {};
     if(sugPickerSearch) sugPickerSearch.value = '';

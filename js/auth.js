@@ -598,8 +598,8 @@ function _renderUserList(container, users, isServer) {
   }
 
   var source = isServer
-    ? '<span style="font-size:11px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:4px;padding:2px 7px;margin-left:8px;">🌐 Serveur</span>'
-    : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;margin-left:8px;">⚠️ Local</span>';
+    ? '<span style="font-size:11px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:4px;padding:2px 7px;margin-left:8px;"><i class="ti ti-world"></i> Serveur</span>'
+    : '<span style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;margin-left:8px;"><i class="ti ti-alert-triangle"></i> Local</span>';
 
   window._cachedUsers = users; // pour récupérer les permissions au clic Modifier
   // Fonction d'échappement XSS locale

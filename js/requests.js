@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
   var _reqPollInterval = null;
-  var _reqPanelTab     = 'admin';
+  var _reqPanelTab     = 'product'; // onglet actif : 'product' ou 'bug' (plus une histoire de rôle — voir reqRefreshPanel)
 
   // ── Helpers ───────────────────────────────────────────────────
   function reqServerUrl(){ return localStorage.getItem('cat_server_url') || ''; }
@@ -591,7 +591,12 @@
   // sécurité (d'éventuels anciens rapports encore présents côté serveur
   // depuis avant cette migration), mais ne devrait plus jamais rien
   // attraper pour les nouveaux rapports, tous envoyés via /pushBugs.
-  async function reqLoadAdminList(){
+  // type : 'product' (par défaut) ou 'bug' — deux pages distinctes plutôt
+  // qu'une liste combinée avec des en-têtes de section (retour utilisateur :
+  // demandes produit et bugs signalés n'ont rien à voir, ne devraient même
+  // pas se retrouver dans le même écran).
+  async function reqLoadAdminList(type){
+    type = type === 'bug' ? 'bug' : 'product';
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
     if(!body) return;
@@ -616,20 +621,25 @@
       } catch(eBugs){ console.warn('reqLoadAdminList: /pullBugs indisponible', eBugs); }
       var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem);
 
-      var items = prodRaw.concat(bugRaw);
+      var productItems = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      // bugRaw (déjà normalisé ci-dessus) d'abord, puis d'éventuels rapports
+      // historiques encore présents côté /pullDatasReq depuis avant la
+      // migration (garde-fou, voir commentaire en tête de fonction).
+      var bugItems = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
+      var items = (type === 'bug') ? bugItems : productItems;
+
+      var footer = document.getElementById('requestsFooter');
       if(items.length === 0){
-        body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>Aucune demande en attente</div>';
-        var footer = document.getElementById('requestsFooter');
+        body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>'
+          + (type === 'bug' ? 'Aucun bug signalé' : 'Aucune demande en attente') + '</div>';
         if(footer) footer.style.display = 'none';
         return;
       }
-      var footer = document.getElementById('requestsFooter');
-      if(footer) footer.style.display = 'flex';
+      // "Tout accepter"/"Tout refuser" n'agissent que sur /pullDatasReq (voir
+      // leurs handlers) — pas d'équivalent groupé pour les bugs (chacun se
+      // marque résolu individuellement), donc pas de footer sur cet onglet.
+      if(footer) footer.style.display = (type === 'bug') ? 'none' : 'flex';
 
-      // Séparer d'abord demandes produit / rapports de bug (retour
-      // utilisateur : les deux catégories n'ont rien à voir, ne pas les
-      // mélanger dans la même liste), puis regrouper par utilisateur DANS
-      // chaque catégorie, comme avant.
       function groupByUser(list){
         var byUser = {};
         list.forEach(function(it){
@@ -640,25 +650,12 @@
         });
         return byUser;
       }
-      function renderSection(title, iconHtml, list){
-        if(!list.length) return '';
-        var byUser = groupByUser(list);
-        var html = '<div style="padding:12px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);">' + iconHtml + ' ' + title + ' — ' + list.length + '</div>';
-        Object.keys(byUser).forEach(function(u){
-          html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + '</div>';
-          byUser[u].forEach(function(item){ html += reqRenderAdminItem(item, u); });
-        });
-        return html;
-      }
-
-      var productItems = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
-      // bugRaw (déjà normalisé ci-dessus) d'abord, puis d'éventuels rapports
-      // historiques encore présents côté /pullDatasReq depuis avant la
-      // migration (garde-fou, voir commentaire en tête de fonction).
-      var bugItems = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
-
-      var html = renderSection('Demandes produit', '<i class="ti ti-package"></i>', productItems)
-               + renderSection('Bugs signalés', '<i class="ti ti-bug"></i>', bugItems);
+      var byUser = groupByUser(items);
+      var html = '';
+      Object.keys(byUser).forEach(function(u){
+        html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + '</div>';
+        byUser[u].forEach(function(item){ html += reqRenderAdminItem(item, u); });
+      });
       body.innerHTML = html;
 
       // Clic → modale détail
@@ -702,8 +699,10 @@
   }
 
   // ── Charger mes demandes ──────────────────────────────────────
-  // Deux sources séparées, comme reqLoadAdminList — voir son commentaire.
-  async function reqLoadMineList(){
+  // type : 'product' (par défaut) ou 'bug' — même page unique par type que
+  // reqLoadAdminList, voir son commentaire.
+  async function reqLoadMineList(type){
+    type = type === 'bug' ? 'bug' : 'product';
     var sUrl = reqServerUrl();
     var body = document.getElementById('requestsBody');
     if(!body) return;
@@ -711,6 +710,8 @@
     if(!user){ body.innerHTML = '<div class="req-empty">Non connecté</div>'; return; }
     var username = user.username || user.name || '';
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
+    var footer = document.getElementById('requestsFooter');
+    if(footer) footer.style.display = 'none'; // jamais d'action groupée sur "Mes demandes"
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       var rProd = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
@@ -734,11 +735,13 @@
       } catch(eBugs){ console.warn('reqLoadMineList: /pullBugs indisponible', eBugs); }
       var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem);
 
-      var items = prodRaw.concat(bugRaw);
-      var footer = document.getElementById('requestsFooter');
-      if(footer) footer.style.display = 'none';
+      var mineProduct = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
+      var mineBugs     = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
+      var items = (type === 'bug') ? mineBugs : mineProduct;
+
       if(items.length === 0){
-        body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>Aucune demande en attente</div>';
+        body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>'
+          + (type === 'bug' ? 'Aucun bug signalé' : 'Aucune demande en attente') + '</div>';
         return;
       }
       function renderMineItem(it){
@@ -756,20 +759,7 @@
           + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
       }
-      // Même séparation que côté admin : demandes produit et bugs signalés
-      // dans deux sections distinctes plutôt que mélangés.
-      var mineProduct = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
-      var mineBugs     = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
-      var html = '';
-      if(mineProduct.length){
-        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);"><i class="ti ti-package"></i> Demandes produit</div>';
-        html += mineProduct.map(renderMineItem).join('');
-      }
-      if(mineBugs.length){
-        html += '<div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);"><i class="ti ti-bug"></i> Bugs signalés</div>';
-        html += mineBugs.map(renderMineItem).join('');
-      }
-      body.innerHTML = html;
+      body.innerHTML = items.map(renderMineItem).join('');
       body.querySelectorAll('[data-req-cancel]').forEach(function(btn){
         btn.addEventListener('click', async function(){
           var ref = btn.getAttribute('data-req-cancel');
@@ -781,7 +771,7 @@
           // produit classique (reqCancel) — deux stockages désormais
           // distincts côté serveur.
           var ok = isBug ? await window.reqCancelBug(ref, attachmentId) : await window.reqCancel(ref);
-          if(ok){ showToast('Demande annulée', 'ok', 2000); reqLoadMineList(); }
+          if(ok){ showToast('Demande annulée', 'ok', 2000); reqLoadMineList(type); }
           else { showToast('Erreur', 'err', 3000); btn.disabled = false; }
         });
       });
@@ -815,25 +805,26 @@
     reqRefreshPanel();
   }
 
+  // Les onglets sont maintenant PAR TYPE (Demandes produit / Bugs signalés),
+  // toujours tous les deux visibles quel que soit le rôle — avant, un seul
+  // onglet "actif" existait par rôle (admin : "Demandes reçues" combinant
+  // les deux catégories ; utilisateur normal : "Mes demandes" idem), avec
+  // les deux catégories mélangées à l'intérieur via des en-têtes de section
+  // (retour utilisateur : demandes produit et bugs signalés n'ont rien à
+  // voir, autant leur donner chacun sa page plutôt qu'une simple section).
+  // Le rôle continue de décider la SOURCE (file d'attente admin vs mes
+  // propres soumissions), indépendamment de l'onglet (type) sélectionné.
   function reqRefreshPanel(){
     var subtitle  = document.getElementById('requestsPanelSubtitle');
-    var tabAdmin  = document.getElementById('reqTabAdmin');
-    var tabMine   = document.getElementById('reqTabMine');
-    var tabsDiv   = document.getElementById('requestsTabs');
     var isAdmin   = reqIsAdmin();
+    var isBugTab  = _reqPanelTab === 'bug';
 
-    // Admins : onglet unique "Demandes reçues", cacher "Mes demandes" et la barre d'onglets
     if(isAdmin){
-      if(tabsDiv) tabsDiv.style.display = 'none';
-      _reqPanelTab = 'admin';
-      reqLoadAdminList();
-      if(subtitle) subtitle.textContent = 'Modifications proposées par les utilisateurs';
+      reqLoadAdminList(_reqPanelTab);
+      if(subtitle) subtitle.textContent = isBugTab ? 'Bugs signalés par les utilisateurs' : 'Modifications proposées par les utilisateurs';
     } else {
-      if(tabsDiv) tabsDiv.style.display = '';
-      if(tabAdmin) tabAdmin.style.display = 'none';
-      _reqPanelTab = 'mine';
-      reqLoadMineList();
-      if(subtitle) subtitle.textContent = 'Vos modifications en attente de validation';
+      reqLoadMineList(_reqPanelTab);
+      if(subtitle) subtitle.textContent = isBugTab ? 'Vos bugs signalés' : 'Vos modifications en attente de validation';
     }
   }
 

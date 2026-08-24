@@ -271,6 +271,12 @@
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
         products[idx] = Object.assign({}, existing, payload);
+        // Retirer le verrou "en cours d'édition" (voir _tryLockProductForEdit
+        // dans ce même fichier) — Object.assign ci-dessus aurait sinon
+        // reconduit _editingBy/_editingAt de "existing" tel quel, l'enregistrement
+        // ne les efface pas implicitement.
+        delete products[idx]._editingBy;
+        delete products[idx]._editingAt;
         touchedForSync.push(products[idx]);
         // Propager l'icône à tous les produits de la même famille — bump
         // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
@@ -506,7 +512,7 @@
 
   function updateServerSubtitle(){
     var el = document.getElementById('serverSettingsSub');
-    if(el) el.textContent = serverUrl ? '🟢 '+serverUrl : 'Non configuré';
+    if(el) el.innerHTML = serverUrl ? '<i class="ti ti-circle-filled" style="color:#22C55E;font-size:.7em;"></i> '+escapeHtml(serverUrl) : 'Non configuré';
   }
 
   function saveServerConfig(){
@@ -669,6 +675,120 @@
   // Exposer globalement pour storage.js
   window.pushToServer = pushToServer;
 
+  // ── Verrou "en cours d'édition" ─────────────────────────────────────
+  // Empêche deux utilisateurs de modifier le même produit en même temps
+  // (retour utilisateur). Bricolage volontaire sur l'API produit EXISTANTE
+  // (/pushDatas) plutôt qu'une vraie API de verrou dédiée côté serveur (qui
+  // n'existe pas) : le verrou est juste deux champs ordinaires du produit,
+  // _editingBy/_editingAt, pas un mécanisme atomique — voir withoutServerFields
+  // ci-dessus, qui les exclut du calcul de conflit (poser/retirer ce verrou
+  // n'est jamais un vrai conflit éditorial). Limite connue et acceptée : deux
+  // utilisateurs cliquant "Modifier" à quelques centaines de ms d'intervalle
+  // pourraient théoriquement passer tous les deux (fenêtre de course de
+  // l'ordre d'un aller-retour réseau) — seule une vraie API de verrou
+  // atomique côté serveur éliminerait ça complètement.
+  var EDIT_LOCK_TTL_MS = 20 * 60 * 1000; // 20 min : au-delà, verrou considéré abandonné (onglet fermé/planté sans libérer) plutôt qu'un blocage définitif
+
+  function _editLockCurrentUser(){
+    var u = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
+    return u ? (u.username || u.name || null) : null;
+  }
+
+  // Lit l'état du verrou DIRECTEMENT depuis /pullDatas, sans passer par
+  // syncFromServer()/le mécanisme habituel de fusion : pour un compte admin,
+  // ce mécanisme ne réécrit JAMAIS products[idx] avec le contenu serveur
+  // pour une ref déjà connue localement tant qu'aucun conflit n'est résolu
+  // via la modale dédiée ("Local conservé par défaut pour l'admin", voir
+  // plus haut) — un verrou posé par un AUTRE admin ne serait donc jamais vu
+  // par ce biais. Lecture brute, en parallèle, sans toucher à products[].
+  // Renvoie {fetched:true, state} en cas de succès (state=null si la ref est
+  // introuvable côté serveur — cas normal), ou {fetched:false, state:null}
+  // si le serveur n'a pas pu être joint — DISTINCT de "pas de verrou" : voir
+  // _tryLockProductForEdit, qui bloque l'édition dans ce second cas (retour
+  // utilisateur : l'édition hors-ligne ne devrait pas être possible tant
+  // qu'un serveur est configuré, impossible sinon de savoir si quelqu'un
+  // d'autre édite déjà ce produit).
+  async function _fetchServerLockState(p){
+    if(!serverUrl || !p) return { fetched:true, state:null };
+    try {
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(serverUrl + '/pullDatas', { headers: h, cache: 'no-store' });
+      if(!r.ok) return { fetched:false, state:null };
+      var data = await r.json();
+      var items = (data && Array.isArray(data.items)) ? data.items.map(function(it){ return it.data; }) : (Array.isArray(data) ? data : []);
+      var found = items.find(function(it){ return it && (it.id === p.id || (p.ref && it.ref === p.ref)); }) || null;
+      return { fetched:true, state: found };
+    } catch(e){ return { fetched:false, state:null }; }
+  }
+
+  // Appelé au clic sur "Modifier" (voir vmEditBtn dans js/render.js), AVANT
+  // d'ouvrir le formulaire. Retourne {ok:true} si l'édition peut commencer,
+  // {ok:false, message} sinon.
+  async function _tryLockProductForEdit(p){
+    if(!serverUrl || !p) return { ok:true }; // pas de serveur configuré du tout = usage solo, rien à coordonner
+    var me = _editLockCurrentUser();
+    // Hors-ligne : impossible de vérifier si quelqu'un d'autre édite déjà ce
+    // produit — bloquer plutôt que risquer un conflit découvert bien plus
+    // tard à la resynchronisation (retour utilisateur). navigator.onLine
+    // donne une réponse instantanée dans le cas évident (pas de réseau du
+    // tout) ; le fetch ci-dessous reste la vérification faisant foi (attrape
+    // aussi les cas où onLine ment : portail captif, serveur down, etc.).
+    if(typeof navigator !== 'undefined' && navigator.onLine === false){
+      return { ok:false, message: 'Vous semblez hors connexion — impossible de vérifier si ce produit est déjà en cours de modification. Reconnectez-vous avant de le modifier.' };
+    }
+    var check = await _fetchServerLockState(p);
+    if(!check.fetched){
+      return { ok:false, message: 'Impossible de joindre le serveur pour vérifier ce produit — vérifiez votre connexion avant de le modifier.' };
+    }
+    var serverState = check.state;
+    if(serverState && serverState._editingBy && serverState._editingBy !== me && serverState._editingAt && (Date.now() - serverState._editingAt) < EDIT_LOCK_TTL_MS){
+      // lockedBy exposé à part (en plus de "message", déjà composé pour un
+      // affichage texte brut) pour que l'appelant puisse construire une
+      // popup HTML en échappant lui-même ce nom (voir vmEditBtn dans
+      // js/render.js) — un nom d'utilisateur reste une donnée dynamique,
+      // jamais insérée telle quelle dans du HTML.
+      return {
+        ok:false,
+        lockedBy: serverState._editingBy,
+        message: serverState._editingBy + ' est en cours de modification de ce produit — réessayez dans quelques instants.'
+      };
+    }
+    // Poser le verrou : push immédiat sur la base du contenu LOCAL (celui
+    // affiché/édité par CET utilisateur — cohérent avec "Local conservé par
+    // défaut pour l'admin" ci-dessus, on ne veut pas écraser silencieusement
+    // un contenu local avec une copie serveur potentiellement plus ancienne
+    // juste pour poser un verrou), en n'y ajoutant que _editingBy/_editingAt.
+    var idx = products.findIndex(function(x){ return x.id === p.id; });
+    var toLock = Object.assign({}, p, { _editingBy: me || 'Utilisateur', _editingAt: Date.now() });
+    if(idx !== -1) products[idx] = toLock;
+    await pushToServer([toLock]);
+    return { ok:true };
+  }
+  window._tryLockProductForEdit = _tryLockProductForEdit;
+
+  // Libère le verrou posé ci-dessus — appelé à la fermeture du formulaire
+  // (voir closeModal dans js/modal.js), qu'il s'agisse d'un Enregistrer
+  // (déjà nettoyé explicitement dans btnSave, ceci est alors sans effet) ou
+  // d'un Annuler/fermeture directe (seul cas où c'est réellement utile,
+  // sinon le verrou resterait posé jusqu'à expiration du TTL ci-dessus). Ne
+  // libère JAMAIS un verrou posé par quelqu'un d'autre (vérifie _editingBy
+  // === moi) — sans cette garde, appeler cette fonction depuis un contexte
+  // qui n'a jamais posé le verrou (ex. mode "Proposer une modification" sur
+  // le même produit) pourrait effacer à tort le verrou d'un tiers.
+  async function _releaseProductEditLock(id){
+    if(!serverUrl || !id) return;
+    var idx = products.findIndex(function(x){ return x.id === id; });
+    if(idx === -1) return;
+    var p = products[idx];
+    var me = _editLockCurrentUser();
+    if(!p._editingBy || p._editingBy !== me) return;
+    delete p._editingBy;
+    delete p._editingAt;
+    await pushToServer([p]);
+  }
+  window._releaseProductEditLock = _releaseProductEditLock;
+
   // ── Vérifie qu'un changement d'icône de famille a bien été persisté par le
   // serveur — un fetch qui répond 200 ne garantit pas que le serveur a
   // effectivement conservé le champ familyIcon (il peut l'ignorer/le
@@ -786,6 +906,12 @@
                 delete c.hasDoc;
                 delete c.docFilename;
                 delete c._docFiles;
+                // _editingBy/_editingAt : verrou "en cours d'édition" (voir
+                // _tryLockProductForEdit/_releaseProductEditLock plus bas) —
+                // pousser/retirer ce verrou modifie le produit sans que son
+                // CONTENU éditorial change, jamais un vrai conflit.
+                delete c._editingBy;
+                delete c._editingAt;
                 // Normalise TOUS les champs vides (chaîne vide, null,
                 // undefined, tableau vide) en les retirant complètement —
                 // avant, seuls tags/priceHistory avaient ce traitement. Sans
@@ -2425,8 +2551,8 @@
       +'<table style="width:100%;border-collapse:collapse;">'
       +'<thead><tr>'
       +'<th style="padding:8px 12px;font-size:12px;color:var(--ink-soft);text-align:left;border-bottom:2px solid var(--line);width:130px;">Champ</th>'
-      +'<th style="padding:8px 12px;font-size:12px;text-align:left;border-bottom:2px solid var(--line);">📱 Version locale</th>'
-      +'<th style="padding:8px 12px;font-size:12px;text-align:left;border-bottom:2px solid var(--line);">☁️ Version serveur</th>'
+      +'<th style="padding:8px 12px;font-size:12px;text-align:left;border-bottom:2px solid var(--line);"><i class="ti ti-device-mobile"></i> Version locale</th>'
+      +'<th style="padding:8px 12px;font-size:12px;text-align:left;border-bottom:2px solid var(--line);"><i class="ti ti-cloud"></i> Version serveur</th>'
       +'<th style="width:24px;border-bottom:2px solid var(--line);"></th>'
       +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>';
     detail.querySelector('#chooseLocal').addEventListener('click', function(){

@@ -272,7 +272,7 @@ function _armoireFetchSavedConfigs(){
 }
 
 function _armoireListItemHtml(entry, kind){
-  var actionLabel = kind === 'block' ? '➕ Insérer' : '👁 Charger';
+  var actionLabel = kind === 'block' ? '<i class="ti ti-plus"></i> Insérer' : '<i class="ti ti-eye"></i> Charger';
   var actionClass = kind === 'block' ? 'armoire-block-insert' : 'armoire-config-load';
   var delClass = kind === 'block' ? 'armoire-block-del' : 'armoire-config-del';
   var infoClass = kind === 'block' ? 'armoire-block-info' : 'armoire-config-info';
