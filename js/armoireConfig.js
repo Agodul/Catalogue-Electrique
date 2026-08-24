@@ -14,6 +14,17 @@ var _armoireDraft = []; // [{ref, qty}]
 var _armoireBlocks = [];
 var _armoireSavedConfigs = [];
 var _armoireActiveTab = 'blocks';
+// Dossiers repliés (retour utilisateur : ranger blocs/configs par dossier) —
+// clé = nom du dossier ('' = "Sans dossier"), true = replié. En mémoire
+// seulement (pas persisté), séparé par kind pour ne pas lier l'état des
+// blocs à celui des configurations.
+var _armoireCollapsedFolders = { block: {}, config: {} };
+// Bloc/config en cours de modification (retour utilisateur : pouvoir
+// éditer un bloc/une config existant, pas juste renommer) — { id, kind
+// ('block'|'config'), name, folder } le temps de l'édition, sinon null.
+// "Enregistrer" écrase alors l'entrée d'origine (POST le nouveau contenu
+// PUIS DELETE l'ancien) plutôt que d'en créer une nouvelle en double.
+var _armoireEditingEntry = null;
 
 function _armoireProductByRef(ref){
   return (window.products || []).find(function(p){ return p.ref === ref; });
@@ -276,6 +287,7 @@ function _armoireListItemHtml(entry, kind){
   var actionClass = kind === 'block' ? 'armoire-block-insert' : 'armoire-config-load';
   var delClass = kind === 'block' ? 'armoire-block-del' : 'armoire-config-del';
   var infoClass = kind === 'block' ? 'armoire-block-info' : 'armoire-config-info';
+  var editClass = kind === 'block' ? 'armoire-block-edit' : 'armoire-config-edit';
   // Suppression réservée aux comptes ayant le droit d'édition ou de
   // suppression — le configurateur est ouvert à tout utilisateur connecté,
   // mais pas la suppression des blocs/configs de tout le monde. canDelete
@@ -283,6 +295,9 @@ function _armoireListItemHtml(entry, kind){
   // juste le droit d'édition ne doit même pas voir la croix.
   var perms = window._userPerms || {};
   var canDeleteEntry = !!(perms.canDelete || perms.isAdmin);
+  // Modifier : porté par canEdit (pas canDelete) — c'est une action
+  // d'édition, distincte de la suppression, avec sa propre permission.
+  var canEditEntry = !!(perms.canEdit || perms.isAdmin);
   return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
@@ -290,6 +305,7 @@ function _armoireListItemHtml(entry, kind){
     + '</div>'
     + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;font-style:italic;font-family:Georgia,serif;">i</button>'
     + '<button type="button" class="' + actionClass + '" style="padding:5px 9px;border-radius:7px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">' + actionLabel + '</button>'
+    + (canEditEntry ? '<button type="button" class="' + editClass + '" title="Modifier" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>' : '')
     + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
     + '</div>';
 }
@@ -345,24 +361,60 @@ function _armoireShowLeadTimesDetails(){
   customAlert('Délais par référence', '<div style="max-height:min(50vh,340px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;margin:-4px 0 -4px;padding-right:12px;text-align:left;white-space:normal;">' + html + '</div>');
 }
 
-function _armoireRenderBlocksList(){
-  var el = document.getElementById('armoireConfigBlocksList');
+// Regroupe une liste de blocs/configs par leur champ "folder" (texte libre,
+// saisi à l'enregistrement — voir _armoirePromptNameAndFolder). '' (vide)
+// = "Sans dossier", toujours affiché en dernier ; les autres dossiers sont
+// triés alphabétiquement.
+function _armoireGroupByFolder(list){
+  var groups = {};
+  var order = [];
+  list.forEach(function(entry){
+    var f = (entry.folder || '').trim();
+    if(!groups[f]){ groups[f] = []; order.push(f); }
+    groups[f].push(entry);
+  });
+  order.sort(function(a, b){
+    if(a === '') return 1;
+    if(b === '') return -1;
+    return a.localeCompare(b, 'fr');
+  });
+  return { groups: groups, order: order };
+}
+
+// Rendu partagé blocs/configs — sections par dossier, repliables (retour
+// utilisateur). kind : 'block' ou 'config', utilisé pour le libellé vide,
+// le texte des lignes (_armoireListItemHtml) et pour isoler l'état replié
+// de chaque liste (_armoireCollapsedFolders).
+function _armoireRenderGroupedList(list, kind, emptyMessage){
+  var el = document.getElementById(kind === 'block' ? 'armoireConfigBlocksList' : 'armoireConfigSavedList');
   if(!el) return;
-  if(!_armoireBlocks.length){
-    el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12px;padding:14px 8px;">Aucun bloc enregistré pour l\'instant.</div>';
+  if(!list.length){
+    el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12px;padding:14px 8px;">' + emptyMessage + '</div>';
     return;
   }
-  el.innerHTML = _armoireBlocks.map(function(b){ return _armoireListItemHtml(b, 'block'); }).join('');
+  var g = _armoireGroupByFolder(list);
+  var collapsedMap = _armoireCollapsedFolders[kind];
+  el.innerHTML = g.order.map(function(folderKey){
+    var entries = g.groups[folderKey];
+    var label = folderKey || 'Sans dossier';
+    var isCollapsed = !!collapsedMap[folderKey];
+    var header = '<div class="armoire-folder-header" data-folder="' + escapeHtml(folderKey) + '" style="display:flex;align-items:center;gap:6px;padding:8px 4px 4px;cursor:pointer;user-select:none;">'
+      + '<i class="ti ti-chevron-' + (isCollapsed ? 'right' : 'down') + '" style="font-size:13px;color:var(--ink-soft);flex-shrink:0;"></i>'
+      + '<i class="ti ti-folder" style="font-size:13px;color:var(--ink-soft);flex-shrink:0;"></i>'
+      + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);">' + escapeHtml(label) + '</span>'
+      + '<span style="font-size:11px;color:var(--ink-soft);">— ' + entries.length + '</span>'
+      + '</div>';
+    var rows = isCollapsed ? '' : entries.map(function(entry){ return _armoireListItemHtml(entry, kind); }).join('');
+    return header + rows;
+  }).join('');
+}
+
+function _armoireRenderBlocksList(){
+  _armoireRenderGroupedList(_armoireBlocks, 'block', 'Aucun bloc enregistré pour l\'instant.');
 }
 
 function _armoireRenderSavedList(){
-  var el = document.getElementById('armoireConfigSavedList');
-  if(!el) return;
-  if(!_armoireSavedConfigs.length){
-    el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12px;padding:14px 8px;">Aucune configuration enregistrée pour l\'instant.</div>';
-    return;
-  }
-  el.innerHTML = _armoireSavedConfigs.map(function(c){ return _armoireListItemHtml(c, 'config'); }).join('');
+  _armoireRenderGroupedList(_armoireSavedConfigs, 'config', 'Aucune configuration enregistrée pour l\'instant.');
 }
 
 // ── Export Excel (une feuille par fournisseur) ───────────────────────────
@@ -497,18 +549,108 @@ async function _armoireExportExcel(){
   if(typeof showToast === 'function') showToast('Export Excel généré ✓ (' + supplierNames.length + ' fournisseur' + (supplierNames.length > 1 ? 's' : '') + ')', 'ok');
 }
 
+// Noms de dossiers déjà utilisés dans une liste (pour l'autocomplete du
+// champ Dossier à l'enregistrement) — dédupliqués, triés, jamais la clé
+// vide ("Sans dossier" n'est pas un dossier à proposer en autocomplete).
+function _armoireExistingFolderNames(list){
+  var seen = {};
+  var out = [];
+  list.forEach(function(entry){
+    var f = (entry.folder || '').trim();
+    if(f && !seen[f]){ seen[f] = true; out.push(f); }
+  });
+  return out.sort(function(a, b){ return a.localeCompare(b, 'fr'); });
+}
+
+// Popup à deux champs (Nom + Dossier facultatif) pour l'enregistrement d'un
+// bloc/d'une configuration — retour utilisateur : ranger par dossier, en
+// texte libre comme le champ Famille des produits (autocomplete sur les
+// dossiers déjà utilisés, mais on peut aussi en taper un nouveau). Calqué
+// sur customPrompt (js/popup.js) pour rester visuellement cohérent, mais
+// à deux champs, donc pas réutilisable telle quelle.
+function _armoirePromptNameAndFolder(title, nameMessage, existingFolders, defaults, okLabel){
+  defaults = defaults || {};
+  okLabel = okLabel || 'Enregistrer';
+  return new Promise(function(resolve){
+    var datalistId = '_armoireFolderDatalist';
+    var datalistHtml = '<datalist id="' + datalistId + '">' + existingFolders.map(function(f){
+      return '<option value="' + escapeHtml(f) + '"></option>';
+    }).join('') + '</datalist>';
+    var safeDefaultName = defaults.name ? String(defaults.name).replace(/"/g, '&quot;') : '';
+    var safeDefaultFolder = defaults.folder ? String(defaults.folder).replace(/"/g, '&quot;') : '';
+    var overlay = _popupOverlay(
+      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + escapeHtml(title) + '</div>' +
+      '<label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">NOM</label>' +
+      '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + escapeHtml(nameMessage) + '</div>' +
+      '<input id="_armoireNameInput" type="text" value="' + safeDefaultName + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--line,#C9D0D8);font-size:14px;font-family:inherit;margin-bottom:14px;" />' +
+      '<label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">DOSSIER (facultatif)</label>' +
+      '<input id="_armoireFolderInput" type="text" value="' + safeDefaultFolder + '" list="' + datalistId + '" placeholder="ex. Automates, Sécurité…" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--line,#C9D0D8);font-size:14px;font-family:inherit;margin-bottom:20px;" />' +
+      datalistHtml +
+      '<div style="display:flex;gap:8px;">' +
+        '<button id="_popupCancel" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>' +
+        '<button id="_popupOk" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--copper,#194093);background:var(--copper,#194093);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">' + escapeHtml(okLabel) + '</button>' +
+      '</div>'
+    );
+    var nameInput   = overlay.querySelector('#_armoireNameInput');
+    var folderInput = overlay.querySelector('#_armoireFolderInput');
+    function close(result){ if(overlay.parentNode) document.body.removeChild(overlay); resolve(result); }
+    function submit(){ close({ name: nameInput.value, folder: folderInput.value }); }
+    overlay.querySelector('#_popupOk').addEventListener('click', submit);
+    overlay.querySelector('#_popupCancel').addEventListener('click', function(){ close(null); });
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(null); });
+    nameInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); folderInput.focus(); }
+      if(e.key === 'Escape'){ e.preventDefault(); close(null); }
+    });
+    folderInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); submit(); }
+      if(e.key === 'Escape'){ e.preventDefault(); close(null); }
+    });
+    setTimeout(function(){ nameInput.focus(); nameInput.select(); }, 30);
+  });
+}
+
+// Écrase l'entrée d'origine par le nouveau contenu : POST le nouveau
+// d'abord, DELETE l'ancien SEULEMENT si le POST a réussi (pour ne jamais
+// perdre l'original si l'enregistrement du nouveau contenu échoue). L'API
+// n'expose pas de PUT/PATCH — un DELETE+POST est le seul moyen de "mettre à
+// jour" une entrée sans dupliquer.
+function _armoireReplaceEntry(basePath, oldId, body){
+  return _armoireApi(basePath, { method: 'POST', body: JSON.stringify(body) })
+    .then(function(created){
+      return _armoireApi(basePath + '/' + encodeURIComponent(oldId), { method: 'DELETE' })
+        .catch(function(e){ console.warn('_armoireReplaceEntry: ancienne entrée non supprimée:', e && e.message); })
+        .then(function(){ return created; });
+    });
+}
+
 async function _armoireSaveBlock(){
   if(!_armoireDraft.length){
     if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'enregistrer un bloc.', 'warn');
     return;
   }
-  var name = await customPrompt('Enregistrer comme bloc', 'Nom du bloc (ex. « Bloc PLC standard ») :');
-  if(!name || !name.trim()) return;
-  _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify({ name: name.trim(), items: _armoireDraft }) })
+  var editing = _armoireEditingEntry && _armoireEditingEntry.kind === 'block' ? _armoireEditingEntry : null;
+  var result = await _armoirePromptNameAndFolder(
+    editing ? 'Modifier le bloc' : 'Enregistrer comme bloc',
+    'Nom du bloc (ex. « Bloc PLC standard ») :',
+    _armoireExistingFolderNames(_armoireBlocks),
+    editing ? { name: editing.name, folder: editing.folder } : null,
+    editing ? 'Mettre à jour' : 'Enregistrer'
+  );
+  if(!result || !result.name || !result.name.trim()) return;
+  var name = result.name.trim();
+  var folder = (result.folder || '').trim();
+  var body = { name: name, folder: folder, items: _armoireDraft };
+  var apiCall = editing
+    ? _armoireReplaceEntry('/configBlocks', editing.id, body)
+    : _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify(body) });
+  apiCall
     .then(function(){
-      if(typeof showToast === 'function') showToast('Bloc « ' + name.trim() + ' » enregistré ✓', 'ok');
+      if(typeof showToast === 'function') showToast('Bloc « ' + name + ' » ' + (editing ? 'mis à jour' : 'enregistré') + ' ✓', 'ok');
+      _armoireEditingEntry = null;
       _armoireDraft = [];
       _armoireRenderDraft();
+      _armoireUpdateEditingBanner();
       _armoireFetchBlocks();
     })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -519,11 +661,26 @@ async function _armoireSaveConfig(){
     if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'enregistrer la configuration.', 'warn');
     return;
   }
-  var name = await customPrompt('Enregistrer la configuration', 'Nom de la configuration (ex. « Armoire PLC 20E/16S ») :');
-  if(!name || !name.trim()) return;
-  _armoireApi('/configSavedConfigs', { method: 'POST', body: JSON.stringify({ name: name.trim(), items: _armoireDraft }) })
+  var editing = _armoireEditingEntry && _armoireEditingEntry.kind === 'config' ? _armoireEditingEntry : null;
+  var result = await _armoirePromptNameAndFolder(
+    editing ? 'Modifier la configuration' : 'Enregistrer la configuration',
+    'Nom de la configuration (ex. « Armoire PLC 20E/16S ») :',
+    _armoireExistingFolderNames(_armoireSavedConfigs),
+    editing ? { name: editing.name, folder: editing.folder } : null,
+    editing ? 'Mettre à jour' : 'Enregistrer'
+  );
+  if(!result || !result.name || !result.name.trim()) return;
+  var name = result.name.trim();
+  var folder = (result.folder || '').trim();
+  var body = { name: name, folder: folder, items: _armoireDraft };
+  var apiCall = editing
+    ? _armoireReplaceEntry('/configSavedConfigs', editing.id, body)
+    : _armoireApi('/configSavedConfigs', { method: 'POST', body: JSON.stringify(body) });
+  apiCall
     .then(function(){
-      if(typeof showToast === 'function') showToast('Configuration « ' + name.trim() + ' » enregistrée ✓', 'ok');
+      if(typeof showToast === 'function') showToast('Configuration « ' + name + ' » ' + (editing ? 'mise à jour' : 'enregistrée') + ' ✓', 'ok');
+      _armoireEditingEntry = null;
+      _armoireUpdateEditingBanner();
       _armoireFetchSavedConfigs();
     })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -561,6 +718,53 @@ async function _armoireLoadSavedConfig(config){
   if(_armoireDraft.length && !(await customConfirm('Remplacer la configuration en cours ?', 'Remplacer la configuration en cours par « ' + escapeHtml(config.name) + ' » ?', { okLabel: 'Remplacer' }))) return;
   _armoireDraft = config.items.map(function(it){ return { ref: it.ref, qty: it.qty || 1 }; });
   _armoireRenderDraft();
+}
+
+// ── Modifier un bloc/une configuration existant ──────────────────────────
+// Charge son contenu dans la zone de composition pour l'éditer (ajouter/
+// retirer des produits, changer les quantités), plus nom/dossier au moment
+// de "Mettre à jour" (voir _armoireSaveBlock/_armoireSaveConfig) — retour
+// utilisateur : pouvoir éditer un bloc/une config, pas juste le recréer.
+async function _armoireStartEditEntry(entry, kind){
+  if(_armoireDraft.length && !(await customConfirm('Remplacer la configuration en cours ?', 'Modifier « ' + escapeHtml(entry.name) + ' » remplacera la configuration en cours (non enregistrée). Continuer ?', { okLabel: 'Continuer' }))) return;
+  _armoireDraft = entry.items.map(function(it){ return { ref: it.ref, qty: it.qty || 1 }; });
+  _armoireEditingEntry = { id: entry.id, kind: kind, name: entry.name, folder: entry.folder || '' };
+  _armoireRenderDraft();
+  _armoireUpdateEditingBanner();
+  // Fermer le tiroir Blocs/Configurations s'il est ouvert (mobile) pour
+  // laisser place à la zone de composition, puis y basculer.
+  var drawerClose = document.getElementById('armoireBlocksDrawerClose');
+  if(drawerClose && drawerClose.offsetParent !== null) drawerClose.click();
+  if(typeof _armoireSetMobileView === 'function') _armoireSetMobileView('draft');
+}
+
+function _armoireCancelEditEntry(){
+  _armoireEditingEntry = null;
+  _armoireDraft = [];
+  _armoireRenderDraft();
+  _armoireUpdateEditingBanner();
+}
+
+function _armoireUpdateEditingBanner(){
+  var banner = document.getElementById('armoireEditingBanner');
+  var textEl = document.getElementById('armoireEditingBannerText');
+  if(!banner) return;
+  if(_armoireEditingEntry){
+    banner.style.display = 'flex';
+    if(textEl) textEl.innerHTML = '<i class="ti ti-pencil"></i> Modification de « ' + escapeHtml(_armoireEditingEntry.name) + ' »';
+  } else {
+    banner.style.display = 'none';
+  }
+  var saveBlockBtn = document.getElementById('armoireConfigSaveBlockBtn');
+  var saveConfigBtn = document.getElementById('armoireConfigSaveConfigBtn');
+  var editingBlock = _armoireEditingEntry && _armoireEditingEntry.kind === 'block';
+  var editingConfig = _armoireEditingEntry && _armoireEditingEntry.kind === 'config';
+  if(saveBlockBtn) saveBlockBtn.innerHTML = editingBlock
+    ? '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour le bloc'
+    : '<i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Enregistrer comme bloc';
+  if(saveConfigBtn) saveConfigBtn.innerHTML = editingConfig
+    ? '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour la configuration'
+    : '<i class="ti ti-device-floppy" style="font-size:15px;" aria-hidden="true"></i> Enregistrer la configuration';
 }
 
 // ── Onglets Blocs / Configurations ───────────────────────────────────────
@@ -816,6 +1020,9 @@ function _armoireClose(){
     if(!(await customConfirm('Vider la configuration en cours ?', '', { okLabel: 'Vider', danger: true }))) return;
     _armoireDraft = [];
     _armoireRenderDraft();
+    // Vider abandonne aussi une édition en cours (voir _armoireStartEditEntry)
+    // — plus rien à "Mettre à jour" une fois le contenu vidé.
+    if(_armoireEditingEntry){ _armoireEditingEntry = null; _armoireUpdateEditingBanner(); }
   });
 
   var exportBtn = document.getElementById('armoireConfigExportBtn');
@@ -837,6 +1044,13 @@ function _armoireClose(){
 
   var blocksListEl = document.getElementById('armoireConfigBlocksList');
   if(blocksListEl) blocksListEl.addEventListener('click', function(e){
+    var folderHeader = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
+    if(folderHeader){
+      var fKey = folderHeader.getAttribute('data-folder');
+      _armoireCollapsedFolders.block[fKey] = !_armoireCollapsedFolders.block[fKey];
+      _armoireRenderBlocksList();
+      return;
+    }
     var row = e.target.closest ? e.target.closest('.armoire-list-row') : null;
     if(!row) return;
     var id = row.getAttribute('data-id');
@@ -845,10 +1059,18 @@ function _armoireClose(){
     if(e.target.closest('.armoire-block-insert')) _armoireMergeItems(block.items);
     else if(e.target.closest('.armoire-block-del')) _armoireDeleteBlock(id);
     else if(e.target.closest('.armoire-block-info')) _armoireShowEntryDetails(block);
+    else if(e.target.closest('.armoire-block-edit')) _armoireStartEditEntry(block, 'block');
   });
 
   var savedListEl = document.getElementById('armoireConfigSavedList');
   if(savedListEl) savedListEl.addEventListener('click', function(e){
+    var folderHeaderCfg = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
+    if(folderHeaderCfg){
+      var fKeyCfg = folderHeaderCfg.getAttribute('data-folder');
+      _armoireCollapsedFolders.config[fKeyCfg] = !_armoireCollapsedFolders.config[fKeyCfg];
+      _armoireRenderSavedList();
+      return;
+    }
     var row = e.target.closest ? e.target.closest('.armoire-list-row') : null;
     if(!row) return;
     var id = row.getAttribute('data-id');
@@ -857,5 +1079,9 @@ function _armoireClose(){
     if(e.target.closest('.armoire-config-load')) _armoireLoadSavedConfig(config);
     else if(e.target.closest('.armoire-config-del')) _armoireDeleteSavedConfig(id);
     else if(e.target.closest('.armoire-config-info')) _armoireShowEntryDetails(config);
+    else if(e.target.closest('.armoire-config-edit')) _armoireStartEditEntry(config, 'config');
   });
+
+  var editingCancelBtn = document.getElementById('armoireEditingCancelBtn');
+  if(editingCancelBtn) editingCancelBtn.addEventListener('click', _armoireCancelEditEntry);
 })();
