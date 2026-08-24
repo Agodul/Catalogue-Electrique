@@ -131,15 +131,33 @@
   // showHome() déjà appelé en début d'init
 
   // ── Protection anti-perte partagée (extension + partage) ───────────
-  // Refuse toute ouverture automatique de la modale produit si une fiche
-  // est déjà en cours de modification OU de création (modale déjà ouverte),
-  // pour ne jamais écraser une saisie non enregistrée.
+  // Ne bloque plus que s'il y a une SAISIE réellement en cours (pas juste
+  // une fenêtre restée ouverte sans rien dedans) — mêmes trois zones déjà
+  // protégées lors d'une mise à jour du service worker (voir swUpdateBtn
+  // dans js/pwa.js) : formulaire produit, caractéristiques techniques,
+  // configuration d'armoire en brouillon. Avant, la simple présence de
+  // #modalOverlay ouvert (même une fiche "Ajouter un produit" vierge, ou
+  // n'importe quelle autre fenêtre — Réglages, Demandes en attente, une
+  // fiche produit en simple consultation…) suffisait à tout refuser (retour
+  // utilisateur : l'extension/le partage ne devrait pas être bloqué par une
+  // fenêtre sans rien en cours). Si rien n'est réellement en cours, ferme
+  // tout le reste automatiquement pour laisser la place au nouveau produit.
   function _extensionGuardBlocked(){
-    var modalEl = document.getElementById('modalOverlay');
-    if(modalEl && modalEl.classList.contains('open')){
-      showToast('Une fiche produit est déjà en cours de modification. Fermez-la ou enregistrez-la avant de continuer.', 'warn', 5000);
+    var mo = document.getElementById('modalOverlay');
+    if(mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+      showToast('Une fiche produit est en cours de modification. Fermez-la ou enregistrez-la avant de continuer.', 'warn', 5000);
       return true;
     }
+    var so = document.getElementById('specsOverlay');
+    if(so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges()){
+      showToast('Des caractéristiques techniques sont en cours de modification. Fermez-les ou enregistrez-les avant de continuer.', 'warn', 5000);
+      return true;
+    }
+    if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
+      showToast('Une configuration d\'armoire est en cours. Terminez-la ou videz-la avant de continuer.', 'warn', 5000);
+      return true;
+    }
+    if(typeof window._closeAllOverlays === 'function') window._closeAllOverlays();
     return false;
   }
 
