@@ -2340,7 +2340,7 @@
      onglets doivent respecter le style des autres boutons de l'app plutôt
      que le style "soulignement" ad-hoc d'origine). Plus de règles ici : tout
      vient de .tab-btn/.tab-btn.active (voir plus haut dans ce fichier),
-     .req-tab ne sert plus qu'au sélecteur JS (querySelectorAll('.req-tab')).
+     .req-tab ne sert plus qu'au sélecteur JS (querySelectorAll('.req-tab')). */
 
   .req-item {
     padding:14px 20px;

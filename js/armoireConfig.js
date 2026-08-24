@@ -278,9 +278,11 @@ function _armoireListItemHtml(entry, kind){
   var infoClass = kind === 'block' ? 'armoire-block-info' : 'armoire-config-info';
   // Suppression réservée aux comptes ayant le droit d'édition ou de
   // suppression — le configurateur est ouvert à tout utilisateur connecté,
-  // mais pas la suppression des blocs/configs de tout le monde.
+  // mais pas la suppression des blocs/configs de tout le monde. canDelete
+  // spécifiquement (pas canEdit) : retour utilisateur — un compte avec
+  // juste le droit d'édition ne doit même pas voir la croix.
   var perms = window._userPerms || {};
-  var canDeleteEntry = !!(perms.canEdit || perms.canDelete || perms.isAdmin);
+  var canDeleteEntry = !!(perms.canDelete || perms.isAdmin);
   return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
@@ -528,6 +530,15 @@ async function _armoireSaveConfig(){
 }
 
 async function _armoireDeleteBlock(id){
+  // Le bouton ✕ est déjà masqué sans ce droit (voir _armoireListItemHtml),
+  // mais cette fonction reste techniquement accessible directement (console,
+  // autre appel) — vérifier ici aussi plutôt que de se reposer uniquement
+  // sur l'UI (même garde que deleteProduct dans js/render.js).
+  var _perms = window._userPerms || {};
+  if(!(_perms.canDelete || _perms.isAdmin)){
+    if(typeof showToast === 'function') showToast('Droit de suppression requis', 'err', 3000);
+    return;
+  }
   if(!(await customConfirm('Supprimer ce bloc ?', '', { okLabel: 'Supprimer', danger: true }))) return;
   _armoireApi('/configBlocks/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchBlocks(); })
@@ -535,6 +546,11 @@ async function _armoireDeleteBlock(id){
 }
 
 async function _armoireDeleteSavedConfig(id){
+  var _perms = window._userPerms || {};
+  if(!(_perms.canDelete || _perms.isAdmin)){
+    if(typeof showToast === 'function') showToast('Droit de suppression requis', 'err', 3000);
+    return;
+  }
   if(!(await customConfirm('Supprimer cette configuration ?', '', { okLabel: 'Supprimer', danger: true }))) return;
   _armoireApi('/configSavedConfigs/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchSavedConfigs(); })
