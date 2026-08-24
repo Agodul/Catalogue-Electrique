@@ -73,10 +73,21 @@
             // figé/blanc une fois le nouveau service worker aux commandes —
             // obligeant à fermer complètement l'app puis la rouvrir pour
             // voir la mise à jour (retour utilisateur). Réassigner
-            // location.href force une VRAIE navigation complète plutôt
-            // qu'un simple rechargement du document courant, plus fiable
-            // dans ce contexte-là.
-            window.location.href = window.location.pathname + window.location.search + window.location.hash;
+            // location.href vers l'URL EXACTEMENT identique s'est révélé
+            // insuffisant en pratique (retour utilisateur : toujours besoin
+            // d'un F5 manuel sur desktop, et de fermer l'app sur mobile) —
+            // plusieurs navigateurs traitent une navigation vers une URL
+            // rigoureusement identique comme un no-op silencieux. Un
+            // paramètre de requête inédit force une navigation non ambiguë ;
+            // location.replace() (pas .href=) évite d'empiler une entrée
+            // d'historique pour ce simple rechargement. Ajouté (pas
+            // substitué) aux paramètres déjà présents (ex. ?share_url=...
+            // venant d'un partage natif, voir /share-target dans sw.js) pour
+            // ne pas les perdre silencieusement au passage.
+            var _swSep = window.location.search ? '&' : '?';
+            window.location.replace(
+              window.location.pathname + window.location.search + _swSep + '_swupdate=' + Date.now() + window.location.hash
+            );
           });
         }
 

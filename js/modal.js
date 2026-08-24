@@ -667,18 +667,20 @@
 
     // ── Avertir AVANT la saisie si l'enregistrement ne pourrait pas être
     // synchronisé (plutôt qu'après coup) ────────────────────────────────
-    // Un compte avec droit d'édition mais sans droit de synchro serveur
-    // (canSyncServer) voit son ajout/modif se sauvegarder en local avec
-    // succès apparent, alors que ça reste invisible pour tout le monde —
-    // retour utilisateur : mieux vaut bloquer et expliquer avant la saisie
-    // que de laisser croire que ça a marché. Ne s'applique pas en mode
-    // "Proposer" (_proposeMode) : c'est justement le circuit prévu pour ces
-    // comptes-là, qui passe par une demande, pas un push direct.
+    // Basé sur canEdit (pas canSyncServer, voir retour utilisateur) :
+    // "Data serveur" ne contrôle QUE les deux boutons manuels "Charger
+    // depuis le serveur"/"Envoyer le catalogue local" (Réglages → Serveur,
+    // voir serverButtonsSection dans js/auth.js) — un compte avec juste le
+    // droit d'édition doit pouvoir enregistrer/synchroniser normalement,
+    // ça n'a jamais été le rôle de cette permission séparée. Ne s'applique
+    // pas en mode "Proposer" (_proposeMode) : c'est justement le circuit
+    // prévu pour les comptes sans droit d'édition, qui passe par une
+    // demande, pas un push direct.
     var noSyncBanner     = document.getElementById('modalNoSyncBanner');
     var noSyncBannerText = document.getElementById('modalNoSyncBannerText');
     var serverUrlCheck   = localStorage.getItem('cat_server_url');
     var _perms2  = window._userPerms || {};
-    var canSync  = !!(_perms2.canSyncServer || _perms2.isAdmin);
+    var canSync  = !!(_perms2.canEdit || _perms2.isAdmin);
     var blockSave = !!serverUrlCheck && !canSync && !window._proposeMode;
     if(noSyncBanner){
       noSyncBanner.style.display = blockSave ? 'flex' : 'none';

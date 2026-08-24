@@ -728,11 +728,16 @@
     } catch(e){ return { fetched:false, state:null }; }
   }
 
-  // Appelé au clic sur "Modifier" (voir vmEditBtn dans js/render.js), AVANT
-  // d'ouvrir le formulaire. Retourne {ok:true} si l'édition peut commencer,
-  // {ok:false, message} sinon.
-  async function _tryLockProductForEdit(p){
-    if(!serverUrl || !p) return { ok:true }; // pas de serveur configuré du tout = usage solo, rien à coordonner
+  // Vérification partagée par _tryLockProductForEdit (avant d'ouvrir
+  // "Modifier") ET deleteProduct (avant "Supprimer", voir js/render.js) — un
+  // produit en cours d'édition par quelqu'un d'autre ne devrait pas non plus
+  // pouvoir être supprimé sous ses pieds (retour utilisateur). Retourne
+  // {blocked:false} si l'action peut continuer, {blocked:true, message,
+  // lockedBy?} sinon (lockedBy seulement si le blocage vient d'un verrou
+  // actif — pas d'une simple impossibilité de vérifier).
+  async function _checkProductEditLockBlocks(p, actionVerb){
+    actionVerb = actionVerb || 'modifier';
+    if(!serverUrl || !p) return { blocked:false }; // pas de serveur configuré du tout = usage solo, rien à coordonner
     var me = _editLockCurrentUser();
     // Hors-ligne : impossible de vérifier si quelqu'un d'autre édite déjà ce
     // produit — bloquer plutôt que risquer un conflit découvert bien plus
@@ -741,30 +746,42 @@
     // tout) ; le fetch ci-dessous reste la vérification faisant foi (attrape
     // aussi les cas où onLine ment : portail captif, serveur down, etc.).
     if(typeof navigator !== 'undefined' && navigator.onLine === false){
-      return { ok:false, message: 'Vous semblez hors connexion — impossible de vérifier si ce produit est déjà en cours de modification. Reconnectez-vous avant de le modifier.' };
+      return { blocked:true, message: 'Vous semblez hors connexion — impossible de vérifier si ce produit est déjà en cours de modification. Reconnectez-vous avant de le ' + actionVerb + '.' };
     }
     var check = await _fetchServerLockState(p);
     if(!check.fetched){
-      return { ok:false, message: 'Impossible de joindre le serveur pour vérifier ce produit — vérifiez votre connexion avant de le modifier.' };
+      return { blocked:true, message: 'Impossible de joindre le serveur pour vérifier ce produit — vérifiez votre connexion avant de le ' + actionVerb + '.' };
     }
     var serverState = check.state;
     if(serverState && serverState._editingBy && serverState._editingBy !== me && serverState._editingAt && (Date.now() - serverState._editingAt) < EDIT_LOCK_TTL_MS){
       // lockedBy exposé à part (en plus de "message", déjà composé pour un
       // affichage texte brut) pour que l'appelant puisse construire une
-      // popup HTML en échappant lui-même ce nom (voir vmEditBtn dans
-      // js/render.js) — un nom d'utilisateur reste une donnée dynamique,
-      // jamais insérée telle quelle dans du HTML.
+      // popup HTML en échappant lui-même ce nom (voir vmEditBtn/deleteProduct
+      // dans js/render.js) — un nom d'utilisateur reste une donnée
+      // dynamique, jamais insérée telle quelle dans du HTML.
       return {
-        ok:false,
+        blocked:true,
         lockedBy: serverState._editingBy,
         message: serverState._editingBy + ' est en cours de modification de ce produit — réessayez dans quelques instants.'
       };
     }
+    return { blocked:false };
+  }
+  window._checkProductEditLockBlocks = _checkProductEditLockBlocks;
+
+  // Appelé au clic sur "Modifier" (voir vmEditBtn dans js/render.js), AVANT
+  // d'ouvrir le formulaire. Retourne {ok:true} si l'édition peut commencer,
+  // {ok:false, message, lockedBy?} sinon.
+  async function _tryLockProductForEdit(p){
+    if(!serverUrl || !p) return { ok:true };
+    var check = await _checkProductEditLockBlocks(p, 'modifier');
+    if(check.blocked) return { ok:false, message: check.message, lockedBy: check.lockedBy };
     // Poser le verrou : push immédiat sur la base du contenu LOCAL (celui
     // affiché/édité par CET utilisateur — cohérent avec "Local conservé par
     // défaut pour l'admin" ci-dessus, on ne veut pas écraser silencieusement
     // un contenu local avec une copie serveur potentiellement plus ancienne
     // juste pour poser un verrou), en n'y ajoutant que _editingBy/_editingAt.
+    var me = _editLockCurrentUser();
     var idx = products.findIndex(function(x){ return x.id === p.id; });
     var toLock = Object.assign({}, p, { _editingBy: me || 'Utilisateur', _editingAt: Date.now() });
     if(idx !== -1) products[idx] = toLock;

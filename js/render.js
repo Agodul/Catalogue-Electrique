@@ -971,6 +971,21 @@
       return;
     }
 
+    // Empêche de supprimer un produit que quelqu'un d'autre est en train de
+    // modifier (retour utilisateur) — même vérification que "Modifier" (voir
+    // _checkProductEditLockBlocks dans js/actions.js), avant même la
+    // confirmation pour ne pas faire croire que la suppression va aboutir.
+    if(typeof window._checkProductEditLockBlocks === 'function'){
+      var lockCheck = await window._checkProductEditLockBlocks(p, 'supprimer');
+      if(lockCheck.blocked){
+        var delPopupMsg = lockCheck.lockedBy
+          ? '<strong>' + escapeHtml(lockCheck.lockedBy) + '</strong> est en cours de modification de ce produit — impossible de le supprimer pour le moment.'
+          : escapeHtml(lockCheck.message);
+        customAlert('Produit en cours de modification', delPopupMsg);
+        return;
+      }
+    }
+
     var confirmed = await customConfirm('Supprimer ce produit ?', '« '+escapeHtml(p.name||p.ref)+' » sera supprimé définitivement du catalogue.', { okLabel: 'Supprimer', danger: true });
     if(confirmed){
       var ref = p.ref;
