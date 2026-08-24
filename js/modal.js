@@ -851,6 +851,15 @@
 
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
+    // Revenir en haut du formulaire à chaque ouverture — le défilement
+    // n'est jamais réinitialisé par le navigateur puisque .modal-body reste
+    // dans le DOM entre deux ouvertures (juste caché) : sans ça, ouvrir une
+    // fiche après avoir défilé dans une précédente (ou dans celle-ci)
+    // rouvrait exactement là où on s'était arrêté au lieu de repartir du
+    // début (retour utilisateur : "je ne tombe pas directement tout en haut
+    // de la fenêtre").
+    var modalBodyEl = overlay.querySelector('.modal-body');
+    if(modalBodyEl) modalBodyEl.scrollTop = 0;
     // Empêcher iOS de focus automatiquement le premier input (évite zoom + clavier)
     var inputs = overlay.querySelectorAll('input, textarea, select');
     inputs.forEach(function(el){ el.setAttribute('readonly', 'readonly'); });
@@ -1255,6 +1264,23 @@
     fromDef.renderChips();
     toDef.renderChips();
   }
+  // Nettoyage des classes visuelles de glisser-déposer sur LES DEUX listes —
+  // fonction partagée appelée à la fois par 'drop' (immédiatement, cas
+  // normal) et 'dragend' (filet de sécurité pour un glisser annulé). Un
+  // dépôt réussi déclenche _moveChipBetweenFields → renderChips() →
+  // remplacement de l'innerHTML du conteneur SOURCE, qui détache la puce
+  // glissée du DOM ; l'événement 'dragend' natif se déclenche ensuite sur
+  // cette puce désormais orpheline et ne remonte donc plus (bubbling
+  // impossible sans ancêtre) jusqu'au conteneur — sans ce nettoyage
+  // immédiat dans 'drop', le contour/l'espace réservé restaient affichés en
+  // continu après un dépôt réussi (retour utilisateur : "il reste l'écart
+  // alors que ça devrait revenir à la normale").
+  function _clearDragVisualState(){
+    Object.keys(_linkFieldDefs).forEach(function(k){
+      var el = _linkFieldDefs[k].chipsEl();
+      if(el){ el.classList.remove('sug-chips-dragover'); el.classList.remove('drag-active'); }
+    });
+  }
   (function _wireChipDragDrop(){
     Object.keys(_linkFieldDefs).forEach(function(key){
       var container = _linkFieldDefs[key].chipsEl();
@@ -1283,16 +1309,10 @@
       container.addEventListener('dragend', function(e){
         var chip = e.target.closest && e.target.closest('.sug-linked-item');
         if(chip) chip.classList.remove('dragging');
-        // Filet de sécurité : quelle que soit la façon dont le glisser se
-        // termine (déposé ailleurs qu'une zone valide, annulé à l'Échap,
-        // relâché hors de la fenêtre…), 'dragend' se déclenche toujours sur
-        // la puce source — on en profite pour nettoyer le contour de survol
-        // sur LES DEUX listes, sinon il pouvait rester affiché en continu
-        // (retour utilisateur : "le contour est encore affiché").
-        Object.keys(_linkFieldDefs).forEach(function(k){
-          var el = _linkFieldDefs[k].chipsEl();
-          if(el){ el.classList.remove('sug-chips-dragover'); el.classList.remove('drag-active'); }
-        });
+        // Filet de sécurité pour un glisser ANNULÉ (déposé hors zone valide,
+        // Échap, relâché hors fenêtre…) — le cas "dépôt réussi" est déjà
+        // nettoyé immédiatement dans 'drop' ci-dessous.
+        _clearDragVisualState();
       });
       container.addEventListener('dragover', function(e){
         e.preventDefault();
@@ -1310,11 +1330,16 @@
       });
       container.addEventListener('drop', function(e){
         e.preventDefault();
-        container.classList.remove('sug-chips-dragover');
         var raw;
-        try{ raw = JSON.parse(e.dataTransfer.getData('text/plain')); }catch(err){ return; }
-        if(!raw || !raw.ref || !raw.from || raw.from === key) return; // déposé sur sa liste d'origine
+        try{ raw = JSON.parse(e.dataTransfer.getData('text/plain')); }catch(err){ _clearDragVisualState(); return; }
+        if(!raw || !raw.ref || !raw.from || raw.from === key){ _clearDragVisualState(); return; } // déposé sur sa liste d'origine
         _moveChipBetweenFields(raw.ref, raw.from, key);
+        // Nettoyer APRÈS le déplacement (pas avant) : _moveChipBetweenFields
+        // peut re-render les conteneurs, mais ce sont toujours les mêmes
+        // éléments DOM (chipsEl() renvoie une référence stable) — le retrait
+        // de classe fonctionne quel que soit l'ordre, on le fait ici pour
+        // rester au même endroit logique que le filet de sécurité 'dragend'.
+        _clearDragVisualState();
       });
     });
   })();
@@ -1481,28 +1506,10 @@
   // ── Logique caractéristiques techniques (clé/valeur libres) ─────
   var specsOverlay   = document.getElementById('specsOverlay');
   var specsRowsEl    = document.getElementById('specsRows');
-  var specKeyOptionsEl = document.getElementById('specKeyOptions');
   var btnOpenSpecs   = document.getElementById('btnOpenSpecs');
   var btnOpenSpecsLabel = document.getElementById('btnOpenSpecsLabel');
   var specsCloseBtn  = document.getElementById('specsCloseBtn');
   var btnAddSpecRow  = document.getElementById('btnAddSpecRow');
-
-  function _specsExistingKeys(){
-    var keys = [];
-    (window.products || []).forEach(function(p){
-      if(p.specs && typeof p.specs === 'object'){
-        Object.keys(p.specs).forEach(function(k){ if(keys.indexOf(k) === -1) keys.push(k); });
-      }
-    });
-    return keys.sort();
-  }
-
-  function _specsRenderKeyDatalist(){
-    if(!specKeyOptionsEl) return;
-    specKeyOptionsEl.innerHTML = _specsExistingKeys().map(function(k){
-      return '<option value="'+escapeHtml(k)+'">';
-    }).join('');
-  }
 
   function _specsRenderRows(){
     if(btnOpenSpecsLabel){
@@ -1519,7 +1526,7 @@
     if(colHeaders) colHeaders.style.display = _specsRows.length ? 'grid' : 'none';
     specsRowsEl.innerHTML = _specsRows.map(function(row, ri){
       return '<div class="spec-row" data-ri="'+ri+'" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;align-items:start;">'
-        + '  <input type="text" class="spec-key" data-ri="'+ri+'" list="specKeyOptions" placeholder="Nom (ex: Entrées)" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
+        + '  <input type="text" class="spec-key" data-ri="'+ri+'" placeholder="Nom (ex: Entrées)" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
         // textarea (pas input) : permet le retour à la ligne (Entrée) dans la
         // valeur — utile pour une caractéristique qui regroupe plusieurs
         // sous-valeurs (ex. une puissance différente par tension) qui
@@ -1534,10 +1541,33 @@
       input.addEventListener('input', function(){
         _specsRows[parseInt(input.getAttribute('data-ri'), 10)].key = input.value;
       });
+      // Entrée dans "Nom" → passe directement au champ "Valeur" de la même
+      // ligne, sans toucher souris/Tab (retour utilisateur : accélérer la
+      // saisie répétitive de caractéristiques techniques).
+      input.addEventListener('keydown', function(e){
+        if(e.key !== 'Enter') return;
+        e.preventDefault();
+        var ri = input.getAttribute('data-ri');
+        var valueEl = specsRowsEl.querySelector('.spec-value[data-ri="'+ri+'"]');
+        if(valueEl) valueEl.focus();
+      });
     });
     specsRowsEl.querySelectorAll('.spec-value').forEach(function(input){
       input.addEventListener('input', function(){
         _specsRows[parseInt(input.getAttribute('data-ri'), 10)].value = input.value;
+      });
+      // Tab depuis "Valeur" de la DERNIÈRE ligne → ajoute une nouvelle
+      // ligne et y place le focus, au lieu de devoir cliquer "+ Ajouter une
+      // caractéristique" à chaque ligne (retour utilisateur : améliorer la
+      // saisie des caractéristiques techniques). Entrée reste réservée au
+      // retour à la ligne DANS la valeur (déjà en place), donc seul Tab
+      // (sans Shift, qui irait en arrière) déclenche l'ajout ici.
+      input.addEventListener('keydown', function(e){
+        if(e.key !== 'Tab' || e.shiftKey) return;
+        var ri = parseInt(input.getAttribute('data-ri'), 10);
+        if(ri !== _specsRows.length - 1) return; // pas la dernière ligne : Tab normal vers ✕
+        e.preventDefault();
+        _specsAddRowAndFocus();
       });
     });
     specsRowsEl.querySelectorAll('.spec-row-del').forEach(function(btn){
@@ -1548,10 +1578,16 @@
     });
   }
 
+  function _specsAddRowAndFocus(){
+    _specsRows.push({ key: '', value: '' });
+    _specsRenderRows();
+    var newKeyEl = specsRowsEl.querySelector('.spec-key[data-ri="'+(_specsRows.length-1)+'"]');
+    if(newKeyEl) newKeyEl.focus();
+  }
+
   if(btnAddSpecRow){
     btnAddSpecRow.addEventListener('click', function(){
-      _specsRows.push({ key: '', value: '' });
-      _specsRenderRows();
+      _specsAddRowAndFocus();
     });
   }
   // Snapshot pris à l'ouverture — sert à savoir si la croix doit demander
@@ -1560,7 +1596,6 @@
   var _specsSnapshotOnOpen = null;
   if(btnOpenSpecs){
     btnOpenSpecs.addEventListener('click', function(){
-      _specsRenderKeyDatalist();
       _specsSnapshotOnOpen = JSON.stringify(_specsRows);
       if(specsOverlay){
         specsOverlay.style.display = 'flex';
@@ -1708,6 +1743,8 @@
     if(btnSave) btnSave.textContent = 'Valider et accepter';
     overlay.classList.add('open');
     document.body.classList.add('modal-open');
+    var modalBodyElReview = overlay.querySelector('.modal-body');
+    if(modalBodyElReview) modalBodyElReview.scrollTop = 0;
     _reviewSetLocked(locked !== false);
   };
 
