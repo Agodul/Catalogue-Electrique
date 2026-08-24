@@ -14,26 +14,33 @@
   function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
   // ── Badge notification ────────────────────────────────────────
-  var _reqLastCount   = 0; // dernier total ABSOLU connu (voir reqUpdateBadge)
+  var _reqLastCount        = 0; // dernier total ABSOLU connu (badge combiné — voir reqUpdateBadge)
+  var _reqLastCountProduct = 0; // dernier total ABSOLU des demandes PRODUIT (notif séparée)
+  var _reqLastCountBug     = 0; // dernier total ABSOLU des BUGS signalés (notif séparée)
 
-  function _reqNotifyAdmin(newCount){
+  // Deux notifications distinctes (tag différent chacune, donc elles
+  // s'empilent au lieu de s'écraser) plutôt qu'une seule notif combinée —
+  // demandes produit et bugs signalés n'appellent pas la même réaction de
+  // l'admin, autant les distinguer dès la notif système (retour utilisateur).
+  function _reqNotify(kind, newCount, lastCount){
     if(!reqIsAdmin()) return;
-    if(newCount <= _reqLastCount) return;
+    if(newCount <= lastCount) return;
     if(typeof Notification === 'undefined') return;
     if(Notification.permission !== 'granted') return;
-    var diff = newCount - _reqLastCount;
+    var diff = newCount - lastCount;
+    var isBug = kind === 'bug';
     try {
-      new Notification('Catalogue SPI — Nouvelle demande', {
-        body: diff === 1
-          ? 'Une nouvelle demande est en attente de validation.'
-          : diff + ' nouvelles demandes sont en attente de validation.',
+      new Notification(isBug ? 'Catalogue SPI — Bug signalé' : 'Catalogue SPI — Nouvelle demande', {
+        body: isBug
+          ? (diff === 1 ? 'Un nouveau bug a été signalé.' : diff + ' nouveaux bugs ont été signalés.')
+          : (diff === 1 ? 'Une nouvelle demande est en attente de validation.' : diff + ' nouvelles demandes sont en attente de validation.'),
         // Chemin relatif (pas de "/" en tête) : l'app est déployée dans un
         // sous-dossier (ex. GitHub Pages, /Catalogue-Electrique/ — voir
         // manifest.webmanifest start_url/scope) — un chemin absolu depuis la
         // racine du domaine pointait à côté (bug préexistant, découvert en
         // déplaçant icon-192.png vers assets/).
         icon: 'assets/icon-192.png',
-        tag: 'spi-req-badge',
+        tag: isBug ? 'spi-req-badge-bug' : 'spi-req-badge-product',
         renotify: true,
         silent: false
       });
@@ -71,7 +78,7 @@
       var rData = await fetch(sUrl + '/checkReq', { headers: h, cache: 'no-store' });
       var dData = rData.ok ? await rData.json() : null;
       if(!dData) return; // serveur down, on ne met pas à jour
-      var total = (dData && dData.count) || 0;
+      var nProduct = (dData && dData.count) || 0;
       // + rapports de bug (API dédiée, comptés séparément — voir mémoire
       // "bug-report-api-migration"). Un échec de /checkBugs (pas encore
       // disponible côté serveur, etc.) ne doit pas empêcher d'afficher au
@@ -80,25 +87,31 @@
       // direct du Swagger (la doc ne montrait qu'un exemple générique
       // "string", trompeur). Fallback nombre/chaîne brute conservé par
       // sécurité, mais ne devrait normalement jamais servir.
+      var nBugs = 0;
       try {
         var rBugs = await fetch(sUrl + '/checkBugs', { headers: h, cache: 'no-store' });
         if(rBugs.ok){
           var dBugs = await rBugs.json();
-          var nBugs = (dBugs && typeof dBugs === 'object' && typeof dBugs.count === 'number') ? dBugs.count
-                    : (typeof dBugs === 'number') ? dBugs
-                    : (typeof dBugs === 'string' && dBugs.trim() !== '' && !isNaN(Number(dBugs))) ? Number(dBugs)
-                    : 0;
-          total += nBugs;
+          nBugs = (dBugs && typeof dBugs === 'object' && typeof dBugs.count === 'number') ? dBugs.count
+                : (typeof dBugs === 'number') ? dBugs
+                : (typeof dBugs === 'string' && dBugs.trim() !== '' && !isNaN(Number(dBugs))) ? Number(dBugs)
+                : 0;
         }
       } catch(eBugs){}
+      var total = nProduct + nBugs;
       ['requestsBadge','requestsBadgeMenu'].forEach(function(id){
         var el = document.getElementById(id);
         if(el){ el.textContent = total > 0 ? (total > 99 ? '99+' : total) : ''; el.style.display = total > 0 ? '' : 'none'; }
       });
-      // Notif desktop seulement si le total a réellement augmenté depuis le
-      // dernier poll (comparaison de deux totaux absolus, donc fiable même
-      // si des demandes ont été traitées entretemps).
-      if(total > _reqLastCount) _reqNotifyAdmin(total);
+      // Deux notifs desktop distinctes, chacune comparée à son propre
+      // dernier total connu (comparaison de deux totaux absolus, donc
+      // fiable même si des demandes ont été traitées entretemps) — une
+      // demande produit qui arrive ne doit jamais déclencher/renommer la
+      // notif "bug signalé", et inversement.
+      if(nProduct > _reqLastCountProduct) _reqNotify('product', nProduct, _reqLastCountProduct);
+      if(nBugs    > _reqLastCountBug)     _reqNotify('bug',     nBugs,    _reqLastCountBug);
+      _reqLastCountProduct = nProduct;
+      _reqLastCountBug     = nBugs;
       _reqLastCount = total;
     } catch(e) {}
   }
@@ -111,7 +124,7 @@
     reqUpdateBadge();
     _reqPollInterval = setInterval(reqUpdateBadge, 30000);
   }
-  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCount = 0; }
+  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCount = 0; _reqLastCountProduct = 0; _reqLastCountBug = 0; }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
 
