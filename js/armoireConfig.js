@@ -533,6 +533,80 @@ function _armoireRound2(n){
   return n == null ? n : Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+// Injecte deux fonctionnalités Excel que la librairie utilisée ne sait pas
+// écrire nativement en version gratuite : (1) une vraie mise en forme
+// conditionnelle (fond rouge = en retard, fond vert = reçu) sur la colonne
+// Statut, et (2) des listes déroulantes "Oui/Non" sur les colonnes
+// Commandé/Livré — plus pratiques à remplir que du VRAI/FAUX tapé à la main,
+// et compatibles avec TOUTES les versions d'Excel (contrairement aux cases à
+// cocher natives, réservées à Excel 365 récent) puisque la validation de
+// données par liste existe depuis Excel 2007. Modifié à la main dans le
+// fichier généré, avec JSZip. Structure XML validée au préalable hors de
+// l'app (comparée octet par octet à un fichier généré par une librairie
+// tierce mature qui sait écrire ce genre de règle nativement, puis relue
+// avec un parseur strict indépendant qui confirme la correspondance) —
+// moins risqué que la tentative précédente (lien mailto en formule), mais
+// reste une modification manuelle du fichier : à confirmer en ouvrant le
+// résultat dans un vrai Excel.
+async function _armoireInjectOrderTrackingXml(arrayBuffer, sheetTabName, firstRow, lastRow){
+  await new Promise(function(resolve, reject){
+    if(window.JSZip){ resolve(); return; }
+    _loadJSZip(resolve);
+  });
+  var zip = await JSZip.loadAsync(arrayBuffer);
+
+  // Retrouve le VRAI fichier de cette feuille via workbook.xml + ses
+  // relations — jamais "sheet1.xml" en dur, l'ordre des feuilles dans le
+  // classeur peut changer.
+  var wbXml = await zip.file('xl/workbook.xml').async('string');
+  var sheetRe = new RegExp('<sheet[^>]*(?:name="' + sheetTabName + '"[^>]*r:id="(rId\\d+)"|r:id="(rId\\d+)"[^>]*name="' + sheetTabName + '")');
+  var sheetMatch = wbXml.match(sheetRe);
+  if(!sheetMatch) return; // feuille introuvable — n'empêche pas le téléchargement du fichier tel quel
+  var rId = sheetMatch[1] || sheetMatch[2];
+  var relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  var relMatch = relsXml.match(new RegExp('<Relationship Id="' + rId + '"[^>]*Target="([^"]+)"'));
+  if(!relMatch) return;
+  var sheetPath = 'xl/' + relMatch[1];
+
+  var sheetXml = await zip.file(sheetPath).async('string');
+  // Commandé (I) et Livré (J) sont maintenant du texte "✓"/vide (pas des
+  // booléens) — les formules comparent donc à "✓" plutôt qu'à TRUE. Vide =
+  // pas fait, "✓" = fait ; pas de "Non" explicite (pour repasser à "pas
+  // fait", on vide la cellule avec Suppr, comme pour décocher une case).
+  var sqref = 'L' + firstRow + ':L' + lastRow;
+  var cfXml = '<conditionalFormatting sqref="' + sqref + '">'
+    + '<cfRule type="expression" priority="1" dxfId="0"><formula>AND($I' + firstRow + '="✓",$J' + firstRow + '&lt;&gt;"✓",$K' + firstRow + '&lt;&gt;"",TODAY()&gt;$K' + firstRow + ')</formula></cfRule>'
+    + '<cfRule type="expression" priority="2" dxfId="1"><formula>$J' + firstRow + '="✓"</formula></cfRule>'
+    + '</conditionalFormatting>';
+  // dataValidations doit se placer juste après conditionalFormatting (et
+  // avant hyperlinks/ignoredErrors/pageMargins…) — ordre imposé par le
+  // schéma OOXML, vérifié sur un fichier de référence. Liste inline à une
+  // seule valeur ("✓") : la flèche de la cellule ne propose qu'un clic pour
+  // cocher, exactement comme une case à cocher — décocher se fait avec
+  // Suppr, pas via un second choix dans la liste.
+  var dvXml = '<dataValidations count="2">'
+    + '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="I' + firstRow + ':I' + lastRow + '"><formula1>"✓"</formula1></dataValidation>'
+    + '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="J' + firstRow + ':J' + lastRow + '"><formula1>"✓"</formula1></dataValidation>'
+    + '</dataValidations>';
+  var newSheetXml = sheetXml.replace('</sheetData>', '</sheetData>' + cfXml + dvXml);
+  if(newSheetXml === sheetXml) return; // pas de <sheetData> trouvé — abandon silencieux, fichier normal quand même téléchargé
+  zip.file(sheetPath, newSheetXml);
+
+  // styles.xml contient déjà un <dxfs count="0"/> vide (généré par la
+  // librairie Excel elle-même) — juste besoin de le remplacer par nos 2
+  // styles (rouge/vert), pas d'en insérer un nouveau élément.
+  var stylesXml = await zip.file('xl/styles.xml').async('string');
+  var dxfsXml = '<dxfs count="2">'
+    + '<dxf><fill><patternFill patternType="solid"><fgColor rgb="FFFFC7CE"/><bgColor rgb="FFFFC7CE"/></patternFill></fill></dxf>'
+    + '<dxf><fill><patternFill patternType="solid"><fgColor rgb="FFC6EFCE"/><bgColor rgb="FFC6EFCE"/></patternFill></fill></dxf>'
+    + '</dxfs>';
+  var newStylesXml = stylesXml.replace(/<dxfs count="0"\/>/, dxfsXml);
+  if(newStylesXml === stylesXml) return;
+  zip.file('xl/styles.xml', newStylesXml);
+
+  return await zip.generateAsync({ type: 'blob' });
+}
+
 async function _armoireExportExcel(){
   if(!_armoireDraft.length){
     if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'exporter.', 'warn');
@@ -629,19 +703,27 @@ async function _armoireExportExcel(){
   // d'article (numérotation Excel 1-indexée, une ligne = un article).
   var detailFirstRow = summary.length + 1;
   allItems.forEach(function(r){
-    summary.push([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, false, false, '']);
+    // Commandé/Livré : texte "✓"/vide (vide par défaut = pas encore) plutôt
+    // que des booléens — une liste déroulante à un seul choix ("✓") est
+    // injectée dessus plus bas (_armoireInjectOrderTrackingXml), ce qui
+    // revient à une case à cocher (clic sur la flèche → coché ; Suppr →
+    // décoché), plus pratique sur mobile qu'un VRAI/FAUX tapé à la main, et
+    // compatible avec toutes les versions d'Excel (retour utilisateur : parc
+    // majoritairement en Office 2016).
+    summary.push([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, '', '', '']);
   });
   var summaryWs = XLSX.utils.aoa_to_sheet(summary);
-  // Colonne "Statut" (L) : pas de vraie couleur possible (mise en forme
-  // conditionnelle absente de la version gratuite de la librairie Excel
-  // utilisée ici) — un indicateur texte/symbole recalculé par Excel à
+  // Colonne "Statut" (L) : un indicateur texte/symbole recalculé par Excel à
   // chaque ouverture du fichier (TODAY()), donc qui reste à jour tout seul
   // dans le temps sans qu'on ait besoin de ré-exporter (retour utilisateur).
-  // Posée cellule par cellule après aoa_to_sheet : aoa_to_sheet ne détecte
-  // pas les formules depuis une simple chaîne commençant par "=".
+  // La couleur de fond associée est ajoutée séparément après coup (voir
+  // _armoireInjectOrderTrackingXml), la librairie Excel utilisée ici ne
+  // sachant pas l'écrire elle-même en version gratuite. Posée cellule par
+  // cellule après aoa_to_sheet : aoa_to_sheet ne détecte pas les formules
+  // depuis une simple chaîne commençant par "=".
   allItems.forEach(function(r, idx){
     var rowNum = detailFirstRow + idx;
-    var formula = 'IF(J' + rowNum + '=TRUE,"✅ Reçu",IF(AND(I' + rowNum + '=TRUE,K' + rowNum + '<>"",TODAY()>K' + rowNum + '),"⚠️ En retard",IF(I' + rowNum + '=TRUE,"🕒 En cours","")))';
+    var formula = 'IF(J' + rowNum + '="✓","✅ Reçu",IF(AND(I' + rowNum + '="✓",K' + rowNum + '<>"",TODAY()>K' + rowNum + '),"⚠️ En retard",IF(I' + rowNum + '="✓","🕒 En cours","")))';
     summaryWs['L' + rowNum] = { t: 'str', f: formula, v: '' };
   });
   summaryWs['!cols'] = [
@@ -672,7 +754,39 @@ async function _armoireExportExcel(){
   });
 
   var fileSlug = name.replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '_') || 'Configuration';
-  XLSX.writeFile(wb, 'SPI_' + fileSlug + '_' + stamp + '.xlsx');
+  var xlsxFilename = 'SPI_' + fileSlug + '_' + stamp + '.xlsx';
+
+  // Tente d'ajouter la couleur de fond sur la colonne Statut et les listes
+  // déroulantes Oui/Non sur Commandé/Livré (mise en forme conditionnelle +
+  // validation de données injectées après coup, la librairie Excel utilisée
+  // ne sait pas les écrire elle-même en version gratuite — voir
+  // _armoireInjectOrderTrackingXml ci-dessus). Si quoi que ce soit échoue
+  // (JSZip indisponible, structure inattendue…) on retombe silencieusement
+  // sur l'export normal : l'indicateur texte/symbole (✅/⚠️/🕒) fonctionne
+  // déjà tout seul dans la formule, ces deux ajouts ne sont qu'un bonus.
+  var enhancedBlob = null;
+  if(allItems.length){
+    try{
+      var rawArray = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+      var lastRow = detailFirstRow + allItems.length - 1;
+      enhancedBlob = await _armoireInjectOrderTrackingXml(rawArray, 'Récapitulatif', detailFirstRow, lastRow);
+    }catch(err){
+      console.warn('[armoire] Mise en forme/validation Excel non appliquée, export sans ces bonus :', err);
+      enhancedBlob = null;
+    }
+  }
+
+  if(enhancedBlob){
+    var dlA = document.createElement('a');
+    dlA.href = URL.createObjectURL(enhancedBlob);
+    dlA.download = xlsxFilename;
+    document.body.appendChild(dlA);
+    dlA.click();
+    document.body.removeChild(dlA);
+    setTimeout(function(){ URL.revokeObjectURL(dlA.href); }, 10000);
+  } else {
+    XLSX.writeFile(wb, xlsxFilename);
+  }
   if(typeof showToast === 'function') showToast('Export Excel généré ✓ (' + supplierNames.length + ' fournisseur' + (supplierNames.length > 1 ? 's' : '') + ')', 'ok');
 }
 
