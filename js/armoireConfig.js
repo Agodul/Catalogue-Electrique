@@ -509,6 +509,14 @@ function _armoireRenderGroupedList(list, kind, emptyMessage){
   }
   var g = _armoireGroupByFolder(list);
   var collapsedMap = _armoireCollapsedFolders[kind];
+  // Replié par défaut (retour utilisateur) : un dossier jamais encore
+  // touché cette session démarre fermé plutôt qu'ouvert. Ne seed que les
+  // clés absentes — un dossier déjà déplié/replié manuellement par
+  // l'utilisateur garde son état d'un rendu à l'autre (ex. après l'ajout
+  // d'un nouveau bloc, la liste se re-rend sans tout refermer).
+  g.order.forEach(function(folderKey){
+    if(!(folderKey in collapsedMap)) collapsedMap[folderKey] = true;
+  });
   el.innerHTML = g.order.map(function(folderKey){
     var entries = g.groups[folderKey];
     var label = folderKey || 'Sans dossier';
@@ -836,7 +844,10 @@ function _armoirePromptNameAndFolder(title, nameMessage, existingFolders, defaul
     function submit(){ close({ name: nameInput.value, folder: folderInput.value }); }
     overlay.querySelector('#_popupOk').addEventListener('click', submit);
     overlay.querySelector('#_popupCancel').addEventListener('click', function(){ close(null); });
-    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(null); });
+    // Pas de fermeture au clic en dehors de la fenêtre (retour utilisateur :
+    // un clic à côté annulait silencieusement l'enregistrement, en faisant
+    // perdre le nom déjà tapé) — seuls les boutons et Échap ferment cette
+    // popup désormais.
     nameInput.addEventListener('keydown', function(e){
       if(e.key === 'Enter'){ e.preventDefault(); folderInput.focus(); }
       if(e.key === 'Escape'){ e.preventDefault(); close(null); }
@@ -882,7 +893,9 @@ function _armoirePromptSaveKind(){
     overlay.querySelector('#_armoireKindBlock').addEventListener('click', function(){ close('block'); });
     overlay.querySelector('#_armoireKindConfig').addEventListener('click', function(){ close('config'); });
     overlay.querySelector('#_popupCancel').addEventListener('click', function(){ close(null); });
-    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(null); });
+    // Pas de fermeture au clic en dehors de la fenêtre (retour utilisateur :
+    // un clic à côté annulait silencieusement l'enregistrement) — seuls les
+    // boutons ci-dessus et Échap permettent de fermer cette popup.
     document.addEventListener('keydown', function onKey(e){
       if(e.key === 'Escape'){ document.removeEventListener('keydown', onKey); close(null); }
     });

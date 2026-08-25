@@ -415,6 +415,11 @@ function applyAuthUI() {
   var btnFamilyIcons = document.getElementById('btnOpenFamilyIcons');
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
+  // Bouton Fiches verrouillées : visible admin uniquement (voir
+  // js/actions.js, showSettingsLockedPage/_adminForceUnlockProduct).
+  var btnLockedProducts = document.getElementById('btnOpenLockedProducts');
+  if (btnLockedProducts) btnLockedProducts.style.display = isAdmin ? 'flex' : 'none';
+
   // Sous-titre du menu "Paramètres" adapté à ce que CET utilisateur y voit
   // réellement — "Icônes des familles" n'est visible que pour un admin
   // (juste au-dessus) ; un non-admin n'y trouve que "Mon compte" et le

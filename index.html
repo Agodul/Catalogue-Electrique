@@ -362,13 +362,29 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
-      <button id="btnOpenServerSettings" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
+      <button id="btnOpenServerSettings" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-server" style="font-size:20px;color:#059669;"></i>
         </span>
         <span>
           <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Serveur de données</span>
           <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;" id="serverSettingsSub">Non configuré</span>
+        </span>
+        <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
+      </button>
+      <!-- Déverrouillage manuel des fiches produit (retour utilisateur : en
+           cas de plantage/fermeture brutale du navigateur pendant une
+           édition, le verrou reste posé jusqu'à expiration du TTL de 10 min
+           côté client (une purge côté serveur libère aussi les verrous
+           toutes les 20 min) — un admin doit pouvoir le lever immédiatement
+           sans attendre l'un ou l'autre. Admin uniquement. -->
+      <button id="btnOpenLockedProducts" style="display:none;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
+        <span style="width:38px;height:38px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-lock-open" style="font-size:20px;color:#DC2626;"></i>
+        </span>
+        <span>
+          <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Fiches verrouillées</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Déverrouiller une édition bloquée (crash utilisateur)</span>
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
@@ -428,6 +444,27 @@
       </div>
       <div class="settings-body">
         <div id="userList"></div>
+      </div>
+    </div>
+
+    <!-- Sous-page Fiches verrouillées -->
+    <div id="settingsLockedPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="btnLockedPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+            <i class="ti ti-arrow-left"></i>
+          </button>
+          <span style="font-size:15px;font-weight:700;color:var(--ink);">Fiches verrouillées</span>
+        </div>
+        <button id="btnLockedPageRefresh" title="Actualiser" style="background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:6px 8px;color:var(--ink);font-size:15px;display:flex;align-items:center;">
+          <i class="ti ti-refresh"></i>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">
+          Une fiche se libère toute seule au bout de 10 min pour les autres utilisateurs (elle reste affichée ici jusqu'à la prochaine purge automatique du serveur, toutes les 20 min, ou jusqu'à ce que tu la déverrouilles manuellement). Ne déverrouille manuellement que si tu es sûr que l'utilisateur n'est plus en train d'éditer.
+        </div>
+        <div id="settingsLockedList"></div>
       </div>
     </div>
 

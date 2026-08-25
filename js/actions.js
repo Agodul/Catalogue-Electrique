@@ -743,7 +743,12 @@
   // pourraient théoriquement passer tous les deux (fenêtre de course de
   // l'ordre d'un aller-retour réseau) — seule une vraie API de verrou
   // atomique côté serveur éliminerait ça complètement.
-  var EDIT_LOCK_TTL_MS = 20 * 60 * 1000; // 20 min : au-delà, verrou considéré abandonné (onglet fermé/planté sans libérer) plutôt qu'un blocage définitif
+  // 10 min : au-delà, verrou considéré abandonné (onglet fermé/planté sans
+  // libérer) côté client plutôt qu'un blocage définitif. Une purge côté
+  // serveur libère aussi les verrous de son côté toutes les 20 min — ce
+  // TTL client reste volontairement plus court pour ne pas bloquer les
+  // autres plus longtemps que nécessaire en attendant ce passage serveur.
+  var EDIT_LOCK_TTL_MS = 10 * 60 * 1000;
 
   function _editLockCurrentUser(){
     var u = typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null;
@@ -925,6 +930,56 @@
     await pushToServer([p]);
   }
   window._releaseProductEditLock = _releaseProductEditLock;
+
+  // ── Déverrouillage manuel (admin) ────────────────────────────────────
+  // Contrepartie de _releaseProductEditLock ci-dessus, mais SANS la
+  // vérification "isMySession" : tout l'intérêt est justement de lever le
+  // verrou de QUELQU'UN D'AUTRE, posé par une session qui a planté/fermé
+  // son onglet sans jamais relâcher — sinon il faut attendre l'expiration
+  // du TTL (10 min, EDIT_LOCK_TTL_MS ci-dessus) sans recours (retour
+  // utilisateur). Lecture directe via /pullDatas (comme
+  // _fetchServerLockState), jamais via syncFromServer()/le merge habituel,
+  // pour ne déclencher aucune UI de résolution de conflit ici — cette page
+  // ne fait que lister/déverrouiller, jamais fusionner de contenu produit.
+  async function _fetchAllLockedProducts(){
+    if(!serverUrl) return { fetched:false, locked:[] };
+    try{
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(serverUrl + '/pullDatas', { headers: h, cache: 'no-store' });
+      if(!r.ok) return { fetched:false, locked:[] };
+      var data = await r.json();
+      var items = (data && Array.isArray(data.items)) ? data.items.map(function(it){ return it.data; }) : (Array.isArray(data) ? data : []);
+      var locked = items.filter(function(p){ return p && p._editingBy; });
+      return { fetched:true, locked: locked };
+    }catch(e){ return { fetched:false, locked:[] }; }
+  }
+  window._fetchAllLockedProducts = _fetchAllLockedProducts;
+
+  // Force le retrait du verrou d'un produit, quelle que soit la session qui
+  // l'a posé — action explicite déclenchée par un admin depuis Paramètres →
+  // Fiches verrouillées, avec confirmation dans l'UI avant l'appel (voir
+  // renderSettingsLockedPage). p vient du dump serveur brut (pas forcément
+  // dans products[] localement) — met aussi à jour products[] par cohérence
+  // si l'entrée y existe déjà.
+  async function _adminForceUnlockProduct(p){
+    if(!serverUrl || !p) return false;
+    var clean = Object.assign({}, p);
+    delete clean._editingBy;
+    delete clean._editingAt;
+    delete clean._editingSessionId;
+    var ok = await pushToServer([clean]);
+    if(ok){
+      var idx = products.findIndex(function(x){ return x.id === p.id || (p.ref && x.ref === p.ref); });
+      if(idx !== -1){
+        delete products[idx]._editingBy;
+        delete products[idx]._editingAt;
+        delete products[idx]._editingSessionId;
+      }
+    }
+    return ok;
+  }
+  window._adminForceUnlockProduct = _adminForceUnlockProduct;
 
   // ── Vérifie qu'un changement d'icône de famille a bien été persisté par le
   // serveur — un fetch qui répond 200 ne garantit pas que le serveur a
@@ -1165,6 +1220,7 @@
   var settingsFamilyPage  = document.getElementById('settingsFamilyPage');
   var settingsServerPage  = document.getElementById('settingsServerPage');
   var settingsUserPage    = document.getElementById('settingsUserPage');
+  var settingsLockedPage  = document.getElementById('settingsLockedPage');
   var btnOpenFamilyIcons  = document.getElementById('btnOpenFamilyIcons');
   var btnFamilyPageBack   = document.getElementById('btnFamilyPageBack');
   var btnOpenServerSettings = document.getElementById('btnOpenServerSettings');
@@ -1177,26 +1233,116 @@
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
     if(settingsUserPage) settingsUserPage.style.display = 'none';
+    if(settingsLockedPage) settingsLockedPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'flex';
     settingsServerPage.style.display = 'none';
+    if(settingsUserPage) settingsUserPage.style.display = 'none';
+    if(settingsLockedPage) settingsLockedPage.style.display = 'none';
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
+    if(settingsLockedPage) settingsLockedPage.style.display = 'none';
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'flex';
+    if(settingsUserPage) settingsUserPage.style.display = 'none';
+    if(settingsLockedPage) settingsLockedPage.style.display = 'none';
     serverUrlInput.value = serverUrl;
 
   }
+  function showSettingsLockedPage(){
+    document.querySelector('.settings-body').style.display = 'none';
+    settingsFamilyPage.style.display = 'none';
+    settingsServerPage.style.display = 'none';
+    if(settingsUserPage) settingsUserPage.style.display = 'none';
+    if(settingsLockedPage){ settingsLockedPage.style.display = 'flex'; renderSettingsLockedPage(); }
+  }
+
+  // Formate un délai en secondes en texte court ("à l'instant", "12 min",
+  // "1 h 05") — usage unique ici, pas besoin d'un utilitaire partagé.
+  function _formatLockAge(ms){
+    var min = Math.floor(ms / 60000);
+    if(min < 1) return 'à l\'instant';
+    if(min < 60) return min + ' min';
+    var h = Math.floor(min / 60);
+    var rem = min % 60;
+    return h + ' h' + (rem ? ' ' + String(rem).padStart(2, '0') : '');
+  }
+
+  async function renderSettingsLockedPage(){
+    var listEl = document.getElementById('settingsLockedList');
+    if(!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:20px 8px;"><i class="ti ti-loader-2" style="font-size:18px;"></i><br>Chargement…</div>';
+    var result = await _fetchAllLockedProducts();
+    if(!result.fetched){
+      listEl.innerHTML = '<div style="text-align:center;color:#DC2626;font-size:12.5px;padding:20px 8px;">Impossible de joindre le serveur.</div>';
+      return;
+    }
+    if(!result.locked.length){
+      listEl.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:20px 8px;">Aucune fiche verrouillée actuellement.</div>';
+      return;
+    }
+    var now = Date.now();
+    listEl.innerHTML = result.locked.map(function(p){
+      var age = p._editingAt ? (now - p._editingAt) : null;
+      var expired = age != null && age > EDIT_LOCK_TTL_MS;
+      var ageLabel = age != null ? _formatLockAge(age) : '?';
+      return '<div class="locked-product-row" data-id="' + escapeHtml(p.id || '') + '" data-ref="' + escapeHtml(p.ref || '') + '" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(p.ref || p.name || '(sans référence)') + '</div>'
+        + '<div style="font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(p.name || '') + '</div>'
+        + '<div style="font-size:11px;color:' + (expired ? '#059669' : '#DC2626') + ';margin-top:3px;">'
+          + 'Verrouillé par <strong>' + escapeHtml(p._editingBy || '?') + '</strong> — depuis ' + ageLabel
+          + (expired ? ' (expiré — plus bloquant pour personne, sera nettoyé par la purge serveur)' : '')
+        + '</div>'
+        + '</div>'
+        + '<button type="button" class="locked-product-unlock" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Déverrouiller</button>'
+        + '</div>';
+    }).join('');
+  }
+
+  var btnLockedPageBack = document.getElementById('btnLockedPageBack');
+  if(btnLockedPageBack) btnLockedPageBack.addEventListener('click', function(){ showSettingsMain(); });
+  var btnLockedPageRefresh = document.getElementById('btnLockedPageRefresh');
+  if(btnLockedPageRefresh) btnLockedPageRefresh.addEventListener('click', function(){ renderSettingsLockedPage(); });
+  var btnOpenLockedProducts = document.getElementById('btnOpenLockedProducts');
+  if(btnOpenLockedProducts) btnOpenLockedProducts.addEventListener('click', function(){ showSettingsLockedPage(); });
+  var settingsLockedListEl = document.getElementById('settingsLockedList');
+  if(settingsLockedListEl) settingsLockedListEl.addEventListener('click', async function(e){
+    var btn = e.target.closest ? e.target.closest('.locked-product-unlock') : null;
+    if(!btn) return;
+    var row = btn.closest('.locked-product-row');
+    if(!row) return;
+    var id = row.getAttribute('data-id');
+    var ref = row.getAttribute('data-ref');
+    var refLabel = ref || id;
+    var ok = typeof customConfirm === 'function'
+      ? await customConfirm('Déverrouiller cette fiche ?', 'Utilise ceci seulement si tu es sûr que ' + refLabel + ' n\'est plus en cours de modification par personne (crash/fermeture du navigateur). Continuer ?', { okLabel: 'Déverrouiller', danger: true })
+      : confirm('Déverrouiller ' + refLabel + ' ?');
+    if(!ok) return;
+    btn.disabled = true;
+    btn.textContent = 'Déverrouillage…';
+    var result = await _fetchAllLockedProducts();
+    var fresh = result.fetched ? result.locked.find(function(x){ return x.id === id || (ref && x.ref === ref); }) : null;
+    var success = fresh ? await _adminForceUnlockProduct(fresh) : false;
+    if(success){
+      if(typeof showToast === 'function') showToast('Fiche ' + refLabel + ' déverrouillée ✓', 'ok');
+      renderSettingsLockedPage();
+    } else {
+      if(typeof showToast === 'function') showToast('Échec du déverrouillage — réessaie.', 'err');
+      btn.disabled = false;
+      btn.textContent = 'Déverrouiller';
+    }
+  });
 
   btnOpenFamilyIcons.addEventListener('click', function(){ showSettingsFamilyPage(); });
   var btnOpenUserSettings = document.getElementById('btnOpenUserSettings');
