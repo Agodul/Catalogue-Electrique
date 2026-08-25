@@ -1,3 +1,19 @@
+// Badges compacts (Essentiel / 3DEXPERIENCE) pour les listes à vignette
+// réduite (recherche du configurateur d'armoire, Suggestions, Pièces de
+// rechange) — les badges pleine taille (.essential-badge/.three-d-overlay,
+// voir plus bas) sont conçus pour les grandes photos de la grille catalogue
+// et de la fiche produit, disproportionnés sur une vignette de 32-44px
+// (retour utilisateur : les rendre visibles aussi dans ces listes plus
+// compactes). Insérés en ligne à côté de la référence plutôt qu'en overlay
+// sur la vignette. Global (pas d'IIFE dans ce fichier) : appelé aussi
+// depuis js/armoireConfig.js.
+function _productBadgesCompactHtml(p){
+  var html = '';
+  if(p.essential) html += '<i class="ti ti-star-filled" title="Produit essentiel" style="color:var(--copper);font-size:11px;margin-left:5px;vertical-align:middle;"></i>';
+  if(p.available3DX) html += '<img src="assets/three-d-badge.png" alt="3DEX" title="Disponible dans la 3DEXPERIENCE" style="width:13px;height:13px;margin-left:4px;vertical-align:middle;">';
+  return html;
+}
+
 // ---------- Modale de consultation ----------
   var viewOverlay  = document.getElementById('viewOverlay');
   var vmPhoto      = document.getElementById('vmPhoto');
@@ -246,7 +262,7 @@
               return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
                 '<div class="sug-list-photo">'+photoHtml+'</div>'+
                 '<div class="sug-list-body">'+
-                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+_productBadgesCompactHtml(sp)+'</div>'+
                   '<div class="sug-list-name">'+escapeHtml((sp.name||'').substring(0,60))+'</div>'+
                 '</div>'+
                 '<i class="ti ti-chevron-right sug-list-chevron"></i>'+
@@ -320,7 +336,7 @@
               return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
                 '<div class="sug-list-photo">'+photoHtml+'</div>'+
                 '<div class="sug-list-body">'+
-                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+'</div>'+
+                  '<div class="sug-list-ref">'+escapeHtml(sp.ref||'')+_productBadgesCompactHtml(sp)+'</div>'+
                   '<div class="sug-list-name">'+escapeHtml((sp.name||'').substring(0,60))+'</div>'+
                 '</div>'+
                 '<i class="ti ti-chevron-right sug-list-chevron"></i>'+

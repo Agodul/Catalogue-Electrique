@@ -3336,3 +3336,14 @@
 .armoire-mobile-tab:not(.active) #armoireMobileDraftBadge{
   background:var(--copper); color:#fff;
 }
+/* Quantité modifiable directement dans le brouillon de configuration —
+   masque les flèches natives du <input type="number"> : elles font double
+   emploi avec les boutons +/- déjà présents à côté et prennent une place
+   disproportionnée sur un champ aussi étroit. */
+.armoire-qty-input{
+  -moz-appearance:textfield;
+}
+.armoire-qty-input::-webkit-outer-spin-button,
+.armoire-qty-input::-webkit-inner-spin-button{
+  -webkit-appearance:none; margin:0;
+}

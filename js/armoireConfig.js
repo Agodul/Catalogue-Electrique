@@ -254,11 +254,20 @@ function _armoireRenderDraft(){
     return '<div class="armoire-draft-row" data-ref="' + escapeHtml(it.ref) + '" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);">'
       + '<div class="sug-list-photo" style="width:32px;height:32px;">' + (p ? _armoirePhotoHtml(p) : '<i class="ti ti-photo-off"></i>') + '</div>'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(it.ref) + '</div>'
+      // Ref dans un <span> tronqué séparé des badges (plutôt que sur la même
+      // div) : sinon un badge juste après une référence longue se retrouvait
+      // caché par l'ellipsis de troncature plutôt qu'affiché à côté.
+      + '<div style="display:flex;align-items:center;min-width:0;">'
+      + '<span style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(it.ref) + '</span>'
+      + (p ? _productBadgesCompactHtml(p) : '')
+      + '</div>'
       + '<div style="font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(p ? (p.name || '') : 'Référence introuvable dans le catalogue') + '</div>'
       + '</div>'
       + '<button type="button" class="armoire-qty-minus" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">−</button>'
-      + '<span style="min-width:18px;text-align:center;font-size:12.5px;font-weight:600;">' + it.qty + '</span>'
+      // Quantité modifiable directement (retour utilisateur : cliquer 49
+      // fois sur "+" pour atteindre 50 pièces n'est pas praticable). Les
+      // boutons +/- restent pour les petits ajustements ponctuels.
+      + '<input type="number" class="armoire-qty-input" inputmode="numeric" min="1" step="1" value="' + it.qty + '" style="width:38px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 2px;flex-shrink:0;background:var(--paper);">'
       + '<button type="button" class="armoire-qty-plus" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">+</button>'
       + '<button type="button" class="armoire-item-remove" title="Retirer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;">✕</button>'
       + '</div>';
@@ -284,7 +293,7 @@ function _armoireProductRowHtml(p){
   return '<div class="armoire-search-row sug-list-item" data-ref="' + escapeHtml(p.ref) + '" style="cursor:default;margin-bottom:6px;">'
     + '<div class="sug-list-photo">' + _armoirePhotoHtml(p) + '</div>'
     + '<div class="sug-list-body">'
-    + '<div class="sug-list-ref">' + escapeHtml(p.ref || '') + '</div>'
+    + '<div class="sug-list-ref">' + escapeHtml(p.ref || '') + _productBadgesCompactHtml(p) + '</div>'
     + '<div class="sug-list-name">' + escapeHtml(p.name || '') + (p.family ? ' · ' + escapeHtml(p.family) : '') + '</div>'
     + '</div>'
     + '<button type="button" class="armoire-search-add" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;">+</button>'
@@ -1315,6 +1324,28 @@ function _armoireClose(){
     if(e.target.closest('.armoire-qty-plus')) _armoireSetQty(ref, item.qty + 1);
     else if(e.target.closest('.armoire-qty-minus')) _armoireSetQty(ref, item.qty - 1);
     else if(e.target.closest('.armoire-item-remove')) _armoireRemoveFromDraft(ref);
+  });
+  // Saisie directe de la quantité : sur "change" (perte de focus / Entrée)
+  // uniquement, jamais sur "input" (à chaque frappe) — _armoireSetQty
+  // déclenche _armoireRenderDraft() qui reconstruit tout le innerHTML de la
+  // liste, ce qui détruirait le champ en cours de frappe et ferait perdre
+  // le focus/curseur après chaque caractère tapé.
+  if(draftEl) draftEl.addEventListener('change', function(e){
+    var input = e.target.closest ? e.target.closest('.armoire-qty-input') : null;
+    if(!input) return;
+    var row = input.closest('.armoire-draft-row');
+    if(!row) return;
+    var n = parseInt(input.value, 10);
+    if(!n || n < 1) n = 1;
+    _armoireSetQty(row.getAttribute('data-ref'), n);
+  });
+  // Entrée valide immédiatement sans attendre un blur manuel (déclenche le
+  // "change" ci-dessus via blur()).
+  if(draftEl) draftEl.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && e.target.classList && e.target.classList.contains('armoire-qty-input')){
+      e.preventDefault();
+      e.target.blur();
+    }
   });
 
   // Délégation sur le conteneur des stats plutôt que sur la case elle-même :
