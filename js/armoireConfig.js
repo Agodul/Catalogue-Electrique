@@ -560,6 +560,25 @@ async function _armoireExportExcel(){
 // Noms de dossiers déjà utilisés dans une liste (pour l'autocomplete du
 // champ Dossier à l'enregistrement) — dédupliqués, triés, jamais la clé
 // vide ("Sans dossier" n'est pas un dossier à proposer en autocomplete).
+// Un POST qui répond 200 ne garantit pas que le serveur a réellement
+// conservé le champ "folder" — certaines API minimalistes se contentent de
+// renvoyer tel quel le corps envoyé sans vraiment le stocker (même
+// constat déjà fait pour "familyIcon", voir verifyFamilyIconOnServer dans
+// js/actions.js). Vérifié ici en relisant la liste fraîchement récupérée
+// (pas la réponse du POST, qui pourrait être un simple écho) : si le
+// dossier saisi n'a pas été conservé, on le dit clairement plutôt que de
+// laisser l'entrée retomber silencieusement dans "Sans dossier".
+function _armoireVerifyFolderPersisted(list, name, expectedFolder){
+  if(!expectedFolder) return; // rien à vérifier si aucun dossier saisi
+  var saved = list.find(function(e){ return e.name === name; });
+  if(saved && (saved.folder || '').trim() !== expectedFolder){
+    if(typeof showToast === 'function'){
+      showToast('« ' + name + ' » enregistré, mais le serveur n\'a pas conservé le dossier « ' + expectedFolder + ' » — limitation côté serveur.', 'warn', 6000);
+    }
+    console.warn('_armoireVerifyFolderPersisted: dossier non conservé par le serveur pour', name, '— attendu:', expectedFolder, 'reçu:', saved && saved.folder);
+  }
+}
+
 function _armoireExistingFolderNames(list){
   var seen = {};
   var out = [];
@@ -663,7 +682,9 @@ async function _armoireSaveBlock(){
       else { _armoireDraft = []; }
       _armoireRenderDraft();
       _armoireUpdateEditingBanner();
-      _armoireFetchBlocks();
+      _armoireFetchBlocks().then(function(){
+        _armoireVerifyFolderPersisted(_armoireBlocks, name, folder);
+      });
     })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
 }
@@ -700,7 +721,9 @@ async function _armoireSaveConfig(){
       else { _armoireDraft = []; }
       _armoireRenderDraft();
       _armoireUpdateEditingBanner();
-      _armoireFetchSavedConfigs();
+      _armoireFetchSavedConfigs().then(function(){
+        _armoireVerifyFolderPersisted(_armoireSavedConfigs, name, folder);
+      });
     })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
 }
