@@ -328,10 +328,11 @@
         products[idx] = Object.assign({}, existing, payload);
         // Retirer le verrou "en cours d'édition" (voir _tryLockProductForEdit
         // dans ce même fichier) — Object.assign ci-dessus aurait sinon
-        // reconduit _editingBy/_editingAt de "existing" tel quel, l'enregistrement
-        // ne les efface pas implicitement.
+        // reconduit _editingBy/_editingAt/_editingSessionId de "existing" tel
+        // quel, l'enregistrement ne les efface pas implicitement.
         delete products[idx]._editingBy;
         delete products[idx]._editingAt;
+        delete products[idx]._editingSessionId;
         touchedForSync.push(products[idx]);
         // Propager l'icône à tous les produits de la même famille — bump
         // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
@@ -749,6 +750,34 @@
     return u ? (u.username || u.name || null) : null;
   }
 
+  // Identifiant unique par ONGLET (pas par compte) — sessionStorage : régénéré
+  // à chaque nouvel onglet/fenêtre, conservé tant que cet onglet reste ouvert
+  // (survit à un F5 dans ce même onglet). Nécessaire car le verrou comparait
+  // jusqu'ici uniquement le NOM D'UTILISATEUR (_editingBy !== me) — deux
+  // sessions connectées sous le MÊME compte (deux onglets, deux appareils, un
+  // compte partagé par plusieurs personnes) se voyaient donc comme "moi-même"
+  // l'une l'autre, et pouvaient éditer le même produit en parallèle sans
+  // jamais être bloquées (retour utilisateur : "comment on fait quand c'est
+  // deux sessions identiques ?"). Comparer l'ID de session plutôt que le nom
+  // distingue bien deux onglets même identiquement connectés.
+  function _editLockSessionId(){
+    try {
+      var id = sessionStorage.getItem('cat_edit_lock_session');
+      if(!id){
+        id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        sessionStorage.setItem('cat_edit_lock_session', id);
+      }
+      return id;
+    } catch(e){
+      // sessionStorage indisponible (navigation privée stricte, etc.) —
+      // repli sur un ID généré une fois en mémoire pour la durée de la page.
+      if(!window._editLockSessionIdFallback){
+        window._editLockSessionIdFallback = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      }
+      return window._editLockSessionIdFallback;
+    }
+  }
+
   // Lit l'état du verrou DIRECTEMENT depuis /pullDatas, sans passer par
   // syncFromServer()/le mécanisme habituel de fusion : pour un compte admin,
   // ce mécanisme ne réécrit JAMAIS products[idx] avec le contenu serveur
@@ -808,16 +837,33 @@
       return { blocked:true, message: 'Impossible de joindre le serveur pour vérifier ce produit — vérifiez votre connexion avant de le ' + actionVerb + '.' };
     }
     var serverState = check.state;
-    if(serverState && serverState._editingBy && serverState._editingBy !== me && serverState._editingAt && (Date.now() - serverState._editingAt) < EDIT_LOCK_TTL_MS){
+    var mySessionId = _editLockSessionId();
+    // Verrou posé par CET onglet précis (même ID de session) → jamais
+    // bloquant, qu'importe le nom d'utilisateur (ex. re-cliquer "Modifier"
+    // sur un produit déjà ouvert dans ce même onglet). Absence de
+    // _editingSessionId (verrou posé par une version plus ancienne de
+    // l'app, avant ce correctif) : repli sur la comparaison par nom
+    // d'utilisateur d'avant, pour ne pas bloquer à tort pendant la
+    // transition.
+    var isMySession = serverState && serverState._editingSessionId
+      ? serverState._editingSessionId === mySessionId
+      : (serverState && serverState._editingBy === me);
+    if(serverState && serverState._editingBy && !isMySession && serverState._editingAt && (Date.now() - serverState._editingAt) < EDIT_LOCK_TTL_MS){
       // lockedBy exposé à part (en plus de "message", déjà composé pour un
       // affichage texte brut) pour que l'appelant puisse construire une
       // popup HTML en échappant lui-même ce nom (voir vmEditBtn/deleteProduct
       // dans js/render.js) — un nom d'utilisateur reste une donnée
       // dynamique, jamais insérée telle quelle dans du HTML.
+      // Même compte mais autre session (deux onglets/appareils connectés
+      // sous le même identifiant) : message dédié plutôt que d'afficher à
+      // l'utilisateur son propre nom, ce qui prêterait à confusion.
+      var sameAccountOtherSession = serverState._editingBy === me;
       return {
         blocked:true,
         lockedBy: serverState._editingBy,
-        message: serverState._editingBy + ' est en cours de modification de ce produit — réessayez dans quelques instants.'
+        message: sameAccountOtherSession
+          ? 'Vous êtes déjà en train de modifier ce produit depuis un autre onglet ou un autre appareil — terminez ou fermez cette autre session avant de continuer ici.'
+          : serverState._editingBy + ' est en cours de modification de ce produit — réessayez dans quelques instants.'
       };
     }
     return { blocked:false };
@@ -835,10 +881,13 @@
     // affiché/édité par CET utilisateur — cohérent avec "Local conservé par
     // défaut pour l'admin" ci-dessus, on ne veut pas écraser silencieusement
     // un contenu local avec une copie serveur potentiellement plus ancienne
-    // juste pour poser un verrou), en n'y ajoutant que _editingBy/_editingAt.
+    // juste pour poser un verrou), en y ajoutant _editingBy/_editingAt (nom
+    // affiché) et _editingSessionId (identité réelle du verrou — voir
+    // _checkProductEditLockBlocks : distingue deux onglets/appareils même
+    // connectés sous le même compte).
     var me = _editLockCurrentUser();
     var idx = products.findIndex(function(x){ return x.id === p.id; });
-    var toLock = Object.assign({}, p, { _editingBy: me || 'Utilisateur', _editingAt: Date.now() });
+    var toLock = Object.assign({}, p, { _editingBy: me || 'Utilisateur', _editingAt: Date.now(), _editingSessionId: _editLockSessionId() });
     if(idx !== -1) products[idx] = toLock;
     await pushToServer([toLock]);
     return { ok:true };
@@ -860,9 +909,19 @@
     if(idx === -1) return;
     var p = products[idx];
     var me = _editLockCurrentUser();
-    if(!p._editingBy || p._editingBy !== me) return;
+    // Comparaison par ID de session (pas juste le nom) : sans ça, un second
+    // onglet connecté sous le MÊME compte pouvait libérer par erreur le
+    // verrou posé par un premier onglet toujours en train d'éditer (les deux
+    // se ressemblaient comme "moi-même" par nom d'utilisateur seul). Repli
+    // sur le nom si le produit local n'a pas encore ce champ (verrou posé
+    // avant ce correctif).
+    var isMySession = p._editingSessionId
+      ? p._editingSessionId === _editLockSessionId()
+      : (p._editingBy === me);
+    if(!p._editingBy || !isMySession) return;
     delete p._editingBy;
     delete p._editingAt;
+    delete p._editingSessionId;
     await pushToServer([p]);
   }
   window._releaseProductEditLock = _releaseProductEditLock;
@@ -984,12 +1043,14 @@
                 delete c.hasDoc;
                 delete c.docFilename;
                 delete c._docFiles;
-                // _editingBy/_editingAt : verrou "en cours d'édition" (voir
-                // _tryLockProductForEdit/_releaseProductEditLock plus bas) —
-                // pousser/retirer ce verrou modifie le produit sans que son
-                // CONTENU éditorial change, jamais un vrai conflit.
+                // _editingBy/_editingAt/_editingSessionId : verrou "en cours
+                // d'édition" (voir _tryLockProductForEdit/
+                // _releaseProductEditLock plus bas) — pousser/retirer ce
+                // verrou modifie le produit sans que son CONTENU éditorial
+                // change, jamais un vrai conflit.
                 delete c._editingBy;
                 delete c._editingAt;
+                delete c._editingSessionId;
                 // Normalise TOUS les champs vides (chaîne vide, null,
                 // undefined, tableau vide) en les retirant complètement —
                 // avant, seuls tags/priceHistory avaient ce traitement. Sans
