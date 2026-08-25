@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v555";
+const CACHE = "spi-catalogue-v557";
 
 const FILES = [
   "./",
@@ -8,6 +8,7 @@ const FILES = [
   "./assets/apple-touch-icon.png",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
+  "./assets/three-d-badge.png",
   "./css/styles.css",
   "./js/popup.js",
   "./js/actions.js",
