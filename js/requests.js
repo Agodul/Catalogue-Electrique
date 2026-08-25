@@ -575,11 +575,16 @@
   // masquer complètement, sinon la prochaine ouverture réapparaîtrait
   // instantanément (classe déjà présente, rien à (re)déclencher).
   function _reqDetailClose(overlay){
-    overlay.classList.remove('open');
     document.body.classList.remove('modal-open');
-    setTimeout(function(){
-      if(!overlay.classList.contains('open')) overlay.style.display = 'none';
-    }, 350);
+    function hideNow(){
+      overlay.classList.remove('open');
+      overlay.style.display = 'none';
+    }
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(overlay, hideNow);
+    } else {
+      hideNow();
+    }
   }
 
 
@@ -850,12 +855,12 @@
   function reqClosePanel(){
     var overlay = document.getElementById('requestsOverlay');
     if(overlay){
-      overlay.classList.remove('open');
-      // Laisser l'animation de sortie se terminer avant de masquer
-      // complètement (même durée que slideUp/fadeBgEdit, ~350ms).
-      setTimeout(function(){
-        if(!overlay.classList.contains('open')) overlay.style.display = 'none';
-      }, 350);
+      function hideNow(){ overlay.classList.remove('open'); overlay.style.display = 'none'; }
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(overlay, hideNow);
+      } else {
+        hideNow();
+      }
     }
     document.body.classList.remove('modal-open');
     // Sur mobile/tablette, si "Demandes en attente" a été ouvert DEPUIS le
@@ -939,11 +944,16 @@
   function _bugReportClose(){
     var overlay = document.getElementById('bugReportOverlay');
     if(!overlay) return;
-    overlay.classList.remove('open');
     document.body.classList.remove('modal-open');
-    setTimeout(function(){
-      if(!overlay.classList.contains('open')) overlay.style.display = 'none';
-    }, 350);
+    function hideNow(){
+      overlay.classList.remove('open');
+      overlay.style.display = 'none';
+    }
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(overlay, hideNow);
+    } else {
+      hideNow();
+    }
   }
 
   function reqInitListeners(){

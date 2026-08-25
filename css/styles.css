@@ -333,8 +333,11 @@
     justify-content:center;
   }
   .card .photo .three-d-overlay img{
-    width:24px;
-    height:24px;
+    /* Aligné avec .essential-badge (même hauteur/bottom, voir plus bas dans
+       ce fichier) — retour utilisateur : la fiche produit avait déjà ce
+       traitement, pas la grille catalogue. */
+    width:22px;
+    height:22px;
     object-fit:contain;
     display:block;
   }
@@ -1381,15 +1384,28 @@
      plus bas, ≤1024px pointer:coarse) — translation verticale pure afin
      que rien n'ait l'air "déformé" pendant l'animation. */
   @keyframes sheetSlideUp{ from{ opacity:0; transform:translateY(28px); } to{ opacity:1; transform:translateY(0); } }
+  /* Fermeture — miroir des 3 animations d'ouverture ci-dessus, pour que les
+     fenêtres se ferment aussi en douceur (avant, fermeture instantanée quel
+     que soit le déclencheur : bouton ✕, clic à l'extérieur, Échap, ou
+     changement d'onglet mobile). */
+  @keyframes fadeBgOut{ from{ background:var(--overlay-scrim); } to{ background:rgba(100,100,100,0); } }
+  @keyframes slideDown{ from{ opacity:1; transform:translateY(0) scale(1); } to{ opacity:0; transform:translateY(40px) scale(.98); } }
+  @keyframes sheetSlideDown{ from{ opacity:1; transform:translateY(0); } to{ opacity:0; transform:translateY(28px); } }
   #viewOverlay.open{ animation:fadeBg .25s ease forwards; }
   #viewOverlay.open #viewModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+  #viewOverlay.closing{ animation:fadeBgOut .22s ease forwards !important; }
+  #viewOverlay.closing #viewModal{ animation:slideDown .22s cubic-bezier(.32,0,.15,1) forwards !important; }
   .modal-overlay.open{ animation:fadeBgEdit .25s ease forwards; }
   .modal-overlay.open .modal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+  .modal-overlay.closing{ animation:fadeBgOut .22s ease forwards !important; }
+  .modal-overlay.closing .modal{ animation:slideDown .22s cubic-bezier(.32,0,.15,1) forwards !important; }
   /* Détail d'une demande en attente — même animation que la fiche produit /
      le formulaire d'ajout, elle apparaissait d'un coup avant (retour
      utilisateur : "elle n'est toujours pas comme les autres fenêtres"). */
   #reqDetailOverlay.open{ animation:fadeBgEdit .25s ease forwards; }
   #reqDetailOverlay.open #reqDetailModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+  #reqDetailOverlay.closing{ animation:fadeBgOut .22s ease forwards !important; }
+  #reqDetailOverlay.closing #reqDetailModal{ animation:slideDown .22s cubic-bezier(.32,0,.15,1) forwards !important; }
 
   /* 3 — FAB loupe → × */
   #btnFabSearch{ overflow:hidden; }
@@ -1420,6 +1436,20 @@
     .modal-overlay.open, .modal-overlay.open .modal,
     #reqDetailOverlay.open, #reqDetailOverlay.open #reqDetailModal,
     #requestsOverlay.open, #requestsOverlay.open #requestsPanel,
+    /* Tiroirs sans transition (voir plus bas dans ce fichier) + fermeture
+       (.closing, tous overlays confondus) — même traitement que les 4
+       fenêtres ci-dessus. */
+    #docOverlay, #docModal, #sugOverlay, #sugModal, #sugPickerOverlay, #sugPickerModal,
+    #specsOverlay, #specsModal, #armoireConfigOverlay, #armoireConfigModal,
+    #priceModalOverlay, #priceModalOverlay > div, #conflictOverlay, #conflictModal,
+    #xlsxImportOverlay, #xlsxImportOverlay > div, #pdfViewerOverlay, #pdfViewerOverlay > div,
+    #compareOverlay.show, #compareOverlay.show .compare-box,
+    #iconPickerModal.show, #iconPickerModal.show .icon-picker-box,
+    #authOverlay.show, #authOverlay.show .auth-box,
+    .closing, .closing > div, .closing #docModal, .closing #sugModal, .closing #sugPickerModal,
+    .closing #specsModal, .closing #armoireConfigModal, .closing #conflictModal,
+    .closing #viewModal, .closing .modal, .closing #reqDetailModal, .closing #requestsPanel,
+    .closing .compare-box, .closing .icon-picker-box, .closing .auth-box,
     .discount-badge.badge-anim,
     #btnSave.save-anim, .filebar .dot.pulsing
     { animation:none !important; opacity:1 !important; transform:none !important; }
@@ -1922,6 +1952,8 @@
      d'ajout et le détail d'une demande (voir .modal-overlay.open plus haut). */
   #requestsOverlay.open{ animation:fadeBgEdit .25s ease forwards; }
   #requestsOverlay.open #requestsPanel{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
+  #requestsOverlay.closing{ animation:fadeBgOut .22s ease forwards !important; }
+  #requestsOverlay.closing #requestsPanel{ animation:slideDown .22s cubic-bezier(.32,0,.15,1) forwards !important; }
 
   /* ── Modale Paramètres ── */
   #settingsOverlay{
@@ -2765,40 +2797,64 @@
     margin: 0 !important;
   }
 
-  /* ── Animation d'ouverture pour les tiroirs restés sans transition ──
-     Documents, suggestions, parcourir le catalogue, caractéristiques,
-     configurateur d'armoire, prix, conflits, import xlsx, visionneuse
-     PDF, comparaison, sélecteur d'icône, connexion : tous basculaient
-     jusqu'ici d'un coup (display:none → flex, ou classe .show posée sans
-     règle d'animation associée), contrairement aux autres fenêtres
-     (fiche produit, formulaires, demandes…) qui ont déjà fadeBg/slideUp
-     (voir plus haut dans ce fichier). Retour utilisateur : "ajouter des
-     animations à l'ouverture de toutes les fenêtres sur mobile".
-     Technique : "animation" (et non "transition") rejoue automatiquement
-     à chaque passage display:none → flex, sans code JS supplémentaire —
-     fonctionne aussi bien pour les overlays pilotés en style inline
-     (docOverlay, sugOverlay, sugPickerOverlay, specsOverlay,
-     armoireConfigOverlay, priceModalOverlay, conflictOverlay,
-     xlsxImportOverlay, pdfViewerOverlay) que pour ceux pilotés par une
-     classe .show (compareOverlay, iconPickerModal, authOverlay).
-     Translation verticale SEULE (pas de scale() comme le slideUp
-     "desktop" ci-dessus) : demande explicite de l'utilisateur pour que
-     le contenu qui peut se charger juste après l'ouverture (liste de
-     documents, grille d'icônes, étapes d'import…) n'ait jamais l'air
-     "déformé" pendant l'animation. */
-  #docOverlay, #sugOverlay, #sugPickerOverlay, #specsOverlay,
-  #armoireConfigOverlay, #priceModalOverlay, #conflictOverlay,
-  #xlsxImportOverlay, #pdfViewerOverlay,
-  #compareOverlay.show, #iconPickerModal.show, #authOverlay.show{
-    animation: fadeBgEdit .25s ease forwards;
-  }
-  #docModal, #sugModal, #sugPickerModal, #specsModal, #armoireConfigModal,
-  #priceModalOverlay > div, #conflictModal, #xlsxImportOverlay > div,
-  #pdfViewerOverlay > div,
-  #compareOverlay.show .compare-box, #iconPickerModal.show .icon-picker-box,
-  #authOverlay.show .auth-box{
-    animation: sheetSlideUp .3s cubic-bezier(.32,.72,0,1) forwards;
-  }
+}
+
+/* ── Animation d'ouverture pour les tiroirs restés sans transition ──
+   Documents, suggestions, parcourir le catalogue, caractéristiques,
+   configurateur d'armoire, prix, conflits, import xlsx, visionneuse
+   PDF, comparaison, sélecteur d'icône, connexion : tous basculaient
+   jusqu'ici d'un coup (display:none → flex, ou classe .show posée sans
+   règle d'animation associée), contrairement aux autres fenêtres
+   (fiche produit, formulaires, demandes…) qui ont déjà fadeBg/slideUp
+   (voir plus haut dans ce fichier). Hors media query (contrairement à la
+   première passe de ce correctif, mobile uniquement) : même animation sur
+   desktop.
+   Technique : "animation" (et non "transition") rejoue automatiquement
+   à chaque passage display:none → flex, sans code JS supplémentaire —
+   fonctionne aussi bien pour les overlays pilotés en style inline
+   (docOverlay, sugOverlay, sugPickerOverlay, specsOverlay,
+   armoireConfigOverlay, priceModalOverlay, conflictOverlay,
+   xlsxImportOverlay, pdfViewerOverlay) que pour ceux pilotés par une
+   classe .show (compareOverlay, iconPickerModal, authOverlay).
+   Translation verticale SEULE (pas de scale() comme le slideUp
+   "desktop" plus haut dans ce fichier) : le contenu qui peut se charger
+   juste après l'ouverture (liste de documents, grille d'icônes, étapes
+   d'import…) ne doit jamais avoir l'air déformé pendant l'animation —
+   vrai sur desktop comme sur mobile, donc même choix des deux côtés. */
+#docOverlay, #sugOverlay, #sugPickerOverlay, #specsOverlay,
+#armoireConfigOverlay, #priceModalOverlay, #conflictOverlay,
+#xlsxImportOverlay, #pdfViewerOverlay,
+#compareOverlay.show, #iconPickerModal.show, #authOverlay.show{
+  animation: fadeBgEdit .25s ease forwards;
+}
+#docModal, #sugModal, #sugPickerModal, #specsModal, #armoireConfigModal,
+#priceModalOverlay > div, #conflictModal, #xlsxImportOverlay > div,
+#pdfViewerOverlay > div,
+#compareOverlay.show .compare-box, #iconPickerModal.show .icon-picker-box,
+#authOverlay.show .auth-box{
+  animation: sheetSlideUp .3s cubic-bezier(.32,.72,0,1) forwards;
+}
+
+/* Fermeture — miroir de l'ouverture ci-dessus, posée par
+   window._closeOverlayAnimated (js/init.js) le temps de l'animation avant
+   le display:none / retrait de .open/.show réel. !important : pendant la
+   fermeture, .open/.show est encore présent le temps de l'animation, donc
+   la règle d'ouverture ci-dessus matche aussi le même élément — .closing
+   doit gagner sans dépendre de l'ordre des règles. */
+#docOverlay.closing, #sugOverlay.closing, #sugPickerOverlay.closing, #specsOverlay.closing,
+#armoireConfigOverlay.closing, #priceModalOverlay.closing, #conflictOverlay.closing,
+#xlsxImportOverlay.closing, #pdfViewerOverlay.closing,
+#compareOverlay.closing, #iconPickerModal.closing, #authOverlay.closing{
+  animation: fadeBgOut .22s ease forwards !important;
+}
+#docOverlay.closing #docModal, #sugOverlay.closing #sugModal,
+#sugPickerOverlay.closing #sugPickerModal, #specsOverlay.closing #specsModal,
+#armoireConfigOverlay.closing #armoireConfigModal,
+#priceModalOverlay.closing > div, #conflictOverlay.closing #conflictModal,
+#xlsxImportOverlay.closing > div, #pdfViewerOverlay.closing > div,
+#compareOverlay.closing .compare-box, #iconPickerModal.closing .icon-picker-box,
+#authOverlay.closing .auth-box{
+  animation: sheetSlideDown .22s cubic-bezier(.32,.72,0,1) forwards !important;
 }
 
 .account-sheet {
@@ -2998,11 +3054,21 @@
   #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
 
 /* ── Badge essentiel ─────────────────────────────────────── */
+/* Aligné avec le badge 3D (.card .photo .three-d-overlay, voir plus haut
+   dans ce fichier) à chaque palier — même traitement que la fiche produit
+   (.vm-photo .essential-badge) : hauteur fixe + même "bottom" que l'icône
+   3D, et un peu plus large qu'avant (retour utilisateur : la grille
+   catalogue n'avait pas reçu le même correctif que la fiche produit).
+   .vm-photo .essential-badge (plus haut, plus spécifique) continue à
+   primer sur tous ces réglages pour la fiche produit — cette section ne
+   régit donc que la grille catalogue. */
 .essential-badge{
-  position:absolute; bottom:8px; left:8px;
+  position:absolute; bottom:10px; left:10px;
+  height:22px; box-sizing:border-box;
+  display:flex; align-items:center;
   background:var(--copper); color:#fff;
   font-size:11px; font-weight:700;
-  padding:3px 8px; border-radius:20px;
+  padding:0 12px; border-radius:20px;
   pointer-events:none; z-index:2;
   letter-spacing:.03em;
   box-shadow:0 1px 4px rgba(0,0,0,.18);
@@ -3014,37 +3080,42 @@
 @media(min-width:769px) and (max-width:1024px) and (pointer: coarse) {
   .essential-badge{
     font-size:10px;
-    padding:2px 7px;
-    bottom:7px; left:7px;
+    padding:0 10px;
+    height:19px; bottom:9px; left:9px;
   }
+  .card .photo .three-d-overlay{ bottom:9px; right:9px; }
+  .card .photo .three-d-overlay img{ width:19px; height:19px; }
 }
 
 /* Tablette petite 641-768px */
 @media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
   .essential-badge{
     font-size:9px;
-    padding:2px 6px;
-    bottom:6px; left:6px;
+    padding:0 9px;
+    height:17px; bottom:8px; left:8px;
   }
+  .card .photo .three-d-overlay{ bottom:8px; right:8px; }
+  .card .photo .three-d-overlay img{ width:17px; height:17px; }
 }
 
 /* Mobile ≤640px : 3 colonnes (~110px/carte) — badge très compact */
 @media(max-width:640px) and (pointer: coarse) {
   .essential-badge{
     font-size:8px;
-    padding:2px 5px;
-    bottom:5px; left:5px;
+    padding:0 7px;
+    height:15px; bottom:6px; left:6px;
     border-radius:12px;
     letter-spacing:0;
   }
+  .card .photo .three-d-overlay{ bottom:6px; right:6px; }
 }
 
 /* Mobile ≤380px : 2 colonnes (~160px/carte) — un peu plus de place */
 @media(max-width:380px) and (pointer: coarse) {
   .essential-badge{
     font-size:8.5px;
-    padding:2px 5px;
-    bottom:5px; left:5px;
+    padding:0 7px;
+    height:15px; bottom:6px; left:6px;
   }
 }
 

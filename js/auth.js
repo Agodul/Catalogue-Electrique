@@ -1,7 +1,7 @@
 "use strict";
 
 // ══════════════════════════════════════════════════════════════════════════
-//  AUTH.JS — Authentification serveur JWT + fallback local
+//  AUTH.JS — Authentification serveur JWT
 //  Catalogue Électrique — SPI Engineering
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -122,9 +122,57 @@ function _authCloseSensitiveUI() {
   if (typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
   if (typeof _armoireClose === 'function') _armoireClose();
   if (typeof reqClosePanel === 'function') reqClosePanel();
+  // Caractéristiques techniques / Parcourir le catalogue : peuvent rester
+  // ouvertes PAR-DESSUS le formulaire produit (fenêtres imbriquées) — fermer
+  // le formulaire ci-dessus ne les referme pas automatiquement, elles sont
+  // restées éditables (retour utilisateur, même préoccupation que pour le
+  // formulaire principal).
+  if (typeof window._specsCloseModal === 'function') window._specsCloseModal();
+  if (typeof window._sugPickerClose === 'function') window._sugPickerClose();
   var compareOverlay = document.getElementById('compareOverlay');
-  if (compareOverlay) compareOverlay.classList.remove('show');
+  if (compareOverlay) {
+    if (typeof window._closeOverlayAnimated === 'function') {
+      window._closeOverlayAnimated(compareOverlay, function(){ compareOverlay.classList.remove('show'); });
+    } else {
+      compareOverlay.classList.remove('show');
+    }
+  }
   document.body.classList.remove('modal-open');
+}
+
+// Clé sessionStorage : fait traverser le message ("Déconnecté", "Session
+// expirée…") par-dessus le rechargement instantané ci-dessous — sans ça, un
+// rechargement à 0ms ne laisse jamais le temps au toast de s'afficher, donc
+// plus moyen de savoir POURQUOI on vient d'être déconnecté (utile surtout
+// pour une déconnexion forcée). Ré-affiché juste après le rechargement, voir
+// initAuth() plus bas.
+var AUTH_POST_RELOAD_TOAST_KEY = 'cat_post_reload_toast';
+
+// Recharge la page après une déconnexion (forcée ou manuelle) — repart d'un
+// état JS totalement vierge plutôt que de compter sur chaque fenêtre/chaque
+// variable d'état pour se remettre elle-même à jour correctement. Instantané
+// (retour utilisateur) : aucun délai avant le rechargement.
+// PAS location.reload() : même bug déjà rencontré (et corrigé) pour la
+// bannière de mise à jour du service worker (voir js/pwa.js) — sur une PWA
+// en mode standalone (ajoutée à l'écran d'accueil, notamment iOS),
+// location.reload() peut laisser l'app figée/blanche, obligeant à la fermer
+// complètement puis la rouvrir. Même remède ici : location.replace() vers
+// l'URL courante + un paramètre de requête inédit pour forcer une
+// navigation non ambiguë (une URL rigoureusement identique est traitée
+// comme un no-op silencieux par plusieurs navigateurs), sans empiler
+// d'entrée d'historique.
+function _authReloadAfterLogout(reason) {
+  try { if (reason) sessionStorage.setItem(AUTH_POST_RELOAD_TOAST_KEY, reason); } catch(e) {}
+  // URLSearchParams.set() REMPLACE une éventuelle valeur déjà présente
+  // (plutôt qu'une concaténation manuelle) — sans ça, chaque déconnexion
+  // ajoutait un nouveau "_authreload=…" à la suite des précédents au lieu
+  // de le remplacer, et l'URL grossissait indéfiniment à chaque
+  // déconnexion/reconnexion (retour utilisateur).
+  var params = new URLSearchParams(window.location.search);
+  params.set('_authreload', Date.now());
+  window.location.replace(
+    window.location.pathname + '?' + params.toString() + window.location.hash
+  );
 }
 
 function _authForceLogout(reason) {
@@ -133,11 +181,11 @@ function _authForceLogout(reason) {
   authClearUser();
   applyAuthUI();
   _authCloseSensitiveUI();
-  showAuthToast(reason);
-  if (typeof render === 'function') render();
-  if (typeof renderHome === 'function') renderHome();
-  if (typeof showHome === 'function') showHome();
   if (typeof window._reqStopPolling === 'function') window._reqStopPolling();
+  // Rechargement instantané : le toast ne peut plus s'afficher avant (voir
+  // _authReloadAfterLogout) — il traverse le rechargement via sessionStorage
+  // et se ré-affiche juste après, plutôt que d'être posé ici pour rien.
+  _authReloadAfterLogout(reason);
   setTimeout(function(){ _authForceLogoutInProgress = false; }, 2000);
 }
 
@@ -220,15 +268,6 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-// ── Authentification locale (fallback hors ligne) ────────────────────────
-
-async function sha256hex(str) {
-  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(function(b) {
-    return b.toString(16).padStart(2, '0');
-  }).join('');
-}
-
 // ── Login principal (serveur d'abord, fallback local) ────────────────────
 
 async function authLogin(username, password) {
@@ -264,14 +303,12 @@ async function authLogin(username, password) {
 function authLogout() {
   authLogoutServer(); // async, non bloquant
   authClearUser();
-  applyAuthUI();
   _authCloseSensitiveUI();
-  showAuthToast('Déconnecté');
-  // Rafraîchir le rendu
-  if (typeof render === 'function') render();
-  if (typeof renderHome === 'function') renderHome();
-  if (typeof showHome === 'function') showHome();
   if (typeof window._reqStopPolling === 'function') window._reqStopPolling();
+  // Rechargement instantané : le toast traverse le rechargement via
+  // sessionStorage (voir _authReloadAfterLogout) plutôt que d'être affiché
+  // ici pour rien.
+  _authReloadAfterLogout('Déconnecté');
 }
 
 // ── Gestion utilisateurs serveur ─────────────────────────────────────────
@@ -574,8 +611,12 @@ function openAuthModal() {
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
   if (overlay) {
-    overlay.classList.remove('show');
     document.body.classList.remove('modal-open');
+    if (typeof window._closeOverlayAnimated === 'function') {
+      window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('show'); });
+    } else {
+      overlay.classList.remove('show');
+    }
   }
   var errEl = document.getElementById('authError');
   if (errEl) errEl.textContent = '';
@@ -998,6 +1039,30 @@ function openChangePasswordModal() {
 
 function initAuth() {
   applyAuthUI();
+  // Ré-affiche le toast ("Déconnecté", "Session expirée…") posé juste avant
+  // le rechargement instantané de la page (voir _authReloadAfterLogout) —
+  // sessionStorage plutôt que localStorage : ne doit survivre qu'à CE
+  // rechargement précis, pas traîner indéfiniment si l'onglet reste ouvert
+  // ou est rouvert plus tard.
+  try {
+    var _postReloadMsg = sessionStorage.getItem(AUTH_POST_RELOAD_TOAST_KEY);
+    if (_postReloadMsg) {
+      sessionStorage.removeItem(AUTH_POST_RELOAD_TOAST_KEY);
+      showAuthToast(_postReloadMsg);
+    }
+  } catch(e) {}
+  // Retire "_authreload" de la barre d'adresse une fois son rôle (forcer la
+  // navigation, voir _authReloadAfterLogout) rempli — replaceState ne
+  // déclenche pas de nouveau rechargement, juste un nettoyage silencieux de
+  // l'URL affichée. Les AUTRES paramètres éventuels (ex. ?share_url=... venant
+  // d'un partage natif) sont conservés, seul celui-ci est retiré.
+  if (window.location.search.indexOf('_authreload=') !== -1) {
+    var _cleanParams = new URLSearchParams(window.location.search);
+    _cleanParams.delete('_authreload');
+    var _cleanQs = _cleanParams.toString();
+    window.history.replaceState({}, document.title,
+      window.location.pathname + (_cleanQs ? '?' + _cleanQs : '') + window.location.hash);
+  }
   // Notifier les composants (bottom nav, menu sheet) après applyAuthUI —
   // même délai réutilisé pour démarrer le polling des demandes en attente
   // sur une session déjà active (pas de authLogin() cette fois, la session

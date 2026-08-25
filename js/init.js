@@ -50,7 +50,6 @@
     var shareTitle = params.get('share_title');
     if(!shareUrl) return;
 
-    // ── SÉCURITÉ : valider l'URL avant tout traitement ───────────
     try {
       var parsed = new URL(shareUrl);
       // N'accepter que http:// et https://
@@ -59,7 +58,6 @@
         showToast('URL partagée invalide', 'err', 4000);
         return;
       }
-      // Reconstruire l'URL depuis l'objet parsé (évite les injections via fragments malformés)
       shareUrl = parsed.href;
     } catch(e) {
       console.warn('[ShareTarget] URL malformée rejetée:', shareUrl);
@@ -192,7 +190,6 @@
       localStorage.removeItem('cat_pending_ts');
     }catch(e){ return; }
 
-    // ── SÉCURITÉ : valider l'URL provenant du localStorage ───────
     if(url){
       try {
         var parsedUrl = new URL(url);
@@ -234,6 +231,31 @@
   // Cas 2 : catalogue vient d'être ouvert avec ?cat_bridge=1
   // Le content script écrit dans localStorage puis dispatch spi_extension_ready
   // → déjà géré par l'écouteur ci-dessus, rien de plus nécessaire ici.
+  // ── Fermeture animée générique ────────────────────────────────────
+  // Joue l'animation de fermeture (.closing, voir css/styles.css — miroir
+  // de l'animation d'ouverture fadeBg/slideUp ou fadeBgEdit/sheetSlideUp)
+  // puis exécute le VRAI masquage (display:none / retrait de .open ou
+  // .show) une fois l'animation terminée, plutôt qu'immédiatement. Chaque
+  // fonction de fermeture (bouton ✕, clic à l'extérieur…) doit appeler ceci
+  // au lieu de masquer directement — un seul point pour toutes les fenêtres
+  // plutôt que dupliquer le minutage dans chacune.
+  window._closeOverlayAnimated = function(overlayEl, hideNowFn){
+    if(!overlayEl || overlayEl.classList.contains('closing')){
+      if(hideNowFn) hideNowFn();
+      return;
+    }
+    overlayEl.classList.add('closing');
+    var done = false;
+    function finish(){
+      if(done) return;
+      done = true;
+      overlayEl.classList.remove('closing');
+      if(hideNowFn) hideNowFn();
+    }
+    overlayEl.addEventListener('animationend', finish, { once: true });
+    setTimeout(finish, 260); // filet de sécurité si l'event ne se déclenche pas
+  };
+
   // ── Gestionnaire centralisé Escape + blocage clic extérieur ──────
   // Chaque entrée : [overlayId, closeBtnId ou nomFonction]
   // La fermeture se fait toujours via le bouton close (réutilise la logique existante)

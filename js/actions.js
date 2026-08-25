@@ -5,13 +5,48 @@
     if(_xlsxLoadPromise) return _xlsxLoadPromise;
     _xlsxLoadPromise = new Promise(function(resolve, reject){
       var s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload = function(){ resolve(); };
+      // Auto-hébergé (js/xlsx.full.min.js, SheetJS 0.20.3), comme js/pdf.min.js.
+      s.src = 'js/xlsx.full.min.js';
+      s.onload = function(){ _patchXlsxFormulaInjection(); resolve(); };
       s.onerror = function(){ _xlsxLoadPromise = null; reject(new Error('Échec du chargement de la librairie Excel')); };
       document.head.appendChild(s);
     });
     return _xlsxLoadPromise;
   }
+
+  // Neutralise les cellules commençant par "=", "+", "-" ou "@" dans tous
+  // les exports Excel (comparaison, tarifs, configurateur d'armoire…).
+  // Patché ici une seule fois après le chargement de la librairie
+  // (ensureXLSX est le point de passage unique avant tout appel XLSX.*
+  // dans l'app — voir js/armoireConfig.js).
+  function _patchXlsxFormulaInjection(){
+    if(!window.XLSX || !XLSX.utils || XLSX.utils.aoa_to_sheet.__spiPatched) return;
+    var original = XLSX.utils.aoa_to_sheet;
+    function sanitizeCell(v){
+      if(typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return "'" + v;
+      return v;
+    }
+    XLSX.utils.aoa_to_sheet = function(aoa, opts){
+      var safe = aoa.map(function(row){
+        return row.map(sanitizeCell);
+      });
+      return original.call(XLSX.utils, safe, opts);
+    };
+    XLSX.utils.aoa_to_sheet.__spiPatched = true;
+  }
+
+  // Fermeture animée de l'import Excel — exposée en global : deux boutons
+  // (✕ et Annuler) l'appellent en attribut onclick inline (voir index.html).
+  window._closeXlsxImportOverlay = function(){
+    var el = document.getElementById('xlsxImportOverlay');
+    document.body.classList.remove('modal-open');
+    if(!el) return;
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(el, function(){ el.style.display = 'none'; });
+    } else {
+      el.style.display = 'none';
+    }
+  };
 
   // ---------- Save product ----------
   // Uniformise le séparateur décimal en virgule (format FR) — ne touche pas
@@ -114,6 +149,18 @@
   function reconcileSuggestionsReciprocally(prods){ return reconcileLinksReciprocally(prods, 'suggestions'); }
   function reconcileSparePartsReciprocally(prods){ return reconcileLinksReciprocally(prods, 'spareParts'); }
 
+  // N'accepte que des URL http(s) pour les champs "URL produit" / "Lien
+  // 3DEXPERIENCE" — même règle déjà appliquée aux URL entrantes du pont
+  // extension et du partage PWA (voir js/init.js).
+  function _isSafeHttpUrl(str){
+    if(!str) return true; // champ vide = autorisé (optionnel)
+    try {
+      var u = new URL(str);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch(e){ return false; }
+  }
+  window._isSafeHttpUrl = _isSafeHttpUrl;
+
   document.getElementById('btnSave').addEventListener('click', function(){
     // Garde-fou défensif : si le formulaire était déjà ouvert avant une
     // déconnexion (forcée ou manuelle), applyAuthUI() ne le referme pas tout
@@ -131,6 +178,14 @@
     var ref = fRef.value.trim();
     if(!brand || !ref){
       showToast('La marque et la référence sont obligatoires.', 'err', 3000);
+      return;
+    }
+    if(!_isSafeHttpUrl(fUrl.value.trim())){
+      showToast('URL produit invalide — seuls les liens http:// et https:// sont autorisés.', 'err', 4000);
+      return;
+    }
+    if(!_isSafeHttpUrl(f3dLink.value.trim())){
+      showToast('Lien 3DEXPERIENCE invalide — seuls les liens http:// et https:// sont autorisés.', 'err', 4000);
       return;
     }
     var cataloguePrice = formatPrice(fPrice.value);
@@ -1477,7 +1532,14 @@
     addSupplierSlot();
     compareResult.style.display = 'none';
   });
-  compareClose.addEventListener('click', function(){ compareOverlay.classList.remove('show'); document.body.classList.remove('modal-open'); });
+  compareClose.addEventListener('click', function(){
+    document.body.classList.remove('modal-open');
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(compareOverlay, function(){ compareOverlay.classList.remove('show'); });
+    } else {
+      compareOverlay.classList.remove('show');
+    }
+  });
 
   document.getElementById('btnResetFilters').addEventListener('click', function(){
     brandFilterEl.value  = '';
@@ -2011,8 +2073,7 @@
         if(ok) submitted++; else failed++;
       }));
       btnConfirm.disabled = false;
-      document.getElementById('xlsxImportOverlay').style.display = 'none';
-      document.body.classList.remove('modal-open');
+      window._closeXlsxImportOverlay();
       if(submitted){
         showToast(submitted + ' demande(s) envoyée(s) pour approbation' + (failed ? ', ' + failed + ' échec(s)' : ''), failed ? 'warn' : 'ok', 4500);
       } else {
@@ -2107,8 +2168,7 @@
     // jusqu'à un F5 — retour utilisateur).
     var homePageEl2 = document.getElementById('homePage');
     if(homePageEl2 && !homePageEl2.classList.contains('hidden')) renderHome();
-    document.getElementById('xlsxImportOverlay').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    window._closeXlsxImportOverlay();
     showToast(added + ' ajouté(s), ' + updated + ' mis à jour.', 'ok', 4000);
     xlsxPendingData = [];
   });
@@ -2418,7 +2478,7 @@
         el.classList.add('selected');
         // Mettre à jour l'aperçu dans le formulaire
         _setFamilyIconPreview(icon);
-        iconPickerModal.classList.remove('show');
+        _closeIconPicker();
         // Contexte Paramètres : sauvegarder sur tous les produits de la famille
         if(settingsEditingFamily){
           var _editedFamily = settingsEditingFamily;
@@ -2450,11 +2510,16 @@
     renderIconGrid('');
     iconPickerModal.classList.add('show');
   });
-  iconPickerClose.addEventListener('click', function(){
-    iconPickerModal.classList.remove('show');
-  });
+  function _closeIconPicker(){
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(iconPickerModal, function(){ iconPickerModal.classList.remove('show'); });
+    } else {
+      iconPickerModal.classList.remove('show');
+    }
+  }
+  iconPickerClose.addEventListener('click', _closeIconPicker);
   iconPickerModal.addEventListener('click', function(e){
-    if(e.target === iconPickerModal) iconPickerModal.classList.remove('show');
+    if(e.target === iconPickerModal) _closeIconPicker();
   });
   iconPickerSearch.addEventListener('input', function(){
     renderIconGrid(iconPickerSearch.value);
@@ -2597,8 +2662,14 @@
 
   function closeConflictModal(){
     var overlay = document.getElementById('conflictOverlay');
-    if(overlay) overlay.style.display = 'none';
     document.body.classList.remove('modal-open');
+    if(overlay){
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(overlay, function(){ overlay.style.display = 'none'; });
+      } else {
+        overlay.style.display = 'none';
+      }
+    }
   }
 
   function applyConflictChoices(){

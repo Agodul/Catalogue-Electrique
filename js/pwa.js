@@ -1,3 +1,16 @@
+  // Retire "_swupdate" de la barre d'adresse une fois son rôle (forcer la
+  // navigation après mise à jour, voir plus bas) rempli — même traitement
+  // que "_authreload" dans js/auth.js. replaceState ne déclenche pas de
+  // nouveau rechargement, juste un nettoyage silencieux de l'URL affichée ;
+  // les autres paramètres éventuels (ex. ?share_url=...) sont conservés.
+  if(window.location.search.indexOf('_swupdate=') !== -1){
+    var _swCleanParams = new URLSearchParams(window.location.search);
+    _swCleanParams.delete('_swupdate');
+    var _swCleanQs = _swCleanParams.toString();
+    window.history.replaceState({}, document.title,
+      window.location.pathname + (_swCleanQs ? '?' + _swCleanQs : '') + window.location.hash);
+  }
+
   // ── Enregistrement du service worker ──────────────────────────────
   // Sans cet appel, sw.js n'est jamais activé : ni le cache hors-ligne,
   // ni l'interception de /share-target (partage natif Android) ne fonctionnent.
@@ -84,9 +97,16 @@
             // substitué) aux paramètres déjà présents (ex. ?share_url=...
             // venant d'un partage natif, voir /share-target dans sw.js) pour
             // ne pas les perdre silencieusement au passage.
-            var _swSep = window.location.search ? '&' : '?';
+            // URLSearchParams.set() REMPLACE une éventuelle valeur déjà
+            // présente (plutôt qu'une concaténation manuelle) — sans ça,
+            // chaque mise à jour ajoutait un nouveau "_swupdate=…" à la
+            // suite des précédents au lieu de le remplacer, et l'URL
+            // grossissait indéfiniment (même bug que _authreload dans
+            // js/auth.js, retour utilisateur).
+            var _swParams = new URLSearchParams(window.location.search);
+            _swParams.set('_swupdate', Date.now());
             window.location.replace(
-              window.location.pathname + window.location.search + _swSep + '_swupdate=' + Date.now() + window.location.hash
+              window.location.pathname + '?' + _swParams.toString() + window.location.hash
             );
           });
         }

@@ -1,4 +1,4 @@
-const CACHE = "spi-catalogue-v544";
+const CACHE = "spi-catalogue-v554";
 
 const FILES = [
   "./",
@@ -141,7 +141,6 @@ self.addEventListener("fetch", event => {
 
     const targetUrl = sharedUrl || sharedText || "";
 
-    // ── SÉCURITÉ : valider le schéma avant de rediriger ──────────
     let safeTargetUrl = "";
     if(targetUrl){
       try {

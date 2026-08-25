@@ -231,7 +231,13 @@
     priceModalOverlay.style.display = 'flex';
   }
 
-  function closePriceModal(){ priceModalOverlay.style.display = 'none'; }
+  function closePriceModal(){
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(priceModalOverlay, function(){ priceModalOverlay.style.display = 'none'; });
+    } else {
+      priceModalOverlay.style.display = 'none';
+    }
+  }
 
   function renderPriceModalTable(p){
     var tbody = document.getElementById('priceModalBody');
@@ -444,8 +450,12 @@
   }
   function closeModal(){
     var wasEditingId = editingId;
-    overlay.classList.remove('open');
     document.body.classList.remove('modal-open');
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('open'); });
+    } else {
+      overlay.classList.remove('open');
+    }
     editingId = null;
     // Libère un éventuel verrou "en cours d'édition" (voir
     // _tryLockProductForEdit/_releaseProductEditLock dans js/actions.js).
@@ -1513,9 +1523,16 @@
   }
   function _sugPickerClose(){
     if(!sugPickerOverlay) return;
-    sugPickerOverlay.style.display = 'none';
     document.body.classList.remove('modal-open');
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(sugPickerOverlay, function(){ sugPickerOverlay.style.display = 'none'; });
+    } else {
+      sugPickerOverlay.style.display = 'none';
+    }
   }
+  // Exposée en global : appelée par _authCloseSensitiveUI (js/auth.js) pour
+  // fermer aussi cette fenêtre lors d'une déconnexion (forcée ou manuelle).
+  window._sugPickerClose = _sugPickerClose;
 
   if(btnSugBrowse)        btnSugBrowse.addEventListener('click', function(){ _sugPickerOpen('suggestions'); });
   if(btnSparePartsBrowse) btnSparePartsBrowse.addEventListener('click', function(){ _sugPickerOpen('spareParts'); });
@@ -1633,10 +1650,17 @@
   function _specsCloseModal(){
     _specsRenderRows(); // met à jour le compteur sur le bouton avant de fermer
     if(specsOverlay){
-      specsOverlay.style.display = 'none';
       document.body.classList.remove('modal-open');
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(specsOverlay, function(){ specsOverlay.style.display = 'none'; });
+      } else {
+        specsOverlay.style.display = 'none';
+      }
     }
   }
+  // Exposée en global : appelée par _authCloseSensitiveUI (js/auth.js) pour
+  // fermer aussi cette fenêtre lors d'une déconnexion (forcée ou manuelle).
+  window._specsCloseModal = _specsCloseModal;
   function _specsHasChanges(){
     return _specsSnapshotOnOpen !== null && JSON.stringify(_specsRows) !== _specsSnapshotOnOpen;
   }

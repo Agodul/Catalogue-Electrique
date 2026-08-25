@@ -968,23 +968,30 @@ function _armoireClose(){
   // _armoireCancelEditEntry, jamais perdre la configuration de l'utilisateur).
   if(_armoireEditingEntry) _armoireCancelEditEntry();
   var overlay = document.getElementById('armoireConfigOverlay');
-  if(overlay) overlay.style.display = 'none';
   document.body.classList.remove('modal-open');
   _armoireCloseBlocksDrawer();
-  if(_armoireViewportHandler && window.visualViewport){
-    window.visualViewport.removeEventListener('resize', _armoireViewportHandler);
-    window.visualViewport.removeEventListener('scroll', _armoireViewportHandler);
-    _armoireViewportHandler = null;
+  function teardown(){
+    if(overlay) overlay.style.display = 'none';
+    if(_armoireViewportHandler && window.visualViewport){
+      window.visualViewport.removeEventListener('resize', _armoireViewportHandler);
+      window.visualViewport.removeEventListener('scroll', _armoireViewportHandler);
+      _armoireViewportHandler = null;
+    }
+    window.removeEventListener('orientationchange', _armoireSyncMobileHeight);
+    var modal = document.getElementById('armoireConfigModal');
+    if(modal){
+      modal.style.position = '';
+      modal.style.top = '';
+      modal.style.left = '';
+      modal.style.right = '';
+      modal.style.bottom = '';
+      modal.style.height = '';
+    }
   }
-  window.removeEventListener('orientationchange', _armoireSyncMobileHeight);
-  var modal = document.getElementById('armoireConfigModal');
-  if(modal){
-    modal.style.position = '';
-    modal.style.top = '';
-    modal.style.left = '';
-    modal.style.right = '';
-    modal.style.bottom = '';
-    modal.style.height = '';
+  if(overlay && typeof window._closeOverlayAnimated === 'function'){
+    window._closeOverlayAnimated(overlay, teardown);
+  } else {
+    teardown();
   }
 }
 

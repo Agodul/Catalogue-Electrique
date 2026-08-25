@@ -122,9 +122,12 @@
     vmMeta.innerHTML = metaItems.map(function(m){
       var val;
       if(m[0] === 'URL'){
-        val = '<a href="'+escapeHtml(m[1])+'" target="_blank" style="color:var(--copper-deep)">Ouvrir la page</a>';
+        val = (typeof window._isSafeHttpUrl === 'function' && !window._isSafeHttpUrl(m[1]))
+          ? escapeHtml(m[1])
+          : '<a href="'+escapeHtml(m[1])+'" target="_blank" rel="noopener noreferrer" style="color:var(--copper-deep)">Ouvrir la page</a>';
       } else if(m[0] === '3DEXPERIENCE'){
-        val = p.available3DXLink
+        var _link3dSafe = p.available3DXLink && (typeof window._isSafeHttpUrl !== 'function' || window._isSafeHttpUrl(p.available3DXLink));
+        val = _link3dSafe
           ? '<a href="'+escapeHtml(p.available3DXLink)+'" target="_blank" rel="noopener noreferrer" class="three-d-badge" title="Disponible dans la 3DEXPERIENCE">'+m[1]+'</a>'
           : m[1];
       } else if(m[0] === 'Référence'){
@@ -274,8 +277,14 @@
     }
     var sugCloseBtn = document.getElementById('sugCloseBtn');
     if(sugCloseBtn) sugCloseBtn.onclick = function(){
-      if(sugOverlay) sugOverlay.style.display = 'none';
       document.body.classList.remove('modal-open');
+      if(sugOverlay){
+        if(typeof window._closeOverlayAnimated === 'function'){
+          window._closeOverlayAnimated(sugOverlay, function(){ sugOverlay.style.display = 'none'; });
+        } else {
+          sugOverlay.style.display = 'none';
+        }
+      }
     };
 
     // ── Section Pièces de rechange — même mécanique que Suggestions
@@ -388,7 +397,8 @@
   function _loadJSZip(cb){
     if(window.JSZip){ cb(); return; }
     var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    // Auto-hébergé (js/jszip.min.js) plutôt que depuis cdnjs.cloudflare.com.
+    s.src = 'js/jszip.min.js';
     s.onload = cb;
     document.head.appendChild(s);
   }
@@ -413,6 +423,12 @@
     fetch(url, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
       .then(function(ab){
+        // Plafond généreux (100 Mo) pour ne bloquer aucun cas d'usage réel.
+        var PDF_MAX_BYTES = 100 * 1024 * 1024;
+        if(ab.byteLength > PDF_MAX_BYTES){
+          cb(new Error('Document trop volumineux (' + Math.round(ab.byteLength/1024/1024) + ' Mo)'));
+          return;
+        }
         if(_isZipBuffer(ab)){
           _loadJSZip(function(){
             JSZip.loadAsync(ab).then(function(zip){
@@ -509,8 +525,12 @@
     }
 
     document.getElementById('docCloseBtn').onclick = function(){
-      overlay.style.display = 'none';
       document.body.classList.remove('modal-open');
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(overlay, function(){ overlay.style.display = 'none'; });
+      } else {
+        overlay.style.display = 'none';
+      }
     };
     // clic extérieur bloqué — géré par _initModalEscape()
   }
@@ -680,19 +700,29 @@
 
   function _pdfClose(){
     var overlay  = document.getElementById('pdfViewerOverlay');
-    var scrollEl = document.getElementById('pdfViewerScroll');
-    var pagesEl  = document.getElementById('pdfViewerPages');
-    var loader   = document.getElementById('pdfViewerLoader');
-    clearTimeout(_pdfSharpenTimer);
-    _pdfPageInfos.forEach(function(info){ if(info.renderTask) info.renderTask.cancel(); });
-    _pdfPageInfos = [];
-    if(scrollEl) scrollEl.style.display = 'none';
-    if(pagesEl) pagesEl.innerHTML = '';
-    if(loader) loader.style.display = 'flex';
-    if(overlay) overlay.style.display = 'none';
     document.body.classList.remove('modal-open');
-    _pdfZoom = 1;
-    if(_pdfCurrentDoc){ _pdfCurrentDoc.destroy(); _pdfCurrentDoc = null; }
+    // Le contenu (pages rendues, document PDF.js) n'est détruit qu'APRÈS
+    // l'animation de fermeture — sinon la page se vide d'un coup pendant
+    // que la fenêtre est encore visible en train de s'estomper.
+    function teardown(){
+      var scrollEl = document.getElementById('pdfViewerScroll');
+      var pagesEl  = document.getElementById('pdfViewerPages');
+      var loader   = document.getElementById('pdfViewerLoader');
+      clearTimeout(_pdfSharpenTimer);
+      _pdfPageInfos.forEach(function(info){ if(info.renderTask) info.renderTask.cancel(); });
+      _pdfPageInfos = [];
+      if(scrollEl) scrollEl.style.display = 'none';
+      if(pagesEl) pagesEl.innerHTML = '';
+      if(loader) loader.style.display = 'flex';
+      if(overlay) overlay.style.display = 'none';
+      _pdfZoom = 1;
+      if(_pdfCurrentDoc){ _pdfCurrentDoc.destroy(); _pdfCurrentDoc = null; }
+    }
+    if(overlay && typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(overlay, teardown);
+    } else {
+      teardown();
+    }
   }
 
   // Initialiser les listeners fermeture une seule fois
@@ -745,11 +775,15 @@
       openView(parentId);
       return;
     }
-    viewOverlay.classList.remove('open');
     vmInfoMenu.classList.remove('open');
     document.body.classList.remove('modal-open');
     viewingId = null;
     window._viewingId = null;
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(viewOverlay, function(){ viewOverlay.classList.remove('open'); });
+    } else {
+      viewOverlay.classList.remove('open');
+    }
   }
 
   // Clic extérieur : fermer uniquement sur desktop (pas mobile/tablette)
@@ -1028,8 +1062,12 @@
         // Fermer la fiche si elle affiche le produit supprimé
         var viewOverlay = document.getElementById('viewOverlay');
         if(viewOverlay && viewOverlay.classList.contains('open')){
-          viewOverlay.classList.remove('open');
           document.body.classList.remove('modal-open');
+          if(typeof window._closeOverlayAnimated === 'function'){
+            window._closeOverlayAnimated(viewOverlay, function(){ viewOverlay.classList.remove('open'); });
+          } else {
+            viewOverlay.classList.remove('open');
+          }
         }
         render();
       }
