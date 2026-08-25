@@ -435,17 +435,22 @@ function _armoireRound2(n){
   return n == null ? n : Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-// Cellule Excel = un lien HYPERLINK() vers "mailto:" — ouvre le client mail
-// par défaut du poste avec sujet/corps déjà rédigés en cliquant dessus dans
-// Excel/LibreOffice (aucune macro requise). encodeURIComponent gère aussi
-// les retours à la ligne du corps (\r\n → %0D%0A). Les guillemets sont
-// doublés ("" ) pour rester une chaîne valide À L'INTÉRIEUR de la formule
-// Excel elle-même (pas le même échappement que l'URL) — sans ça, un nom de
-// produit contenant un guillemet couperait la formule en plein milieu.
+// Cellule Excel = un vrai lien hypertexte (pas une formule HYPERLINK()) vers
+// "mailto:" — ouvre le client mail par défaut du poste avec sujet/corps déjà
+// rédigés en cliquant dessus dans Excel/LibreOffice (aucune macro requise).
+// La propriété .l (native SheetJS) génère un <hyperlink> OOXML en bonne et
+// due forme, avec la cible dans une relation externe séparée — PAS une
+// formule HYPERLINK() en texte : la première version utilisait une formule,
+// mais Excel signalait le fichier comme corrompu à l'ouverture malgré un XML
+// syntaxiquement valide (retour utilisateur, capture à l'appui). .l est le
+// mécanisme que SheetJS lui-même utilise pour ses propres exemples de liens
+// hypertexte — beaucoup plus robuste qu'une formule assemblée à la main.
+// encodeURIComponent gère aussi les retours à la ligne du corps
+// (\r\n → %0D%0A) ; aucun échappement de guillemets nécessaire ici (la
+// cible est un attribut XML, pas une chaîne de formule).
 function _armoireMailtoHyperlinkCell(subject, body, label){
   var mailto = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  var formula = 'HYPERLINK("' + mailto.replace(/"/g, '""') + '","' + label.replace(/"/g, '""') + '")';
-  return { t: 'str', f: formula, v: label };
+  return { t: 'str', v: label, l: { Target: mailto } };
 }
 
 async function _armoireExportExcel(){
