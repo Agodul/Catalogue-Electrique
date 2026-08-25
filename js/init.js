@@ -151,10 +151,16 @@
       showToast('Des caractéristiques techniques sont en cours de modification. Fermez-les ou enregistrez-les avant de continuer.', 'warn', 5000);
       return true;
     }
-    if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
-      showToast('Une configuration d\'armoire est en cours. Terminez-la ou videz-la avant de continuer.', 'warn', 5000);
-      return true;
-    }
+    // Le configurateur d'armoire n'est PAS bloquant, contrairement aux deux
+    // cas ci-dessus : sa configuration en cours (_armoireDraft) survit déjà
+    // à la fermeture de sa fenêtre (voir _armoireClose dans
+    // js/armoireConfig.js — jamais vidée par une simple fermeture, tout le
+    // sens de ce mécanisme construit plus tôt). _closeAllOverlays()
+    // ci-dessous ferme donc cette fenêtre comme les autres si elle est
+    // ouverte, sans aucun risque pour son contenu — retour utilisateur :
+    // l'import via l'extension était refusé juste parce qu'une config
+    // d'armoire existait quelque part, même sans rapport et même fenêtre
+    // fermée, alors que rien n'était réellement en jeu.
     if(typeof window._closeAllOverlays === 'function') window._closeAllOverlays();
     return false;
   }
