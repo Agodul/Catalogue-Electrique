@@ -435,6 +435,19 @@ function _armoireRound2(n){
   return n == null ? n : Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+// Cellule Excel = un lien HYPERLINK() vers "mailto:" — ouvre le client mail
+// par défaut du poste avec sujet/corps déjà rédigés en cliquant dessus dans
+// Excel/LibreOffice (aucune macro requise). encodeURIComponent gère aussi
+// les retours à la ligne du corps (\r\n → %0D%0A). Les guillemets sont
+// doublés ("" ) pour rester une chaîne valide À L'INTÉRIEUR de la formule
+// Excel elle-même (pas le même échappement que l'URL) — sans ça, un nom de
+// produit contenant un guillemet couperait la formule en plein milieu.
+function _armoireMailtoHyperlinkCell(subject, body, label){
+  var mailto = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  var formula = 'HYPERLINK("' + mailto.replace(/"/g, '""') + '","' + label.replace(/"/g, '""') + '")';
+  return { t: 'str', f: formula, v: label };
+}
+
 async function _armoireExportExcel(){
   if(!_armoireDraft.length){
     if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'exporter.', 'warn');
@@ -535,16 +548,46 @@ async function _armoireExportExcel(){
   var usedNames = { 'récapitulatif': true };
   supplierNames.forEach(function(supplier){
     var rows = groups[supplier];
-    var aoa = [['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']];
-    var groupTotal = 0, groupHasPrice = false;
+    var groupTotal = 0, groupHasPrice = false, groupQty = 0;
     rows.forEach(function(r){
       if(r.total != null){ groupTotal += r.total; groupHasPrice = true; }
+      groupQty += r.qty;
+    });
+
+    // Demande de PRIX (retour utilisateur), pas une commande ferme : on
+    // demande le tarif et le délai au fournisseur plutôt que d'affirmer un
+    // montant/délai de notre côté (nos prix/délais en base peuvent être
+    // obsolètes — c'est justement ce qu'on demande à jour). Case "À" du mail
+    // volontairement laissée vide — le client mail par défaut s'ouvre avec
+    // sujet/corps déjà rédigés, adresse à compléter à la main.
+    var mailBodyLines = ['Bonjour,', '', 'Pourriez-vous nous communiquer votre meilleur tarif ainsi que les délais de livraison pour les références suivantes :', ''];
+    rows.forEach(function(r){
+      mailBodyLines.push('- ' + r.ref + (r.name ? ' — ' + r.name : '') + ' (x' + r.qty + ')');
+    });
+    mailBodyLines.push('');
+    mailBodyLines.push('Quantité totale : ' + groupQty);
+    mailBodyLines.push('');
+    mailBodyLines.push('Merci d\'avance,');
+
+    var aoa = [
+      ['✉️ Demander un prix par email'],
+      [],
+      ['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']
+    ];
+    rows.forEach(function(r){
       aoa.push([r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime]);
     });
     aoa.push([]);
     aoa.push(['', '', '', '', 'Total', groupHasPrice ? _armoireRound2(groupTotal) : '']);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [{ wch: 16 }, { wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+    // A1 : bouton mailto — les lignes du tableau ont décalé de 2 (ligne mail
+    // + ligne vide) par rapport à avant, voir aoa ci-dessus.
+    ws['A1'] = _armoireMailtoHyperlinkCell(
+      'Demande de prix — ' + name + ' — ' + supplier,
+      mailBodyLines.join('\r\n'),
+      '✉️ Demander un prix par email'
+    );
     var base = supplier.replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || 'Fournisseur';
     var finalName = base, i = 2;
     while(usedNames[finalName.toLowerCase()]){ finalName = base.slice(0, 28) + ' (' + i + ')'; i++; }
