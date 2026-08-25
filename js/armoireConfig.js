@@ -142,6 +142,104 @@ function _armoireRenderStats(){
     + '</div>';
 }
 
+// Regroupe le brouillon par fournisseur — même règle que l'export Excel
+// (product.supplier, repli sur product.brand si non renseigné) — pour que
+// "Demander un prix" par bouton corresponde exactement au découpage déjà
+// utilisé dans les feuilles Excel séparées.
+function _armoireGroupDraftBySupplier(){
+  var groups = {}, order = [];
+  _armoireDraft.forEach(function(it){
+    var p = _armoireProductByRef(it.ref);
+    var supplier = (p && p.supplier && p.supplier.trim()) ? p.supplier.trim() : ((p && p.brand) ? p.brand : 'Fournisseur non renseigné');
+    if(!groups[supplier]){ groups[supplier] = []; order.push(supplier); }
+    groups[supplier].push({ ref: it.ref, qty: it.qty, p: p });
+  });
+  order.sort(function(a, b){ return a.localeCompare(b, 'fr'); });
+  return { groups: groups, order: order };
+}
+
+// Ouvre le client mail par défaut avec une demande de prix pré-rédigée pour
+// UN SEUL fournisseur (les autres produits du brouillon n'y figurent pas) —
+// même formulation que la version Excel abandonnée (retour utilisateur :
+// une demande de prix, pas une commande ferme), mais ici directement depuis
+// l'app plutôt que dans le fichier exporté (pas de risque de corrompre le
+// classeur, voir l'historique de cette fonctionnalité).
+// Séparé de _armoireOpenSupplierMailto pour rester testable sans déclencher
+// une vraie navigation (window.location.href) à chaque vérification.
+function _armoireBuildSupplierMailto(supplier){
+  var grouped = _armoireGroupDraftBySupplier();
+  var items = grouped.groups[supplier];
+  if(!items || !items.length) return null;
+  var lines = ['Bonjour,', '', 'Pourriez-vous nous communiquer votre meilleur tarif ainsi que les délais de livraison pour les références suivantes :', ''];
+  var qty = 0;
+  items.forEach(function(it){
+    var name = it.p ? (it.p.name || '') : '';
+    lines.push('- ' + it.ref + (name ? ' — ' + name : '') + ' (x' + it.qty + ')');
+    qty += it.qty;
+  });
+  lines.push('');
+  lines.push('Quantité totale : ' + qty);
+  lines.push('');
+  lines.push('Merci d\'avance,');
+  var subject = 'Demande de prix — ' + supplier;
+  return 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(lines.join('\r\n'));
+}
+
+function _armoireOpenSupplierMailto(supplier){
+  var mailto = _armoireBuildSupplierMailto(supplier);
+  if(mailto) window.location.href = mailto;
+}
+
+// Popup de choix quand plusieurs fournisseurs sont présents dans le
+// brouillon — un bouton par fournisseur (avec son nombre de références),
+// même principe que _armoirePromptSaveKind. Retourne le nom choisi, ou null
+// si annulé.
+function _armoirePromptSupplierChoice(order, groups){
+  return new Promise(function(resolve){
+    var buttonsHtml = order.map(function(supplier, i){
+      return '<button class="_armoireSupplierChoiceBtn" data-i="' + i + '" style="padding:10px 14px;border-radius:8px;border:1px solid var(--line,#C9D0D8);background:#fff;color:#1e293b;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;">'
+        + '<span>' + escapeHtml(supplier) + '</span>'
+        + '<span style="font-weight:500;color:#64748b;font-size:12px;white-space:nowrap;">' + groups[supplier].length + ' réf.</span>'
+        + '</button>';
+    }).join('');
+    var overlay = _popupOverlay(
+      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:4px;">Demande de prix à quel fournisseur ?</div>' +
+      '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Un email par fournisseur — choisis à qui l\'envoyer.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' +
+        buttonsHtml +
+        '<button id="_popupCancel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>' +
+      '</div>'
+    );
+    function close(result){ if(overlay.parentNode) document.body.removeChild(overlay); resolve(result); }
+    overlay.querySelectorAll('._armoireSupplierChoiceBtn').forEach(function(btn){
+      btn.addEventListener('click', function(){ close(order[parseInt(btn.getAttribute('data-i'), 10)]); });
+    });
+    overlay.querySelector('#_popupCancel').addEventListener('click', function(){ close(null); });
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(null); });
+    document.addEventListener('keydown', function onKey(e){
+      if(e.key === 'Escape'){ document.removeEventListener('keydown', onKey); close(null); }
+    });
+  });
+}
+
+// Bouton "Demande de devis" de la rangée principale — raccourci vers les
+// mêmes emails par fournisseur déjà disponibles un par un dans la section
+// "Par fournisseur" du panneau (utile quand cette section est hors champ,
+// notamment sur mobile). Un seul fournisseur → envoi direct, sans question
+// inutile ; plusieurs → popup de choix ci-dessus.
+async function _armoireQuoteRequest(){
+  if(!_armoireDraft.length){
+    if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant de demander un prix.', 'warn');
+    return;
+  }
+  // Toujours afficher la liste des fournisseurs, même s'il n'y en a qu'un
+  // seul (retour utilisateur) — plus de raccourci direct, l'utilisateur voit
+  // systématiquement à qui il envoie avant que le mail ne s'ouvre.
+  var grouped = _armoireGroupDraftBySupplier();
+  var chosen = await _armoirePromptSupplierChoice(grouped.order, grouped.groups);
+  if(chosen) _armoireOpenSupplierMailto(chosen);
+}
+
 function _armoireRenderDraft(){
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
@@ -435,24 +533,6 @@ function _armoireRound2(n){
   return n == null ? n : Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-// Cellule Excel = un vrai lien hypertexte (pas une formule HYPERLINK()) vers
-// "mailto:" — ouvre le client mail par défaut du poste avec sujet/corps déjà
-// rédigés en cliquant dessus dans Excel/LibreOffice (aucune macro requise).
-// La propriété .l (native SheetJS) génère un <hyperlink> OOXML en bonne et
-// due forme, avec la cible dans une relation externe séparée — PAS une
-// formule HYPERLINK() en texte : la première version utilisait une formule,
-// mais Excel signalait le fichier comme corrompu à l'ouverture malgré un XML
-// syntaxiquement valide (retour utilisateur, capture à l'appui). .l est le
-// mécanisme que SheetJS lui-même utilise pour ses propres exemples de liens
-// hypertexte — beaucoup plus robuste qu'une formule assemblée à la main.
-// encodeURIComponent gère aussi les retours à la ligne du corps
-// (\r\n → %0D%0A) ; aucun échappement de guillemets nécessaire ici (la
-// cible est un attribut XML, pas une chaîne de formule).
-function _armoireMailtoHyperlinkCell(subject, body, label){
-  var mailto = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  return { t: 'str', v: label, l: { Target: mailto } };
-}
-
 async function _armoireExportExcel(){
   if(!_armoireDraft.length){
     if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'exporter.', 'warn');
@@ -534,18 +614,39 @@ async function _armoireExportExcel(){
   });
   summary.push([]);
   summary.push(['DÉTAIL DES ARTICLES — SUIVI DE COMMANDE']);
+  // Suivi simplifié (retour utilisateur : trop de colonnes, difficile à
+  // remplir sur mobile) — retiré "N° commande fournisseur" et "Date de
+  // commande", gardé uniquement les 2 cases à cocher + la date attendue.
   // Cases à cocher : vraies cellules booléennes Excel (VRAI/FAUX), pas du
   // texte — cochables directement en cliquant + touche Espace dans Excel/
   // LibreOffice, et compatibles avec la case à cocher native d'Excel 365
   // (sélectionner la colonne → Insertion → Case à cocher).
-  summary.push(['Fournisseur', 'Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai', 'Commandé', 'Livré', 'N° commande fournisseur', 'Date de commande', 'Date de réception prévue']);
+  summary.push(['Fournisseur', 'Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai', 'Commandé', 'Livré', 'Date de réception prévue', 'Statut']);
+  // Ligne du premier article du tableau — sert à adresser les cellules I/J/K
+  // (Commandé/Livré/Date prévue) de chaque ligne pour la formule Statut
+  // ci-dessous. summary.length = nb de lignes déjà poussées, donc la ligne
+  // qu'on vient de pousser (l'en-tête) est déjà comptée : +1 = 1ère ligne
+  // d'article (numérotation Excel 1-indexée, une ligne = un article).
+  var detailFirstRow = summary.length + 1;
   allItems.forEach(function(r){
-    summary.push([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, false, false, '', '', '']);
+    summary.push([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, false, false, '']);
   });
   var summaryWs = XLSX.utils.aoa_to_sheet(summary);
+  // Colonne "Statut" (L) : pas de vraie couleur possible (mise en forme
+  // conditionnelle absente de la version gratuite de la librairie Excel
+  // utilisée ici) — un indicateur texte/symbole recalculé par Excel à
+  // chaque ouverture du fichier (TODAY()), donc qui reste à jour tout seul
+  // dans le temps sans qu'on ait besoin de ré-exporter (retour utilisateur).
+  // Posée cellule par cellule après aoa_to_sheet : aoa_to_sheet ne détecte
+  // pas les formules depuis une simple chaîne commençant par "=".
+  allItems.forEach(function(r, idx){
+    var rowNum = detailFirstRow + idx;
+    var formula = 'IF(J' + rowNum + '=TRUE,"✅ Reçu",IF(AND(I' + rowNum + '=TRUE,K' + rowNum + '<>"",TODAY()>K' + rowNum + '),"⚠️ En retard",IF(I' + rowNum + '=TRUE,"🕒 En cours","")))';
+    summaryWs['L' + rowNum] = { t: 'str', f: formula, v: '' };
+  });
   summaryWs['!cols'] = [
     { wch: 22 }, { wch: 16 }, { wch: 38 }, { wch: 18 }, { wch: 10 },
-    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 9 }, { wch: 20 }, { wch: 15 }, { wch: 15 }
+    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 9 }, { wch: 18 }, { wch: 14 }
   ];
   XLSX.utils.book_append_sheet(wb, summaryWs, 'Récapitulatif');
 
@@ -553,46 +654,16 @@ async function _armoireExportExcel(){
   var usedNames = { 'récapitulatif': true };
   supplierNames.forEach(function(supplier){
     var rows = groups[supplier];
-    var groupTotal = 0, groupHasPrice = false, groupQty = 0;
+    var aoa = [['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']];
+    var groupTotal = 0, groupHasPrice = false;
     rows.forEach(function(r){
       if(r.total != null){ groupTotal += r.total; groupHasPrice = true; }
-      groupQty += r.qty;
-    });
-
-    // Demande de PRIX (retour utilisateur), pas une commande ferme : on
-    // demande le tarif et le délai au fournisseur plutôt que d'affirmer un
-    // montant/délai de notre côté (nos prix/délais en base peuvent être
-    // obsolètes — c'est justement ce qu'on demande à jour). Case "À" du mail
-    // volontairement laissée vide — le client mail par défaut s'ouvre avec
-    // sujet/corps déjà rédigés, adresse à compléter à la main.
-    var mailBodyLines = ['Bonjour,', '', 'Pourriez-vous nous communiquer votre meilleur tarif ainsi que les délais de livraison pour les références suivantes :', ''];
-    rows.forEach(function(r){
-      mailBodyLines.push('- ' + r.ref + (r.name ? ' — ' + r.name : '') + ' (x' + r.qty + ')');
-    });
-    mailBodyLines.push('');
-    mailBodyLines.push('Quantité totale : ' + groupQty);
-    mailBodyLines.push('');
-    mailBodyLines.push('Merci d\'avance,');
-
-    var aoa = [
-      ['✉️ Demander un prix par email'],
-      [],
-      ['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']
-    ];
-    rows.forEach(function(r){
       aoa.push([r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime]);
     });
     aoa.push([]);
     aoa.push(['', '', '', '', 'Total', groupHasPrice ? _armoireRound2(groupTotal) : '']);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [{ wch: 16 }, { wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
-    // A1 : bouton mailto — les lignes du tableau ont décalé de 2 (ligne mail
-    // + ligne vide) par rapport à avant, voir aoa ci-dessus.
-    ws['A1'] = _armoireMailtoHyperlinkCell(
-      'Demande de prix — ' + name + ' — ' + supplier,
-      mailBodyLines.join('\r\n'),
-      '✉️ Demander un prix par email'
-    );
     var base = supplier.replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || 'Fournisseur';
     var finalName = base, i = 2;
     while(usedNames[finalName.toLowerCase()]){ finalName = base.slice(0, 28) + ' (' + i + ')'; i++; }
@@ -697,6 +768,48 @@ function _armoireReplaceEntry(basePath, oldId, body){
         .catch(function(e){ console.warn('_armoireReplaceEntry: ancienne entrée non supprimée:', e && e.message); })
         .then(function(){ return created; });
     });
+}
+
+// Popup à 2 boutons "Bloc" / "Configuration" — remplace les deux anciens
+// boutons "Enregistrer comme bloc"/"Enregistrer la configuration" par un
+// seul bouton "Enregistrer" (retour utilisateur : fusionner pour libérer
+// une place dans la rangée de boutons, voir _armoireSaveChoice ci-dessous).
+function _armoirePromptSaveKind(){
+  return new Promise(function(resolve){
+    var overlay = _popupOverlay(
+      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:4px;">Enregistrer comme…</div>' +
+      '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Un bloc est réutilisable dans d\'autres configurations ; une configuration est l\'armoire complète telle quelle.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' +
+        '<button id="_armoireKindBlock" style="padding:10px 14px;border-radius:8px;border:1px solid var(--copper,#194093);background:#fff;color:var(--copper-deep,#194093);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;"><i class="ti ti-package" aria-hidden="true"></i> Bloc réutilisable</button>' +
+        '<button id="_armoireKindConfig" style="padding:10px 14px;border-radius:8px;border:1px solid var(--copper,#194093);background:var(--copper,#194093);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;"><i class="ti ti-device-floppy" aria-hidden="true"></i> Configuration complète</button>' +
+        '<button id="_popupCancel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>' +
+      '</div>'
+    );
+    function close(result){ if(overlay.parentNode) document.body.removeChild(overlay); resolve(result); }
+    overlay.querySelector('#_armoireKindBlock').addEventListener('click', function(){ close('block'); });
+    overlay.querySelector('#_armoireKindConfig').addEventListener('click', function(){ close('config'); });
+    overlay.querySelector('#_popupCancel').addEventListener('click', function(){ close(null); });
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(null); });
+    document.addEventListener('keydown', function onKey(e){
+      if(e.key === 'Escape'){ document.removeEventListener('keydown', onKey); close(null); }
+    });
+  });
+}
+
+// Bouton "Enregistrer" fusionné — demande le type SEULEMENT quand c'est
+// ambigu (nouvel enregistrement) ; en édition, le type est déjà fixé par
+// l'entrée en cours d'édition, donc pas de question inutile (voir
+// _armoireUpdateEditingBanner, qui adapte déjà le libellé du bouton).
+async function _armoireSaveChoice(){
+  if(!_armoireDraft.length){
+    if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'enregistrer.', 'warn');
+    return;
+  }
+  if(_armoireEditingEntry && _armoireEditingEntry.kind === 'block'){ _armoireSaveBlock(); return; }
+  if(_armoireEditingEntry && _armoireEditingEntry.kind === 'config'){ _armoireSaveConfig(); return; }
+  var kind = await _armoirePromptSaveKind();
+  if(kind === 'block') _armoireSaveBlock();
+  else if(kind === 'config') _armoireSaveConfig();
 }
 
 async function _armoireSaveBlock(){
@@ -852,16 +965,21 @@ function _armoireUpdateEditingBanner(){
   } else {
     banner.style.display = 'none';
   }
-  var saveBlockBtn = document.getElementById('armoireConfigSaveBlockBtn');
-  var saveConfigBtn = document.getElementById('armoireConfigSaveConfigBtn');
-  var editingBlock = _armoireEditingEntry && _armoireEditingEntry.kind === 'block';
-  var editingConfig = _armoireEditingEntry && _armoireEditingEntry.kind === 'config';
-  if(saveBlockBtn) saveBlockBtn.innerHTML = editingBlock
-    ? '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour le bloc'
-    : '<i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Enregistrer comme bloc';
-  if(saveConfigBtn) saveConfigBtn.innerHTML = editingConfig
-    ? '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour la configuration'
-    : '<i class="ti ti-device-floppy" style="font-size:15px;" aria-hidden="true"></i> Enregistrer la configuration';
+  // Bouton Enregistrer fusionné (bloc + configuration, voir
+  // _armoireSaveChoice) : en édition, on sait déjà de quel type il s'agit
+  // (impossible de "changer d'avis" en cours d'édition — voir
+  // _armoireSaveChoice, qui saute directement le choix dans ce cas), le
+  // libellé le reflète directement sans passer par le popup de choix.
+  var saveBtn = document.getElementById('armoireConfigSaveBtn');
+  if(saveBtn){
+    if(_armoireEditingEntry && _armoireEditingEntry.kind === 'block'){
+      saveBtn.innerHTML = '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour le bloc';
+    } else if(_armoireEditingEntry && _armoireEditingEntry.kind === 'config'){
+      saveBtn.innerHTML = '<i class="ti ti-pencil" style="font-size:15px;" aria-hidden="true"></i> Mettre à jour la configuration';
+    } else {
+      saveBtn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:15px;" aria-hidden="true"></i> Enregistrer';
+    }
+  }
 }
 
 // ── Onglets Blocs / Configurations ───────────────────────────────────────
@@ -1142,11 +1260,11 @@ function _armoireClose(){
   var exportBtn = document.getElementById('armoireConfigExportBtn');
   if(exportBtn) exportBtn.addEventListener('click', _armoireExportExcel);
 
-  var saveBlockBtn = document.getElementById('armoireConfigSaveBlockBtn');
-  if(saveBlockBtn) saveBlockBtn.addEventListener('click', _armoireSaveBlock);
+  var quoteBtn = document.getElementById('armoireConfigQuoteBtn');
+  if(quoteBtn) quoteBtn.addEventListener('click', _armoireQuoteRequest);
 
-  var saveConfigBtn = document.getElementById('armoireConfigSaveConfigBtn');
-  if(saveConfigBtn) saveConfigBtn.addEventListener('click', _armoireSaveConfig);
+  var saveBtn = document.getElementById('armoireConfigSaveBtn');
+  if(saveBtn) saveBtn.addEventListener('click', _armoireSaveChoice);
 
   document.querySelectorAll('.armoire-tab-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ _armoireSwitchTab(btn.getAttribute('data-tab')); });

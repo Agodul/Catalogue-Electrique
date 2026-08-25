@@ -118,6 +118,15 @@
         document.addEventListener('visibilitychange', function(){
           if(document.visibilityState === 'visible') reg.update().catch(function(){});
         });
+        // ET aussi à intervalle régulier — visibilitychange ne se déclenche
+        // que si l'utilisateur change d'onglet/d'appli puis revient. Un
+        // onglet resté ouvert et au premier plan en continu (jamais changé
+        // de fenêtre) ne revérifiait donc jamais tout seul, obligeant à un
+        // F5 pour voir apparaître la bannière de mise à jour alors que
+        // l'onglet n'a jamais quitté le premier plan (retour utilisateur).
+        setInterval(function(){
+          if(document.visibilityState === 'visible') reg.update().catch(function(){});
+        }, 30 * 60 * 1000); // 30 min
       }).catch(function(e){
         console.warn('[PWA] Échec enregistrement service worker:', e.message);
       });
