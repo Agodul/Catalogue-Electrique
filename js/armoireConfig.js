@@ -533,78 +533,41 @@ function _armoireRound2(n){
   return n == null ? n : Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-// Injecte deux fonctionnalités Excel que la librairie utilisée ne sait pas
-// écrire nativement en version gratuite : (1) une vraie mise en forme
-// conditionnelle (fond rouge = en retard, fond vert = reçu) sur la colonne
-// Statut, et (2) des listes déroulantes "Oui/Non" sur les colonnes
-// Commandé/Livré — plus pratiques à remplir que du VRAI/FAUX tapé à la main,
-// et compatibles avec TOUTES les versions d'Excel (contrairement aux cases à
-// cocher natives, réservées à Excel 365 récent) puisque la validation de
-// données par liste existe depuis Excel 2007. Modifié à la main dans le
-// fichier généré, avec JSZip. Structure XML validée au préalable hors de
-// l'app (comparée octet par octet à un fichier généré par une librairie
-// tierce mature qui sait écrire ce genre de règle nativement, puis relue
-// avec un parseur strict indépendant qui confirme la correspondance) —
-// moins risqué que la tentative précédente (lien mailto en formule), mais
-// reste une modification manuelle du fichier : à confirmer en ouvrant le
-// résultat dans un vrai Excel.
-async function _armoireInjectOrderTrackingXml(arrayBuffer, sheetTabName, firstRow, lastRow){
-  await new Promise(function(resolve, reject){
-    if(window.JSZip){ resolve(); return; }
-    _loadJSZip(resolve);
+// ── Chargement paresseux d'ExcelJS (export Excel du configurateur) ─────────
+// Remplace l'ancien duo SheetJS + JSZip (qui rouvrait le fichier généré pour
+// y injecter à la main du XML de mise en forme conditionnelle / validation
+// de données, ces deux fonctionnalités étant absentes de la version
+// gratuite de SheetJS) : ExcelJS les écrit nativement via son API, donc plus
+// aucune manipulation manuelle de fichier — moins de risque de corruption
+// qu'avec le bricolage précédent. Auto-hébergé (js/exceljs.min.js), même
+// principe que ensureXLSX (js/actions.js) pour le reste de l'app (import/
+// comparaison/tarifs), qui continue d'utiliser SheetJS et n'est pas
+// concerné par ce changement.
+var _exceljsLoadPromise = null;
+function ensureExcelJS(){
+  if(window.ExcelJS) return Promise.resolve();
+  if(_exceljsLoadPromise) return _exceljsLoadPromise;
+  _exceljsLoadPromise = new Promise(function(resolve, reject){
+    var s = document.createElement('script');
+    s.src = 'js/exceljs.min.js';
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ _exceljsLoadPromise = null; reject(new Error('Échec du chargement de la librairie Excel')); };
+    document.head.appendChild(s);
   });
-  var zip = await JSZip.loadAsync(arrayBuffer);
+  return _exceljsLoadPromise;
+}
 
-  // Retrouve le VRAI fichier de cette feuille via workbook.xml + ses
-  // relations — jamais "sheet1.xml" en dur, l'ordre des feuilles dans le
-  // classeur peut changer.
-  var wbXml = await zip.file('xl/workbook.xml').async('string');
-  var sheetRe = new RegExp('<sheet[^>]*(?:name="' + sheetTabName + '"[^>]*r:id="(rId\\d+)"|r:id="(rId\\d+)"[^>]*name="' + sheetTabName + '")');
-  var sheetMatch = wbXml.match(sheetRe);
-  if(!sheetMatch) return; // feuille introuvable — n'empêche pas le téléchargement du fichier tel quel
-  var rId = sheetMatch[1] || sheetMatch[2];
-  var relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
-  var relMatch = relsXml.match(new RegExp('<Relationship Id="' + rId + '"[^>]*Target="([^"]+)"'));
-  if(!relMatch) return;
-  var sheetPath = 'xl/' + relMatch[1];
-
-  var sheetXml = await zip.file(sheetPath).async('string');
-  // Commandé (I) et Livré (J) sont maintenant du texte "✓"/vide (pas des
-  // booléens) — les formules comparent donc à "✓" plutôt qu'à TRUE. Vide =
-  // pas fait, "✓" = fait ; pas de "Non" explicite (pour repasser à "pas
-  // fait", on vide la cellule avec Suppr, comme pour décocher une case).
-  var sqref = 'L' + firstRow + ':L' + lastRow;
-  var cfXml = '<conditionalFormatting sqref="' + sqref + '">'
-    + '<cfRule type="expression" priority="1" dxfId="0"><formula>AND($I' + firstRow + '="✓",$J' + firstRow + '&lt;&gt;"✓",$K' + firstRow + '&lt;&gt;"",TODAY()&gt;$K' + firstRow + ')</formula></cfRule>'
-    + '<cfRule type="expression" priority="2" dxfId="1"><formula>$J' + firstRow + '="✓"</formula></cfRule>'
-    + '</conditionalFormatting>';
-  // dataValidations doit se placer juste après conditionalFormatting (et
-  // avant hyperlinks/ignoredErrors/pageMargins…) — ordre imposé par le
-  // schéma OOXML, vérifié sur un fichier de référence. Liste inline à une
-  // seule valeur ("✓") : la flèche de la cellule ne propose qu'un clic pour
-  // cocher, exactement comme une case à cocher — décocher se fait avec
-  // Suppr, pas via un second choix dans la liste.
-  var dvXml = '<dataValidations count="2">'
-    + '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="I' + firstRow + ':I' + lastRow + '"><formula1>"✓"</formula1></dataValidation>'
-    + '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="J' + firstRow + ':J' + lastRow + '"><formula1>"✓"</formula1></dataValidation>'
-    + '</dataValidations>';
-  var newSheetXml = sheetXml.replace('</sheetData>', '</sheetData>' + cfXml + dvXml);
-  if(newSheetXml === sheetXml) return; // pas de <sheetData> trouvé — abandon silencieux, fichier normal quand même téléchargé
-  zip.file(sheetPath, newSheetXml);
-
-  // styles.xml contient déjà un <dxfs count="0"/> vide (généré par la
-  // librairie Excel elle-même) — juste besoin de le remplacer par nos 2
-  // styles (rouge/vert), pas d'en insérer un nouveau élément.
-  var stylesXml = await zip.file('xl/styles.xml').async('string');
-  var dxfsXml = '<dxfs count="2">'
-    + '<dxf><fill><patternFill patternType="solid"><fgColor rgb="FFFFC7CE"/><bgColor rgb="FFFFC7CE"/></patternFill></fill></dxf>'
-    + '<dxf><fill><patternFill patternType="solid"><fgColor rgb="FFC6EFCE"/><bgColor rgb="FFC6EFCE"/></patternFill></fill></dxf>'
-    + '</dxfs>';
-  var newStylesXml = stylesXml.replace(/<dxfs count="0"\/>/, dxfsXml);
-  if(newStylesXml === stylesXml) return;
-  zip.file('xl/styles.xml', newStylesXml);
-
-  return await zip.generateAsync({ type: 'blob' });
+// Même protection anti-injection de formule que _patchXlsxFormulaInjection
+// (js/actions.js) pour le reste de l'app : neutralise toute cellule texte
+// commençant par =, +, -, @ (ou tabulation/retour chariot) en la préfixant
+// d'une apostrophe, pour qu'Excel l'affiche comme du texte brut au lieu de
+// l'interpréter comme une formule (référence, produit ou fournisseur dont
+// le nom commencerait ainsi — accidentellement ou non).
+function _armoireSanitizeExcelRow(row){
+  return row.map(function(v){
+    if(typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return "'" + v;
+    return v;
+  });
 }
 
 async function _armoireExportExcel(){
@@ -616,7 +579,7 @@ async function _armoireExportExcel(){
   if(name === null) return; // annulé
   name = (name || '').trim() || 'Configuration armoire';
 
-  try{ await ensureXLSX(); }catch(err){ if(typeof showToast === 'function') showToast(err.message, 'err'); return; }
+  try{ await ensureExcelJS(); }catch(err){ if(typeof showToast === 'function') showToast(err.message, 'err'); return; }
 
   var groups = {};
   var allItems = [];
@@ -656,24 +619,24 @@ async function _armoireExportExcel(){
   var grandAvgLead = allLeadDays.length ? (allLeadDays.reduce(function(a, b){ return a + b; }, 0) / allLeadDays.length) : null;
   var stamp = new Date().toISOString().slice(0, 10);
 
-  var wb = XLSX.utils.book_new();
+  var wb = new ExcelJS.Workbook();
 
   // ── Feuille 1 : Récapitulatif — vue d'ensemble + suivi de commande ──────
-  // Colonnes de suivi (Statut, N° commande, dates) laissées à compléter à la
-  // main : la feuille sert de tableau de gestion de commande une fois les
-  // commandes passées auprès de chaque fournisseur.
-  var summary = [];
-  summary.push(['Configuration', name]);
-  summary.push(['Date d\'export', stamp]);
-  summary.push(['Nombre de fournisseurs', supplierNames.length]);
-  summary.push(['Nombre de références', allItems.length]);
-  summary.push(['Quantité totale', grandQty]);
-  summary.push(['Prix total estimé (€)', grandHasPrice ? _armoireRound2(grandTotal) : 'N/C']);
-  summary.push(['Délai moyen estimé', grandAvgLead != null ? _armoireFormatLeadDays(grandAvgLead) : 'N/C']);
-  summary.push(['Délai le plus long estimé', grandMaxLead != null ? _armoireFormatLeadDays(grandMaxLead) + ' (' + grandMaxLeadItem.ref + (grandMaxLeadItem.name ? ' — ' + grandMaxLeadItem.name : '') + ')' : 'N/C']);
-  summary.push([]);
-  summary.push(['RÉPARTITION PAR FOURNISSEUR']);
-  summary.push(['Fournisseur', 'Références', 'Quantité', 'Montant (€)', 'Délai estimé']);
+  // Colonnes de suivi (Statut, dates) laissées à compléter à la main : la
+  // feuille sert de tableau de gestion de commande une fois les commandes
+  // passées auprès de chaque fournisseur.
+  var summaryWs = wb.addWorksheet('Récapitulatif');
+  summaryWs.addRow(_armoireSanitizeExcelRow(['Configuration', name]));
+  summaryWs.addRow(['Date d\'export', stamp]);
+  summaryWs.addRow(['Nombre de fournisseurs', supplierNames.length]);
+  summaryWs.addRow(['Nombre de références', allItems.length]);
+  summaryWs.addRow(['Quantité totale', grandQty]);
+  summaryWs.addRow(['Prix total estimé (€)', grandHasPrice ? _armoireRound2(grandTotal) : 'N/C']);
+  summaryWs.addRow(['Délai moyen estimé', grandAvgLead != null ? _armoireFormatLeadDays(grandAvgLead) : 'N/C']);
+  summaryWs.addRow(['Délai le plus long estimé', grandMaxLead != null ? _armoireFormatLeadDays(grandMaxLead) + ' (' + grandMaxLeadItem.ref + (grandMaxLeadItem.name ? ' — ' + grandMaxLeadItem.name : '') + ')' : 'N/C']);
+  summaryWs.addRow([]);
+  summaryWs.addRow(['RÉPARTITION PAR FOURNISSEUR']);
+  summaryWs.addRow(['Fournisseur', 'Références', 'Quantité', 'Montant (€)', 'Délai estimé']);
   supplierNames.forEach(function(supplier){
     var rows = groups[supplier];
     var supTotal = 0, supHasPrice = false, supQty = 0, supLead = [];
@@ -684,109 +647,116 @@ async function _armoireExportExcel(){
       if(d != null) supLead.push(d);
     });
     var supAvg = supLead.length ? (supLead.reduce(function(a, b){ return a + b; }, 0) / supLead.length) : null;
-    summary.push([supplier, rows.length, supQty, supHasPrice ? _armoireRound2(supTotal) : 'N/C', supAvg != null ? _armoireFormatLeadDays(supAvg) : 'N/C']);
+    summaryWs.addRow(_armoireSanitizeExcelRow([supplier, rows.length, supQty, supHasPrice ? _armoireRound2(supTotal) : 'N/C', supAvg != null ? _armoireFormatLeadDays(supAvg) : 'N/C']));
   });
-  summary.push([]);
-  summary.push(['DÉTAIL DES ARTICLES — SUIVI DE COMMANDE']);
-  // Suivi simplifié (retour utilisateur : trop de colonnes, difficile à
-  // remplir sur mobile) — retiré "N° commande fournisseur" et "Date de
-  // commande", gardé uniquement les 2 cases à cocher + la date attendue.
-  // Cases à cocher : vraies cellules booléennes Excel (VRAI/FAUX), pas du
-  // texte — cochables directement en cliquant + touche Espace dans Excel/
-  // LibreOffice, et compatibles avec la case à cocher native d'Excel 365
-  // (sélectionner la colonne → Insertion → Case à cocher).
-  summary.push(['Fournisseur', 'Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai', 'Commandé', 'Livré', 'Date de réception prévue', 'Statut']);
-  // Ligne du premier article du tableau — sert à adresser les cellules I/J/K
-  // (Commandé/Livré/Date prévue) de chaque ligne pour la formule Statut
-  // ci-dessous. summary.length = nb de lignes déjà poussées, donc la ligne
-  // qu'on vient de pousser (l'en-tête) est déjà comptée : +1 = 1ère ligne
-  // d'article (numérotation Excel 1-indexée, une ligne = un article).
-  var detailFirstRow = summary.length + 1;
+  summaryWs.addRow([]);
+  summaryWs.addRow(['DÉTAIL DES ARTICLES — SUIVI DE COMMANDE']);
+  // "N° commande" réintégré (retour utilisateur) entre Commandé et Livré —
+  // texte libre (numéro/référence fournisseur, format variable d'un
+  // fournisseur à l'autre, pas de validation dessus).
+  summaryWs.addRow(['Fournisseur', 'Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai', 'Commandé', 'N° commande', 'Livré', 'Date de réception prévue', 'Statut']);
+  // Ligne du premier article du tableau — sert à adresser les cellules I/K/L
+  // (Commandé/Livré/Date prévue — J = N° commande, non utilisé dans les
+  // formules) de chaque ligne pour la formule Statut et pour la mise en
+  // forme conditionnelle ci-dessous. rowCount compte déjà la ligne d'en-tête
+  // qu'on vient de pousser, donc +1 = 1ère ligne d'article (numérotation
+  // Excel 1-indexée, une ligne = un article).
+  var detailFirstRow = summaryWs.rowCount + 1;
   allItems.forEach(function(r){
-    // Commandé/Livré : texte "✓"/vide (vide par défaut = pas encore) plutôt
-    // que des booléens — une liste déroulante à un seul choix ("✓") est
-    // injectée dessus plus bas (_armoireInjectOrderTrackingXml), ce qui
-    // revient à une case à cocher (clic sur la flèche → coché ; Suppr →
+    // Commandé/Livré : texte "✓"/vide (vide par défaut = pas encore), avec
+    // une liste déroulante à un seul choix ("✓") posée dessus plus bas — ce
+    // qui revient à une case à cocher (clic sur la flèche → coché ; Suppr →
     // décoché), plus pratique sur mobile qu'un VRAI/FAUX tapé à la main, et
     // compatible avec toutes les versions d'Excel (retour utilisateur : parc
-    // majoritairement en Office 2016).
-    summary.push([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, '', '', '']);
+    // majoritairement en Office 2016) contrairement aux cases à cocher
+    // natives (365 récent uniquement). N° commande (entre les deux) reste du
+    // texte libre, sans liste déroulante.
+    summaryWs.addRow(_armoireSanitizeExcelRow([r.supplier, r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime, '', '', '', '']));
   });
-  var summaryWs = XLSX.utils.aoa_to_sheet(summary);
-  // Colonne "Statut" (L) : un indicateur texte/symbole recalculé par Excel à
+  var lastRow = detailFirstRow + allItems.length - 1;
+  // Colonne "Statut" (M) : un indicateur texte/symbole recalculé par Excel à
   // chaque ouverture du fichier (TODAY()), donc qui reste à jour tout seul
   // dans le temps sans qu'on ait besoin de ré-exporter (retour utilisateur).
-  // La couleur de fond associée est ajoutée séparément après coup (voir
-  // _armoireInjectOrderTrackingXml), la librairie Excel utilisée ici ne
-  // sachant pas l'écrire elle-même en version gratuite. Posée cellule par
-  // cellule après aoa_to_sheet : aoa_to_sheet ne détecte pas les formules
-  // depuis une simple chaîne commençant par "=".
   allItems.forEach(function(r, idx){
     var rowNum = detailFirstRow + idx;
-    var formula = 'IF(J' + rowNum + '="✓","✅ Reçu",IF(AND(I' + rowNum + '="✓",K' + rowNum + '<>"",TODAY()>K' + rowNum + '),"⚠️ En retard",IF(I' + rowNum + '="✓","🕒 En cours","")))';
-    summaryWs['L' + rowNum] = { t: 'str', f: formula, v: '' };
+    var formula = 'IF(K' + rowNum + '="✓","✅ Reçu",IF(AND(I' + rowNum + '="✓",L' + rowNum + '<>"",TODAY()>L' + rowNum + '),"⚠️ En retard",IF(I' + rowNum + '="✓","🕒 En cours","")))';
+    summaryWs.getCell('M' + rowNum).value = { formula: formula };
   });
-  summaryWs['!cols'] = [
-    { wch: 22 }, { wch: 16 }, { wch: 38 }, { wch: 18 }, { wch: 10 },
-    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 9 }, { wch: 18 }, { wch: 14 }
-  ];
-  XLSX.utils.book_append_sheet(wb, summaryWs, 'Récapitulatif');
+  [22, 16, 38, 18, 10, 14, 14, 14, 11, 16, 9, 18, 14].forEach(function(w, i){
+    summaryWs.getColumn(i + 1).width = w;
+  });
+  if(allItems.length){
+    // Couleur de fond de la colonne Statut, écrite nativement par ExcelJS
+    // (pas de couleur "en dur" sur chaque cellule : une vraie règle Excel,
+    // recalculée à chaque ouverture comme la formule elle-même). Rouge =
+    // commandé mais pas livré et date prévue dépassée ; vert = livré.
+    // fgColor ET bgColor sont fixés à la même couleur : Excel lui-même
+    // écrit toujours les deux pour un remplissage uni (vérifié sur un
+    // fichier de référence) — ExcelJS n'écrit que fgColor par défaut, ce qui
+    // s'est révélé insuffisant dans certaines versions d'Excel (le texte de
+    // la formule se met à jour normalement, mais la couleur ne s'affiche
+    // pas — retour utilisateur sur Excel 365 Mac).
+    summaryWs.addConditionalFormatting({
+      ref: 'M' + detailFirstRow + ':M' + lastRow,
+      rules: [
+        {
+          type: 'expression',
+          formulae: ['AND($I' + detailFirstRow + '="✓",$K' + detailFirstRow + '<>"✓",$L' + detailFirstRow + '<>"",TODAY()>$L' + detailFirstRow + ')'],
+          style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' }, bgColor: { argb: 'FFFFC7CE' } } }
+        },
+        {
+          type: 'expression',
+          formulae: ['$K' + detailFirstRow + '="✓"'],
+          style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' }, bgColor: { argb: 'FFC6EFCE' } } }
+        }
+      ]
+    });
+    // Liste déroulante à une seule valeur ("✓") sur Commandé/Livré — voir
+    // commentaire plus haut. allowBlank permet de laisser la cellule vide
+    // (pas encore fait) sans qu'Excel ne considère ça comme une erreur.
+    // N° commande (J) n'a volontairement aucune validation — texte libre.
+    for(var rn = detailFirstRow; rn <= lastRow; rn++){
+      var dv = { type: 'list', allowBlank: true, formulae: ['"✓"'] };
+      summaryWs.getCell('I' + rn).dataValidation = dv;
+      summaryWs.getCell('K' + rn).dataValidation = dv;
+    }
+  }
 
   // ── Une feuille par fournisseur — prête à envoyer telle quelle ──────────
   var usedNames = { 'récapitulatif': true };
   supplierNames.forEach(function(supplier){
     var rows = groups[supplier];
-    var aoa = [['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']];
-    var groupTotal = 0, groupHasPrice = false;
-    rows.forEach(function(r){
-      if(r.total != null){ groupTotal += r.total; groupHasPrice = true; }
-      aoa.push([r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime]);
-    });
-    aoa.push([]);
-    aoa.push(['', '', '', '', 'Total', groupHasPrice ? _armoireRound2(groupTotal) : '']);
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 16 }, { wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
     var base = supplier.replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || 'Fournisseur';
     var finalName = base, i = 2;
     while(usedNames[finalName.toLowerCase()]){ finalName = base.slice(0, 28) + ' (' + i + ')'; i++; }
     usedNames[finalName.toLowerCase()] = true;
-    XLSX.utils.book_append_sheet(wb, ws, finalName);
+    var ws = wb.addWorksheet(finalName);
+    ws.addRow(['Référence', 'Désignation', 'Marque', 'Quantité', 'Prix unitaire (€)', 'Prix total (€)', 'Délai']);
+    var groupTotal = 0, groupHasPrice = false;
+    rows.forEach(function(r){
+      if(r.total != null){ groupTotal += r.total; groupHasPrice = true; }
+      ws.addRow(_armoireSanitizeExcelRow([r.ref, r.name, r.brand, r.qty, r.unitPrice, r.total, r.leadTime]));
+    });
+    ws.addRow([]);
+    ws.addRow(['', '', '', '', 'Total', groupHasPrice ? _armoireRound2(groupTotal) : '']);
+    [16, 40, 16, 9, 14, 14, 16].forEach(function(w, i){
+      ws.getColumn(i + 1).width = w;
+    });
   });
 
   var fileSlug = name.replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '_') || 'Configuration';
   var xlsxFilename = 'SPI_' + fileSlug + '_' + stamp + '.xlsx';
 
-  // Tente d'ajouter la couleur de fond sur la colonne Statut et les listes
-  // déroulantes Oui/Non sur Commandé/Livré (mise en forme conditionnelle +
-  // validation de données injectées après coup, la librairie Excel utilisée
-  // ne sait pas les écrire elle-même en version gratuite — voir
-  // _armoireInjectOrderTrackingXml ci-dessus). Si quoi que ce soit échoue
-  // (JSZip indisponible, structure inattendue…) on retombe silencieusement
-  // sur l'export normal : l'indicateur texte/symbole (✅/⚠️/🕒) fonctionne
-  // déjà tout seul dans la formule, ces deux ajouts ne sont qu'un bonus.
-  var enhancedBlob = null;
-  if(allItems.length){
-    try{
-      var rawArray = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-      var lastRow = detailFirstRow + allItems.length - 1;
-      enhancedBlob = await _armoireInjectOrderTrackingXml(rawArray, 'Récapitulatif', detailFirstRow, lastRow);
-    }catch(err){
-      console.warn('[armoire] Mise en forme/validation Excel non appliquée, export sans ces bonus :', err);
-      enhancedBlob = null;
-    }
-  }
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var dlA = document.createElement('a');
+  dlA.href = URL.createObjectURL(blob);
+  dlA.download = xlsxFilename;
+  document.body.appendChild(dlA);
+  dlA.click();
+  document.body.removeChild(dlA);
+  setTimeout(function(){ URL.revokeObjectURL(dlA.href); }, 10000);
 
-  if(enhancedBlob){
-    var dlA = document.createElement('a');
-    dlA.href = URL.createObjectURL(enhancedBlob);
-    dlA.download = xlsxFilename;
-    document.body.appendChild(dlA);
-    dlA.click();
-    document.body.removeChild(dlA);
-    setTimeout(function(){ URL.revokeObjectURL(dlA.href); }, 10000);
-  } else {
-    XLSX.writeFile(wb, xlsxFilename);
-  }
   if(typeof showToast === 'function') showToast('Export Excel généré ✓ (' + supplierNames.length + ' fournisseur' + (supplierNames.length > 1 ? 's' : '') + ')', 'ok');
 }
 
