@@ -509,6 +509,34 @@
     if(wasEditingId && typeof window._releaseProductEditLock === 'function'){
       window._releaseProductEditLock(wasEditingId);
     }
+
+    // Vider le formulaire ET oublier son "instantané d'origine" dès la
+    // fermeture — sans ça, hasUnsavedInput() continuait de comparer les
+    // valeurs (encore présentes dans le DOM, juste masquées) à l'ancien
+    // instantané un peu plus bas, voyant à tort "encore des modifications
+    // non enregistrées" au prochain contrôle (voir triggerExtensionExtraction
+    // ci-dessous) alors que cette fenêtre est bel et bien fermée.
+    resetForm();
+    _formOriginalSnapshot = null;
+
+    // Un import venant de l'extension Chrome ("Ajouter au Catalogue SPI")
+    // peut être resté EN ATTENTE si cette fenêtre était encore ouverte avec
+    // une saisie non enregistrée au moment où il est arrivé —
+    // _extensionGuardBlocked() (js/init.js) le bloque alors sans le perdre
+    // (les données restent dans localStorage, voir triggerExtensionExtraction),
+    // mais jusqu'ici rien ne relançait automatiquement cet import une fois
+    // la voie libre : il fallait fermer ET recliquer "Ajouter au Catalogue
+    // SPI" une seconde fois, ou faire F5 (retour utilisateur : "j'importe un
+    // produit puis un autre, ça me réimporte le premier, obligé de faire F5
+    // pour importer le nouveau" — le F5 ne faisait en réalité que débloquer
+    // cette fenêtre restée ouverte, sans jamais consommer l'import déjà en
+    // attente tout seul). Délai après l'animation de fermeture (~260ms, voir
+    // _closeOverlayAnimated) pour que _extensionGuardBlocked() évalue une
+    // fenêtre réellement fermée. Sans effet si rien n'est en attente (voir
+    // le contrôle de fraîcheur en tête de triggerExtensionExtraction).
+    if(typeof window.triggerExtensionExtraction === 'function'){
+      setTimeout(window.triggerExtensionExtraction, 300);
+    }
   }
 
   // ---------- Vérification de référence en doublon ----------
