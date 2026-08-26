@@ -184,16 +184,23 @@
     if(_extensionGuardBlocked()) return;
     var html = '';
     var url  = '';
+    var autoSpecs = true;
     try{
       html = localStorage.getItem('cat_pending_html') || '';
       url  = localStorage.getItem('cat_pending_url')  || '';
       var ts = parseInt(localStorage.getItem('cat_pending_ts') || '0', 10);
+      // '1' par défaut si absent (versions d'extension antérieures à ce
+      // réglage, voir options.html/options.js côté extension) — ne change
+      // rien au comportement existant tant que rien n'a été explicitement
+      // désactivé.
+      autoSpecs = localStorage.getItem('cat_pending_autospecs') !== '0';
       // Ignorer si données trop vieilles (> 5 min)
       if(!html || (Date.now() - ts) > 5 * 60 * 1000) return;
       // Nettoyer immédiatement pour éviter un double-déclenchement
       localStorage.removeItem('cat_pending_html');
       localStorage.removeItem('cat_pending_url');
       localStorage.removeItem('cat_pending_ts');
+      localStorage.removeItem('cat_pending_autospecs');
     }catch(e){ return; }
 
     if(url){
@@ -224,6 +231,17 @@
         fUrl.value  = url;
         // Déclencher le même bouton que le copier-coller manuel
         document.getElementById('btnExtract').click();
+        // btnExtract remplit _specsRows de façon synchrone (extractFromHtml
+        // ne fait aucun appel asynchrone) — vider juste après si le réglage
+        // "Importer aussi les caractéristiques techniques" est désactivé
+        // côté extension (retour utilisateur : ça importait parfois des
+        // infos sans rapport avec le produit). Ne concerne QUE ce chemin
+        // (extension) : coller le code source à la main continue de tout
+        // extraire, comme avant.
+        if(!autoSpecs && typeof window._specsRows !== 'undefined' && window._specsRows.length){
+          window._specsRows = [];
+          if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
+        }
         showToast('Extraction depuis l\'extension Chrome ✓', 'ok', 3500);
       }, 300);
     }, 700);

@@ -1,4 +1,10 @@
-const CACHE = "spi-catalogue-v582";
+// Changer cette valeur est ce qui déclenche la mise à jour du Service
+// Worker chez les visiteurs (voir js/pwa.js) — nécessaire à chaque
+// déploiement où un fichier listé dans FILES ci-dessous a changé. Ne pas
+// incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
+// projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
+// automatiquement à partir de la date/heure courante.
+const CACHE = "spi-catalogue-v20260826093232";
 
 const FILES = [
   "./",
