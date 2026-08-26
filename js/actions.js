@@ -936,6 +936,34 @@
   }
   window._releaseProductEditLock = _releaseProductEditLock;
 
+  // Rafraîchit _editingAt sur le verrou déjà posé par CETTE session —
+  // appelé périodiquement par le "heartbeat" (voir js/modal.js,
+  // _startEditLockHeartbeat) tant que l'utilisateur interagit réellement
+  // avec le formulaire "Modifier le produit" (retour utilisateur : sans ça,
+  // éditer une fiche plus de 10 min d'affilée laisserait quelqu'un d'autre
+  // commencer à éditer la même fiche en même temps — voir EDIT_LOCK_TTL_MS
+  // plus haut et le nettoyage actif des verrous périmés dans
+  // syncFromServer). Le heartbeat lui-même ne rafraîchit que sur activité
+  // récente (frappe/clic dans le formulaire) — un onglet resté ouvert sans
+  // personne devant doit continuer à laisser le verrou expirer normalement,
+  // ce nettoyage-ci ne change rien à cette logique. Même garde que
+  // _releaseProductEditLock : ne touche jamais un verrou qui n'est pas le
+  // nôtre.
+  async function _refreshProductEditLock(id){
+    if(!serverUrl || !id) return;
+    var idx = products.findIndex(function(x){ return x.id === id; });
+    if(idx === -1) return;
+    var p = products[idx];
+    var me = _editLockCurrentUser();
+    var isMySession = p._editingSessionId
+      ? p._editingSessionId === _editLockSessionId()
+      : (p._editingBy === me);
+    if(!p._editingBy || !isMySession) return;
+    p._editingAt = Date.now();
+    await pushToServer([p]);
+  }
+  window._refreshProductEditLock = _refreshProductEditLock;
+
   // ── Déverrouillage manuel (admin) ────────────────────────────────────
   // Contrepartie de _releaseProductEditLock ci-dessus, mais SANS la
   // vérification "isMySession" : tout l'intérêt est justement de lever le

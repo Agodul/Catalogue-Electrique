@@ -869,6 +869,12 @@ function _productBadgesCompactHtml(p){
     }
     closeView();
     openModal(id);
+    // Démarre le heartbeat du verrou (voir js/modal.js) — seulement ici,
+    // juste après un verrou effectivement posé par _tryLockProductForEdit
+    // ci-dessus, pas dans openModal() lui-même (aussi utilisé pour "Ajouter
+    // un produit" et "Proposer une modification", qui ne posent jamais ce
+    // verrou).
+    if(typeof window._startEditLockHeartbeat === 'function') window._startEditLockHeartbeat(id);
   });
   document.getElementById('vmDeleteBtn').addEventListener('click', function(){
     var id = viewingId;

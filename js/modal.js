@@ -448,8 +448,49 @@
     sellingPriceHint.textContent = '';
     switchTab('auto');
   }
+  // ── Heartbeat du verrou "en cours d'édition" ────────────────────────
+  // Tant que le formulaire reste réellement utilisé (activité dans les 8
+  // dernières minutes), rafraîchit périodiquement _editingAt côté serveur
+  // (voir _refreshProductEditLock dans js/actions.js) pour qu'une édition
+  // légitime de plus de 10 min ne se fasse jamais "voler" par quelqu'un
+  // d'autre (voir EDIT_LOCK_TTL_MS). Basé sur l'activité RÉELLE (frappe/clic
+  // dans le formulaire), pas sur la simple présence de la fenêtre ouverte —
+  // un onglet oublié ouvert sans personne devant doit continuer à laisser
+  // le verrou expirer normalement (retour utilisateur). Démarré/arrêté
+  // explicitement par l'appelant (voir vmEditBtn dans js/render.js et
+  // closeModal ci-dessous) plutôt que déduit d'un état ambiant — seul le
+  // vrai flux d'édition (verrou effectivement posé) doit le déclencher.
+  var EDIT_LOCK_HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000;
+  var EDIT_LOCK_IDLE_THRESHOLD_MS     = 8 * 60 * 1000;
+  var _editLockLastActivityAt = 0;
+  var _editLockHeartbeatTimer = null;
+  var _editLockHeartbeatId    = null;
+
+  function _editLockMarkActivity(){ _editLockLastActivityAt = Date.now(); }
+  overlay.addEventListener('input', _editLockMarkActivity);
+  overlay.addEventListener('click', _editLockMarkActivity);
+
+  function _stopEditLockHeartbeat(){
+    if(_editLockHeartbeatTimer){ clearInterval(_editLockHeartbeatTimer); _editLockHeartbeatTimer = null; }
+    _editLockHeartbeatId = null;
+  }
+  window._stopEditLockHeartbeat = _stopEditLockHeartbeat;
+
+  window._startEditLockHeartbeat = function(id){
+    _stopEditLockHeartbeat();
+    if(!id) return;
+    _editLockHeartbeatId = id;
+    _editLockMarkActivity(); // ouvrir le formulaire compte comme une activité initiale
+    _editLockHeartbeatTimer = setInterval(function(){
+      if(!_editLockHeartbeatId || editingId !== _editLockHeartbeatId) return; // fermé/changé entre-temps
+      if(Date.now() - _editLockLastActivityAt > EDIT_LOCK_IDLE_THRESHOLD_MS) return; // inactif : laisser expirer normalement
+      if(typeof window._refreshProductEditLock === 'function') window._refreshProductEditLock(_editLockHeartbeatId);
+    }, EDIT_LOCK_HEARTBEAT_INTERVAL_MS);
+  };
+
   function closeModal(){
     var wasEditingId = editingId;
+    _stopEditLockHeartbeat();
     document.body.classList.remove('modal-open');
     if(typeof window._closeOverlayAnimated === 'function'){
       window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('open'); });
