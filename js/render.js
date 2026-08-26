@@ -1007,7 +1007,12 @@ function _productBadgesCompactHtml(p){
       '<div class="body">'+
         '<div class="body-top">'+
           '<div class="ref">'+escapeHtml(p.ref||'—')+'</div>'+
-          '<div class="name">'+(displayName ? escapeHtml(p.name||'') : '')+'</div>'+
+          // title="" : nom tronqué visuellement à 2 lignes (-webkit-line-clamp,
+          // voir css/styles.css) — le survol affiche le nom complet via
+          // l'infobulle native du navigateur plutôt que de devoir ouvrir la
+          // fiche pour le lire en entier (retour utilisateur — uniquement le
+          // nom, pas la description).
+          '<div class="name"'+(displayName ? ' title="'+escapeHtml(p.name||'')+'"' : '')+'>'+(displayName ? escapeHtml(p.name||'') : '')+'</div>'+
           '<div class="desc">'+(shortDesc ? escapeHtml(shortDesc) : '')+'</div>'+
         '</div>'+
         '<div class="body-bottom">'+
