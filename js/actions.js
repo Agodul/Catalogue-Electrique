@@ -744,10 +744,15 @@
   // l'ordre d'un aller-retour réseau) — seule une vraie API de verrou
   // atomique côté serveur éliminerait ça complètement.
   // 10 min : au-delà, verrou considéré abandonné (onglet fermé/planté sans
-  // libérer) côté client plutôt qu'un blocage définitif. Une purge côté
-  // serveur libère aussi les verrous de son côté toutes les 20 min — ce
-  // TTL client reste volontairement plus court pour ne pas bloquer les
-  // autres plus longtemps que nécessaire en attendant ce passage serveur.
+  // libérer) côté client plutôt qu'un blocage définitif. AUCUNE purge
+  // n'existe côté serveur — tout le cycle de vie du verrou (pose, lecture,
+  // expiration, nettoyage) est géré côté client. Un verrou expiré n'est
+  // donc jamais bloquant (voir _checkProductEditLockBlocks plus bas), mais
+  // sans nettoyage actif ses champs resteraient sur le produit indéfiniment
+  // tant que personne ne retente une édition dessus (qui les écraserait) —
+  // _fetchAllLockedProducts s'en charge activement à chaque appel : tout
+  // verrou expiré parmi les fiches reçues est nettoyé au passage plutôt que
+  // simplement listé comme verrouillé.
   var EDIT_LOCK_TTL_MS = 10 * 60 * 1000;
 
   function _editLockCurrentUser(){
@@ -950,8 +955,28 @@
       if(!r.ok) return { fetched:false, locked:[] };
       var data = await r.json();
       var items = (data && Array.isArray(data.items)) ? data.items.map(function(it){ return it.data; }) : (Array.isArray(data) ? data : []);
-      var locked = items.filter(function(p){ return p && p._editingBy; });
-      return { fetched:true, locked: locked };
+      var allLocked = items.filter(function(p){ return p && p._editingBy; });
+
+      // Pas de purge serveur (voir EDIT_LOCK_TTL_MS ci-dessus) : nettoyer
+      // ici, activement, tout verrou trouvé au-delà du TTL parmi les fiches
+      // fraîchement reçues plutôt que de simplement le lister comme
+      // "verrouillé" — sinon un verrou abandonné (crash/fermeture d'onglet)
+      // reste affiché indéfiniment tant que personne ne le déverrouille à la
+      // main ou ne retente une édition sur ce produit précis.
+      var now = Date.now();
+      var fresh = [];
+      var cleanups = [];
+      allLocked.forEach(function(p){
+        var age = typeof p._editingAt === 'number' ? (now - p._editingAt) : null;
+        if(age !== null && age >= EDIT_LOCK_TTL_MS){
+          cleanups.push(_adminForceUnlockProduct(p));
+        } else {
+          fresh.push(p);
+        }
+      });
+      if(cleanups.length) await Promise.all(cleanups);
+
+      return { fetched:true, locked: fresh };
     }catch(e){ return { fetched:false, locked:[] }; }
   }
   window._fetchAllLockedProducts = _fetchAllLockedProducts;
@@ -1041,8 +1066,28 @@
       var added = 0;
       var sugMergedProducts = []; // produits dont seules les suggestions ont changé (fusion)
       var conflicts = [];
+      var staleLockCleanups = []; // verrous "en cours d'édition" expirés à nettoyer côté serveur (voir plus bas)
       serverItems.forEach(function(sp){
         if(!sp || !sp.ref) return;
+
+        // Nettoyage actif d'un verrou "en cours d'édition" expiré — aucune
+        // purge n'existe côté serveur (voir EDIT_LOCK_TTL_MS plus haut), tout
+        // le cycle de vie du verrou est géré côté client. Fait ici, dans le
+        // flux de synchro normal (doCheckAllSync/syncFromServer, déclenché
+        // pour TOUS les utilisateurs à la connexion puis toutes les 15s), et
+        // pas seulement quand un admin ouvre "Fiches verrouillées" : dès
+        // qu'une fiche avec un verrou périmé (> EDIT_LOCK_TTL_MS) est reçue
+        // ici, on retire les champs tout de suite, avant toute fusion —
+        // sinon la fiche resterait affichée comme verrouillée indéfiniment
+        // tant que personne ne la déverrouille à la main ou ne retente une
+        // édition dessus.
+        if(sp._editingBy && typeof sp._editingAt === 'number' && (Date.now() - sp._editingAt) >= EDIT_LOCK_TTL_MS){
+          delete sp._editingBy;
+          delete sp._editingAt;
+          delete sp._editingSessionId;
+          staleLockCleanups.push(sp);
+        }
+
         var idx = localMap[sp.ref];
         if(idx === undefined){
           // Ref inconnue → nouveau produit serveur
@@ -1178,6 +1223,15 @@
           }
           if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         }
+      }
+
+      // Repousser au serveur les verrous expirés nettoyés ci-dessus — sans
+      // ça, le nettoyage ne serait que local (visible seulement par CET
+      // utilisateur) et la fiche redeviendrait "verrouillée" au prochain
+      // pull d'un autre utilisateur. N'importe quel utilisateur qui tombe
+      // le premier sur un verrou périmé s'en charge, pas seulement l'admin.
+      if(staleLockCleanups.length > 0){
+        pushToServer(staleLockCleanups);
       }
 
       // Ouvrir la modale de conflits si des ref connues diffèrent
