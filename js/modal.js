@@ -483,7 +483,31 @@
     _editLockMarkActivity(); // ouvrir le formulaire compte comme une activité initiale
     _editLockHeartbeatTimer = setInterval(function(){
       if(!_editLockHeartbeatId || editingId !== _editLockHeartbeatId) return; // fermé/changé entre-temps
-      if(Date.now() - _editLockLastActivityAt > EDIT_LOCK_IDLE_THRESHOLD_MS) return; // inactif : laisser expirer normalement
+      var idleMs = Date.now() - _editLockLastActivityAt;
+      // Inactif depuis au moins le TTL du verrou (10 min, EDIT_LOCK_TTL_MS
+      // dans js/actions.js — repli local si jamais indisponible, modal.js
+      // étant chargé AVANT actions.js dans index.html) : au-delà, le verrou
+      // n'est de toute façon plus protégé — n'importe qui d'autre peut déjà
+      // éditer la même fiche sans être bloqué (voir
+      // _checkProductEditLockBlocks). Laisser cette fenêtre ouverte
+      // exposerait à un "Enregistrer" tardif qui écraserait silencieusement
+      // ce qu'une autre personne aurait entre-temps sauvegardé (retour
+      // utilisateur) — fermer proactivement SANS enregistrer plutôt que
+      // risquer ça, et le dire clairement (popup bloquante plutôt qu'un
+      // toast : l'utilisateur est absent au moment où ça se produit, un
+      // toast aurait disparu avant son retour).
+      var lockTtlMs = (typeof window.EDIT_LOCK_TTL_MS === 'number') ? window.EDIT_LOCK_TTL_MS : (10 * 60 * 1000);
+      if(idleMs >= lockTtlMs){
+        _stopEditLockHeartbeat();
+        if(typeof closeModal === 'function') closeModal();
+        if(typeof customAlert === 'function'){
+          customAlert('Fermeture automatique', 'Cette fiche a été fermée pour cause d\'inactivité — vos modifications n\'ont pas été enregistrées.');
+        } else if(typeof showToast === 'function'){
+          showToast('Fiche fermée pour cause d\'inactivité — non enregistrée', 'warn', 6000);
+        }
+        return;
+      }
+      if(idleMs > EDIT_LOCK_IDLE_THRESHOLD_MS) return; // inactif : ne plus rafraîchir, laisser expirer normalement (mais fenêtre encore ouverte quelques minutes, voir ci-dessus)
       if(typeof window._refreshProductEditLock === 'function') window._refreshProductEditLock(_editLockHeartbeatId);
     }, EDIT_LOCK_HEARTBEAT_INTERVAL_MS);
   };
