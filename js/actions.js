@@ -325,6 +325,12 @@
           payload.priceHistory = history;
         }
         payload.updatedAt = Date.now(); // marquer comme modifié pour la sync serveur
+        // Changement de référence : à retenir AVANT l'Object.assign ci-dessous
+        // (qui écrase existing.ref) — voir le nettoyage serveur après le
+        // if/else (retour utilisateur : "quand je modifie la référence, ça
+        // crée un nouveau produit").
+        var oldRefBeforeEdit = (existing.ref || '').trim();
+        var refChangedOnEdit = oldRefBeforeEdit && oldRefBeforeEdit !== payload.ref;
         products[idx] = Object.assign({}, existing, payload);
         // Retirer le verrou "en cours d'édition" (voir _tryLockProductForEdit
         // dans ce même fichier) — Object.assign ci-dessus aurait sinon
@@ -371,6 +377,38 @@
       payload.priceHistory = initialHistory;
       products.push(payload);
       touchedForSync.push(payload);
+    }
+
+    // ── Nettoyage serveur en cas de changement de référence ────────────────
+    // /pushDatas fait un upsert par "ref" côté serveur (voir catalogue_core.py,
+    // ON CONFLICT(ref) DO UPDATE) — il n'a AUCUN moyen de savoir qu'une
+    // fiche a été RENOMMÉE plutôt que créée : pousser la nouvelle ref crée
+    // une ligne supplémentaire, l'ANCIENNE reste orpheline sur le serveur.
+    // Localement product[idx] est bien remplacé en place (une seule entrée,
+    // pas de doublon visible tout de suite) — mais au prochain syncFromServer
+    // (toutes les 15s en tâche de fond), cette ancienne ligne orpheline
+    // revient comme si c'était un "nouveau produit" jamais vu localement,
+    // créant le doublon que l'utilisateur voit apparaître après coup (retour
+    // utilisateur : "quand je modifie la référence, ça crée un nouveau
+    // produit"). Supprimer explicitement l'ancienne ref côté serveur une fois
+    // la nouvelle poussée — même API que deleteProduct() dans js/render.js.
+    if(typeof refChangedOnEdit !== 'undefined' && refChangedOnEdit){
+      (function(oldRef){
+        var sUrl = localStorage.getItem('cat_server_url');
+        if(!sUrl) return;
+        setTimeout(function(){
+          fetch(sUrl+'/deleteDatas?ref='+encodeURIComponent(oldRef), {
+            method: 'DELETE',
+            headers: (function(){
+              var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+              delete h['Content-Type'];
+              return h;
+            })()
+          }).then(function(r){
+            if(!r.ok) console.warn('Nettoyage ancienne référence: HTTP', r.status, '(', oldRef, ')');
+          }).catch(function(e){ console.warn('Nettoyage ancienne référence:', e.message); });
+        }, 1500); // laisser le temps au push de la nouvelle ref d'arriver en premier
+      })(oldRefBeforeEdit);
     }
 
     // ── Liaison réciproque des suggestions ET des pièces de rechange ──────
@@ -579,6 +617,7 @@
   // ── Polling /check toutes les 30s ─────────────────────────────────
   var _syncInterval = null;
   var _recentlySaved = {}; // {ref: timestamp} - ignore conflits 60s après une sauvegarde locale
+  var _deletionWarnedRefs = {}; // {ref: true} - évite de répéter l'avertissement de suppression à chaque passage de syncDeletions() tant que la fenêtre reste ouverte sur ce produit
 
   // Sync complète pour détecter les suppressions côté serveur
   async function syncDeletions(){
@@ -598,10 +637,39 @@
       // Construire un Set des refs serveur
       var serverRefs = new Set(serverItems.map(function(p){ return p && p.ref; }).filter(Boolean));
 
+      // Protéger le produit EN COURS D'ÉDITION (fenêtre "Modifier le
+      // produit" ouverte) d'une suppression détectée ici — sans ça, un
+      // produit supprimé côté serveur par quelqu'un d'autre pendant qu'on le
+      // modifie disparaissait silencieusement de products[] sous les pieds
+      // de l'utilisateur, en pleine saisie, sans aucun avertissement (retour
+      // utilisateur : "j'ai plus de contrôle si il y a eu une suppression de
+      // produit sur le serveur"). On le garde tant que la fenêtre reste
+      // ouverte, et on prévient clairement — popup bloquante plutôt qu'un
+      // toast, l'utilisateur pouvant très bien être absent au moment où
+      // cette synchro tourne en arrière-plan (comme la fermeture automatique
+      // pour inactivité, voir js/modal.js).
+      var editingProduct = (typeof editingId !== 'undefined' && editingId)
+        ? products.find(function(p){ return p.id === editingId; })
+        : null;
+      var editingRef = editingProduct ? editingProduct.ref : null;
+
       // Supprimer localement les produits absents du serveur
       var before = products.length;
-      products = products.filter(function(p){ return !p.ref || serverRefs.has(p.ref); });
+      products = products.filter(function(p){
+        if(p.ref && editingRef && p.ref === editingRef) return true; // jamais retiré pendant l'édition
+        return !p.ref || serverRefs.has(p.ref);
+      });
       var deleted = before - products.length;
+
+      if(editingRef && !serverRefs.has(editingRef) && !_deletionWarnedRefs[editingRef]){
+        _deletionWarnedRefs[editingRef] = true;
+        if(typeof customAlert === 'function'){
+          customAlert(
+            'Produit supprimé côté serveur',
+            'Ce produit a été supprimé par quelqu\'un d\'autre pendant que vous le modifiiez. Vos modifications restent locales tant que cette fenêtre reste ouverte — les enregistrer le recréera sur le serveur.'
+          );
+        }
+      }
 
       if(deleted > 0){
         save(true);

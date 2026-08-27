@@ -556,11 +556,20 @@
     // cette fenêtre restée ouverte, sans jamais consommer l'import déjà en
     // attente tout seul). Délai après l'animation de fermeture (~260ms, voir
     // _closeOverlayAnimated) pour que _extensionGuardBlocked() évalue une
-    // fenêtre réellement fermée. Sans effet si rien n'est en attente (voir
-    // le contrôle de fraîcheur en tête de triggerExtensionExtraction).
-    if(typeof window.triggerExtensionExtraction === 'function'){
-      setTimeout(window.triggerExtensionExtraction, 300);
-    }
+    // fenêtre réellement fermée. Vérifie qu'il y a VRAIMENT quelque chose en
+    // attente AVANT d'appeler triggerExtensionExtraction — cette dernière
+    // exécute _extensionGuardBlocked() dans tous les cas, qui ferme
+    // silencieusement (_closeAllOverlays()) toute AUTRE fenêtre déjà rouverte
+    // entre-temps (ex. "Modifier" sur un second produit, cliqué juste après
+    // avoir fermé le premier) dès qu'elle n'a pas encore de saisie détectée
+    // comme "non enregistrée" — un appel inconditionnel ici pouvait donc
+    // fermer une fenêtre d'édition flambant neuve sans aucun rapport avec
+    // l'extension, remettant editingId à null en plein milieu d'une saisie.
+    try{
+      if(localStorage.getItem('cat_pending_html') && typeof window.triggerExtensionExtraction === 'function'){
+        setTimeout(window.triggerExtensionExtraction, 300);
+      }
+    }catch(e){}
   }
 
   // ---------- Vérification de référence en doublon ----------
