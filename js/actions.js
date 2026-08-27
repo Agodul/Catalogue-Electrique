@@ -616,7 +616,6 @@
 
   // ── Polling /check toutes les 30s ─────────────────────────────────
   var _syncInterval = null;
-  var _recentlySaved = {}; // {ref: timestamp} - ignore conflits 60s après une sauvegarde locale
   var _deletionWarnedRefs = {}; // {ref: true} - évite de répéter l'avertissement de suppression à chaque passage de syncDeletions() tant que la fenêtre reste ouverte sur ce produit
 
   // Sync complète pour détecter les suppressions côté serveur
@@ -740,6 +739,17 @@
       }
       if(hasChanged('configBlocks') && typeof _armoireFetchBlocks === 'function') jobs.push(_armoireFetchBlocks());
       if(hasChanged('savedConfigs') && typeof _armoireFetchSavedConfigs === 'function') jobs.push(_armoireFetchSavedConfigs());
+      // catalogueRequests/bugs : avant, js/requests.js faisait tourner son
+      // propre poll indépendant (/checkReq+/checkBugs) toutes les 30s, sans
+      // aucun rapport avec ce cycle-ci — deux détections de changement en
+      // parallèle pour la même info (retour utilisateur : consolider sur
+      // /checkAll). reqUpdateBadge() reste la source des VRAIS chiffres
+      // (/checkReq+/checkBugs, déjà vérifiés contre le Swagger réel), on ne
+      // fait que réutiliser CE signal-ci pour décider QUAND la relancer —
+      // se neutralise déjà seule si personne n'est admin/connecté.
+      if((hasChanged('catalogueRequests') || hasChanged('bugs')) && typeof window._reqUpdateBadge === 'function'){
+        jobs.push(window._reqUpdateBadge());
+      }
       if(jobs.length) await Promise.allSettled(jobs);
 
       localStorage.setItem(CHECKALL_KEY, JSON.stringify(data));
@@ -1161,7 +1171,6 @@
 
       var added = 0;
       var sugMergedProducts = []; // produits dont seules les suggestions ont changé (fusion)
-      var conflicts = [];
       var staleLockCleanups = []; // verrous "en cours d'édition" expirés à nettoyer côté serveur (voir plus bas)
       serverItems.forEach(function(sp){
         if(!sp || !sp.ref) return;
@@ -1191,109 +1200,44 @@
           products.push(sp);
           added++;
         } else {
-          // Ref connue
+          // Ref connue — le serveur gagne TOUJOURS désormais (retour
+          // utilisateur : suppression de la fenêtre "conflits de
+          // synchronisation", plus aucun choix demandé). Avant, seul un
+          // compte admin gardait sa version locale et déclenchait cette
+          // fenêtre en cas de différence ; comportement maintenant identique
+          // pour tous les comptes — l'ancienne branche "non-admin" (serveur
+          // prioritaire, écrasement silencieux) s'applique désormais à tous.
           var lp = products[idx];
-          var isAdmin = typeof authGetCurrentUser === 'function' && authGetCurrentUser() && authGetCurrentUser().isAdmin;
+          products[idx] = sp;
 
-          if(!isAdmin){
-            // Non connecté → serveur prioritaire, écrase le local silencieusement
-            products[idx] = sp;
-          } else {
-            // Admin → conflit si contenu différent (ignorer 60s après un push)
-            var recentSave = _recentlySaved[sp.ref];
-            var tooRecent = recentSave && (Date.now() - recentSave) < 60000;
-            if(!tooRecent){
-              function withoutServerFields(p){
-                var c = Object.assign({}, p);
-                delete c.updatedAt;
-                delete c.id;
-                delete c.familyIcon;
-                // createdAt est réécrit à chaque push (pushToServer l'utilise comme
-                // marqueur d'upsert forcé, voir plus bas) même quand aucun champ
-                // éditable n'a changé — ex. propagation d'icône de famille sur des
-                // produits soeurs. Sans cette exclusion, toute autre session/appareil
-                // du même compte admin (qui n'a pas fait ce push et n'a donc pas le
-                // grace-period _recentlySaved) voyait un "conflit" à tort dès que
-                // createdAt différait, même sur un contenu par ailleurs identique.
-                delete c.createdAt;
-                // suggestions/suggestionsHidden et spareParts/sparePartsHidden :
-                // un produit peut être modifié "silencieusement" par l'édition
-                // d'un AUTRE produit (liaison réciproque automatique — voir
-                // reconcileLinksReciprocally et _linkReciprocal). Une différence
-                // ici n'est jamais un vrai conflit éditorial, juste un lien à
-                // fusionner (fait plus bas) — sans cette exclusion, toute session
-                // qui n'a pas encore cette liaison voyait un "conflit" à tort
-                // (retour utilisateur : "encore trop de problèmes de conflit").
-                delete c.suggestions;
-                delete c.suggestionsHidden;
-                delete c.spareParts;
-                delete c.sparePartsHidden;
-                // hasDoc/docFilename : mis à jour par un flux SÉPARÉ (envoi/
-                // suppression de PDF, voir js/modal.js _pdfUploadFiles/
-                // _pdfDeleteOne) qui n'est pas le formulaire d'édition
-                // principal — une différence ici n'est pas un vrai conflit
-                // éditorial (retour utilisateur, capture à l'appui :
-                // "hasDoc _docFiles docFilename"). _docFiles lui-même est
-                // déjà retiré en amont par save() (voir js/storage.js), donc
-                // jamais présent ici, mais on l'exclut par sécurité.
-                delete c.hasDoc;
-                delete c.docFilename;
-                delete c._docFiles;
-                // _editingBy/_editingAt/_editingSessionId : verrou "en cours
-                // d'édition" (voir _tryLockProductForEdit/
-                // _releaseProductEditLock plus bas) — pousser/retirer ce
-                // verrou modifie le produit sans que son CONTENU éditorial
-                // change, jamais un vrai conflit.
-                delete c._editingBy;
-                delete c._editingAt;
-                delete c._editingSessionId;
-                // Normalise TOUS les champs vides (chaîne vide, null,
-                // undefined, tableau vide) en les retirant complètement —
-                // avant, seuls tags/priceHistory avaient ce traitement. Sans
-                // ça, une valeur '' en local face à une clé absente côté
-                // serveur (un backend omet souvent les champs vides dans ses
-                // réponses JSON) ressortait comme une vraie différence de
-                // contenu à chaque comparaison — même sur un produit tout
-                // juste ajouté et jamais modifié depuis (retour utilisateur :
-                // "à chaque fois que j'ajoute un produit sur un compte,
-                // l'autre le voit comme un conflit").
-                Object.keys(c).forEach(function(k){
-                  var v = c[k];
-                  if(v === undefined || v === null || v === '') delete c[k];
-                  else if(Array.isArray(v) && v.length === 0) delete c[k];
-                });
-                return JSON.stringify(c, Object.keys(c).sort());
-              }
-              if(withoutServerFields(lp) !== withoutServerFields(sp)){
-                conflicts.push({ ref: sp.ref, local: lp, server: sp });
-              }
+          // Fusion des liens réciproques (suggestions/pièces de rechange) :
+          // union local+serveur, jamais un simple écrasement — un lien tout
+          // juste ajouté localement (par l'édition d'un AUTRE produit, voir
+          // _linkReciprocal dans le flux d'enregistrement) peut ne pas
+          // encore être remonté sur le serveur au moment de cette synchro ;
+          // sans cette fusion, l'écrasement ci-dessus le ferait disparaître
+          // silencieusement. Comportement conservé tel quel, indépendant de
+          // la suppression des conflits ci-dessus.
+          var sugChanged = false;
+          function _mergeLinkField(field, hiddenField){
+            var merged = Array.prototype.concat.apply([],
+              [Array.isArray(lp[field]) ? lp[field] : [], Array.isArray(sp[field]) ? sp[field] : []]
+            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i; });
+            var mergedHidden = Array.prototype.concat.apply([],
+              [Array.isArray(lp[hiddenField]) ? lp[hiddenField] : [], Array.isArray(sp[hiddenField]) ? sp[hiddenField] : []]
+            ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i && merged.indexOf(r) !== -1; });
+            if(merged.length && merged.length !== (Array.isArray(sp[field])?sp[field].length:0)){
+              products[idx][field] = merged; sugChanged = true;
             }
-            // Local conservé par défaut pour l'admin — sauf les suggestions et
-            // pièces de rechange, toujours fusionnées (union local+serveur)
-            // qu'il y ait conflit ou non sur les autres champs : jamais
-            // perdues silencieusement d'un côté juste parce qu'une autre
-            // session ne les a pas encore vues.
-            var sugChanged = false;
-            function _mergeLinkField(field, hiddenField){
-              var merged = Array.prototype.concat.apply([],
-                [Array.isArray(lp[field]) ? lp[field] : [], Array.isArray(sp[field]) ? sp[field] : []]
-              ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i; });
-              var mergedHidden = Array.prototype.concat.apply([],
-                [Array.isArray(lp[hiddenField]) ? lp[hiddenField] : [], Array.isArray(sp[hiddenField]) ? sp[hiddenField] : []]
-              ).filter(function(r, i, arr){ return r && arr.indexOf(r) === i && merged.indexOf(r) !== -1; });
-              if(merged.length && merged.length !== (Array.isArray(lp[field])?lp[field].length:0)){
-                lp[field] = merged; sugChanged = true;
-              }
-              if(mergedHidden.length && mergedHidden.length !== (Array.isArray(lp[hiddenField])?lp[hiddenField].length:0)){
-                lp[hiddenField] = mergedHidden; sugChanged = true;
-              }
+            if(mergedHidden.length && mergedHidden.length !== (Array.isArray(sp[hiddenField])?sp[hiddenField].length:0)){
+              products[idx][hiddenField] = mergedHidden; sugChanged = true;
             }
-            _mergeLinkField('suggestions', 'suggestionsHidden');
-            _mergeLinkField('spareParts', 'sparePartsHidden');
-            if(sugChanged){
-              lp.updatedAt = Date.now();
-              sugMergedProducts.push(lp);
-            }
+          }
+          _mergeLinkField('suggestions', 'suggestionsHidden');
+          _mergeLinkField('spareParts', 'sparePartsHidden');
+          if(sugChanged){
+            products[idx].updatedAt = Date.now();
+            sugMergedProducts.push(products[idx]);
           }
         }
       });
@@ -1328,16 +1272,6 @@
       // le premier sur un verrou périmé s'en charge, pas seulement l'admin.
       if(staleLockCleanups.length > 0){
         pushToServer(staleLockCleanups);
-      }
-
-      // Ouvrir la modale de conflits si des ref connues diffèrent
-      if(conflicts.length > 0){
-        showToast(conflicts.length+' produit(s) modifié(s) sur le serveur — choisissez la version à conserver', 'warn', 4000);
-        setTimeout(function(){
-          if(typeof window.openConflictModal === 'function'){
-            window.openConflictModal(conflicts);
-          }
-        }, 500);
       }
     }catch(e){ console.warn('syncFromServer:', e.message); }
   }

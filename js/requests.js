@@ -4,7 +4,6 @@
 //  MODULE DEMANDES (_req)
 // ═══════════════════════════════════════════════════════════════
 
-  var _reqPollInterval = null;
   var _reqPanelTab     = 'product'; // onglet actif : 'product' ou 'bug' (plus une histoire de rôle — voir reqRefreshPanel)
 
   // ── Helpers ───────────────────────────────────────────────────
@@ -117,16 +116,27 @@
   }
 
   // ── Polling ───────────────────────────────────────────────────
+  // Plus de setInterval dédié ici — doCheckAllSync() (js/actions.js, toutes
+  // les 15s) appelle déjà /checkAll qui inclut catalogueRequests/bugs
+  // (revision/count/changedAt) ; il relance reqUpdateBadge() UNIQUEMENT
+  // quand l'un des deux a changé, via window._reqUpdateBadge ci-dessous,
+  // plutôt qu'un second poll (/checkReq+/checkBugs) totalement indépendant
+  // toutes les 30s qui refaisait le même travail de détection en double
+  // (retour utilisateur : consolider sur /checkAll). reqUpdateBadge()
+  // elle-même continue d'appeler /checkReq et /checkBugs pour le VRAI
+  // décompte (déjà vérifiés contre le Swagger réel — voir mémoire
+  // "bug-report-api-migration") — seul le déclenchement change, pas la
+  // source des chiffres affichés.
   function reqStartPolling(){
     reqStopPolling();
     if(!reqServerUrl() || !reqIsAdmin()) return;
     _reqAskNotifPermission();
-    reqUpdateBadge();
-    _reqPollInterval = setInterval(reqUpdateBadge, 30000);
+    reqUpdateBadge(); // premier affichage immédiat à la connexion
   }
-  function reqStopPolling(){ if(_reqPollInterval){ clearInterval(_reqPollInterval); _reqPollInterval = null; } _reqLastCount = 0; _reqLastCountProduct = 0; _reqLastCountBug = 0; }
+  function reqStopPolling(){ _reqLastCount = 0; _reqLastCountProduct = 0; _reqLastCountBug = 0; }
   window._reqStartPolling = reqStartPolling;
   window._reqStopPolling  = reqStopPolling;
+  window._reqUpdateBadge  = reqUpdateBadge;
 
   // ── Soumettre une demande ─────────────────────────────────────
   window.reqSubmit = async function(payload, existingProduct){
