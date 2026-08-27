@@ -433,3 +433,24 @@
     if(e.target && e.target.tagName === 'IMG') e.preventDefault();
   });
 
+  // ── Avertissement natif à la fermeture de l'onglet/navigateur si une
+  // saisie n'est pas enregistrée (retour utilisateur) — même détection que
+  // _extensionGuardBlocked ci-dessus (modalOverlay/hasUnsavedInput,
+  // specsOverlay/_specsHasChanges). Le texte de cette popup ne peut pas être
+  // personnalisé : tous les navigateurs modernes affichent leur propre
+  // message générique par sécurité (mesure anti-abus datant de ~2016),
+  // e.returnValue ne sert qu'à déclencher l'affichage, jamais le contenu.
+  // Limite connue : ignoré par Safari iOS en mode PWA installée (pas
+  // contournable), fonctionne normalement ailleurs (desktop, web mobile,
+  // PWA Android).
+  window.addEventListener('beforeunload', function(e){
+    var mo = document.getElementById('modalOverlay');
+    var modalDirty = mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput();
+    var so = document.getElementById('specsOverlay');
+    var specsDirty = so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges();
+    if(modalDirty || specsDirty){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
