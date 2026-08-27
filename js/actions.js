@@ -211,10 +211,7 @@
       saveFamilyIcons();
     }
 
-    // TRACE TEMPORAIRE (retour utilisateur : ordre des caractéristiques
-    // mélangé après "Enregistrer") — à retirer une fois la cause localisée.
     var _specsObjForPayload = typeof window._getSpecsObj === 'function' ? window._getSpecsObj() : {};
-    console.log('[SPI DEBUG] specs juste avant construction du payload:', JSON.stringify(Object.keys(_specsObjForPayload)));
 
     var payload = {
       brand: brand,
@@ -870,11 +867,6 @@
       // Le serveur accepte le plus récent (createdAt) par ref
       var toSend = base.map(function(p){
         return Object.assign({}, p, { createdAt: now });
-      });
-      // TRACE TEMPORAIRE (voir aussi juste avant la construction du payload,
-      // js/actions.js plus haut) — à retirer une fois la cause localisée.
-      toSend.forEach(function(p){
-        if(p.specs) console.log('[SPI DEBUG] specs juste avant fetch /pushDatas ('+p.ref+'):', JSON.stringify(Object.keys(p.specs)));
       });
       var r = await fetch(serverUrl+'/pushDatas', {
         method:'POST',

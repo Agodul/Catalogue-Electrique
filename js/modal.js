@@ -733,9 +733,6 @@
     _specsRows = (p.specs && typeof p.specs === 'object')
       ? Object.keys(p.specs).map(function(k){ return { key: k, value: p.specs[k] }; })
       : [];
-    // TRACE TEMPORAIRE (voir aussi js/actions.js, payload/pushToServer) —
-    // à retirer une fois la cause localisée.
-    if(p.specs) console.log('[SPI DEBUG] specs lus depuis p.specs (fillFormFromProduct, '+p.ref+'):', JSON.stringify(Object.keys(p.specs)));
     _specsRenderRows();
     fPrice.value = p.price||''; fPhoto.value = p.photo||'';
     updatePhotoPreview();
