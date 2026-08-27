@@ -604,10 +604,35 @@
     }
   }
 
+  // Reflète la connectivité RÉELLE, pas juste "un serveur est configuré" —
+  // avant, le point restait vert même Wi-Fi coupé (retour utilisateur :
+  // "je suis toujours connecté alors que je peux plus taper le serveur").
+  // Optimiste par défaut (true) tant qu'aucune vérification n'a encore
+  // échoué, pour ne pas afficher rouge par erreur avant le tout premier
+  // passage de doCheckAllSync(). Mis à jour à 2 endroits : ici via
+  // navigator.onLine (instantané, coupure Wi-Fi/avion) et dans
+  // doCheckAllSync() via le résultat réel du fetch (détecte aussi un
+  // serveur injoignable alors que le Wi-Fi lui-même fonctionne).
+  var _serverReachable = true;
   function updateServerSubtitle(){
     var el = document.getElementById('serverSettingsSub');
-    if(el) el.innerHTML = serverUrl ? '<i class="ti ti-circle-filled" style="color:#22C55E;font-size:.7em;"></i> '+escapeHtml(serverUrl) : 'Non configuré';
+    if(!el) return;
+    if(!serverUrl){ el.innerHTML = 'Non configuré'; return; }
+    var online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    var reachable = _serverReachable && online;
+    var dotColor = reachable ? '#22C55E' : '#DC2626';
+    var suffix = reachable ? '' : (online ? ' — serveur injoignable' : ' — hors connexion');
+    el.innerHTML = '<i class="ti ti-circle-filled" style="color:'+dotColor+';font-size:.7em;"></i> '+escapeHtml(serverUrl)+suffix;
   }
+  // Réagit immédiatement à une coupure/reprise réseau (pas besoin d'attendre
+  // le prochain cycle de 15s de doCheckAllSync) — 'online' relance aussi
+  // tout de suite une vérification réelle plutôt que de supposer le serveur
+  // à nouveau joignable simplement parce que le Wi-Fi est revenu.
+  window.addEventListener('offline', function(){ updateServerSubtitle(); });
+  window.addEventListener('online', function(){
+    updateServerSubtitle();
+    if(typeof doCheckAllSync === 'function') doCheckAllSync();
+  });
 
   function saveServerConfig(){
     localStorage.setItem(SERVER_KEY, serverUrl);
@@ -709,10 +734,15 @@
       delete h['Content-Type'];
       var r = await fetch(serverUrl + '/checkAll', { headers: h });
       if(!r.ok){
-        // Ancien serveur sans /checkAll : repli sur l'ancien /check (catalogue seul)
+        // Ancien serveur sans /checkAll (404) : pas une panne, repli normal
+        // sur l'ancien /check — ne pas marquer "injoignable" pour ça.
         if(r.status === 404) return doSyncCheck();
+        _serverReachable = false;
+        updateServerSubtitle();
         return;
       }
+      _serverReachable = true;
+      updateServerSubtitle();
       var data = await r.json();
       var prev = {};
       try{ prev = JSON.parse(localStorage.getItem(CHECKALL_KEY) || '{}'); }catch(e){}
@@ -753,7 +783,11 @@
       if(jobs.length) await Promise.allSettled(jobs);
 
       localStorage.setItem(CHECKALL_KEY, JSON.stringify(data));
-    }catch(e){ /* silencieux, comme l'ancien doSyncCheck */ }
+    }catch(e){
+      // Échec réseau (pas juste un HTTP non-ok) — serveur injoignable.
+      _serverReachable = false;
+      updateServerSubtitle();
+    }
   }
 
   function startSyncPolling(){
