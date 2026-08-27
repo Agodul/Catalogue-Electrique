@@ -628,11 +628,53 @@
   // le prochain cycle de 15s de doCheckAllSync) — 'online' relance aussi
   // tout de suite une vérification réelle plutôt que de supposer le serveur
   // à nouveau joignable simplement parce que le Wi-Fi est revenu.
-  window.addEventListener('offline', function(){ updateServerSubtitle(); });
+  window.addEventListener('offline', function(){ updateServerSubtitle(); _scheduleServerLogoutCheck(); });
   window.addEventListener('online', function(){
     updateServerSubtitle();
+    _cancelServerLogoutCheck();
     if(typeof doCheckAllSync === 'function') doCheckAllSync();
   });
+
+  // ── Déconnexion automatique si le serveur reste injoignable (retour
+  // utilisateur : "au bout de 3 secondes, déconnexion + message") ──────────
+  // Dès qu'une injoignabilité est détectée (offline, ou échec réel du fetch
+  // dans doCheckAllSync ci-dessous), programme UNE vérification 3s plus
+  // tard — pas une déconnexion immédiate sur la première détection, pour ne
+  // pas délog­ger sur un accroc réseau qui se résorbe tout seul en une
+  // fraction de seconde (bascule Wi-Fi/4G...). Si le serveur répond de
+  // nouveau avant l'échéance, le timer est annulé (voir 'online' et les
+  // branches de succès de doCheckAllSync) — sinon, déconnexion via
+  // _authForceLogout (js/auth.js), qui affiche déjà un message clair après
+  // rechargement.
+  var _serverLogoutTimer = null;
+  function _scheduleServerLogoutCheck(){
+    if(_serverLogoutTimer || !serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+    _serverLogoutTimer = setTimeout(async function(){
+      _serverLogoutTimer = null;
+      if(!serverUrl) return;
+      // Revérifie une dernière fois avant de déconnecter — jamais sur la
+      // seule foi d'un état resté figé depuis 3s.
+      try{
+        var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+        delete h['Content-Type'];
+        var r = await fetch(serverUrl + '/checkAll', { headers: h });
+        if(r.ok){
+          _serverReachable = true;
+          updateServerSubtitle();
+          return;
+        }
+      }catch(e){}
+      _serverReachable = false;
+      updateServerSubtitle();
+      if(typeof window._authForceLogout === 'function'){
+        window._authForceLogout('Serveur injoignable — déconnexion automatique');
+      }
+    }, 3000);
+  }
+  function _cancelServerLogoutCheck(){
+    if(_serverLogoutTimer){ clearTimeout(_serverLogoutTimer); _serverLogoutTimer = null; }
+  }
 
   function saveServerConfig(){
     localStorage.setItem(SERVER_KEY, serverUrl);
@@ -739,10 +781,12 @@
         if(r.status === 404) return doSyncCheck();
         _serverReachable = false;
         updateServerSubtitle();
+        _scheduleServerLogoutCheck();
         return;
       }
       _serverReachable = true;
       updateServerSubtitle();
+      _cancelServerLogoutCheck();
       var data = await r.json();
       var prev = {};
       try{ prev = JSON.parse(localStorage.getItem(CHECKALL_KEY) || '{}'); }catch(e){}
@@ -787,6 +831,7 @@
       // Échec réseau (pas juste un HTTP non-ok) — serveur injoignable.
       _serverReachable = false;
       updateServerSubtitle();
+      _scheduleServerLogoutCheck();
     }
   }
 
