@@ -781,9 +781,7 @@
       var base = Array.isArray(changedProducts) && changedProducts.length
         ? changedProducts
         : products;
-      // Marquer les produits envoyés comme récemment sauvegardés
       var now = Date.now();
-      base.forEach(function(p){ if(p.ref) _recentlySaved[p.ref] = now; });
       // Pour forcer l'upsert des modifications, on envoie avec createdAt = now
       // Le serveur accepte le plus récent (createdAt) par ref
       var toSend = base.map(function(p){
