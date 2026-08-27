@@ -1656,6 +1656,7 @@
   var btnOpenSpecsLabel = document.getElementById('btnOpenSpecsLabel');
   var specsCloseBtn  = document.getElementById('specsCloseBtn');
   var btnAddSpecRow  = document.getElementById('btnAddSpecRow');
+  var specsDeleteAllBtn = document.getElementById('specsDeleteAllBtn');
 
   function _specsRenderRows(){
     if(btnOpenSpecsLabel){
@@ -1734,6 +1735,23 @@
   if(btnAddSpecRow){
     btnAddSpecRow.addEventListener('click', function(){
       _specsAddRowAndFocus();
+    });
+  }
+  // "Tout supprimer" (retour utilisateur) — vide _specsRows d'un coup au
+  // lieu de devoir cliquer la croix ✕ ligne par ligne. Confirmation
+  // obligatoire (action destructive, comme la suppression d'un produit) ;
+  // seul le TABLEAU en mémoire est vidé ici — rien n'est enregistré tant que
+  // "Enregistrer" (specsSaveBtn) n'est pas cliqué, donc "Annuler"/la croix ✕
+  // de la fenêtre restent une porte de sortie normale en cas d'erreur.
+  if(specsDeleteAllBtn){
+    specsDeleteAllBtn.addEventListener('click', async function(){
+      if(!_specsRows.length) return;
+      var confirmed = typeof customConfirm === 'function'
+        ? await customConfirm('Tout supprimer ?', 'Les ' + _specsRows.length + ' caractéristique(s) technique(s) de cette fiche seront retirées. Cliquez "Enregistrer" pour confirmer définitivement, ou "Annuler" pour revenir en arrière.', { okLabel: 'Tout supprimer', danger: true })
+        : confirm('Supprimer toutes les caractéristiques ?');
+      if(!confirmed) return;
+      _specsRows = [];
+      _specsRenderRows();
     });
   }
   // Snapshot pris à l'ouverture — sert à savoir si la croix doit demander
