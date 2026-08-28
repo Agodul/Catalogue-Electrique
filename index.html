@@ -169,7 +169,16 @@
 <div id="compareOverlay">
   <div class="compare-box">
     <div class="compare-header">
-      <h3><i class="ti ti-scale" style="margin-right:8px;color:#EA580C;"></i>Comparer les offres fournisseurs</h3>
+      <div class="win-header-titlewrap">
+        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+             — masquée par défaut, affichée à gauche du titre uniquement
+             quand ce comparateur a été ouvert depuis le tiroir menu mobile,
+             à la place de la croix de droite. Même bouton (.win-back-btn)
+             et même structure (frère avant le titre) que Paramètres/
+             Demandes, pour tomber exactement au même endroit qu'ailleurs. -->
+        <button id="compareBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+        <h3><i class="ti ti-scale" style="margin-right:8px;color:#EA580C;"></i>Comparer les offres fournisseurs</h3>
+      </div>
       <button class="close sans" id="compareClose">&times;</button>
     </div>
     <div class="compare-body">
@@ -325,7 +334,18 @@
   <div class="settings-box">
     <div class="sheet-handle-bar"></div>
     <div class="settings-header">
-      <h3>Paramètres</h3>
+      <div class="win-header-titlewrap">
+        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+             — masquée par défaut, affichée à gauche du titre uniquement
+             quand Paramètres a été ouvert depuis le tiroir menu mobile, à la
+             place de la croix de droite. Visible seulement sur cette liste
+             principale (voir showSettingsMain/showSettings*Page — cet
+             en-tête est masqué sur les sous-pages, qui ont chacune déjà leur
+             propre flèche de retour, pour ne jamais en afficher deux qui ne
+             ramènent pas au même endroit). -->
+        <button id="settingsBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+        <h3>Paramètres</h3>
+      </div>
       <button class="close sans" id="settingsClose" aria-label="Fermer">&times;</button>
     </div>
     <div class="settings-body" id="settingsMainBody">
@@ -404,8 +424,8 @@
 
     <!-- Sous-page Serveur -->
     <div id="settingsServerPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
-        <button id="btnServerPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+        <button id="btnServerPageBack" class="win-back-btn" style="display:inline-flex;">
           <i class="ti ti-arrow-left"></i>
         </button>
         <span style="font-size:15px;font-weight:700;color:var(--ink);">Serveur de données</span>
@@ -451,9 +471,9 @@
 
     <!-- Sous-page Utilisateurs -->
     <div id="settingsUserPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button id="btnUserPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+          <button id="btnUserPageBack" class="win-back-btn" style="display:inline-flex;">
             <i class="ti ti-arrow-left"></i>
           </button>
           <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
@@ -474,9 +494,9 @@
 
     <!-- Sous-page Fiches verrouillées -->
     <div id="settingsLockedPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button id="btnLockedPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+          <button id="btnLockedPageBack" class="win-back-btn" style="display:inline-flex;">
             <i class="ti ti-arrow-left"></i>
           </button>
           <span style="font-size:15px;font-weight:700;color:var(--ink);">Fiches verrouillées</span>
@@ -492,8 +512,8 @@
 
     <!-- Sous-page icônes familles -->
     <div id="settingsFamilyPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);">
-        <button id="btnFamilyPageBack" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ink);font-size:18px;display:flex;align-items:center;">
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+        <button id="btnFamilyPageBack" class="win-back-btn" style="display:inline-flex;">
           <i class="ti ti-arrow-left"></i>
         </button>
         <span style="font-size:15px;font-weight:700;color:var(--ink);">Icônes des familles</span>
@@ -1061,15 +1081,19 @@
 <div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:center;justify-content:center;padding:16px;">
   <div id="requestsPanel" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;">
     <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;">
+        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+             — masquée par défaut, affichée uniquement quand ce panneau a été
+             ouvert depuis le tiroir menu mobile, à la place de la croix de
+             droite, à gauche du titre comme les sous-pages de Paramètres.
+             Même bouton (.win-back-btn) qu'ailleurs, pour tomber exactement
+             au même endroit. -->
+        <button id="requestsBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
         <i class="ti ti-bell" style="font-size:20px;color:#194093;"></i>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--ink);">Demandes en attente</div>
-          <div id="requestsPanelSubtitle" style="font-size:12px;color:var(--ink-soft);margin-top:1px;"></div>
-        </div>
+        <span style="font-size:15px;font-weight:700;color:var(--ink);">Demandes en attente</span>
       </div>
-      <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
+      <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;line-height:1;">✕</button>
     </div>
     <!-- Onglets Demandes produit / Bugs signalés -->
     <div id="requestsTabs" class="tabs" style="padding:12px 20px 10px;border-bottom:1px solid var(--line);flex-shrink:0;margin-bottom:0;">
@@ -1115,7 +1139,16 @@
 <div class="modal-overlay" id="bugReportOverlay">
   <div class="modal" style="max-width:480px;">
     <div class="modal-head">
-      <h3><i class="ti ti-bug"></i> Signaler un bug</h3>
+      <div class="win-header-titlewrap">
+        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+             — masquée par défaut, affichée à gauche du titre uniquement
+             quand cette fenêtre a été ouverte depuis le tiroir menu mobile,
+             à la place de la croix de droite. Même bouton (.win-back-btn) et
+             même structure que Paramètres/Demandes/Comparateur, pour tomber
+             exactement au même endroit qu'ailleurs. -->
+        <button id="bugReportBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+        <h3><i class="ti ti-bug"></i> Signaler un bug</h3>
+      </div>
       <button class="close sans" id="bugReportCloseBtn" type="button">&times;</button>
     </div>
     <div class="modal-body">
@@ -1167,7 +1200,19 @@
     <button id="authCloseBtn" title="Fermer"><i class="ti ti-x" aria-hidden="true"></i></button>
     <div class="auth-box-header">
       <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
-      <h2>Connexion</h2>
+      <h2>
+        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+             — masquée par défaut, affichée à gauche du titre uniquement
+             quand la connexion a été ouverte depuis le tiroir menu mobile,
+             à la place de la croix en haut à droite. Même bouton
+             (.win-back-btn, 22×22) qu'ailleurs, pour une taille cohérente —
+             la mise en page centrée (logo au-dessus du titre) de cette
+             fenêtre est structurellement différente des autres, donc la
+             flèche ne peut pas tomber au même x/y exact que sur les
+             en-têtes en bandeau, mais reste à gauche du titre "Connexion"
+             quel qu'en soit le contenu. -->
+        <button id="authBackBtn" class="win-back-btn" style="vertical-align:middle;margin-right:2px;" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+        Connexion</h2>
       <p>Accès réservé</p>
     </div>
     <div class="auth-fields">

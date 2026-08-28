@@ -623,13 +623,29 @@ function openAuthModal() {
 
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
+  // Sur mobile, si la connexion a été ouverte DEPUIS le tiroir menu (voir
+  // msAuth dans js/actions.js), la croix (ou une connexion réussie — les
+  // deux passent par ici) doit "revenir" au menu plutôt que de retomber sur
+  // la page du dessous — même principe que Paramètres/Demandes/Signaler un
+  // bug/Comparateur.
+  var reopenMenu = !!window._authOpenedFromMobileMenu;
+  if (reopenMenu) window._authOpenedFromMobileMenu = false;
+  if (typeof window._setHeaderBackMode === 'function') window._setHeaderBackMode('authCloseBtn', 'authBackBtn', false);
+  function afterClose() {
+    // Rouvrir le menu seulement une fois la modale réellement masquée,
+    // sinon les deux fonds grisés se superposent un instant.
+    if (reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
+  }
   if (overlay) {
     document.body.classList.remove('modal-open');
     if (typeof window._closeOverlayAnimated === 'function') {
-      window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('show'); });
+      window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('show'); afterClose(); });
     } else {
       overlay.classList.remove('show');
+      afterClose();
     }
+  } else {
+    afterClose();
   }
   var errEl = document.getElementById('authError');
   if (errEl) errEl.textContent = '';

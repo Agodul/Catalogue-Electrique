@@ -592,8 +592,17 @@
     var activeFamily = familyFilterEl.value;
     var activeBrand  = brandFilterEl.value;
     if(!hasSearch && !viewAll && (activeFamily || activeBrand)){
+      // La croix promise par le commentaire ci-dessus n'avait en fait
+      // jamais été codée (retour utilisateur : bouton retour pour "quand
+      // on s'est trompé de catégorie") — ajoutée ici, dans le bandeau
+      // lui-même plutôt que la barre d'outils (restée display:none dans ce
+      // mode, testé en vrai). Délégation d'événement dans js/actions.js
+      // (le bandeau est régénéré à chaque rendu, un listener direct posé
+      // ici serait perdu au rendu suivant).
       html += '<div class="active-filter-banner">'
-        + '<span class="active-filter-title">'+escapeHtml(activeFamily || activeBrand)+'</span>'
+        + '<span class="active-filter-title">'+escapeHtml(activeFamily || activeBrand)
+        + '<button class="active-filter-close" title="Retour à l\'accueil" aria-label="Retour à l\'accueil">&times;</button>'
+        + '</span>'
         + '</div>';
     }
 

@@ -916,16 +916,11 @@
   // Le rôle continue de décider la SOURCE (file d'attente admin vs mes
   // propres soumissions), indépendamment de l'onglet (type) sélectionné.
   function reqRefreshPanel(){
-    var subtitle  = document.getElementById('requestsPanelSubtitle');
-    var isAdmin   = reqIsAdmin();
-    var isBugTab  = _reqPanelTab === 'bug';
-
+    var isAdmin = reqIsAdmin();
     if(isAdmin){
       reqLoadAdminList(_reqPanelTab);
-      if(subtitle) subtitle.textContent = isBugTab ? 'Bugs signalés par les utilisateurs' : 'Modifications proposées par les utilisateurs';
     } else {
       reqLoadMineList(_reqPanelTab);
-      if(subtitle) subtitle.textContent = isBugTab ? 'Vos bugs signalés' : 'Vos modifications en attente de validation';
     }
   }
 
@@ -950,25 +945,39 @@
 
   function reqClosePanel(){
     var overlay = document.getElementById('requestsOverlay');
-    if(overlay){
-      function hideNow(){ overlay.classList.remove('open'); overlay.style.display = 'none'; }
-      if(typeof window._closeOverlayAnimated === 'function'){
-        window._closeOverlayAnimated(overlay, hideNow);
-      } else {
-        hideNow();
-      }
-    }
-    document.body.classList.remove('modal-open');
     // Sur mobile/tablette, si "Demandes en attente" a été ouvert DEPUIS le
     // tiroir menu (voir js/actions.js), la croix doit "revenir" au menu
     // plutôt que de retomber sur la page du dessous (retour utilisateur).
     // Ne se déclenche que pour cette entrée précise — pas pour un accepter/
     // refuser (qui rafraîchit la liste sans fermer) ni pour une fermeture
     // depuis le menu ⋮ desktop (jamais mis à true dans ce cas).
-    if(window._reqOpenedFromMobileMenu){
-      window._reqOpenedFromMobileMenu = false;
-      if(typeof window._openMenuSheet === 'function') window._openMenuSheet();
+    var reopenMenu = !!window._reqOpenedFromMobileMenu;
+    if(reopenMenu) window._reqOpenedFromMobileMenu = false;
+    if(typeof window._setHeaderBackMode === 'function') window._setHeaderBackMode('requestsPanelClose', 'requestsBackBtn', false);
+    function afterClose(){
+      // Rouvrir le menu seulement une fois le panneau réellement masqué —
+      // le rouvrir avant que l'animation de fermeture (fadeBgOut) soit
+      // terminée empilait un instant son fond grisé par-dessus celui du
+      // menu tout juste réouvert (même correctif que pour Paramètres, voir
+      // closeSettingsOverlay dans js/actions.js — retour utilisateur :
+      // "souci d'overlay").
+      if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
     }
+    if(overlay){
+      function hideNow(){
+        overlay.classList.remove('open');
+        overlay.style.display = 'none';
+        afterClose();
+      }
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(overlay, hideNow);
+      } else {
+        hideNow();
+      }
+    } else {
+      afterClose();
+    }
+    document.body.classList.remove('modal-open');
   }
 
   // ── Init listeners ────────────────────────────────────────────
@@ -1039,11 +1048,25 @@
   }
   function _bugReportClose(){
     var overlay = document.getElementById('bugReportOverlay');
-    if(!overlay) return;
+    // Sur mobile, si "Signaler un bug" a été ouvert DEPUIS le tiroir menu
+    // (voir msWithBack('msReportBug', ...) dans js/actions.js), la croix
+    // (ou "Annuler", ou un envoi réussi — tout passe par ici) doit "revenir"
+    // au menu plutôt que de retomber sur la page du dessous — même principe
+    // que Paramètres/Demandes/Connexion/Comparateur.
+    var reopenMenu = !!window._bugReportOpenedFromMobileMenu;
+    if(reopenMenu) window._bugReportOpenedFromMobileMenu = false;
+    if(typeof window._setHeaderBackMode === 'function') window._setHeaderBackMode('bugReportCloseBtn', 'bugReportBackBtn', false);
+    function afterClose(){
+      // Rouvrir le menu seulement une fois le panneau réellement masqué,
+      // sinon les deux fonds grisés se superposent un instant.
+      if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
+    }
+    if(!overlay){ afterClose(); return; }
     document.body.classList.remove('modal-open');
     function hideNow(){
       overlay.classList.remove('open');
       overlay.style.display = 'none';
+      afterClose();
     }
     if(typeof window._closeOverlayAnimated === 'function'){
       window._closeOverlayAnimated(overlay, hideNow);

@@ -1,3 +1,41 @@
+// ---------- Flèche "retour au menu" à gauche du titre (quand une fenêtre a
+// été ouverte depuis le tiroir menu mobile) ----------
+// Retour utilisateur : "regarde dans paramètres, chacune des fonctions a une
+// flèche de retour, c'est cette flèche que je voudrais pour toutes les pages
+// du menu mobile" puis "je voudrai la flèche à gauche du titre à chaque
+// fois" — les sous-pages de Paramètres (Serveur, Utilisateurs, Fiches
+// verrouillées, Icônes des familles) ont déjà une flèche ← dédiée, à gauche
+// de leur titre (retour vers la liste Paramètres). Les autres fenêtres
+// ouvertes depuis le menu mobile (Demandes, Paramètres lui-même, Connexion,
+// Signaler un bug, Comparateur) n'avaient qu'une croix × en haut à droite —
+// qui "revient" bien au menu fonctionnellement (voir msWithBack ci-dessous
+// et les fonctions de fermeture dans js/auth.js/js/requests.js) mais sans ce
+// même signal visuel ni cette même position.
+// Chaque en-tête concerné a maintenant DEUX boutons distincts : la croix ×
+// d'origine (en haut à droite, comportement inchangé) ET un nouveau bouton
+// flèche ← (masqué par défaut, placé juste à gauche du titre dans le HTML —
+// voir index.html). _setHeaderBackMode bascule laquelle des deux est
+// visible ; le bouton flèche se contente de cliquer programmatiquement sur
+// la croix d'origine pour réutiliser exactement la même logique de
+// fermeture (confirmation de saisie non enregistrée, etc.) sans la
+// dupliquer. Utilisé depuis actions.js/auth.js/requests.js, d'où
+// l'exposition globale plutôt qu'une fonction interne à une seule IIFE.
+var _headerBackWired = {};
+function _setHeaderBackMode(closeBtnId, backBtnId, isBack){
+  var closeBtn = document.getElementById(closeBtnId);
+  var backBtn  = document.getElementById(backBtnId);
+  if(!backBtn) return;
+  if(!_headerBackWired[backBtnId]){
+    _headerBackWired[backBtnId] = true;
+    backBtn.addEventListener('click', function(){
+      if(closeBtn) closeBtn.click();
+    });
+  }
+  backBtn.style.display  = isBack ? 'inline-flex' : 'none';
+  if(closeBtn) closeBtn.style.display = isBack ? 'none' : '';
+}
+window._setHeaderBackMode = _setHeaderBackMode;
+
 // ---------- Chargement paresseux de XLSX (import/export Excel) ----------
   var _xlsxLoadPromise = null;
   function ensureXLSX(){
@@ -593,10 +631,20 @@
     updateServerSubtitle();
     if(serverUrl){
       setTimeout(function(){
-        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+        // doCheckAllSync()/startSyncPolling() tournent maintenant MÊME sans
+        // connexion — un serveur injoignable l'est pour tout le monde, pas
+        // seulement les comptes authentifiés. Avant, tout ce bloc (donc le
+        // tout premier passage qui aurait pu détecter une panne) était
+        // sauté sans session active, et startSyncPolling() lui-même
+        // refusait de démarrer l'intervalle de vérification pour un compte
+        // déconnecté — le point de statut restait donc bloqué sur son vert
+        // optimiste initial indéfiniment (retour utilisateur : "le statut
+        // du serveur ne passe pas en rouge lorsque le serveur n'est plus
+        // joignable"). syncDeletions() reste réservé aux comptes connectés
+        // (données du catalogue, nécessite une session).
         doCheckAllSync();
-        syncDeletions();
         startSyncPolling();
+        if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()) syncDeletions();
       }, 1500);
       // Sync suppressions toutes les 5 minutes (si connecté)
       setInterval(function(){
@@ -783,15 +831,36 @@
   // depuis le dernier check connu (comparaison locale, pas de refetch aveugle).
   async function doCheckAllSync(){
     if(!serverUrl) return;
-    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+    // La vérification de JOIGNABILITÉ (ce qui pilote le point rouge/vert de
+    // updateServerSubtitle) tourne maintenant TOUJOURS, connecté ou pas — un
+    // serveur injoignable l'est pour tout le monde. Seul le TRAITEMENT des
+    // données (sync catalogue/configs/demandes plus bas) reste réservé aux
+    // comptes connectés, via ce drapeau local plutôt qu'un retour anticipé
+    // en tout début de fonction (retour utilisateur : "le statut du serveur
+    // ne passe pas en rouge lorsque le serveur n'est plus joignable" — la
+    // fonction entière, et startSyncPolling() qui la relance toutes les
+    // 15s, étaient avant sautées sans session active).
+    var loggedIn = typeof authIsLoggedIn === 'function' ? authIsLoggedIn() : true;
     try{
       var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
       delete h['Content-Type'];
       var r = await fetch(serverUrl + '/checkAll', { headers: h });
       if(!r.ok){
         // Ancien serveur sans /checkAll (404) : pas une panne, repli normal
-        // sur l'ancien /check — ne pas marquer "injoignable" pour ça.
-        if(r.status === 404) return doSyncCheck();
+        // sur l'ancien /check — ne pas marquer "injoignable" pour ça (mais
+        // /check nécessite une session, inutile de l'appeler sans elle).
+        if(r.status === 404) return loggedIn ? doSyncCheck() : undefined;
+        // Sans session, un 401/403 signifie juste "pas autorisé", pas
+        // "serveur éteint" — le serveur a bel et bien répondu. Sans ce cas
+        // particulier, un compte déconnecté verrait le point rester rouge
+        // en permanence dès que /checkAll exige une authentification, même
+        // avec un serveur parfaitement joignable.
+        if(!loggedIn && (r.status === 401 || r.status === 403)){
+          _serverReachable = true;
+          updateServerSubtitle();
+          _cancelServerLogoutCheck();
+          return;
+        }
         _serverReachable = false;
         updateServerSubtitle();
         _scheduleServerLogoutCheck();
@@ -800,6 +869,7 @@
       _serverReachable = true;
       updateServerSubtitle();
       _cancelServerLogoutCheck();
+      if(!loggedIn) return; // rien à synchroniser sans session
       var data = await r.json();
       var prev = {};
       try{ prev = JSON.parse(localStorage.getItem(CHECKALL_KEY) || '{}'); }catch(e){}
@@ -851,7 +921,10 @@
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
-    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+    // Tourne aussi sans session — doCheckAllSync() gère lui-même ce qui est
+    // sauté sans connexion (voir plus haut), mais la vérification de
+    // joignabilité (point rouge/vert) doit continuer à tourner toutes les
+    // 15s pour tout le monde.
     _syncInterval = setInterval(doCheckAllSync, 15000);
   }
 
@@ -1451,7 +1524,20 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
+  // .settings-header (titre "Paramètres" + croix/flèche de fermeture) est un
+  // frère de .settings-body ET de chaque sous-page — jamais masqué par les
+  // fonctions show* ci-dessous à l'origine, donc affiché EN PERMANENCE
+  // au-dessus de la sous-page active. Chaque sous-page a pourtant déjà sa
+  // propre flèche ← (retour à CETTE liste Paramètres) — les deux empilées
+  // donnaient deux flèches ← visibles en même temps mais qui ne ramènent
+  // PAS au même endroit (l'une revient au menu mobile, l'autre juste à la
+  // liste Paramètres) — retour utilisateur : "j'ai deux flèches qui ne
+  // retournent pas au même endroit". Masquer l'en-tête général dès qu'une
+  // sous-page a sa propre navigation résout l'ambiguïté : un seul niveau de
+  // retour visible à la fois, comme une pile d'écrans classique.
+  var settingsHeaderEl = document.querySelector('.settings-header');
   function showSettingsMain(){
+    if(settingsHeaderEl) settingsHeaderEl.style.display = '';
     document.querySelector('.settings-body').style.display = '';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
@@ -1459,6 +1545,7 @@
     if(settingsLockedPage) settingsLockedPage.style.display = 'none';
   }
   function showSettingsFamilyPage(){
+    if(settingsHeaderEl) settingsHeaderEl.style.display = 'none';
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'flex';
     settingsServerPage.style.display = 'none';
@@ -1467,6 +1554,7 @@
     renderSettingsFamilies();
   }
   function showSettingsUserPage(){
+    if(settingsHeaderEl) settingsHeaderEl.style.display = 'none';
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
@@ -1474,6 +1562,7 @@
     if(settingsUserPage){ settingsUserPage.style.display = 'flex'; if(typeof renderUserPage==='function') renderUserPage(); }
   }
   function showSettingsServerPage(){
+    if(settingsHeaderEl) settingsHeaderEl.style.display = 'none';
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'flex';
@@ -1483,6 +1572,7 @@
 
   }
   function showSettingsLockedPage(){
+    if(settingsHeaderEl) settingsHeaderEl.style.display = 'none';
     document.querySelector('.settings-body').style.display = 'none';
     settingsFamilyPage.style.display = 'none';
     settingsServerPage.style.display = 'none';
@@ -2067,10 +2157,23 @@
   });
   compareClose.addEventListener('click', function(){
     document.body.classList.remove('modal-open');
+    // Sur mobile, si le comparateur a été ouvert DEPUIS le tiroir menu (voir
+    // msWithBack('msCompare', ...) plus haut), la croix doit "revenir" au
+    // menu plutôt que de retomber sur la page du dessous — même principe
+    // que Paramètres/Demandes/Connexion/Signaler un bug. Rouvrir le menu
+    // seulement une fois le comparateur réellement masqué (après l'anim de
+    // fermeture), sinon les deux fonds grisés se superposent un instant.
+    var reopenMenu = !!window._compareOpenedFromMobileMenu;
+    if(reopenMenu) window._compareOpenedFromMobileMenu = false;
+    _setHeaderBackMode('compareClose', 'compareBackBtn', false);
+    function afterClose(){
+      if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
+    }
     if(typeof window._closeOverlayAnimated === 'function'){
-      window._closeOverlayAnimated(compareOverlay, function(){ compareOverlay.classList.remove('show'); });
+      window._closeOverlayAnimated(compareOverlay, function(){ compareOverlay.classList.remove('show'); afterClose(); });
     } else {
       compareOverlay.classList.remove('show');
+      afterClose();
     }
   });
 
@@ -2105,8 +2208,24 @@
   }
   function closeSettingsOverlay(){
     settingsOverlay.classList.remove('show');
+    // Sur mobile, si Paramètres a été ouvert DEPUIS le tiroir menu (voir
+    // msSettings plus haut), la croix doit "revenir" au menu plutôt que de
+    // retomber sur la page du dessous — même principe déjà en place pour
+    // "Demandes en attente" (reqClosePanel, js/requests.js). Ne se
+    // déclenche que pour cette entrée précise, jamais mis à true pour un
+    // accès depuis le menu ⋮ desktop.
+    var reopenMenu = !!window._settingsOpenedFromMobileMenu;
+    if(reopenMenu) window._settingsOpenedFromMobileMenu = false;
+    _setHeaderBackMode('settingsClose', 'settingsBackBtn', false);
     setTimeout(function(){
       if(!settingsOverlay.classList.contains('show')) settingsOverlay.style.display = 'none';
+      // Rouvrir le menu seulement une fois Paramètres réellement masqué —
+      // #settingsOverlay n'a pas de fondu (contrairement à #requestsOverlay/
+      // fadeBgOut) : son fond grisé reste plein pot pendant les 300ms où le
+      // panneau coulisse. Le rouvrir avant ce délai empilait un instant le
+      // fond grisé de Paramètres par-dessus le menu tout juste réouvert
+      // (retour utilisateur : "souci d'overlay").
+      if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
     }, 300);
   }
   window._closeSettingsOverlay = closeSettingsOverlay;
@@ -2849,6 +2968,14 @@
     return 'svg-generique';
   }
 
+  // Position de scroll de l'accueil juste avant de cliquer sur une carte
+  // famille — mémorisée pour que la croix du bandeau de catégorie (voir
+  // plus bas) ramène au niveau de la carte cliquée plutôt qu'en haut de
+  // la page (retour utilisateur : accueil avec beaucoup de catégories,
+  // clic sur la mauvaise carte tout en bas → la croix ne doit pas
+  // renvoyer tout en haut).
+  var _homeScrollBeforeCategory = null;
+
   function showHome(){
     if(window._setViewAll) window._setViewAll(false);
     // Vider la recherche au retour à l'accueil
@@ -2892,6 +3019,29 @@
     document.querySelector('.toolbar').classList.add('filters-visible');
     if(window._setViewAll) window._setViewAll(true);
     showCatalogue('','');
+  }
+
+  // Croix du bandeau de catégorie active (.active-filter-close, voir
+  // js/storage.js) — délégation sur #content, régénéré à chaque rendu
+  // (render()), donc un listener direct posé dessus serait perdu au rendu
+  // suivant (retour utilisateur : bouton retour pour "quand on s'est
+  // trompé de catégorie").
+  var contentElForFilterClose = document.getElementById('content');
+  if(contentElForFilterClose){
+    contentElForFilterClose.addEventListener('click', function(e){
+      if(!e.target.closest('.active-filter-close')) return;
+      var savedScroll = _homeScrollBeforeCategory;
+      _homeScrollBeforeCategory = null;
+      showHome();
+      if(savedScroll !== null){
+        // Attendre le prochain frame pour que renderHome() ait fini de
+        // (re)peindre les cartes avant de scroller — sinon la page n'a pas
+        // encore sa hauteur finale et le scroll peut être tronqué.
+        requestAnimationFrame(function(){
+          window.scrollTo({ top: savedScroll, behavior: 'instant' });
+        });
+      }
+    });
   }
 
   function renderHome(){
@@ -2963,6 +3113,7 @@
 
       homeFamilies.querySelectorAll('.home-family-card').forEach(function(card){
         card.addEventListener('click', function(){
+          _homeScrollBeforeCategory = window.scrollY;
           showCatalogue('', card.getAttribute('data-family'));
         });
       });
@@ -3807,9 +3958,21 @@
     window._syncMenuAuth = updateMenuAuth;
     document.addEventListener('spi_auth_changed', updateMenuAuth);
 
-    // Auth click
+    // Auth click — mémorise "vient du menu mobile" UNIQUEMENT si le clic va
+    // réellement ouvrir la modale de connexion (retour utilisateur : même
+    // principe que msRequests/msSettings/msReportBug/msCompare ci-dessous).
+    // btnAuthToggle sert aussi de bouton déconnexion quand on est déjà
+    // connecté — dans ce cas aucune fenêtre ne s'ouvre, inutile (et faux) de
+    // poser le drapeau, sinon la prochaine ouverture de la modale de
+    // connexion (depuis le menu ⋮ desktop par ex.) rouvrirait ce tiroir par
+    // erreur à sa fermeture.
     var msAuthBtn = document.getElementById('msAuth');
     if(msAuthBtn) msAuthBtn.onclick = function(){
+      var loggedInNow = typeof authGetCurrentUser === 'function' && !!authGetCurrentUser();
+      if(!loggedInNow){
+        window._authOpenedFromMobileMenu = true;
+        _setHeaderBackMode('authCloseBtn', 'authBackBtn', true);
+      }
       closeSheet();
       setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
     };
@@ -3820,9 +3983,29 @@
       var tgt=document.getElementById(targetId);
       if(btn&&tgt) btn.onclick = function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
     }
-    // Cas spécial (pas via le délégateur ms() générique) : mémorise qu'on
-    // entre dans "Demandes en attente" DEPUIS ce menu mobile, pour pouvoir
-    // le rouvrir automatiquement à la fermeture du panneau — voir
+    // Variante de ms() qui pose en plus un drapeau "vient du menu mobile" et
+    // bascule l'icône du bouton fermer en ← avant d'ouvrir la fenêtre cible
+    // — pour les entrées qui ouvrent une vraie fenêtre à part entière (avec
+    // sa propre croix de fermeture), afin que ce bouton ramène au menu
+    // plutôt que de retomber sur la page du dessous, et le signale
+    // visuellement (retour utilisateur : "il ne manque que les autres
+    // fenêtres qui sont dans la page de menu mobile à faire la même chose",
+    // puis "c'est cette flèche [des sous-pages Paramètres] que je voudrais
+    // pour toutes les pages du menu mobile" — même principe déjà en place
+    // pour msRequests/msSettings, généralisé ici).
+    function msWithBack(id, targetId, flagName, closeBtnId, backBtnId){
+      var btn=document.getElementById(id);
+      var tgt=document.getElementById(targetId);
+      if(btn&&tgt) btn.onclick = function(){
+        window[flagName] = true;
+        _setHeaderBackMode(closeBtnId, backBtnId, true);
+        closeSheet();
+        setTimeout(function(){ tgt.click(); }, 320);
+      };
+    }
+    // Cas spécial (pas via le délégateur générique) : mémorise qu'on entre
+    // dans "Demandes en attente" DEPUIS ce menu mobile, pour pouvoir le
+    // rouvrir automatiquement à la fermeture du panneau — voir
     // reqClosePanel() dans js/requests.js (retour utilisateur : fermer la
     // croix devrait "revenir" au menu, pas juste retomber sur la page du
     // dessous).
@@ -3831,18 +4014,35 @@
       var tgt = document.getElementById('btnRequestsMenu');
       if(btn && tgt) btn.onclick = function(){
         window._reqOpenedFromMobileMenu = true;
+        _setHeaderBackMode('requestsPanelClose', 'requestsBackBtn', true);
         closeSheet();
         setTimeout(function(){ tgt.click(); }, 320);
       };
     })();
-    ms('msReportBug', 'btnReportBug');
+    msWithBack('msReportBug', 'btnReportBug', '_bugReportOpenedFromMobileMenu', 'bugReportCloseBtn', 'bugReportBackBtn');
     ms('msExport',    'btnExport');
     ms('msImport',    'btnImport');
     ms('msExportXlsx','btnExportXlsx');
     ms('msImportXlsx','btnImportXlsx');
-    ms('msCompare',   'btnCompare');
+    msWithBack('msCompare', 'btnCompare', '_compareOpenedFromMobileMenu', 'compareClose', 'compareBackBtn');
     ms('msCleanDescs','btnCleanDescs');
-    ms('msSettings',  'btnSettings');
+    // Cas spécial (pas via le délégateur ms() générique) — même principe
+    // que msRequests ci-dessus, pour Paramètres cette fois : mémorise
+    // qu'on y entre DEPUIS ce menu mobile, pour pouvoir y revenir à la
+    // fermeture (voir closeSettingsOverlay ci-dessous — retour
+    // utilisateur : "je vais dans paramètres alors que je voulais me
+    // connecter, au lieu de cliquer sur la croix je peux faire retour pour
+    // aller au bon endroit").
+    (function(){
+      var btn = document.getElementById('msSettings');
+      var tgt = document.getElementById('btnSettings');
+      if(btn && tgt) btn.onclick = function(){
+        window._settingsOpenedFromMobileMenu = true;
+        _setHeaderBackMode('settingsClose', 'settingsBackBtn', true);
+        closeSheet();
+        setTimeout(function(){ tgt.click(); }, 320);
+      };
+    })();
 
     // Badge demandes — reflété sur bnMenuBadge (icône "Menu" de la bottom
     // nav) ET sur msBadge (à côté de "Demandes en attente" DANS le tiroir
