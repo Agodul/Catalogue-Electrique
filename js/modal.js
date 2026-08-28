@@ -954,7 +954,7 @@
               _pdfRenderList(files);
             });
         } else {
-          console.log('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
+          console.warn('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
           _pdfRenderList(_pdfDocFiles);
         }
       }

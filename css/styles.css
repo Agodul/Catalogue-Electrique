@@ -1465,9 +1465,6 @@
     font-size:13px; color:var(--ink);
     max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  #xlsxPreviewTable tr.row-new td{ background:#EEF4E8; }
-  #xlsxPreviewTable tr.row-update td{ background:#EFF6FF; }
-  #xlsxPreviewTable tr.row-nochange td{ background:transparent; color:var(--ink-soft); }
   #xlsxPreviewTable .badge-new{
     background:#16a34a;color:#fff;font-size:10px;
     padding:1px 6px;border-radius:10px;white-space:nowrap;
@@ -2863,32 +2860,6 @@
 #compareOverlay.closing .compare-box, #iconPickerModal.closing .icon-picker-box,
 #authOverlay.closing .auth-box{
   animation: sheetSlideDown .22s cubic-bezier(.32,.72,0,1) forwards !important;
-}
-
-.account-sheet {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: var(--z-sheet);
-  background: var(--paper-card);
-  border-radius: 20px 20px 0 0;
-  padding-bottom: env(safe-area-inset-bottom);
-  transform: translateY(100%);
-  transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: 92vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-.account-sheet.open { transform: translateY(0); }
-
-.account-sheet-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px 10px; flex-shrink: 0;
-}
-.account-sheet-body {
-  padding: 4px 16px 20px;
-  display: flex; flex-direction: column; gap: 0;
-  overflow-y: auto;
 }
 
 /* Profil utilisateur */

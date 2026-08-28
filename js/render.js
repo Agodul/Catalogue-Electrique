@@ -197,13 +197,6 @@ function _productBadgesCompactHtml(p){
 
     vmPriceHistory.innerHTML = buildPriceHistoryReadonly(p);
 
-    // ── Section PDF masquée (upload uniquement dans "Modifier le produit") ──
-    var vmPdfSection    = document.getElementById('vmPdfSection');
-    var vmPdfUploadSect = document.getElementById('vmPdfUploadSection');
-    if(vmPdfSection)    vmPdfSection.style.display = 'none';
-    if(vmPdfUploadSect) vmPdfUploadSect.style.display = 'none';
-
-
     // ── Bouton Document (visible pour tous) ────────────────────────
     var vmDocBtn     = document.getElementById('vmDocBtn');
     var vmDocBtnWrap = document.getElementById('vmDocBtnWrap');
