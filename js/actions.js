@@ -1275,6 +1275,7 @@
       products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
 
       var added = 0;
+      var updatedExisting = 0; // refs déjà connues écrasées par la version serveur (voir plus bas)
       var sugMergedProducts = []; // produits dont seules les suggestions ont changé (fusion)
       var staleLockCleanups = []; // verrous "en cours d'édition" expirés à nettoyer côté serveur (voir plus bas)
       serverItems.forEach(function(sp){
@@ -1314,6 +1315,7 @@
           // prioritaire, écrasement silencieux) s'applique désormais à tous.
           var lp = products[idx];
           products[idx] = sp;
+          updatedExisting++;
 
           // Fusion des liens réciproques (suggestions/pièces de rechange) :
           // union local+serveur, jamais un simple écrasement — un lien tout
@@ -1347,26 +1349,34 @@
         }
       });
 
-      if(added > 0 || sugMergedProducts.length > 0){
+      if(added > 0 || updatedExisting > 0 || sugMergedProducts.length > 0){
         // sugMergedProducts seul (sans nouveau produit) doit quand même être
         // persisté et repoussé au serveur — sinon la fusion des suggestions
         // reste en mémoire jusqu'au prochain rechargement de page, sans
         // jamais être sauvegardée (retour utilisateur : creusé en répondant
         // à "j'ai encore trop de problèmes de conflit").
         // Toujours borner à sugMergedProducts (jamais undefined) : les
-        // produits "added" viennent d'être reçus TELS QUELS du serveur — les
-        // repousser serait un aller-retour inutile, et surtout, undefined
-        // fait basculer pushToServer() sur la TOTALITÉ du catalogue local
-        // (voir le commentaire détaillé dans pushToServer, storage.js/
-        // actions.js — retour utilisateur : vieux catalogue local repoussé en
-        // entier et écrasant des modifs récentes d'autrui). sugMergedProducts
-        // reste [] si rien à fusionner : pushToServer() traite désormais un
-        // tableau vide comme "rien à envoyer", pas comme un repli bulk.
+        // produits "added"/"updatedExisting" viennent d'être reçus TELS
+        // QUELS du serveur — les repousser serait un aller-retour inutile,
+        // et surtout, undefined fait basculer pushToServer() sur la
+        // TOTALITÉ du catalogue local (voir le commentaire détaillé dans
+        // pushToServer, storage.js/actions.js — retour utilisateur : vieux
+        // catalogue local repoussé en entier et écrasant des modifs
+        // récentes d'autrui). sugMergedProducts reste [] si rien à
+        // fusionner : pushToServer() traite désormais un tableau vide comme
+        // "rien à envoyer", pas comme un repli bulk. save() reste
+        // nécessaire même pour updatedExisting seul : products[idx] = sp
+        // plus haut ne met à jour que la mémoire, jamais le stockage local
+        // tant que save() n'a pas tourné (retour utilisateur : "j'ai changé
+        // la Marque sur une même ref, le serveur a bien la modif mais ça ne
+        // s'actualise pas sur le client" — le pull recevait bien la donnée,
+        // mais rien ne la persistait ni ne la réaffichait puisque ce bloc ne
+        // se déclenchait qu'avec un NOUVEAU produit ou une fusion de
+        // suggestions, jamais pour une simple mise à jour de champ sur une
+        // ref déjà connue).
         save(true, sugMergedProducts);
         var isModalOpen = document.body.classList.contains('modal-open');
-        if(isModalOpen){
-          if(added > 0 && !silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
-        } else {
+        if(!isModalOpen){
           // Re-render uniquement la vue active
           var homePage = document.getElementById('homePage');
           var isOnHome = homePage && !homePage.classList.contains('hidden');
@@ -1375,8 +1385,8 @@
           } else {
             render();
           }
-          if(!silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
         }
+        if(added > 0 && !silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
       }
 
       // Repousser au serveur les verrous expirés nettoyés ci-dessus — sans
