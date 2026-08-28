@@ -454,14 +454,18 @@ function applyAuthUI() {
   var btnOpenArmoireConfig = document.getElementById('btnOpenArmoireConfig');
   if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = loggedIn ? '' : 'none';
 
-  // Bouton ⓘ — visible uniquement si canEdit ou canDelete
-  var vmInfoBtn = document.getElementById('vmInfoBtn');
-  var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete));
-  if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
-
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
   var canPropose = loggedIn && !canEdit && !!_sUrlReq;
+
+  // Bouton ⓘ — visible si canEdit/canDelete (Modifier/Supprimer dans le
+  // menu) OU canPropose (Proposer une modification y prend alors la place
+  // de Modifier — voir vmProposeMenuBtn plus bas, retour utilisateur : "le
+  // bouton proposer modification prenne la place de modifier lorsque le
+  // user n'a pas la permission").
+  var vmInfoBtn = document.getElementById('vmInfoBtn');
+  var showInfo  = isAdmin || (loggedIn && (!!perms.canEdit || !!perms.canDelete || canPropose));
+  if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
 
   // Bouton "Proposer un produit" dans le header (remplacement de btnAdd)
   var btnPropose = document.getElementById('btnProposeProduct');
@@ -492,15 +496,14 @@ function applyAuthUI() {
   var fSparePartsRow = document.getElementById('fSparePartsRow');
   if(fSparePartsRow) fSparePartsRow.style.display = canEdit ? '' : 'none';
 
-  // Bouton "Proposer une modification" sur la fiche produit
-  var btnVmPropose = document.getElementById('vmProposeBtn');
-  if (btnVmPropose) btnVmPropose.style.display = canPropose ? 'flex' : 'none';
-  // Ajouter/retirer classe has-propose sur viewModal pour décaler le i
-  var _viewModal = document.getElementById('viewModal');
-  if(_viewModal){
-    if(canPropose) _viewModal.classList.add('has-propose');
-    else _viewModal.classList.remove('has-propose');
-  }
+  // "Proposer une modification" sur la fiche produit — DANS le menu ⓘ, à la
+  // place de "Modifier la fiche" (jamais les deux en même temps : canPropose
+  // implique !canEdit) — remplace l'ancien bouton circulaire séparé
+  // #vmProposeBtn à côté du ⓘ (retour utilisateur : le rendait redondant/
+  // confus une fois les deux boutons visibles ensemble pour un compte
+  // canDelete-sans-canEdit).
+  var vmProposeMenuBtn = document.getElementById('vmProposeMenuBtn');
+  if (vmProposeMenuBtn) vmProposeMenuBtn.style.display = canPropose ? '' : 'none';
 
   // Export/Import JSON — admin uniquement
   ['btnExport','btnImport'].forEach(function(id){
@@ -536,7 +539,7 @@ function applyAuthUI() {
 
   // Exposer les permissions pour les autres modules
   window._userPerms = {
-    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn
+    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn, canPropose
   };
 
   updateAuthHeaderBtn(loggedIn, user);
@@ -1134,7 +1137,12 @@ function initAuth() {
 
 function authApplyOnProductModal() {
   var vmInfoBtn = document.getElementById('vmInfoBtn');
-  // Utiliser les permissions déjà calculées dans applyAuthUI
-  var showInfo = window._userPerms ? (window._userPerms.canEdit || window._userPerms.canDelete || window._userPerms.isAdmin) : false;
+  var vmProposeMenuBtn = document.getElementById('vmProposeMenuBtn');
+  // Utiliser les permissions déjà calculées dans applyAuthUI — canPropose
+  // inclus (voir plus haut) : le menu ⓘ héberge désormais aussi "Proposer
+  // une modification" à la place de "Modifier la fiche".
+  var perms = window._userPerms || {};
+  var showInfo = !!(perms.canEdit || perms.canDelete || perms.isAdmin || perms.canPropose);
   if (vmInfoBtn) vmInfoBtn.style.display = showInfo ? '' : 'none';
+  if (vmProposeMenuBtn) vmProposeMenuBtn.style.display = perms.canPropose ? '' : 'none';
 }

@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260828161543";
+const CACHE = "spi-catalogue-v20260828162732";
 
 const FILES = [
   "./",
@@ -94,7 +94,22 @@ self.addEventListener("install", event => {
       const videoFiles = FILES.filter(f => f.endsWith('.mp4') || f.endsWith('.webm'));
       const otherFiles = FILES.filter(f => !f.endsWith('.mp4') && !f.endsWith('.webm'));
 
-      const cacheOthers = Promise.allSettled(otherFiles.map(f => cache.add(f).catch(() => null)));
+      // cache.add(f) respecte le cache HTTP normal du navigateur — sur
+      // GitHub Pages (max-age=600 sur les fichiers statiques), un fichier
+      // déjà chargé dans les 10 dernières minutes revenait tel quel depuis
+      // ce cache HTTP au lieu d'être vraiment retéléchargé, même une fois
+      // le numéro de CACHE ci-dessus incrémenté et ce nouveau Service
+      // Worker installé — la seule façon fiable de voir la vraie nouvelle
+      // version restait un Ctrl+Shift+R (qui vide aussi le cache HTTP), pas
+      // le bouton "Mettre à jour" normal de l'app (retour utilisateur :
+      // "faut que lorsqu'on clique sur mise à jour ça applique vraiment
+      // comme pour une vraie app"). { cache: 'reload' } force un fetch
+      // réseau réel pour chaque fichier, en ignorant ce cache HTTP.
+      const cacheOthers = Promise.allSettled(otherFiles.map(f =>
+        fetch(f, { cache: 'reload' })
+          .then(res => { if(res.ok) return cache.put(f, res); })
+          .catch(() => null)
+      ));
 
       // Vidéo : fetch sans Range header et stocker avec URL absolue comme clé
       const cacheVideos = Promise.allSettled(videoFiles.map(async f => {

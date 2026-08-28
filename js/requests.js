@@ -1154,9 +1154,12 @@
       });
     });
 
-    // ── Bouton "Proposer une modification" (fiche produit) ──
-    var vmProposeBtn = document.getElementById('vmProposeBtn');
-    if(vmProposeBtn) vmProposeBtn.addEventListener('click', function(){
+    // ── "Proposer une modification" (fiche produit) — item du menu ⓘ,
+    // à la place de "Modifier la fiche" quand canEdit est absent ──
+    var vmProposeMenuBtn = document.getElementById('vmProposeMenuBtn');
+    if(vmProposeMenuBtn) vmProposeMenuBtn.addEventListener('click', function(){
+      var vmInfoMenuEl = document.getElementById('vmInfoMenu');
+      if(vmInfoMenuEl) vmInfoMenuEl.classList.remove('open');
       var productId = window._viewingId || null;
       if(typeof window._openProposeModal === 'function') window._openProposeModal(productId);
     });
