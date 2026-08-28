@@ -173,15 +173,16 @@
       // /deleteDatasReq ne prend QUE id désormais (confirmé avec le
       // développeur serveur — ref/user ne servaient plus qu'à le retrouver
       // ci-dessus quand il manquait).
-      var r = await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
+      var r = await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
       // Même id que /deleteDatasReq ci-dessus (confirmé avec le développeur
       // serveur) — aucun id distinct par document n'est jamais suivi côté
       // client pour ce flux (contrairement aux rapports de bug, qui ont leur
-      // propre attachmentId), les documents restent adressés par ref+user
-      // de la demande elle-même. Uniquement s'il y en a vraiment un (retour
-      // utilisateur : ne pas appeler /deleteDocsReq sinon).
+      // propre attachmentId) — confirmé par le Swagger : /deleteDocsReq ne
+      // prend que requestId, ni ref ni user. Uniquement s'il y en a
+      // vraiment un (retour utilisateur : ne pas appeler /deleteDocsReq
+      // sinon).
       if(await _reqHasDocs(sUrl, ref, username, h)){
-        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
+        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h }).catch(function(){});
       }
       return r.ok;
     } catch(e) { return false; }
@@ -327,13 +328,13 @@
       // reqId : le vrai id serveur de la demande, résolu plus haut — voir
       // _reqResolveId. /deleteDatasReq ne prend QUE id désormais (confirmé
       // avec le développeur serveur).
-      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet });
+      await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet });
       // hadDocs (renvoyé par _reqMigrateDocsToProduct juste au-dessus) :
       // uniquement s'il y avait vraiment un document joint (retour
       // utilisateur : ne pas appeler /deleteDocsReq sinon) — évite un
       // second appel à /pullDocsReq pour la même vérification.
       if(hadDocs){
-        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(reqId || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
+        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet }).catch(function(){});
       }
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
@@ -350,11 +351,19 @@
     var user = reqCurrentUser(); if(!user) return;
     var username = user.username || user.name || 'user';
     var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+    // /pushDocsReq attend "requestId" (uuid de la demande), ni "ref" ni
+    // "req_user" — confirmé par le Swagger. La demande vient d'être créée
+    // par reqSubmit() juste avant cet appel (voir btnSave dans actions.js),
+    // qui ne renvoie pas cet id — on le résout via _reqResolveId.
+    var requestId = await _reqResolveId(sUrl, ref, username, h);
+    if(!requestId){
+      console.warn('reqUploadAttachedFiles: id de la demande introuvable, envoi annulé');
+      return;
+    }
     for(var i = 0; i < files.length; i++){
       try {
         var fd = new FormData();
-        fd.append('ref', ref);
-        fd.append('req_user', username);
+        fd.append('requestId', requestId);
         fd.append('document', files[i], files[i].name);
         var r = await fetch(sUrl + '/pushDocsReq', { method:'POST', headers:h, body:fd });
         if(!r.ok) console.warn('reqUploadAttachedFiles: échec pour', files[i].name, 'HTTP', r.status);
@@ -497,21 +506,21 @@
 
   // ── Refuser une demande ───────────────────────────────────────
   // id : le VRAI id serveur de la demande (uuid — voir _reqResolveId
-  // ci-dessus, PAS data.id). /deleteDatasReq ne prend QUE id désormais
-  // (confirmé avec le développeur serveur) — /deleteDocsReq garde ref+user
-  // en plus (adressage par demande, aucun id distinct par document).
-  // Optionnel pour compatibilité arrière : si absent (appelant pas encore
+  // ci-dessus, PAS data.id). Confirmé par le Swagger : /deleteDatasReq et
+  // /deleteDocsReq attendent tous les deux un paramètre "requestId" (et
+  // rien d'autre — pas ref/user). Optionnel pour compatibilité arrière : si
+  // absent (appelant pas encore
   // mis à jour), on le récupère nous-mêmes.
   window.reqRefuse = async function(ref, user, id){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       if(!id) id = await _reqResolveId(sUrl, ref, user, h);
-      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
+      await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
       // Uniquement s'il y a vraiment un document joint (retour utilisateur :
       // ne pas appeler /deleteDocsReq sinon).
       if(await _reqHasDocs(sUrl, ref, user, h)){
-        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h }).catch(function(){});
       }
       return true;
     } catch(e) { return false; }

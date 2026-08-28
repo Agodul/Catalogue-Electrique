@@ -529,6 +529,11 @@ function applyAuthUI() {
   var serverButtonsSection = document.getElementById('serverButtonsSection');
   if (serverButtonsSection) serverButtonsSection.style.display = canSyncServer ? '' : 'none';
 
+  // Sauvegarde/restauration serveur — admin uniquement (pas canSyncServer,
+  // action bien plus sensible que le simple chargement/envoi du catalogue).
+  var serverAdminBackupSection = document.getElementById('serverAdminBackupSection');
+  if (serverAdminBackupSection) serverAdminBackupSection.style.display = isAdmin ? '' : 'none';
+
   // Exposer les permissions pour les autres modules
   window._userPerms = {
     canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn

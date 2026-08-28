@@ -1741,6 +1741,76 @@
     else showToast('Erreur : '+(res.message || 'aucun serveur configuré'), 'warn', 3000);
   });
 
+  // ── Sauvegarde/restauration serveur (admin) — /admin/backup, /admin/restore ──
+  var btnAdminBackupEl  = document.getElementById('btnAdminBackup');
+  var btnAdminRestoreEl = document.getElementById('btnAdminRestore');
+
+  if(btnAdminBackupEl) btnAdminBackupEl.addEventListener('click', async function(){
+    var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
+    if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
+    var original = btnAdminBackupEl.innerHTML;
+    btnAdminBackupEl.disabled = true;
+    btnAdminBackupEl.style.opacity = '0.6';
+    try{
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(url + '/admin/backup', { headers: h });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      var data = await r.json();
+      // Télécharge tel quel — même mécanisme que "Exporter" (btnExport)
+      // ci-dessus, quelle que soit la forme exacte renvoyée (objet ou
+      // chaîne), pour ne rien présumer du format de la sauvegarde serveur.
+      var text = (typeof data === 'string') ? data : JSON.stringify(data, null, 2);
+      var blob = new Blob([text], {type:'application/json'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      var d = new Date();
+      var stamp = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+      a.download = 'sauvegarde-serveur-'+stamp+'.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Sauvegarde téléchargée ✓', 'ok', 2500);
+    }catch(e){
+      showToast('Erreur lors du téléchargement : '+e.message, 'err', 4000);
+    }finally{
+      btnAdminBackupEl.disabled = false;
+      btnAdminBackupEl.style.opacity = '';
+      btnAdminBackupEl.innerHTML = original;
+    }
+  });
+
+  if(btnAdminRestoreEl) btnAdminRestoreEl.addEventListener('click', async function(){
+    var url = serverUrlInput.value.trim().replace(/\/+$/,'') || serverUrl;
+    if(!url){ showToast('Aucun serveur configuré', 'warn', 2500); return; }
+    // Action destructrice et irréversible (écrase les données côté serveur)
+    // — confirmation appuyée obligatoire, comme pour une suppression.
+    var confirmed = await customConfirm(
+      'Restaurer une sauvegarde ?',
+      'Cette action va restaurer les données du serveur à partir de sa dernière sauvegarde, en écrasant l\'état actuel. Cette opération est irréversible et affecte TOUS les utilisateurs connectés à ce serveur — assure-toi d\'avoir téléchargé une sauvegarde récente avant de continuer.',
+      { okLabel: 'Restaurer', danger: true }
+    );
+    if(!confirmed) return;
+    var original = btnAdminRestoreEl.innerHTML;
+    btnAdminRestoreEl.disabled = true;
+    btnAdminRestoreEl.style.opacity = '0.6';
+    try{
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {'Content-Type':'application/json'};
+      var r = await fetch(url + '/admin/restore', { method:'POST', headers: h });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      showToast('Sauvegarde restaurée ✓ — rechargement du catalogue…', 'ok', 3000);
+      // Le contenu du serveur a potentiellement tout changé — recharger
+      // depuis zéro plutôt que de tenter une fusion différentielle.
+      setTimeout(function(){ if(typeof syncFromServer === 'function') syncFromServer(false); }, 800);
+    }catch(e){
+      showToast('Erreur lors de la restauration : '+e.message, 'err', 4000);
+    }finally{
+      btnAdminRestoreEl.disabled = false;
+      btnAdminRestoreEl.style.opacity = '';
+      btnAdminRestoreEl.innerHTML = original;
+    }
+  });
+
   // ══════════════════════════════════════════════════════════════
   //  COMPARAISON OFFRES FOURNISSEURS
   // ══════════════════════════════════════════════════════════════

@@ -421,6 +421,18 @@
             ↑ Envoyer le catalogue local au serveur
           </button>
         </div>
+
+        <!-- Admin uniquement — /admin/backup et /admin/restore, distinct de
+             serverButtonsSection ci-dessus qui reste ouvert à canSyncServer. -->
+        <div id="serverAdminBackupSection" style="display:none;border-top:1px solid var(--line);padding-top:16px;margin-top:16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:8px;">Administration serveur</div>
+          <button id="btnAdminBackup" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;color:var(--ink);">
+            <i class="ti ti-download"></i> Télécharger une sauvegarde
+          </button>
+          <button id="btnAdminRestore" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid #FCA5A5;border-radius:8px;background:#FEF2F2;font-size:13px;cursor:pointer;margin-top:6px;color:#991B1B;font-weight:600;">
+            <i class="ti ti-history"></i> Restaurer une sauvegarde
+          </button>
+        </div>
       </div>
     </div>
 
@@ -652,7 +664,7 @@
             <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents
           </button>
         </div>
-        <div id="vmSuggestionsSection" style="display:none;">
+        <div id="vmSuggestionsSection" style="display:none;margin-top:8px;">
           <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
             <i class="ti ti-bulb" style="font-size:17px;"></i>
             <span id="vmSuggestionsToggleLabel">Afficher suggestions</span>
