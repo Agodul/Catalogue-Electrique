@@ -2707,6 +2707,16 @@
      padding-bottom sur l'OVERLAY reste la bonne technique pour décaler son
      contenu centré vers le haut. */
   #pdfViewerOverlay { padding-bottom: var(--nav-h, 56px); }
+  /* Mais la boîte elle-même garde height:94vh en dur (index.html) : ce
+     94vh ne retranche pas --nav-h, donc sur les téléphones où la bottom
+     nav prend une place non négligeable, la boîte reste plus haute que
+     l'espace réellement laissé par le padding-bottom ci-dessus — son bas
+     déborde derrière la bottom nav, ce qui coupe le bas de la dernière
+     page du PDF (retour utilisateur : "je ne vois pas le bas de la
+     dernière page car caché derrière la barre de navigation"). max-height
+     l'emporte sur height quand il est plus petit, sans toucher au HTML —
+     même technique que .modal ci-dessus (max-height: calc(92vh - var(--nav-h))). */
+  #pdfViewerOverlay > div { max-height: calc(94vh - var(--nav-h, 56px)); }
 
   /* ── Style uniforme "feuille ancrée en bas" pour toutes les fenêtres
      disponibles sur mobile/tablette ─────────────────────────────────

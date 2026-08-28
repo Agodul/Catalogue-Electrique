@@ -469,18 +469,27 @@ function _productBadgesCompactHtml(p){
       .catch(function(e){ cb(e); });
   }
 
+  // Types image acceptés à l'upload (voir accept="image/*" sur #modalPdfInput,
+  // js/modal.js) — même liste que _isImg là-bas, pour rester cohérent entre
+  // la modale d'édition et la visionneuse.
+  var IMG_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
+
   function _docRenderItem(docList, file, sUrl){
     var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
     delete h['Content-Type'];
     var docName = file.filename || 'Document.pdf';
+    var isImg = IMG_EXT_RE.test(docName);
 
     var item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;';
-    item.innerHTML = '<div style="width:40px;height:40px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-      + '<i class="ti ti-file-type-pdf" style="font-size:22px;color:#E53E3E;"></i></div>'
+    item.innerHTML = '<div style="width:40px;height:40px;background:'+(isImg?'#FFF7ED':'#FEF2F2')+';border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      + (isImg
+        ? '<i class="ti ti-photo" style="font-size:22px;color:var(--copper);"></i>'
+        : '<i class="ti ti-file-type-pdf" style="font-size:22px;color:#E53E3E;"></i>')
+      + '</div>'
       + '<div style="flex:1;min-width:0;">'
       + '<div style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(docName)+'</div>'
-      + '<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">PDF</div>'
+      + '<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">'+(isImg?'Image':'PDF')+'</div>'
       + '</div>';
 
     var btnVoir = document.createElement('button');
@@ -576,7 +585,8 @@ function _productBadgesCompactHtml(p){
   }
 
   var _pdfCurrentDoc = null;
-  var _pdfPageInfos = []; // { page, canvas, cssWidth0, cssHeight0, baseScale, renderTask }
+  var _pdfPageInfos = []; // { page, canvas, cssWidth0, cssHeight0, baseScale, renderTask, isImage }
+  var _pdfImageObjectUrl = null; // à révoquer à la fermeture (voir _pdfClose)
   var _pdfZoom = 1;
   var MIN_PDF_ZOOM = 1, MAX_PDF_ZOOM = 4;
   var MAX_PDF_CANVAS_DIM = 4096; // limite raisonnable de résolution (mémoire/support navigateur)
@@ -604,6 +614,11 @@ function _productBadgesCompactHtml(p){
   // ne fait qu'étirer le bitmap existant, ce qui devient flou en zoomant fort).
   function _pdfSharpenPages(){
     _pdfPageInfos.forEach(function(info){
+      // Une image bitmap n'a pas de "re-rendu" PDF.js à refaire à plus haute
+      // résolution : le navigateur redimensionne déjà le bitmap existant
+      // correctement (contrairement au canvas PDF, dont le rendu initial est
+      // volontairement basse résolution pour rester rapide à l'ouverture).
+      if(info.isImage) return;
       var targetScale = info.baseScale * _pdfZoom * Math.min(window.devicePixelRatio || 1, 2);
       var viewport = info.page.getViewport({ scale: targetScale });
       if(Math.max(viewport.width, viewport.height) > MAX_PDF_CANVAS_DIM){
@@ -664,6 +679,45 @@ function _productBadgesCompactHtml(p){
       }
     }, {passive:true});
   })();
+
+  // Affiche une image (jpg/png/gif/webp/heic/bmp) dans la même boîte que le
+  // lecteur PDF, sans passer par PDF.js : une seule "page" (l'<img> elle-même)
+  // ajoutée à _pdfPageInfos, ce qui lui fait profiter gratuitement du même
+  // pincement de zoom que les pages PDF (_pdfApplyZoomSize ne fait que poser
+  // style.width/height, valable aussi bien sur un <img> que sur un <canvas>).
+  function _openImageViewer(ab, docName){
+    var loader   = document.getElementById('pdfViewerLoader');
+    var scrollEl = document.getElementById('pdfViewerScroll');
+    var pagesEl  = document.getElementById('pdfViewerPages');
+    if(pagesEl) pagesEl.innerHTML = '';
+    _pdfPageInfos = [];
+    _pdfZoom = 1;
+    if(_pdfImageObjectUrl){ URL.revokeObjectURL(_pdfImageObjectUrl); _pdfImageObjectUrl = null; }
+
+    var url = URL.createObjectURL(new Blob([ab]));
+    _pdfImageObjectUrl = url;
+    var img = document.createElement('img');
+    img.style.display = 'block';
+    img.style.margin  = '0 auto 8px';
+    img.style.background = '#fff';
+    img.onload = function(){
+      var containerWidth = ((scrollEl && scrollEl.parentElement) ? scrollEl.parentElement.clientWidth : 800) - 24;
+      var cssWidth0  = Math.min(containerWidth, img.naturalWidth || containerWidth);
+      var ratio = img.naturalWidth ? (cssWidth0 / img.naturalWidth) : 1;
+      var cssHeight0 = (img.naturalHeight || 0) * ratio;
+      img.style.width  = cssWidth0 + 'px';
+      img.style.height = cssHeight0 ? (cssHeight0 + 'px') : 'auto';
+      _pdfPageInfos = [{ canvas: img, cssWidth0: cssWidth0, cssHeight0: cssHeight0, isImage: true }];
+      if(loader) loader.style.display = 'none';
+      if(scrollEl) scrollEl.style.display = 'block';
+    };
+    img.onerror = function(){
+      _pdfClose();
+      showToast('Erreur d\'affichage de l\'image', 'err', 4000);
+    };
+    img.src = url;
+    if(pagesEl) pagesEl.appendChild(img);
+  }
 
   async function _openPdfCanvas(ab, docName){
     var loader   = document.getElementById('pdfViewerLoader');
@@ -733,6 +787,7 @@ function _productBadgesCompactHtml(p){
       if(overlay) overlay.style.display = 'none';
       _pdfZoom = 1;
       if(_pdfCurrentDoc){ _pdfCurrentDoc.destroy(); _pdfCurrentDoc = null; }
+      if(_pdfImageObjectUrl){ URL.revokeObjectURL(_pdfImageObjectUrl); _pdfImageObjectUrl = null; }
     }
     if(overlay && typeof window._closeOverlayAnimated === 'function'){
       window._closeOverlayAnimated(overlay, teardown);
@@ -758,7 +813,10 @@ function _productBadgesCompactHtml(p){
     if(overlay) overlay.style.display = 'flex';
     document.body.classList.add('modal-open');
     fetchFn(
-      function onBuffer(ab){ _openPdfCanvas(ab, docName); },
+      function onBuffer(ab){
+        if(IMG_EXT_RE.test(docName||'')) _openImageViewer(ab, docName);
+        else _openPdfCanvas(ab, docName);
+      },
       function onError(e){ _pdfClose(); showToast('Erreur PDF : '+(e&&e.message||e), 'err', 4000); }
     );
   };
@@ -777,7 +835,10 @@ function _productBadgesCompactHtml(p){
     delete h['Content-Type'];
     fetch(pdfUrl, { headers: h })
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-      .then(function(ab){ _openPdfCanvas(ab, docName); })
+      .then(function(ab){
+        if(IMG_EXT_RE.test(docName||'')) _openImageViewer(ab, docName);
+        else _openPdfCanvas(ab, docName);
+      })
       .catch(function(e){ _pdfClose(); showToast('Erreur PDF : '+e.message, 'err', 4000); });
   };
   // ── Fin PDF Viewer ───────────────────────────────────────────────

@@ -822,6 +822,17 @@
       if(pForPdf){
         if(modalPdfSection) modalPdfSection.style.display = '';
 
+        // Source de vérité pour la liste de fichiers PENDANT que cette
+        // modale est ouverte — volontairement PAS pForPdf._docFiles : save()
+        // efface _docFiles de tous les produits à chaque appel (champ local
+        // uniquement, voir js/storage.js), y compris pForPdf puisque c'est
+        // le même objet que products[idx2]. Un 2e supprimer/ajouter dans la
+        // même session lisait alors "pForPdf._docFiles || []" → toujours [],
+        // donc filtrait/concaténait sur une liste vide → tout semblait
+        // supprimé d'un coup (bug rapporté : "je supprime un document, ça
+        // supprime tous"). _pdfDocFiles n'est jamais touché par save().
+        var _pdfDocFiles = [];
+
         function _pdfRenderList(files){
           var L = document.getElementById('modalPdfList');
           var U = document.getElementById('modalPdfUpload');
@@ -852,17 +863,12 @@
           fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(uuid), { method:'DELETE', headers: hDel })
             .then(function(r){ if(!r.ok) return Promise.reject('HTTP '+r.status); })
             .then(function(){
-              pForPdf._docFiles = (pForPdf._docFiles || []).filter(function(f){ return f.uuid !== uuid; });
-              var hasAny = pForPdf._docFiles.length > 0;
+              _pdfDocFiles = _pdfDocFiles.filter(function(f){ return f.uuid !== uuid; });
+              var hasAny = _pdfDocFiles.length > 0;
+              pForPdf._docFiles  = _pdfDocFiles;
               pForPdf.hasDoc      = hasAny;
-              pForPdf.docFilename = hasAny ? pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ') : '';
-              // Rendre AVANT save() : save() retire _docFiles de tous les
-              // produits (champ local uniquement, jamais persisté — voir
-              // js/storage.js) et pForPdf pointe vers le même objet que
-              // products[idx2], donc _docFiles serait déjà effacé si on
-              // l'utilisait après l'appel à save().
-              var _filesSnapshot = pForPdf._docFiles;
-              _pdfRenderList(_filesSnapshot);
+              pForPdf.docFilename = hasAny ? _pdfDocFiles.map(function(f){ return f.filename; }).join(', ') : '';
+              _pdfRenderList(_pdfDocFiles);
               var idx2 = products.findIndex(function(x){ return x.id === editingId; });
               if(idx2 !== -1){ products[idx2].hasDoc = pForPdf.hasDoc; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
               showToast('Fichier supprimé ✓', 'ok', 2000);
@@ -886,12 +892,11 @@
               .then(function(data){ return { uuid: data.uuid, filename: data.filename || file.name, ref: pForPdf.ref }; });
           }))
           .then(function(newFiles){
-            pForPdf._docFiles = (pForPdf._docFiles || []).concat(newFiles);
+            _pdfDocFiles = _pdfDocFiles.concat(newFiles);
+            pForPdf._docFiles  = _pdfDocFiles;
             pForPdf.hasDoc = true;
-            pForPdf.docFilename = pForPdf._docFiles.map(function(f){ return f.filename; }).join(', ');
-            // Rendre AVANT save() — voir commentaire équivalent dans _pdfDeleteOne.
-            var _filesSnapshot = pForPdf._docFiles;
-            _pdfRenderList(_filesSnapshot);
+            pForPdf.docFilename = _pdfDocFiles.map(function(f){ return f.filename; }).join(', ');
+            _pdfRenderList(_pdfDocFiles);
             var idx2 = products.findIndex(function(x){ return x.id === editingId; });
             if(idx2 !== -1){ products[idx2].hasDoc = true; products[idx2].docFilename = pForPdf.docFilename; save(true, [products[idx2]]); }
             showToast(arr.length+' PDF envoyé'+(arr.length>1?'s':'')+' ✓', 'ok', 2500);
@@ -915,19 +920,35 @@
             })
             .then(function(d){
               var files = d && d.items ? d.items : [];
+              _pdfDocFiles = files;
               pForPdf._docFiles = files;
-              pForPdf.hasDoc = files.length > 0;
-              pForPdf.docFilename = files.map(function(f){ return f.filename; }).join(', ');
+              var realHasDoc = files.length > 0;
+              var realDocFilename = files.map(function(f){ return f.filename; }).join(', ');
+              // Auto-réparation : si un ancien bug de session (liste locale
+              // effacée par erreur — voir commentaire sur _pdfDocFiles
+              // ci-dessus) a persisté un hasDoc/docFilename incorrect sur ce
+              // produit (ex. bouton "Documents" resté caché côté fiche alors
+              // que des fichiers existent bien sur le serveur), on corrige et
+              // on ré-enregistre dès l'ouverture de cette modale.
+              var idx0 = products.findIndex(function(x){ return x.id === editingId; });
+              var needsFix = idx0 !== -1 && (!!products[idx0].hasDoc !== realHasDoc || (products[idx0].docFilename || '') !== realDocFilename);
+              pForPdf.hasDoc = realHasDoc;
+              pForPdf.docFilename = realDocFilename;
               _pdfRenderList(files);
+              if(needsFix){
+                products[idx0].hasDoc = realHasDoc;
+                products[idx0].docFilename = realDocFilename;
+                save(true, [products[idx0]]);
+              }
             })
             .catch(function(e){
               console.warn('[PDF] fetch error:', e);
-              var files = pForPdf._docFiles || (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
+              var files = _pdfDocFiles.length ? _pdfDocFiles : (pForPdf.hasDoc ? [{ uuid:'', filename: pForPdf.docFilename||'Document PDF' }] : []);
               _pdfRenderList(files);
             });
         } else {
           console.log('[PDF] pas de sUrl ou ref — sUrl:', sUrl, 'ref:', pForPdf.ref);
-          _pdfRenderList(pForPdf._docFiles || []);
+          _pdfRenderList(_pdfDocFiles);
         }
       }
     } else if(window._proposeMode){
@@ -2259,6 +2280,16 @@
             if(!result.desc  && node.description) result.desc  = node.description;
             if(!result.ref   && node.sku)         result.ref   = node.sku;
             if(!result.ref   && node.mpn)         result.ref   = node.mpn;
+            // "model" avant "productID" : testé en vrai sur Keyence, dont le
+            // JSON-LD product fournit les DEUX — "model" contient la vraie
+            // référence commerciale (ex. "LR-X100", celle affichée sur la
+            // page/l'URL), tandis que "productID" est un identifiant interne
+            // Keyence sans rapport (ex. "PM_243X100") que personne ne
+            // reconnaît (retour utilisateur : "la référence entrée n'est pas
+            // la bonne"). "model" reste un champ standard schema.org pour la
+            // référence produit, donc probablement fiable sur d'autres sites
+            // aussi — productID n'est gardé qu'en tout dernier repli.
+            if(!result.ref   && node.model)       result.ref   = node.model;
             if(!result.ref   && node.productID)   result.ref   = node.productID;
             if(!result.brand && node.brand){
               var b = node.brand;

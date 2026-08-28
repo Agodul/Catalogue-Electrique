@@ -3230,7 +3230,13 @@
         closeFloatingSearchNow();
         closeFilterSheetNow();
         closeAllOverlaysNow();
-        closeViewOverlayNow();
+        // Contrairement à Accueil/Recherche/Filtres (qui ramènent vraiment à
+        // la liste catalogue), le Menu n'est qu'un tiroir posé par-dessus —
+        // il s'affiche largement au-dessus de la fiche produit (voir
+        // --z-sheet-high vs --z-overlay) sans la recouvrir entièrement. Pas
+        // de raison de fermer la fiche en cours de consultation pour
+        // l'ouvrir (retour utilisateur : perdait sa place en consultant un
+        // produit sur mobile juste en ouvrant le menu).
         if(typeof window._openMenuSheet === 'function') window._openMenuSheet();
       });
 
