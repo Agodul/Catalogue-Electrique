@@ -169,15 +169,7 @@
     var username = user.username || user.name || 'user';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      if(!id){
-        try {
-          var rId = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
-          if(rId.ok){
-            var dId = await rId.json();
-            id = (dId.items && dId.items[0] && dId.items[0].data && dId.items[0].data.id) || '';
-          }
-        } catch(eId){}
-      }
+      if(!id) id = await _reqResolveId(sUrl, ref, username, h);
       // /deleteDatasReq ne prend QUE id désormais (confirmé avec le
       // développeur serveur — ref/user ne servaient plus qu'à le retrouver
       // ci-dessus quand il manquait).
@@ -186,8 +178,11 @@
       // serveur) — aucun id distinct par document n'est jamais suivi côté
       // client pour ce flux (contrairement aux rapports de bug, qui ont leur
       // propre attachmentId), les documents restent adressés par ref+user
-      // de la demande elle-même.
-      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
+      // de la demande elle-même. Uniquement s'il y en a vraiment un (retour
+      // utilisateur : ne pas appeler /deleteDocsReq sinon).
+      if(await _reqHasDocs(sUrl, ref, username, h)){
+        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
+      }
       return r.ok;
     } catch(e) { return false; }
   };
@@ -220,32 +215,70 @@
   // "1 fichier joint" (de très loin le plus courant) est migré automatique-
   // ment ; au-delà, un avertissement est affiché plutôt que d'échouer en
   // silence ou de risquer une migration incorrecte.
+  // Retourne true si la demande avait au moins un document joint (qu'il ait
+  // pu être migré intégralement ou non) — réutilisé par reqAccept juste en
+  // dessous pour ne PAS appeler /deleteDocsReq quand il n'y a rien à
+  // nettoyer (retour utilisateur : n'appeler /deleteDocsReq que s'il y a
+  // vraiment un document associé).
   async function _reqMigrateDocsToProduct(reqRef, reqUser, productRef){
-    var sUrl = reqServerUrl(); if(!sUrl) return;
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
     try {
       var hGet = Object.assign({}, reqHeaders()); delete hGet['Content-Type'];
       var rList = await fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
-      if(!rList.ok) return;
+      if(!rList.ok) return false;
       var dList = await rList.json();
       var files = dList && dList.items ? dList.items : [];
-      if(!files.length) return;
+      if(!files.length) return false;
       if(files.length > 1){
         console.warn('_reqMigrateDocsToProduct: ' + files.length + ' fichiers joints, migration auto limitée à 1 — à récupérer manuellement si besoin.');
         if(typeof showToast === 'function') showToast(files.length + ' fichiers joints à cette demande — un seul a pu être transféré automatiquement', 'warn', 5000);
       }
       var rFile = await fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
-      if(!rFile.ok) return;
+      if(!rFile.ok) return true; // fichier(s) confirmé(s) plus haut, juste la récupération qui échoue — nettoyage encore nécessaire
       var blob = await rFile.blob();
       var cd = rFile.headers.get('Content-Disposition') || '';
       var m = /filename="([^"]*)"/.exec(cd);
       var filename = m ? m[1] : (files[0].filename || 'document');
-      if(/\.zip$/i.test(filename)) return; // 2+ fichiers : cas non géré, déjà signalé ci-dessus
+      if(/\.zip$/i.test(filename)) return true; // 2+ fichiers : cas non géré, déjà signalé ci-dessus — nettoyage quand même nécessaire
       var fd = new FormData();
       fd.append('ref', productRef);
       fd.append('document', blob, filename);
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       await fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd });
-    } catch(e) { console.warn('_reqMigrateDocsToProduct:', e); }
+      return true;
+    } catch(e) { console.warn('_reqMigrateDocsToProduct:', e); return false; }
+  }
+
+  // Un document est-il joint à cette demande ? — évite d'appeler
+  // /deleteDocsReq quand il n'y en a aucun (retour utilisateur). Léger :
+  // nofile=true, pas de téléchargement du fichier lui-même.
+  async function _reqHasDocs(sUrl, ref, user, h){
+    try {
+      var r = await fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
+      if(!r.ok) return false;
+      var d = await r.json();
+      return !!(d.items && d.items.length);
+    } catch(e){ return false; }
+  }
+
+  // ── Résout le VRAI id serveur d'une demande (uuid, ex.
+  // "ebe656a1-ebf0-418f-ae46-eebdae984996" — confirmé par le développeur
+  // serveur) ─────────────────────────────────────────────────────
+  // Cet id vit au SOMMET de chaque entrée de /pullDatasReq (à côté de
+  // "ref"/"user", PAS dans "data") — data.id, lui, est l'id généré côté
+  // CLIENT pour le produit proposé (ex. "p_1735600000_ab12cd", voir
+  // reqSubmit), sans aucun rapport avec celui-ci. Les avoir confondus est
+  // la cause exacte du "la suppression d'une demande ne fonctionne
+  // toujours pas" alors que le format id+ref+user semblait pourtant bon
+  // (retour utilisateur, avec un exemple réel de réponse serveur à
+  // l'appui).
+  async function _reqResolveId(sUrl, ref, user, h){
+    try {
+      var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
+      if(!r.ok) return '';
+      var d = await r.json();
+      return (d.items && d.items[0] && d.items[0].id) || '';
+    } catch(e){ return ''; }
   }
 
   // ── Accepter une demande ──────────────────────────────────────
@@ -256,10 +289,13 @@
     try {
       var h = reqHeaders();
       var hGet = Object.assign({}, h); delete hGet['Content-Type'];
-      var item;
+      var item, reqId;
       if(overrideData){
-        // Données déjà éditées côté admin — on les utilise directement
+        // Données déjà éditées côté admin — on les utilise directement,
+        // mais elles ne portent que le PRODUIT édité, jamais l'id réel de
+        // la demande côté serveur — à résoudre séparément.
         item = Object.assign({}, overrideData);
+        reqId = await _reqResolveId(sUrl, ref, user, hGet);
       } else {
         // Cas normal : récupérer depuis le serveur
         var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet, cache: 'no-store' });
@@ -267,6 +303,7 @@
         var d = await r.json();
         if(!d.items || !d.items.length) return false;
         item = d.items[0].data || {};
+        reqId = d.items[0].id || '';
       }
       // Garde-fou : un rapport de bug (type:"bug") n'est PAS un produit — ne
       // doit jamais être poussé dans le vrai catalogue via /pushDatas.
@@ -286,12 +323,18 @@
       // produit avant de les supprimer côté _req — sinon ils disparaissent
       // silencieusement à l'acceptation (retour utilisateur : les fichiers
       // joints doivent suivre le produit une fois validé, pas se perdre).
-      await _reqMigrateDocsToProduct(ref, user, item.ref || ref);
-      // id de la demande (pas celui du produit une fois accepté, item.id
-      // reste celui d'origine à ce stade) — /deleteDatasReq ne prend QUE
-      // id désormais (confirmé avec le développeur serveur).
-      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(item.id || ''), { method:'DELETE', headers:hGet });
-      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(item.id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
+      var hadDocs = await _reqMigrateDocsToProduct(ref, user, item.ref || ref);
+      // reqId : le vrai id serveur de la demande, résolu plus haut — voir
+      // _reqResolveId. /deleteDatasReq ne prend QUE id désormais (confirmé
+      // avec le développeur serveur).
+      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet });
+      // hadDocs (renvoyé par _reqMigrateDocsToProduct juste au-dessus) :
+      // uniquement s'il y avait vraiment un document joint (retour
+      // utilisateur : ne pas appeler /deleteDocsReq sinon) — évite un
+      // second appel à /pullDocsReq pour la même vérification.
+      if(hadDocs){
+        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(reqId || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
+      }
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
   };
@@ -453,27 +496,23 @@
   };
 
   // ── Refuser une demande ───────────────────────────────────────
-  // id : identifiant propre de la demande (champ "id" du payload soumis par
-  // reqSubmit). /deleteDatasReq ne prend QUE id désormais (confirmé avec le
-  // développeur serveur) — /deleteDocsReq garde ref+user en plus (adressage
-  // par demande, aucun id distinct par document). Optionnel pour
-  // compatibilité arrière : si absent (appelant pas encore mis à jour), on
-  // le récupère nous-mêmes.
+  // id : le VRAI id serveur de la demande (uuid — voir _reqResolveId
+  // ci-dessus, PAS data.id). /deleteDatasReq ne prend QUE id désormais
+  // (confirmé avec le développeur serveur) — /deleteDocsReq garde ref+user
+  // en plus (adressage par demande, aucun id distinct par document).
+  // Optionnel pour compatibilité arrière : si absent (appelant pas encore
+  // mis à jour), on le récupère nous-mêmes.
   window.reqRefuse = async function(ref, user, id){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      if(!id){
-        try {
-          var rId = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
-          if(rId.ok){
-            var dId = await rId.json();
-            id = (dId.items && dId.items[0] && dId.items[0].data && dId.items[0].data.id) || '';
-          }
-        } catch(eId){}
-      }
+      if(!id) id = await _reqResolveId(sUrl, ref, user, h);
       await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
-      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+      // Uniquement s'il y a vraiment un document joint (retour utilisateur :
+      // ne pas appeler /deleteDocsReq sinon).
+      if(await _reqHasDocs(sUrl, ref, user, h)){
+        await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+      }
       return true;
     } catch(e) { return false; }
   };
@@ -808,7 +847,7 @@
           +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
           +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
           + '</div>'
-          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-id="' + escapeHtml(data.id || '') + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
+          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-id="' + escapeHtml(it.id || '') + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
       }
       body.innerHTML = items.map(renderMineItem).join('');
@@ -1158,7 +1197,7 @@
       for(var i = 0; i < items.length; i++){
         var it = items[i];
         var user = (it.data || {})._reqUser || it.user || '';
-        await window.reqRefuse(it.ref, user, (it.data || {}).id);
+        await window.reqRefuse(it.ref, user, it.id);
       }
       showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();
