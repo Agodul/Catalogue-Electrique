@@ -740,7 +740,18 @@
       }
 
       if(deleted > 0){
-        save(true);
+        // [] : cette fonction ne fait QUE retirer localement des produits
+        // déjà absents du serveur — rien à repousser (le serveur sait déjà
+        // qu'ils n'existent plus, c'est justement pour ça qu'ils sont
+        // filtrés ici). save() sans filtre repoussait tout le catalogue
+        // local restant, avec createdAt forcé à maintenant sur chacun —
+        // même risque que le bug corrigé dans syncFromServer/pushToServer,
+        // mais ici déclenché automatiquement en arrière-plan dès qu'UNE
+        // suppression est détectée, sur un compte au catalogue local resté
+        // en retard (retour utilisateur : "un compte avec des perme[ssions]
+        // pour ajouter un produit se connecte avec un vieux catalogue, ça
+        // envoie sur le serveur").
+        save(true, []);
         var homePage = document.getElementById('homePage');
         var isOnHome = homePage && !homePage.classList.contains('hidden');
         if(isOnHome){ renderHome(); } else { render(); }
@@ -1641,7 +1652,11 @@
         } else {
           throw new Error('Format invalide');
         }
-        save(true);
+        // [] : products vient d'être remplacé par les données DU serveur —
+        // les repousser serait un aller-retour inutile (et re-timbrerait
+        // inutilement createdAt sur tout le catalogue, voir les autres
+        // correctifs de ce type dans ce fichier).
+        save(true, []);
         localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
         // Fermer les paramètres et afficher la home proprement
         showSettingsMain();
@@ -1684,7 +1699,10 @@
       } else {
         throw new Error('Format invalide');
       }
-      save(true);
+      // [] : voir commentaire équivalent juste au-dessus (import auto au
+      // changement d'URL serveur) — products vient d'être remplacé par les
+      // données DU serveur, rien à repousser.
+      save(true, []);
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
       // Fermer les paramètres
       if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
@@ -1867,7 +1885,10 @@
           }
           products[idx].price = price.toFixed(2);
           if(supplier) products[idx].supplier = supplier;
-          save(false);
+          // [products[idx]] : seul CE produit a été touché — voir les autres
+          // correctifs de ce type dans ce fichier (syncFromServer,
+          // pushToServer) et dans js/modal.js/js/render.js.
+          save(false, [products[idx]]);
           btn.textContent = '✓ Appliqué';
           btn.disabled = true;
           btn.style.color = '#059669';
@@ -1994,13 +2015,19 @@
   document.getElementById('btnCleanDescs').addEventListener('click', function(){
     hdrMenu.classList.remove('open');
     var count = 0;
+    var touchedByClean = [];
     products.forEach(function(p){
+      var touched = false;
       var cleaned = stripHtml(p.desc || '');
-      if(cleaned !== (p.desc || '')){ p.desc = cleaned; count++; }
+      if(cleaned !== (p.desc || '')){ p.desc = cleaned; count++; touched = true; }
       var cleanedName = stripHtml(p.name || '');
-      if(cleanedName !== (p.name || '')){ p.name = cleanedName; }
+      if(cleanedName !== (p.name || '')){ p.name = cleanedName; touched = true; }
+      if(touched){ p.updatedAt = Date.now(); touchedByClean.push(p); }
     });
-    save(); render();
+    // touchedByClean (jamais tout le catalogue) : seuls les produits dont la
+    // description/le nom contenait vraiment du HTML à nettoyer ont changé —
+    // voir les autres correctifs de ce type dans ce fichier.
+    save(false, touchedByClean); render();
 
     customAlert('Nettoyer les descriptions', count > 0
       ? count + ' description(s) nettoyée(s) avec succès.'
@@ -2092,7 +2119,14 @@
         reconcileSuggestionsReciprocally(products);
         reconcileSparePartsReciprocally(products);
 
-        save();
+        // [] : pas de push ici — save() sans filtre aurait repoussé tout le
+        // catalogue local avec createdAt forcé à maintenant sur chaque
+        // produit (même risque que le bug corrigé dans syncFromServer/
+        // pushToServer), EN DOUBLE puisque pushCatalogToServer() juste en
+        // dessous fait déjà l'envoi complet voulu pour cet import — lui,
+        // sans forcer createdAt, laissant le serveur arbitrer normalement
+        // par produit plutôt que gagner à coup sûr.
+        save(false, []);
         // Forcer retour à la home
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
@@ -2118,10 +2152,12 @@
       });
       overlay.querySelector('#_importReplace').addEventListener('click', async function(){
         products = _pendingImport;
-        // Voir commentaire équivalent dans #_importMerge ci-dessus.
+        // Voir commentaire équivalent dans #_importMerge ci-dessus : [] ici
+        // aussi, pushCatalogToServer() juste en dessous fait déjà l'envoi
+        // complet voulu pour ce remplacement.
         reconcileSuggestionsReciprocally(products);
         reconcileSparePartsReciprocally(products);
-        save();
+        save(false, []);
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
         var hdrCountChip = document.getElementById('hdrCountChip');
@@ -2408,6 +2444,7 @@
   document.getElementById('btnConfirmXlsxImport').addEventListener('click', async function(){
     var now = new Date().toISOString();
     var added = 0, updated = 0;
+    var touchedByXlsx = [];
 
     // ── Sans droit d'édition directe : chaque ligne part en demande ──
     // (jamais d'écriture directe au catalogue pour ces utilisateurs)
@@ -2515,6 +2552,7 @@
         };
         products.push(p);
         added++;
+        touchedByXlsx.push(p);
       } else {
         // Mise à jour
         var p = item.existing;
@@ -2552,11 +2590,16 @@
           p.price = item.newSellingPrice;
           p.priceHistory.push({price: item.newSellingPrice, date: now, label: 'Votre prix'});
         }
+        p.updatedAt = Date.now();
+        touchedByXlsx.push(p);
         updated++;
       }
     });
 
-    save(); render();
+    // touchedByXlsx (jamais tout le catalogue) : seuls les produits
+    // effectivement ajoutés/modifiés par cet import Excel ont changé — voir
+    // les autres correctifs de ce type dans ce fichier.
+    save(false, touchedByXlsx); render();
     // Même correctif que pour l'enregistrement d'un produit : rafraîchir
     // aussi la home si l'import a été lancé depuis là (compteur figé sinon
     // jusqu'à un F5 — retour utilisateur).
@@ -3069,13 +3112,18 @@
   function applyConflictChoices(){
     var localMap = {};
     products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+    var touchedByConflict = [];
     _pendingConflicts.forEach(function(c){
       if((_conflictChoices[c.ref] || 'local') === 'server'){
         var idx = localMap[c.ref];
-        if(idx !== undefined) products[idx] = c.server;
+        if(idx !== undefined){ products[idx] = c.server; touchedByConflict.push(products[idx]); }
       }
     });
-    save(true); render(); renderHome();
+    // touchedByConflict (jamais tout le catalogue) : seuls les produits où
+    // le choix "remplacer par la version importée" a été fait ont
+    // réellement changé — voir les autres correctifs de ce type dans ce
+    // fichier (syncFromServer, pushToServer, compare-save-btn).
+    save(true, touchedByConflict); render(); renderHome();
     closeConflictModal();
     showToast('Conflits résolus ✓', 'ok', 2500);
   }

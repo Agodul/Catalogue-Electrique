@@ -1139,7 +1139,15 @@ function _productBadgesCompactHtml(p){
 
       // Supprimer en local
       products = products.filter(function(x){return x.id!==id;});
-      save(true); // skipFileWrite pour ne pas bloquer
+      // [] : la suppression côté serveur est déjà faite explicitement
+      // au-dessus (/deleteDatas) — rien d'autre à repousser ici. save() sans
+      // filtre repoussait TOUT le catalogue local restant à chaque
+      // suppression de produit, avec createdAt forcé à maintenant sur
+      // chacun (même risque que le bug corrigé dans syncFromServer/
+      // pushToServer : un catalogue local resté en retard écraserait les
+      // modifs récentes d'autrui, sur CHAQUE produit du catalogue, à chaque
+      // suppression).
+      save(true, []); // skipFileWrite pour ne pas bloquer
 
       // Actualisation en arrière-plan sans interrompre l'utilisateur
       var homePage = document.getElementById('homePage');

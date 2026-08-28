@@ -307,7 +307,12 @@
           var prod = products.find(function(x){ return x.id === editingId; });
           if(!prod) return;
           prod.priceHistory.splice(i, 1);
-          save();
+          // [prod] : seul CE produit a été touché — save() sans filtre
+          // repoussait tout le catalogue local au serveur pour la suppression
+          // d'UNE seule ligne d'historique de prix (même risque que le bug
+          // corrigé dans syncFromServer/pushToServer : un catalogue local
+          // resté en retard écraserait les modifs récentes d'autrui).
+          save(false, [prod]);
           renderPriceModalTable(prod);
           renderPriceHistory(prod);
           document.getElementById('priceModalCurrent').textContent = prod.price || '—';
@@ -393,7 +398,9 @@
     fPrice.value = p.price || '';
     updatePriceDisplay();
 
-    save(); render();
+    // [p] : seul CE produit a été touché — voir commentaire équivalent sur
+    // la suppression d'une ligne d'historique de prix un peu plus haut.
+    save(false, [p]); render();
     renderPriceHistory(p);
     renderPriceModalTable(p);
 
