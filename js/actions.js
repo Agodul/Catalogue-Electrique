@@ -859,6 +859,21 @@
     if(_syncInterval){ clearInterval(_syncInterval); _syncInterval = null; }
   }
 
+  // Revérifier immédiatement au retour au premier plan — sur mobile,
+  // l'onglet mis en arrière-plan (écran verrouillé, appli changée) voit son
+  // setInterval fortement ralenti/suspendu par le navigateur, bien plus
+  // qu'au bureau où l'onglet reste généralement actif. Le point de statut
+  // du serveur (updateServerSubtitle, alimenté par doCheckAllSync) restait
+  // donc figé sur son dernier état jusqu'au prochain tic — qui pouvait
+  // tarder longtemps, voire jamais vraiment reprendre normalement tant que
+  // l'appli restait en arrière-plan (retour utilisateur : "le statut du
+  // serveur ne s'actualise pas sur mobile"). Même principe déjà utilisé
+  // pour authRefreshMe() (js/auth.js) et la vérification de mise à jour du
+  // Service Worker (js/pwa.js).
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible' && _syncInterval) doCheckAllSync();
+  });
+
   // ── Sync vers serveur ─────────────────────────────────────────────
   // Renvoie true/false selon le succès réel de l'envoi — auparavant la
   // fonction avalait silencieusement toute erreur (token expiré, rejet
