@@ -1080,14 +1080,64 @@
     // une deuxième.
     if(document.getElementById('_discardConfirmPopup')) return;
 
+    // Affiche la confirmation "Annuler la saisie" et n'exécute onDiscard
+    // que si l'utilisateur confirme vouloir tout perdre — factorisé pour
+    // être réutilisé par les deux cas ci-dessous (fermeture complète de la
+    // fenêtre, et retour à la vue verrouillée d'une demande en cours de
+    // révision), qui ne font pas la même chose une fois confirmé.
+    function showDiscardConfirmPopup(onDiscard){
+      var popup = document.createElement('div');
+      popup.id = '_discardConfirmPopup';
+      popup.style.cssText =
+        'position:fixed;inset:0;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
+
+      popup.innerHTML =
+       '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
+
+          '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">Annuler la saisie</div>' +
+
+          '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Les informations saisies seront perdues.</div>' +
+
+          '<div style="display:flex;flex-direction:column;gap:8px;">' +
+
+           '<button id="_keepEditing" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#1e293b;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Continuer la saisie</strong> — revenir au formulaire</button>' +
+
+            '<button id="_discardChanges" style="padding:10px 14px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Annuler la saisie</strong> — fermer sans enregistrer</button>' +
+
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(popup);
+
+      popup.querySelector('#_keepEditing').addEventListener('click', function(){
+        document.body.removeChild(popup);
+      });
+
+      popup.querySelector('#_discardChanges').addEventListener('click', function(){
+        document.body.removeChild(popup);
+        onDiscard();
+      });
+    }
+
     // Annuler depuis l'édition déverrouillée d'une demande : revenir à la
     // vue verrouillée de CETTE MÊME demande (annule les modifs, sans les
     // sauvegarder) plutôt que fermer toute la fenêtre — "Annuler" doit
     // annuler l'édition, pas quitter la consultation (retour utilisateur).
     // Avant resetProposeModeUI()/resetReviewModeUI() : on reste en mode
     // revue, ces fonctions ne doivent donc pas s'exécuter ici.
+    // hasUnsavedInput() gardait ce cas de côté auparavant : "Annuler"
+    // effaçait la saisie SANS confirmation dès qu'on éditait une demande
+    // reçue (retour utilisateur : "quand j'édite une demande, Annuler
+    // supprime tout") — désormais alignée sur le même filet de sécurité que
+    // la création/modification normale d'un produit juste en dessous.
     if(window._reviewMode && window._reviewLocked === false && window._reviewItem){
-      window._openReviewModal(window._reviewItem, window._reviewUser, true);
+      if(!hasUnsavedInput()){
+        window._openReviewModal(window._reviewItem, window._reviewUser, true);
+        return;
+      }
+      showDiscardConfirmPopup(function(){
+        window._openReviewModal(window._reviewItem, window._reviewUser, true);
+      });
       return;
     }
 
@@ -1110,36 +1160,9 @@
     return;
     }
 
-    var popup = document.createElement('div');
-    popup.id = '_discardConfirmPopup';
-    popup.style.cssText =
-      'position:fixed;inset:0;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;';
-
-    popup.innerHTML =
-     '<div style="background:#fff;border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
-
-        '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">Annuler la saisie</div>' +
-
-        '<div style="font-size:13px;color:#64748b;margin-bottom:20px;">Les informations saisies seront perdues.</div>' +
-
-        '<div style="display:flex;flex-direction:column;gap:8px;">' +
-
-         '<button id="_keepEditing" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#1e293b;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Continuer la saisie</strong> — revenir au formulaire</button>' +
-
-          '<button id="_discardChanges" style="padding:10px 14px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;"><strong>Annuler la saisie</strong> — fermer sans enregistrer</button>' +
-
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(popup);
-
-    popup.querySelector('#_keepEditing').addEventListener('click', function(){
-      document.body.removeChild(popup);
-    });
-
-    popup.querySelector('#_discardChanges').addEventListener('click', function(){
-      document.body.removeChild(popup);
+    showDiscardConfirmPopup(function(){
       closeModal();
+      if(wasReviewingFromRequestsList && typeof _reqRevealPanel === 'function') _reqRevealPanel();
     });
   }
   // ── Logique suggestions autocomplete ────────────────────────────
