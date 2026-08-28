@@ -2383,6 +2383,26 @@
       if(!result.ref)   result.ref   = txt(['.keyAttribute','[class*="stock-no"]','[class*="part-number"]']);
       if(!result.supplier && !result.brand) result.supplier = 'RS Components';
     }
+    if(hostname.includes('automation24')){
+      if(!result.supplier) result.supplier = 'Automation24';
+      // La page ne marque en structuré (itemprop="sku") QUE le numéro
+      // d'article INTERNE Automation24 (ex. "104356", "101561") — jamais la
+      // référence du fabricant, qui n'apparaît qu'en texte libre dans le
+      // titre, toujours au format "<catégorie> <marque> <référence>" (vérifié
+      // en vrai : "Capteur inductif Datasensing AK1/AP-3A" → AK1/AP-3A,
+      // "Capteur de pression WIKA A-10 - 12824837" → A-10 - 12824837) —
+      // retour utilisateur : "j'arrive pas à extraire les data produit". On
+      // retire donc la marque (déjà connue à ce stade) et tout ce qui la
+      // précède pour isoler la vraie référence, en écrasant le numéro
+      // interne récupéré plus haut par le repli générique itemprop="sku".
+      if(result.name && result.brand){
+        var a24BrandIdx = result.name.toLowerCase().lastIndexOf(result.brand.toLowerCase());
+        if(a24BrandIdx !== -1){
+          var a24AfterBrand = result.name.slice(a24BrandIdx + result.brand.length).replace(/^[\s\-:]+/, '').trim();
+          if(a24AfterBrand) result.ref = a24AfterBrand;
+        }
+      }
+    }
     if(hostname.includes('sonepar')){
       // Référence fournisseur
       if(!result.ref){
@@ -2491,7 +2511,30 @@
           }
           pAncestor = pAncestor.parentElement;
         }
-        if(!inCarousel){ priceEl = pEl; break; }
+        if(inCarousel) continue;
+        // Ignore les prix "de comparaison" (barré, pourcentage d'économie…) :
+        // jamais le prix effectivement facturé — vérifié en vrai sur
+        // Automation24, qui affiche à la fois un badge "-19 %" (class
+        // "price-saving") et le prix barré non remisé (class "priceUVP")
+        // AVANT le vrai prix (class "price" tout court) dans l'ordre du DOM.
+        var pCls2 = (pEl.className || '').toString();
+        if(/saving|uvp|old|strike|barre|rrp|msrp|was[-_]?price|regular[-_]?price/i.test(pCls2)) continue;
+        var pRaw = pEl.getAttribute('content') || pEl.textContent || '';
+        // Doit ressembler à un vrai prix (symbole monétaire, ou attribut
+        // "content" numérique façon microdonnées itemprop="price") — sinon
+        // un badge sans rapport comme "-19 %" passe le filtre ci-dessus tout
+        // en n'étant pas non plus à 0 (retour utilisateur, même cas).
+        var hasCurrency = !!pEl.getAttribute('content') || /(€|\$|£|EUR|USD|GBP)/i.test(pRaw);
+        if(!hasCurrency) continue;
+        // Ignore un prix à 0 : jamais le vrai prix d'une fiche produit, mais
+        // souvent celui d'un widget sans rapport présent plus haut dans le
+        // DOM — ex. le total du mini-panier dans l'en-tête, à 0,00 € tant
+        // que le panier est vide (retour utilisateur, Automation24 : premier
+        // [class*="price"] de la page = ce mini-panier, jamais le prix
+        // affiché de l'article recherché).
+        var pNum = parseFloat(pRaw.replace(/\s/g,'').replace(',', '.'));
+        if(!isNaN(pNum) && pNum === 0) continue;
+        priceEl = pEl; break;
       }
       if(priceEl){
         var ptxt = priceEl.getAttribute('content') || priceEl.textContent;
