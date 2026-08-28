@@ -2032,7 +2032,7 @@
   if(btnReviewRefuseEl) btnReviewRefuseEl.addEventListener('click', async function(){
     if(!window._reviewItem) return;
     btnReviewRefuseEl.disabled = true;
-    var ok = await window.reqRefuse(window._reviewItem.ref, window._reviewUser);
+    var ok = await window.reqRefuse(window._reviewItem.ref, window._reviewUser, (window._reviewItem.data || {}).id);
     btnReviewRefuseEl.disabled = false;
     if(ok){
       showToast('Demande refusée', 'ok', 2500);

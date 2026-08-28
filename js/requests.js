@@ -161,14 +161,33 @@
   };
 
   // ── Annuler une demande ───────────────────────────────────────
-  window.reqCancel = async function(ref){
+  // id : identifiant propre de la demande — voir commentaire équivalent sur
+  // reqRefuse ci-dessous. Même repli si absent (compat arrière).
+  window.reqCancel = async function(ref, id){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     var user = reqCurrentUser(); if(!user) return false;
     var username = user.username || user.name || 'user';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
+      if(!id){
+        try {
+          var rId = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
+          if(rId.ok){
+            var dId = await rId.json();
+            id = (dId.items && dId.items[0] && dId.items[0].data && dId.items[0].data.id) || '';
+          }
+        } catch(eId){}
+      }
+      // /deleteDatasReq ne prend QUE id désormais (confirmé avec le
+      // développeur serveur — ref/user ne servaient plus qu'à le retrouver
+      // ci-dessus quand il manquait).
+      var r = await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
+      // Même id que /deleteDatasReq ci-dessus (confirmé avec le développeur
+      // serveur) — aucun id distinct par document n'est jamais suivi côté
+      // client pour ce flux (contrairement aux rapports de bug, qui ont leur
+      // propre attachmentId), les documents restent adressés par ref+user
+      // de la demande elle-même.
+      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(username), { method:'DELETE', headers:h }).catch(function(){});
       return r.ok;
     } catch(e) { return false; }
   };
@@ -268,8 +287,11 @@
       // silencieusement à l'acceptation (retour utilisateur : les fichiers
       // joints doivent suivre le produit une fois validé, pas se perdre).
       await _reqMigrateDocsToProduct(ref, user, item.ref || ref);
-      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
+      // id de la demande (pas celui du produit une fois accepté, item.id
+      // reste celui d'origine à ce stade) — /deleteDatasReq ne prend QUE
+      // id désormais (confirmé avec le développeur serveur).
+      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(item.id || ''), { method:'DELETE', headers:hGet });
+      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(item.id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:hGet }).catch(function(){});
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
   };
@@ -431,12 +453,27 @@
   };
 
   // ── Refuser une demande ───────────────────────────────────────
-  window.reqRefuse = async function(ref, user){
+  // id : identifiant propre de la demande (champ "id" du payload soumis par
+  // reqSubmit). /deleteDatasReq ne prend QUE id désormais (confirmé avec le
+  // développeur serveur) — /deleteDocsReq garde ref+user en plus (adressage
+  // par demande, aucun id distinct par document). Optionnel pour
+  // compatibilité arrière : si absent (appelant pas encore mis à jour), on
+  // le récupère nous-mêmes.
+  window.reqRefuse = async function(ref, user, id){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      await fetch(sUrl + '/deleteDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h });
-      await fetch(sUrl + '/deleteDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
+      if(!id){
+        try {
+          var rId = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
+          if(rId.ok){
+            var dId = await rId.json();
+            id = (dId.items && dId.items[0] && dId.items[0].data && dId.items[0].data.id) || '';
+          }
+        } catch(eId){}
+      }
+      await fetch(sUrl + '/deleteDatasReq?id=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
+      await fetch(sUrl + '/deleteDocsReq?id=' + encodeURIComponent(id || '') + '&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { method:'DELETE', headers:h }).catch(function(){});
       return true;
     } catch(e) { return false; }
   };
@@ -771,13 +808,14 @@
           +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
           +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
           + '</div>'
-          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
+          + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-id="' + escapeHtml(data.id || '') + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
       }
       body.innerHTML = items.map(renderMineItem).join('');
       body.querySelectorAll('[data-req-cancel]').forEach(function(btn){
         btn.addEventListener('click', async function(){
           var ref = btn.getAttribute('data-req-cancel');
+          var id = btn.getAttribute('data-req-cancel-id') || '';
           var isBug = btn.getAttribute('data-req-cancel-bug') === '1';
           var attachmentId = btn.getAttribute('data-req-cancel-attachment') || null;
           if(!(await customConfirm('Annuler la demande ?', 'Annuler la demande pour ' + escapeHtml(ref) + ' ?', { okLabel: 'Annuler la demande', danger: true }))) return;
@@ -785,7 +823,7 @@
           // Rapport de bug → API dédiée (reqCancelBug), sinon demande
           // produit classique (reqCancel) — deux stockages désormais
           // distincts côté serveur.
-          var ok = isBug ? await window.reqCancelBug(ref, attachmentId) : await window.reqCancel(ref);
+          var ok = isBug ? await window.reqCancelBug(ref, attachmentId) : await window.reqCancel(ref, id);
           if(ok){ showToast('Demande annulée', 'ok', 2000); reqLoadMineList(type); }
           else { showToast('Erreur', 'err', 3000); btn.disabled = false; }
         });
@@ -1120,7 +1158,7 @@
       for(var i = 0; i < items.length; i++){
         var it = items[i];
         var user = (it.data || {})._reqUser || it.user || '';
-        await window.reqRefuse(it.ref, user);
+        await window.reqRefuse(it.ref, user, (it.data || {}).id);
       }
       showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();
