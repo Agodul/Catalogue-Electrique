@@ -2086,6 +2086,7 @@
     settingsOverlay.style.display = 'flex';
     settingsOverlay.offsetHeight;
     settingsOverlay.classList.add('show');
+    if(typeof window._refreshAppVersionInfo === 'function') window._refreshAppVersionInfo();
   }
   function closeSettingsOverlay(){
     settingsOverlay.classList.remove('show');

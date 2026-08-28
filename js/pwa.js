@@ -11,6 +11,48 @@
       window.location.pathname + (_swCleanQs ? '?' + _swCleanQs : '') + window.location.hash);
   }
 
+  // ── Version installée (affichée dans Réglages) ─────────────────────
+  // Retour utilisateur : pouvoir vérifier soi-même si la dernière version
+  // du Service Worker est bien chargée, sans passer par les outils
+  // développeur. "Version installée" = nom du cache actuellement ouvert
+  // par le SW réellement aux commandes (caches.keys() reflète l'état
+  // réel du navigateur, indépendamment de tout ce qu'affiche le code —
+  // activate() dans sw.js supprime tout cache autre que l'actif, donc un
+  // seul nom "spi-catalogue-v…" doit normalement subsister). Comparée à
+  // la dernière version réellement déployée, récupérée via un fetch de
+  // sw.js qui ignore le cache HTTP du navigateur — même raison que
+  // { cache: 'reload' } au préchargement dans sw.js : sans ça, la
+  // comparaison pourrait se faire contre une copie de sw.js elle-même
+  // périmée dans le cache HTTP (max-age=600 sur GitHub Pages).
+  window._refreshAppVersionInfo = async function(){
+    var activeEl   = document.getElementById('appVersionActive');
+    var updateRow  = document.getElementById('appVersionUpdateRow');
+    if(!activeEl) return;
+    activeEl.textContent = '…';
+    if(updateRow) updateRow.style.display = 'none';
+
+    var activeVersion = null;
+    try{
+      if('caches' in window){
+        var keys = await caches.keys();
+        var swKey = keys.find(function(k){ return k.indexOf('spi-catalogue-v') === 0; });
+        if(swKey) activeVersion = swKey.slice('spi-catalogue-v'.length);
+      }
+    }catch(e){}
+    activeEl.textContent = activeVersion || 'inconnue';
+
+    try{
+      var r = await fetch('sw.js', { cache: 'reload' });
+      if(r.ok){
+        var text = await r.text();
+        var m = text.match(/spi-catalogue-v(\d+)/);
+        if(m && activeVersion && m[1] !== activeVersion && updateRow){
+          updateRow.style.display = 'flex';
+        }
+      }
+    }catch(e){}
+  };
+
   // ── Enregistrement du service worker ──────────────────────────────
   // Sans cet appel, sw.js n'est jamais activé : ni le cache hors-ligne,
   // ni l'interception de /share-target (partage natif Android) ne fonctionnent.

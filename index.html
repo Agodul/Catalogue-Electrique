@@ -387,6 +387,19 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
+
+      <!-- Version installée (service worker) — retour utilisateur : pouvoir
+           vérifier soi-même si la dernière version est bien chargée, sans
+           passer par les outils développeur. -->
+      <div id="appVersionInfo" style="margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-size:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;color:var(--ink-soft);">
+          <span>Version installée</span>
+          <span id="appVersionActive" style="font-weight:600;color:var(--ink);font-family:monospace;">—</span>
+        </div>
+        <div id="appVersionUpdateRow" style="display:none;align-items:center;gap:5px;margin-top:6px;color:#B45309;font-weight:600;">
+          <i class="ti ti-alert-triangle" style="font-size:13px;"></i> Nouvelle version disponible — voir le bandeau "Mettre à jour"
+        </div>
+      </div>
     </div>
 
     <!-- Sous-page Serveur -->

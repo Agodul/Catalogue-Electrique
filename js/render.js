@@ -892,7 +892,16 @@ function _productBadgesCompactHtml(p){
     e.stopPropagation();
     vmInfoMenu.classList.toggle('open');
   });
-  document.addEventListener('click', function(e){
+  // Sur viewOverlay (pas document) : viewOverlay a son propre clic qui
+  // appelle stopPropagation() sur TOUT clic (voir _initModalEscape dans
+  // js/init.js, pour qu'un clic dans le vide ne ferme jamais la fiche par
+  // erreur) — un listener sur document ne recevait donc JAMAIS aucun clic
+  // tant que la fiche produit était ouverte, et le menu du ⓘ ne se
+  // fermait jamais en cliquant ailleurs sur la fiche (retour utilisateur).
+  // Un 2e listener sur le même élément (viewOverlay) continue de
+  // s'exécuter normalement, stopPropagation() ne bloquant que la
+  // remontée vers les ANCÊTRES, pas les autres écouteurs du même élément.
+  viewOverlay.addEventListener('click', function(e){
     if(!vmInfoMenu.contains(e.target) && e.target!==vmInfoBtn){
       vmInfoMenu.classList.remove('open');
     }
