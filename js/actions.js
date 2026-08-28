@@ -855,6 +855,21 @@
   // été synchronisé alors que rien n'était arrivé côté serveur.
   async function pushToServer(changedProducts){
     if(!serverUrl) return true;
+    // Un tableau explicitement VIDE veut dire "rien à repousser" — à ne pas
+    // confondre avec `undefined` (repli volontaire sur tout le catalogue,
+    // réservé aux flux bulk qui ne renseignent pas ce paramètre). Sans cette
+    // distinction, passer [] retombait sur ce même repli "tout le
+    // catalogue" — dangereux dès qu'un appel légitime n'a justement RIEN à
+    // envoyer : dans syncFromServer(), recevoir un produit inconnu en local
+    // (compte resté longtemps sans synchroniser) déclenchait ce repli, donc
+    // un envoi de la TOTALITÉ du catalogue local — avec createdAt forcé à
+    // "maintenant" sur chaque élément juste en dessous, ce qui écrasait
+    // silencieusement, sur le serveur, les modifications récentes d'autrui
+    // par les anciennes valeurs de ce vieux catalogue local (retour
+    // utilisateur : "un compte avec des perme[ssions] pour ajouter un
+    // produit se connecte avec un vieux catalogue, ça envoie [tout] sur le
+    // serveur").
+    if(Array.isArray(changedProducts) && changedProducts.length === 0) return true;
     try{
       // `changedProducts` : sous-ensemble réellement modifié (voir save() dans
       // storage.js) — n'envoyer que ça au lieu de tout le catalogue à chaque
@@ -1327,7 +1342,16 @@
         // reste en mémoire jusqu'au prochain rechargement de page, sans
         // jamais être sauvegardée (retour utilisateur : creusé en répondant
         // à "j'ai encore trop de problèmes de conflit").
-        save(true, added > 0 ? undefined : sugMergedProducts);
+        // Toujours borner à sugMergedProducts (jamais undefined) : les
+        // produits "added" viennent d'être reçus TELS QUELS du serveur — les
+        // repousser serait un aller-retour inutile, et surtout, undefined
+        // fait basculer pushToServer() sur la TOTALITÉ du catalogue local
+        // (voir le commentaire détaillé dans pushToServer, storage.js/
+        // actions.js — retour utilisateur : vieux catalogue local repoussé en
+        // entier et écrasant des modifs récentes d'autrui). sugMergedProducts
+        // reste [] si rien à fusionner : pushToServer() traite désormais un
+        // tableau vide comme "rien à envoyer", pas comme un repli bulk.
+        save(true, sugMergedProducts);
         var isModalOpen = document.body.classList.contains('modal-open');
         if(isModalOpen){
           if(added > 0 && !silent) showToast(added+' nouveau(x) produit(s) reçu(s) du serveur ✓', 'ok', 3000);
