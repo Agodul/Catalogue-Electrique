@@ -1403,10 +1403,65 @@
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#2a2a2a;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-        <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;flex-shrink:0;"></i>
+        <!-- Icône adaptée au type de fichier (PDF/image) — voir
+             _pdfUpdateTypeIcon dans js/render.js, retour utilisateur :
+             "faut que l'icône de la visionneuse s'adapte au fichier". -->
+        <i id="pdfViewerTypeIcon" class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;flex-shrink:0;"></i>
         <span id="pdfViewerTitle" style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       </div>
+      <!-- Rechercher dans le document — retour utilisateur : "est-ce qu'on
+           peut faire des recherches sur un pdf ?". Toujours affiché (pas
+           conditionné au nombre de pages, contrairement à la nav de page) ;
+           masqué uniquement pour une image (voir _pdfUpdateSearchUI dans
+           js/render.js — une image n'a pas de texte à chercher). -->
+      <button id="pdfViewerSearchToggle" title="Rechercher dans le document" aria-label="Rechercher dans le document" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 6px;line-height:1;display:flex;align-items:center;flex-shrink:0;margin:0 4px;"><i class="ti ti-search" aria-hidden="true"></i></button>
+      <!-- Navigation page — PDF multi-pages uniquement (masqué pour un PDF
+           d'1 seule page ou une image, voir _pdfUpdatePageNavUI dans
+           js/render.js). Chevrons haut/bas (pas gauche/droite) : les pages
+           s'empilent verticalement dans #pdfViewerScroll, "suivant" fait
+           donc défiler vers le bas — retour utilisateur : "numéro de page /
+           navigation" sur les PDF multi-pages. Le numéro courant est un
+           champ saisissable (pas juste affiché) — retour utilisateur : "est
+           qu'on peut rentrer le numéro d'une page ?" — Entrée ou perte de
+           focus saute directement à la page tapée (voir _pdfJumpFromInput
+           dans js/render.js), une saisie invalide/hors bornes revient
+           simplement sur la page réelle plutôt que de planter. -->
+      <div id="pdfViewerPageNav" style="display:none;align-items:center;gap:3px;flex-shrink:0;margin:0 6px;">
+        <button id="pdfViewerPrevPage" title="Page précédente" aria-label="Page précédente" style="background:none;border:none;font-size:17px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+        <input id="pdfViewerPageInput" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="Aller à la page" style="width:26px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:4px;color:#fff;font-size:12px;text-align:center;padding:3px 2px;font-variant-numeric:tabular-nums;font-family:inherit;">
+        <span id="pdfViewerPageTotal" style="font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;font-variant-numeric:tabular-nums;"></span>
+        <button id="pdfViewerNextPage" title="Page suivante" aria-label="Page suivante" style="background:none;border:none;font-size:17px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+      </div>
+      <!-- Zoom — jusqu'ici uniquement possible au pincement tactile (mobile),
+           donc inaccessible à la souris/au trackpad sur desktop (retour
+           utilisateur : "il y a que tout mobile"). Boutons +/- réutilisant
+           exactement le même mécanisme de zoom que le pincement
+           (_pdfSetZoom/_pdfSharpenPages, voir js/render.js), ancrés sur le
+           centre de la zone visible plutôt que le point du doigt (qui
+           n'existe pas au clic). Toujours affiché (contrairement à la nav
+           de page, pas conditionné au nombre de pages) — pertinent même
+           sur un document d'1 page ou une image. -->
+      <div id="pdfViewerZoomControls" style="display:flex;align-items:center;gap:2px;flex-shrink:0;margin:0 6px;">
+        <button id="pdfViewerZoomOut" title="Zoom arrière" aria-label="Zoom arrière" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-zoom-out" aria-hidden="true"></i></button>
+        <span id="pdfViewerZoomLabel" style="font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;min-width:38px;text-align:center;font-variant-numeric:tabular-nums;">100%</span>
+        <button id="pdfViewerZoomIn" title="Zoom avant" aria-label="Zoom avant" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-zoom-in" aria-hidden="true"></i></button>
+        <!-- Réinitialiser le zoom à 100% en un clic — retour utilisateur :
+             "est-ce qu'on peut ajouter un bouton pour reset le zoom ?".
+             Désactivé quand déjà à 100% (rien à réinitialiser). -->
+        <button id="pdfViewerZoomReset" title="Réinitialiser le zoom (100%)" aria-label="Réinitialiser le zoom" style="background:none;border:none;font-size:15px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;margin-left:2px;"><i class="ti ti-zoom-reset" aria-hidden="true"></i></button>
+      </div>
       <button id="pdfViewerClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:rgba(255,255,255,.6);padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
+    </div>
+    <!-- Barre de recherche — masquée par défaut, affichée en cliquant sur
+         la loupe ci-dessus. Entrée = résultat suivant, Échap = fermer (voir
+         _initPdfSearch dans js/render.js). -->
+    <div id="pdfViewerSearchBar" style="display:none;align-items:center;gap:6px;padding:8px 16px;background:#232323;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
+      <i class="ti ti-search" style="color:rgba(255,255,255,.4);font-size:14px;flex-shrink:0;" aria-hidden="true"></i>
+      <input id="pdfViewerSearchInput" type="text" placeholder="Rechercher dans le document…" autocomplete="off" style="flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:13px;padding:6px 10px;font-family:inherit;">
+      <span id="pdfViewerSearchCount" style="font-size:12px;color:rgba(255,255,255,.55);white-space:nowrap;min-width:56px;text-align:center;font-variant-numeric:tabular-nums;"></span>
+      <button id="pdfViewerSearchPrev" title="Occurrence précédente" aria-label="Occurrence précédente" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+      <button id="pdfViewerSearchNext" title="Occurrence suivante" aria-label="Occurrence suivante" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+      <button id="pdfViewerSearchClose" title="Fermer la recherche" aria-label="Fermer la recherche" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-x" aria-hidden="true"></i></button>
     </div>
     <!-- Loader -->
     <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:14px;">

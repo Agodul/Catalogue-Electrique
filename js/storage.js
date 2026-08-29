@@ -600,9 +600,8 @@
       // (le bandeau est régénéré à chaque rendu, un listener direct posé
       // ici serait perdu au rendu suivant).
       html += '<div class="active-filter-banner">'
-        + '<span class="active-filter-title">'+escapeHtml(activeFamily || activeBrand)
-        + '<button class="active-filter-close" title="Retour à l\'accueil" aria-label="Retour à l\'accueil">&times;</button>'
-        + '</span>'
+        + '<button class="active-filter-close" title="Retour à l\'accueil" aria-label="Retour à l\'accueil"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>'
+        + '<span class="active-filter-title">'+escapeHtml(activeFamily || activeBrand)+'</span>'
         + '</div>';
     }
 
