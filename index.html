@@ -51,7 +51,34 @@
   </style>
 
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com https:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
+<!-- ── Content-Security-Policy ──────────────────────────────────────────
+     script-src NE CONTIENT PLUS 'unsafe-inline'. C'est la directive qui
+     compte vraiment ici : sans elle, une chaîne HTML mal échappée quelque
+     part (ou une URL javascript: glissée dans un champ produit) devient du
+     code exécuté ; avec elle, le navigateur refuse. Pour y arriver, tous les
+     attributs onclick/onerror/onended du projet ont été remplacés par de
+     vrais écouteurs (voir le repli d'images dans js/popup.js et le contrôle
+     automatique dans tools/check.mjs), et l'unique script inline restant —
+     celui du splash, juste après <body> — est autorisé par son EMPREINTE.
+
+     ⚠ Cette empreinte porte sur le contenu exact du script inline : modifier
+     ce script d'un seul caractère sans recalculer le sha256 le fait taire
+     silencieusement (le splash resterait affiché). `node tools/check.mjs`
+     vérifie que les deux concordent et affiche la bonne valeur si besoin.
+
+     Les deux jokers restants sont volontaires, et pas remplaçables par une
+     liste fermée :
+       img-src https:      les photos produit pointent vers les sites des
+                           fournisseurs, un domaine différent par marque.
+       connect-src https:  l'adresse du serveur métier est saisie par
+                           l'utilisateur dans les Réglages (cat_server_url),
+                           elle n'est donc pas connue à l'écriture de cette
+                           ligne. Les trois proxys CORS sont malgré tout
+                           nommés explicitement, pour documenter qui reçoit
+                           les URL fournisseur consultées.
+     Ni l'un ni l'autre n'ouvre l'exécution de code : ni une image ni une
+     réponse fetch ne deviennent un script. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com https:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" integrity="sha384-enQOo0dFaqOuACimJrhDH3XtzLk5jDIo5gfCGUvfZWLoiAyi/Jf+Ny5+etklU279" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5.3.0/index.css" integrity="sha384-CriTXMxa9KSWUY4RPeIP7Xe+CI39CEWYo20uac1eZ4erQw31mZTTxvq6xZdWgidR" crossorigin="anonymous">
@@ -84,10 +111,30 @@
 
 </head>
 <body>
-  <script>if(sessionStorage.getItem('app_started')){document.documentElement.style.setProperty('--splash-display','none');}else{document.body.classList.add('splash-active');}</script>
+  <script>(function(){
+  // Splash : masqué d'emblée si l'application a déjà démarré dans cet onglet.
+  if(sessionStorage.getItem('app_started')){
+    document.documentElement.style.setProperty('--splash-display','none');
+  } else {
+    document.body.classList.add('splash-active');
+  }
+  // Fin de la vidéo : un écouteur en phase de CAPTURE sur document, à la place
+  // de l'ancien onended="…" porté par la balise <video>. L'événement 'ended'
+  // ne remonte pas (pas de bulle), mais il descend bien la phase de capture,
+  // donc ce listener le voit — et il peut être posé ici, AVANT que <video>
+  // n'existe. Plus aucun code exécutable dans un attribut : c'est ce qui
+  // permet à la CSP de refuser 'unsafe-inline' dans script-src.
+  document.addEventListener('ended', function(e){
+    if(!e.target || e.target.tagName !== 'VIDEO') return;
+    var s = document.getElementById('app-splash');
+    if(!s || !s.contains(e.target)) return;
+    s.classList.add('hide');
+    document.body.classList.remove('splash-active');
+    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, 400);
+  }, true);
+})();</script>
   <div id="app-splash">
-    <video autoplay muted playsinline preload="auto"
-      onended="var s=document.getElementById('app-splash');if(s){s.classList.add('hide');document.body.classList.remove('splash-active');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}">
+    <video autoplay muted playsinline preload="auto">
       <source src="assets/splash.mp4" type="video/mp4">
     </video>
   </div>
@@ -987,7 +1034,7 @@
         <div style="font-size:18px;font-weight:700;color:var(--ink);">Aperçu de l'import Excel</div>
         <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;" id="xlsxImportSummary"></div>
       </div>
-      <button onclick="window._closeXlsxImportOverlay();" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
+      <button id="btnCloseXlsxImport" type="button" aria-label="Fermer" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:16px 24px;">
       <div style="overflow-x:auto;">
@@ -999,7 +1046,7 @@
     </div>
     <div style="padding:14px 24px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;align-items:center;">
       <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>
-      <button class="secondary" onclick="window._closeXlsxImportOverlay();">Annuler</button>
+      <button class="secondary" type="button" id="btnCancelXlsxImport">Annuler</button>
       <button class="copper" id="btnConfirmXlsxImport">✓ Confirmer l'import</button>
     </div>
   </div>

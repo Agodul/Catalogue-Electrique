@@ -58,9 +58,20 @@
   var _specsRows = []; // [{key, value}] — caractéristiques techniques libres
   var fTags             = document.getElementById('fTags');
   var tagSuggestionsEl  = document.getElementById('tagSuggestions');
+  // Icône de famille — état PARTAGÉ avec le sélecteur d'icônes de
+  // js/actions.js (_setFamilyIconPreview, iconPickerModal…). Aucun script
+  // n'étant encapsulé, tout se joue dans une portée globale unique : ces deux
+  // variables étaient déclarées une seconde fois en bas de js/actions.js, ce
+  // qui n'en créait pas de nouvelles mais RÉÉCRIVAIT celles-ci au chargement.
+  // Ça ne fonctionnait que parce que actions.js se charge après modal.js et
+  // imposait donc sa valeur — la bonne, 'svg-generique' ; la valeur ci-dessous
+  // était 'ti-package', un nom d'icône Tabler qui n'existe plus depuis le
+  // passage aux images assets/icons/families/svg-*.png (voir familyIcons.js).
+  // Inverser les deux balises <script> dans index.html aurait donc suffi à
+  // enregistrer tous les produits avec une icône introuvable. Déclaré une
+  // seule fois, ici, dans le fichier chargé en premier.
   var familyIconRow     = document.getElementById('familyIconRow');
-  var familyIconPreviewI= document.getElementById('familyIconPreviewI');
-  var selectedFamilyIcon= 'ti-package';
+  var selectedFamilyIcon = 'svg-generique';
 
   // ── Suggestions de tags depuis la description ───────────────────────
   var TAG_STOPWORDS = ['pour','avec','sans','dans','entre','vers','sous','chez',
@@ -157,7 +168,7 @@
     pendingPhotos.forEach(function(url, idx){
       var thumb = document.createElement('div');
       thumb.className = 'photo-gallery-thumb' + (idx === 0 ? ' selected' : '');
-      thumb.innerHTML = '<img src="'+escapeHtml(url)+'" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+      thumb.innerHTML = '<img src="'+escapeHtml(url)+'" loading="lazy" data-fallback="hide-parent">'
                       + '<span class="thumb-check">✓</span>';
       thumb.addEventListener('click', function(){
         photoGalleryGrid.querySelectorAll('.photo-gallery-thumb').forEach(function(t){ t.classList.remove('selected'); });
@@ -1174,7 +1185,7 @@
       var p = prods.find(function(x){ return x.ref === ref; });
       var visible = _sugHidden.indexOf(ref) === -1;
       var thumb = p && p.photo
-        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" data-fallback="photo-icon">'
         : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
       // Case à cocher : affiche/masque cette suggestion SUR CETTE FICHE
       // uniquement, sans casser la liaison (réversible en un clic, contraire
@@ -1233,7 +1244,7 @@
     if(!results.length){ fSuggestionsDrop.style.display='none'; return; }
     fSuggestionsDrop.innerHTML = results.map(function(p){
       var thumb = p.photo
-        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" data-fallback="hide-self">'
         : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
       return '<div class="autocomplete-item sug-drop-item" data-ref="'+escapeHtml(p.ref)+'">'
         + '<div class="sug-drop-thumb">'+thumb+'</div>'
@@ -1326,7 +1337,7 @@
       var p = prods.find(function(x){ return x.ref === ref; });
       var visible = _sparePartsHidden.indexOf(ref) === -1;
       var thumb = p && p.photo
-        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" data-fallback="photo-icon">'
         : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
       return '<div class="sug-linked-item'+(visible?'':' sug-linked-item-hidden')+'" data-ref="'+escapeHtml(ref)+'"'+(canEdit?' draggable="true" title="Glisser vers l\'autre liste pour déplacer"':'')+'>'
         + '<div class="sug-drop-thumb">'+thumb+'</div>'
@@ -1377,7 +1388,7 @@
     if(!results.length){ fSparePartsDrop.style.display='none'; return; }
     fSparePartsDrop.innerHTML = results.map(function(p){
       var thumb = p.photo
-        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+        ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" data-fallback="hide-self">'
         : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
       return '<div class="autocomplete-item sug-drop-item" data-ref="'+escapeHtml(p.ref)+'">'
         + '<div class="sug-drop-thumb">'+thumb+'</div>'
@@ -1633,7 +1644,7 @@
         + items.map(function(p){
             var selected = _sugPickerSelected.indexOf(p.ref) !== -1;
             var thumb = p.photo
-              ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+              ? '<img src="'+escapeHtml(p.photo)+'" alt="" loading="lazy" data-fallback="hide-self">'
               : '<span class="sug-drop-nophoto"><i class="ti ti-photo-off"></i></span>';
             return '<div class="sug-picker-item'+(selected?' selected':'')+'" data-ref="'+escapeHtml(p.ref)+'">'
               + '<div class="sug-drop-thumb">'+thumb+'</div>'
@@ -2088,58 +2099,6 @@
   document.getElementById('btnAdd').addEventListener('click', function(){ openModal(null); });
   document.getElementById('btnFabAdd').addEventListener('click', function(){ openModal(null); });
 
-  // Loupe FAB — ouvre une zone de recherche flottante sur place
-  var fabSearchBox   = document.getElementById('fabSearchBox');
-  var fabSearchInput = document.getElementById('fabSearchInput');
-  var fabSearchClose = document.getElementById('fabSearchClose');
-  if(!fabSearchBox){ fabSearchBox = { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } } }; }
-  if(!fabSearchInput){ fabSearchInput = { value:'', addEventListener:function(){}, focus:function(){} }; }
-  if(!fabSearchClose){ fabSearchClose = { addEventListener:function(){} }; }
-
-
-  function switchToCatalogueIfHome(){
-    var homePage = document.getElementById('homePage');
-    var catalogueWrap = document.getElementById('catalogueWrap');
-    var hdrCountChip = document.getElementById('hdrCountChip');
-    if(homePage && !homePage.classList.contains('hidden')){
-      homePage.classList.add('hidden');
-      if(catalogueWrap) catalogueWrap.style.display = '';
-      if(hdrCountChip) hdrCountChip.style.display = '';
-    }
-  }
-  var btnFabSearchEl = document.getElementById('btnFabSearch') || { classList:{ add:function(){}, remove:function(){}, contains:function(){ return false; } }, addEventListener:function(){} };
-  if(btnFabSearchEl) btnFabSearchEl.addEventListener('click', function(){
-    if(fabSearchBox.classList.contains('open') && !fabSearchInput.value.trim()){
-      fabSearchBox.classList.remove('open');
-      btnFabSearchEl.classList.remove('search-open');
-    } else {
-      fabSearchBox.classList.add('open');
-      btnFabSearchEl.classList.add('search-open');
-      fabSearchInput.focus();
-      // Basculer vers le catalogue si on est sur la home
-      switchToCatalogueIfHome();
-    }
-  });
-  fabSearchClose.addEventListener('click', function(){
-    fabSearchBox.classList.remove('open');
-    btnFabSearchEl.classList.remove('search-open');
-    fabSearchInput.value = '';
-    searchInputEl.value = '';
-    render();
-  });
-  fabSearchInput.addEventListener('input', function(){
-    searchInputEl.value = fabSearchInput.value;
-    switchToCatalogueIfHome();
-    render();
-  });
-  fabSearchInput.addEventListener('keydown', function(e){
-    if(e.key === 'Enter'){
-      if(getFilteredProducts().length > 0){
-        fabSearchBox.classList.remove('open');
-        btnFabSearchEl.classList.remove('search-open');
-      }
-    }
-  });
   document.getElementById('modalClose').addEventListener('click', requestCloseModal);
   document.getElementById('btnCancel').addEventListener('click', requestCloseModal);
 
@@ -2241,7 +2200,7 @@
 
   function updatePhotoPreview(){
     if(fPhoto.value.trim()){
-      photoPreview.innerHTML = '<img src="'+escapeHtml(fPhoto.value.trim())+'" onerror="this.parentElement.innerHTML=\'<span class=&quot;hint sans&quot; style=&quot;padding:6px;text-align:center;&quot;>image introuvable</span>\'">';
+      photoPreview.innerHTML = '<img src="'+escapeHtml(fPhoto.value.trim())+'" data-fallback="parent-note">';
     }else{
       photoPreview.innerHTML = '<span class="hint sans" style="padding:6px;text-align:center;">aperçu</span>';
     clearPhotoGallery();

@@ -30,7 +30,6 @@ function _productBadgesCompactHtml(p){
   var viewingId    = null;
   var _viewHistory = []; // pile pour retour suggestion → parent
   var _sugOpen     = false; // mémorise si le carrousel suggestions est ouvert
-  var _viewHistory = []; // pile pour retour suggestion → parent
 
   // ── Copier la référence (délégué une seule fois, le contenu de vmMeta est régénéré à chaque ouverture) ──
   function copyToClipboard(text){
@@ -112,7 +111,7 @@ function _productBadgesCompactHtml(p){
     var vmBadgesHtml = (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')
       + (p.essential ? '<div class="essential-badge" title="Produit essentiel"><i class="ti ti-star-filled"></i> Standard</div>' : '');
     if(p.photo){
-      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;transform:scale(1.12);display:block;" onerror="this.outerHTML=\'<span class=&quot;ph-placeholder&quot;>Image indisponible</span>\'">' + vmBadgesHtml;
+      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;transform:scale(1.12);display:block;" data-fallback="replace-self">' + vmBadgesHtml;
     }else{
       vmPhoto.innerHTML = '<span class="ph-placeholder">Pas de photo</span>' + vmBadgesHtml;
     }
@@ -250,7 +249,7 @@ function _productBadgesCompactHtml(p){
               var sp = prods.find(function(x){ return x.ref === ref; });
               if(!sp) return ''; // produit supprimé
               var photoHtml = sp.photo
-                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" data-fallback="photo-icon">'
                 : '<i class="ti ti-photo-off"></i>';
               return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
                 '<div class="sug-list-photo">'+photoHtml+'</div>'+
@@ -324,7 +323,7 @@ function _productBadgesCompactHtml(p){
               var sp = prods.find(function(x){ return x.ref === ref; });
               if(!sp) return ''; // produit supprimé
               var photoHtml = sp.photo
-                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+                ? '<img src="'+escapeHtml(sp.photo)+'" alt="'+escapeHtml(sp.name||sp.ref)+'" loading="lazy" data-fallback="photo-icon">'
                 : '<i class="ti ti-photo-off"></i>';
               return '<div class="sug-list-item" data-id="'+escapeHtml(sp.id)+'">'+
                 '<div class="sug-list-photo">'+photoHtml+'</div>'+
@@ -1677,7 +1676,7 @@ function _productBadgesCompactHtml(p){
   function renderCard(p){
     var idx = _cardIdx++;
     var photo = p.photo
-      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" onerror="this.style.display=\'none\'; var sp=document.createElement(\'span\'); sp.className=\'ph-placeholder\'; sp.textContent=\'Image indisponible\'; this.parentElement.appendChild(sp);">'
+      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" data-fallback="append-note">'
       : '<span class="ph-placeholder sans">Pas de photo</span>';
     var tags = '';
     var tagItems = [];

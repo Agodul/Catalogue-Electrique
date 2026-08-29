@@ -45,6 +45,18 @@ function authClearUser() {
 }
 
 
+// Longueur minimale d'un mot de passe. UNE seule constante, appliquée aux
+// trois endroits qui en saisissent un (création par un admin, modification
+// d'un compte par un admin, changement par l'utilisateur lui-même) : la
+// création n'exigeait qu'un champ non vide, là où le changement imposait déjà
+// 6 caractères. Un admin pouvait donc créer un compte avec un mot de passe
+// d'un seul caractère, que son titulaire ne pouvait ensuite plus jamais
+// reproduire lui-même. Porté à 8, le plancher courant aujourd'hui.
+// ⚠ Contrôle de confort côté navigateur : il évite une saisie manifestement
+// trop faible, il ne remplace pas la même règle côté serveur, qui est la
+// seule à s'appliquer à une requête forgée.
+var AUTH_PASSWORD_MIN = 8;
+
 function _defaultPermissions(isAdmin) {
   return {
     canEdit:        !!isAdmin,
@@ -343,6 +355,51 @@ async function authCreateUser(userData) {
   } catch(e) { return false; }
 }
 
+// Changement de son PROPRE mot de passe.
+//
+// Le constat, et ce qu'il change : cette action passait par authUpdateUser(),
+// donc par PUT /users/<username> — la route d'ADMINISTRATION des comptes, la
+// même que celle qui sert à cocher « administrateur » ou à modifier les
+// permissions de quelqu'un. Si le serveur autorise un compte à s'éditer
+// lui-même sans filtrer les champs reçus, alors cette route accepte aussi
+// isAdmin et permissions : n'importe quel utilisateur peut se promouvoir
+// administrateur avec une requête forgée.
+//
+// Cette fonction ferme le chemin ACCIDENTEL : le corps envoyé ne peut
+// contenir que { password }, construit ici et jamais fusionné avec un objet
+// venant de l'appelant. Le formulaire ne peut donc plus transporter autre
+// chose par inadvertance, aujourd'hui ou après une refonte.
+//
+// ⚠ Elle ne ferme PAS le chemin DÉLIBÉRÉ : la route reste ouverte côté
+// serveur, et une requête forgée à la main ne passe pas par ce code. Le
+// correctif complet appartient au serveur, qui n'est pas dans ce dépôt :
+//   • soit exposer un POST /me/password (ancien + nouveau mot de passe), et
+//     réserver PUT /users/<username> aux seuls administrateurs ;
+//   • soit, sur PUT /users/<username>, n'accepter d'un compte agissant sur
+//     lui-même qu'une liste blanche de champs — password, displayName — et
+//     ignorer isAdmin comme permissions.
+// Tant que l'un des deux n'est pas fait, la vulnérabilité reste ouverte.
+async function authChangeOwnPassword(username, newPassword) {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token || !username || !newPassword) return false;
+  try {
+    var r = await fetch(sUrl + '/users/' + encodeURIComponent(username), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      // Littéral construit sur place : aucun autre champ ne peut s'y glisser.
+      body: JSON.stringify({ password: String(newPassword) })
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+// Route d'administration des comptes : réservée aux écrans d'administration
+// (créer, modifier, supprimer un utilisateur). Pour changer SON PROPRE mot de
+// passe, passer par authChangeOwnPassword() ci-dessus, jamais par ici.
 async function authUpdateUser(username, data) {
   var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
   var token = authGetToken();
@@ -669,7 +726,6 @@ async function renderUserPage() {
     var serverUsers = await authFetchUsers();
     if (serverUsers) {
       _renderUserList(container, serverUsers, true);
-      _bindAddUserForm(true);
       return;
     }
   }
@@ -765,42 +821,11 @@ function _renderUserList(container, users, isServer) {
   });
 }
 
-function _bindAddUserForm(isServer) {
-  var btn = document.getElementById('btnAddUser');
-  if (!btn) return;
-  var newBtn = btn.cloneNode(true);
-  btn.parentNode.replaceChild(newBtn, btn);
-  newBtn.addEventListener('click', async function() {
-    var username = (document.getElementById('newUserUsername')||{value:''}).value.trim();
-    var display  = (document.getElementById('newUserDisplay')||{value:''}).value.trim();
-    var password = (document.getElementById('newUserPassword')||{value:''}).value;
-    var errEl    = document.getElementById('newUserError');
-    if (!username || !password) {
-      if (errEl) errEl.textContent = 'Identifiant et mot de passe requis.';
-      return;
-    }
-    if (isServer) {
-      var ok = await authCreateUser({
-        username:    username,
-        displayName: display || username,
-        password:    password,
-        isAdmin:     false,
-        permissions: _defaultPermissions(false)
-      });
-      if (ok) {
-        if (errEl) errEl.textContent = '';
-        ['newUserUsername','newUserDisplay','newUserPassword'].forEach(function(id){
-          var el = document.getElementById(id);
-          if (el) el.value = '';
-        });
-        showAuthToast('Utilisateur créé ✓');
-        renderUserPage();
-      } else {
-        if (errEl) errEl.textContent = 'Erreur — identifiant déjà existant ou serveur inaccessible.';
-      }
-    }
-  });
-}
+// L'ancien formulaire d'ajout d'utilisateur inline (#btnAddUser,
+// #newUserUsername, #newUserDisplay, #newUserPassword, #newUserError) a été
+// retiré d'index.html au profit de la fenêtre openAddUserModal() ci-dessous.
+// La fonction qui s'y accrochait sortait donc immédiatement à chaque appel
+// depuis renderUserPage() : supprimée.
 
 function openAddUserModal() {
   var PERM_LIST = [
@@ -874,6 +899,12 @@ function openAddUserModal() {
     if (!username || !password) {
       errEl.textContent = 'Identifiant et mot de passe requis.';
       errEl.style.display = '';
+      return;
+    }
+    if (password.length < AUTH_PASSWORD_MIN) {
+      errEl.textContent = 'Mot de passe : ' + AUTH_PASSWORD_MIN + ' caractères minimum.';
+      errEl.style.display = '';
+      passwordEl.style.border = REQ_BORDER;
       return;
     }
 
@@ -970,6 +1001,15 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     var isAdminNew  = ov.querySelector('#_euAdmin').checked;
     var errEl       = ov.querySelector('#_euError');
 
+    // Champ laissé vide = mot de passe inchangé ; s'il est rempli, il obéit à
+    // la même règle qu'ailleurs (voir AUTH_PASSWORD_MIN).
+    if (passwordNew && passwordNew.length < AUTH_PASSWORD_MIN) {
+      errEl.textContent = 'Mot de passe : ' + AUTH_PASSWORD_MIN + ' caractères minimum.';
+      errEl.style.display = '';
+      ov.querySelector('#_euPassword').style.border = REQ_BORDER;
+      return;
+    }
+
     // Récupérer permissions cochées
     var permsNew = _defaultPermissions(isAdminNew);
     if (!isAdminNew) {
@@ -1044,7 +1084,7 @@ function openChangePasswordModal() {
 
     if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; cpCurrentEl.style.border = REQ_BORDER; return; }
     if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; cpNewEl.style.border = REQ_BORDER; return; }
-    if (pw1.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; cpNewEl.style.border = REQ_BORDER; return; }
+    if (pw1.length < AUTH_PASSWORD_MIN) { errEl.textContent = 'Minimum ' + AUTH_PASSWORD_MIN + ' caractères.'; cpNewEl.style.border = REQ_BORDER; return; }
     if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; cpNewEl.style.border = REQ_BORDER; cpConfirmEl.style.border = REQ_BORDER; return; }
 
     try {
@@ -1056,7 +1096,7 @@ function openChangePasswordModal() {
       if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; cpCurrentEl.style.border = REQ_BORDER; return; }
     } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
 
-    var ok = await authUpdateUser(user.username, { password: pw1 });
+    var ok = await authChangeOwnPassword(user.username, pw1);
     if (ok) {
       document.body.removeChild(ov);
       showAuthToast('Mot de passe modifié ✓');

@@ -4,23 +4,50 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260829155543";
+const CACHE = "spi-catalogue-v20260829170511";
 
+// Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
+// bas), et versionné par leur CONTENU et non par la date du déploiement :
+// elles pèsent 3,3 Mo et ne changent qu'à une montée de version, bien plus
+// rarement que le code de l'application. Les ranger dans le cache principal
+// les aurait fait retélécharger intégralement à CHAQUE déploiement, puisque
+// l'activation purge tout cache dont le nom ne correspond plus. Le numéro
+// ci-dessous est réécrit par ./bump-sw-version.sh à partir d'une empreinte
+// des fichiers eux-mêmes : il ne bouge que s'ils bougent.
+// >>> CACHE_LIBS >>>
+const CACHE_LIBS = "spi-catalogue-libs-4408a0c18815f3b4";
+// <<< CACHE_LIBS <<<
+
+// ── Listes de précache ───────────────────────────────────────────────────
+// GÉNÉRÉES AUTOMATIQUEMENT — ne rien modifier à la main entre les marqueurs
+// « >>> » et « <<< » : ./bump-sw-version.sh réécrit tout ce qui s'y trouve à
+// partir du contenu réel du disque, à chaque déploiement.
+//
+// Cette liste était recopiée à la main, et elle avait dérivé dans les deux
+// sens : elle réclamait un assets/splash-mobile.mp4 qui n'existe pas (404 à
+// chaque installation, absorbé en silence par allSettled), et elle oubliait
+// les cinq bibliothèques auto-hébergées — donc export Excel, export ZIP et
+// visionneuse PDF indisponibles hors ligne tant qu'ils n'avaient pas été
+// utilisés au moins une fois en ligne, ce qui contredit la promesse d'une
+// application installable. `node tools/check.mjs` vérifie désormais que ces
+// listes et le disque disent la même chose.
+//
+// Deux listes, pas une :
+//   FILES          — la coque de l'application (~700 Ko). Téléchargée avant
+//                    que le nouveau service worker ne prenne la main.
+//   FILES_DEFERRED — les bibliothèques lourdes (~3,3 Mo : PDF.js, SheetJS,
+//                    ExcelJS, JSZip). Téléchargées APRÈS l'activation, sans
+//                    la retarder : les faire passer dans l'installation
+//                    ajouterait 3,3 Mo d'attente à chaque mise à jour, pour
+//                    des fonctionnalités qu'on n'ouvre pas à chaque visite.
+
+// >>> FILES >>>
 const FILES = [
   "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./assets/favicon.ico",
   "./assets/apple-touch-icon.png",
+  "./assets/favicon.ico",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
-  "./assets/three-d-badge.png",
-  "./css/styles.css",
-  "./js/popup.js",
-  "./js/actions.js",
-  "./js/auth.js",
-  "./js/armoireConfig.js",
-  "./js/familyIcons.js",
   "./assets/icons/families/svg-accessoire.png",
   "./assets/icons/families/svg-alimentation.png",
   "./assets/icons/families/svg-amplificateur.png",
@@ -76,15 +103,38 @@ const FILES = [
   "./assets/icons/families/svg-variateur.png",
   "./assets/icons/families/svg-ventilateur.png",
   "./assets/icons/families/svg-vision.png",
+  "./assets/splash.mp4",
+  "./assets/three-d-badge.png",
+  "./css/styles.css",
+  "./index.html",
+  "./js/actions.js",
+  "./js/armoireConfig.js",
+  "./js/auth.js",
+  "./js/familyIcons.js",
   "./js/init.js",
   "./js/modal.js",
+  "./js/popup.js",
   "./js/pwa.js",
-  "./js/requests.js",
   "./js/render.js",
+  "./js/requests.js",
   "./js/storage.js",
-  "./assets/splash.mp4",
-  "./assets/splash-mobile.mp4"
+  "./manifest.webmanifest",
 ];
+// <<< FILES <<<
+
+// >>> FILES_DEFERRED >>>
+const FILES_DEFERRED = [
+  "./js/exceljs.min.js",
+  "./js/jszip.min.js",
+  "./js/pdf.min.js",
+  "./js/pdf.worker.min.js",
+  "./js/xlsx.full.min.js",
+];
+// <<< FILES_DEFERRED <<<
+
+// Chemins de FILES_DEFERRED résolus une fois en URL absolues, pour pouvoir
+// les reconnaître dans le gestionnaire fetch ci-dessous.
+const LIB_URLS = new Set(FILES_DEFERRED.map(f => new URL(f, self.location.href).href));
 
 self.addEventListener("install", event => {
   // Précharger les fichiers statiques en parallèle
@@ -128,12 +178,37 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  // Tout dans un seul waitUntil, dans cet ordre précis :
+  //
+  //   1. purge des anciens caches
+  //   2. clients.claim() — la page est contrôlée par ce worker à partir d'ici
+  //   3. téléchargement des bibliothèques lourdes (FILES_DEFERRED)
+  //
+  // clients.claim() était appelé HORS de waitUntil : rien ne garantissait
+  // qu'il aboutisse avant que le navigateur ne mette le worker en veille.
+  // Et l'étape 3 vient bien après, pour ne rien retarder : la page fonctionne
+  // dès l'étape 2, les 3,3 Mo se téléchargent pendant qu'elle est déjà à
+  // l'écran. waitUntil garde le worker en vie le temps que ça se termine.
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter(k => k !== CACHE && k !== CACHE_LIBS).map(k => caches.delete(k))
+    );
+
+    await self.clients.claim();
+
+    const cache = await caches.open(CACHE_LIBS);
+    await Promise.allSettled(FILES_DEFERRED.map(async f => {
+      // Ne pas retélécharger ce que la version précédente a déjà mis en
+      // cache : ces bibliothèques ne changent qu'à une montée de version,
+      // beaucoup plus rarement que le code de l'application.
+      if (await cache.match(f)) return;
+      try {
+        const res = await fetch(f, { cache: 'reload' });
+        if (res.ok) await cache.put(f, res);
+      } catch (e) { /* réessayé au prochain démarrage du worker */ }
+    }));
+  })());
 });
 
 self.addEventListener("fetch", event => {
@@ -182,6 +257,24 @@ self.addEventListener("fetch", event => {
 
     event.respondWith(
       Response.redirect(redirectTo.href, 302)
+    );
+    return;
+  }
+
+  // ── Bibliothèques auto-hébergées : cache d'abord ─────────────
+  // Fichiers figés (PDF.js, SheetJS, ExcelJS, JSZip) rangés dans CACHE_LIBS,
+  // pas dans le cache principal — donc invisibles pour le
+  // stale-while-revalidate plus bas, qui ne regarde que CACHE. Sans cette
+  // branche, chaque ouverture de la visionneuse PDF ou de l'export Excel
+  // repartait sur le réseau et échouait hors ligne, alors même que le
+  // fichier était bien en cache. Cache d'abord et pas de revalidation : le
+  // contenu ne change qu'avec le nom du cache (voir CACHE_LIBS).
+  if(LIB_URLS.has(url.origin + url.pathname)){
+    event.respondWith(
+      caches.open(CACHE_LIBS)
+        .then(cache => cache.match(url.origin + url.pathname))
+        .then(cached => cached || fetch(event.request))
+        .catch(() => fetch(event.request))
     );
     return;
   }

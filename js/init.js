@@ -65,8 +65,18 @@
       return;
     }
 
-    // Nettoyer l'URL du navigateur
-    window.history.replaceState({}, document.title, window.location.pathname);
+    // Nettoyer l'URL du navigateur — retirer les DEUX paramètres de partage
+    // et eux seuls. Repartir de window.location.pathname effaçait toute la
+    // chaîne de requête, y compris les paramètres qui n'ont rien à voir (par
+    // exemple _authreload, posé par js/auth.js juste avant un rechargement
+    // après déconnexion). Même usage de URLSearchParams.delete() qu'ailleurs.
+    params.delete('share_url');
+    params.delete('share_title');
+    var _cleanQuery = params.toString();
+    window.history.replaceState(
+      {}, document.title,
+      window.location.pathname + (_cleanQuery ? '?' + _cleanQuery : '') + window.location.hash
+    );
 
     setTimeout(function(){
       // Bloquer si non connecté
@@ -86,7 +96,14 @@
 
       setTimeout(function(){
         if(fUrl) fUrl.value = shareUrl;
-        if(shareTitle && fName) fName.value = escapeHtml ? shareTitle.substring(0, 200) : shareTitle;
+        // Pas d'échappement ici : affecter .value dépose du texte brut dans le
+        // champ, il n'est jamais interprété comme du HTML. La ligne testait
+        // auparavant l'existence de escapeHtml pour choisir entre deux
+        // expressions strictement identiques — elle laissait croire à une
+        // protection qui n'a jamais existé (et qui n'a pas lieu d'être ici).
+        // La troncature à 200 caractères, elle, est utile : le titre vient
+        // d'une page tierce et sert à pré-remplir le nom du produit.
+        if(shareTitle && fName) fName.value = shareTitle.substring(0, 200);
         switchTab('auto');
         showToast('Récupération de la page en cours…', 'ok', 3000);
 

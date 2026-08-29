@@ -73,8 +73,9 @@ window._setHeaderBackMode = _setHeaderBackMode;
     XLSX.utils.aoa_to_sheet.__spiPatched = true;
   }
 
-  // Fermeture animée de l'import Excel — exposée en global : deux boutons
-  // (✕ et Annuler) l'appellent en attribut onclick inline (voir index.html).
+  // Fermeture animée de l'import Excel — exposée en global, appelée aussi bien
+  // par les deux boutons de la fenêtre (✕ et Annuler, branchés juste en
+  // dessous) que par la fin de l'import lui-même, plus bas dans ce fichier.
   window._closeXlsxImportOverlay = function(){
     var el = document.getElementById('xlsxImportOverlay');
     document.body.classList.remove('modal-open');
@@ -85,6 +86,14 @@ window._setHeaderBackMode = _setHeaderBackMode;
       el.style.display = 'none';
     }
   };
+
+  // Ces deux boutons portaient un onclick="window._closeXlsxImportOverlay();"
+  // dans index.html — du code exécutable dans un attribut, ce qui obligeait la
+  // CSP à conserver 'unsafe-inline' dans script-src.
+  ['btnCloseXlsxImport', 'btnCancelXlsxImport'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('click', function(){ window._closeXlsxImportOverlay(); });
+  });
 
   // ---------- Save product ----------
   // Uniformise le séparateur décimal en virgule (format FR) — ne touche pas
@@ -224,6 +233,16 @@ window._setHeaderBackMode = _setHeaderBackMode;
     }
     if(!_isSafeHttpUrl(f3dLink.value.trim())){
       showToast('Lien 3DEXPERIENCE invalide — seuls les liens http:// et https:// sont autorisés.', 'err', 4000);
+      return;
+    }
+    // La photo passe par le même contrôle de protocole que les deux liens
+    // ci-dessus : elle finit dans un src= d'image et n'était, elle, pas
+    // vérifiée du tout. Une adresse en http:// serait bloquée comme contenu
+    // mixte une fois le catalogue servi en HTTPS (donc une photo qui ne
+    // s'affiche jamais, sans explication), et n'importe quel autre protocole
+    // n'a rien à faire là.
+    if(!_isSafeHttpUrl(fPhoto.value.trim())){
+      showToast('URL de photo invalide — seuls les liens http:// et https:// sont autorisés.', 'err', 4000);
       return;
     }
     var cataloguePrice = formatPrice(fPrice.value);
@@ -558,18 +577,6 @@ window._setHeaderBackMode = _setHeaderBackMode;
     var t;
     return function(){ clearTimeout(t); t = setTimeout(fn, delay); };
   }
-
-  // ── Filtre par prix ──────────────────────────────────────────
-  var priceMinInput = document.getElementById('priceMin');
-  var priceMaxInput = document.getElementById('priceMax');
-  var priceResetBtn = document.getElementById('priceFilterReset');
-  if(priceMinInput) priceMinInput.addEventListener('input', debounce(function(){ _lastRenderKey=''; render(); }, 300));
-  if(priceMaxInput) priceMaxInput.addEventListener('input', debounce(function(){ _lastRenderKey=''; render(); }, 300));
-  if(priceResetBtn) priceResetBtn.addEventListener('click', function(){
-    if(priceMinInput) priceMinInput.value = '';
-    if(priceMaxInput) priceMaxInput.value = '';
-    _lastRenderKey = ''; render();
-  });
 
   document.querySelectorAll('.grp-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -1358,9 +1365,14 @@ window._setHeaderBackMode = _setHeaderBackMode;
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
       if(serverItems.length === 0) return;
 
-      // Index local par ref
-      var localMap = {};
-      products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+      // Index local par ref — Map et pas objet nu : une référence produit qui
+      // s'appelle « __proto__ », « constructor » ou « toString » interroge
+      // sinon la chaîne de prototypes d'Object au lieu de l'index, et le
+      // produit part dans la mauvaise branche (conflit au lieu d'ajout, ou
+      // l'inverse). Une Map n'a aucune clé héritée. Même correction sur les
+      // deux autres index de ce fichier (import JSON, résolution de conflits).
+      var localMap = new Map();
+      products.forEach(function(p, i){ if(p.ref) localMap.set(p.ref, i); });
 
       var added = 0;
       var updatedExisting = 0; // refs déjà connues écrasées par la version serveur (voir plus bas)
@@ -1387,10 +1399,10 @@ window._setHeaderBackMode = _setHeaderBackMode;
           staleLockCleanups.push(sp);
         }
 
-        var idx = localMap[sp.ref];
+        var idx = localMap.get(sp.ref);
         if(idx === undefined){
           // Ref inconnue → nouveau produit serveur
-          localMap[sp.ref] = products.length;
+          localMap.set(sp.ref, products.length);
           products.push(sp);
           added++;
         } else {
@@ -2321,8 +2333,9 @@ window._setHeaderBackMode = _setHeaderBackMode;
       document.body.appendChild(overlay);
       overlay.querySelector('#_importMerge').addEventListener('click', async function(){
         // Même logique que syncFromServer : ref inconnue → ajout, ref connue → conflit
-        var localMap = {};
-        products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+        // Map plutôt qu'objet nu — voir doCheckAllSync() plus haut.
+        var localMap = new Map();
+        products.forEach(function(p, i){ if(p.ref) localMap.set(p.ref, i); });
         var added = 0;
         var importConflicts = [];
 
@@ -2334,10 +2347,10 @@ window._setHeaderBackMode = _setHeaderBackMode;
             added++;
             return;
           }
-          var idx = localMap[p.ref];
+          var idx = localMap.get(p.ref);
           if(idx === undefined){
             // Ref inconnue → ajout
-            localMap[p.ref] = products.length;
+            localMap.set(p.ref, products.length);
             products.push(p);
             added++;
           } else {
@@ -2426,7 +2439,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
     try{ await ensureXLSX(); }catch(err){ showToast(err.message, 'err'); return; }
 
     // Récupère les produits filtrés (même logique que render)
-    var search = (document.getElementById('searchInput') || document.getElementById('searchInputMobile') || {value:''}).value.toLowerCase().trim();
+    var search = (document.getElementById('searchInput') || {value:''}).value.toLowerCase().trim();
     var brand  = document.getElementById('brandFilter').value;
     var family = document.getElementById('familyFilter').value;
     var series = document.getElementById('seriesFilter').value;
@@ -2848,33 +2861,6 @@ window._setHeaderBackMode = _setHeaderBackMode;
     xlsxPendingData = [];
   });
 
-  // ---------- Loupe mobile ----------
-  var searchToggleBtn = document.getElementById('searchToggleBtn');
-  var searchExpand    = document.getElementById('searchExpand');
-  var searchInputMobile = document.getElementById('searchInputMobile');
-  var searchCloseBtn  = document.getElementById('searchCloseBtn');
-  if(searchToggleBtn){
-    searchToggleBtn.addEventListener('click', function(){
-      searchExpand.classList.add('open');
-      searchInputMobile.focus();
-    });
-    searchCloseBtn.addEventListener('click', function(){
-      searchExpand.classList.remove('open');
-      searchInputMobile.value = '';
-      searchInputEl.value = '';
-      render();
-    });
-    searchInputMobile.addEventListener('input', function(){
-      searchInputEl.value = searchInputMobile.value;
-      // Si on est sur la home et qu'on tape, basculer vers le catalogue
-      var homePage = document.getElementById('homePage');
-      if(homePage && !homePage.classList.contains('hidden') && searchInputMobile.value.trim().length > 0){
-        showCatalogueAll();
-      }
-      render();
-    });
-  }
-
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
   // Écouter scroll sur appContent (mobile) ou window (desktop)
@@ -2980,9 +2966,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
     if(window._setViewAll) window._setViewAll(false);
     // Vider la recherche au retour à l'accueil
     var si = document.getElementById('searchInput');
-    var sim = document.getElementById('searchInputMobile');
-    if(si)  si.value  = '';
-    if(sim) sim.value = '';
+    if(si) si.value = '';
     homePage.classList.remove('hidden');
     catalogueWrap.style.display = 'none';
     document.getElementById('hdrCountChip').style.display = 'none';
@@ -3125,8 +3109,26 @@ window._setHeaderBackMode = _setHeaderBackMode;
     var viewOverlayEl = document.getElementById('viewOverlay');
     if(viewOverlayEl) viewOverlayEl.classList.remove('open');
     // Fermer la modale d'édition
-    var overlayEl = document.getElementById('overlay');
-    if(overlayEl) overlayEl.classList.remove('open');
+    // #modalOverlay, pas #overlay : cet identifiant-là n'existe pas dans
+    // index.html, donc getElementById renvoyait null et le formulaire produit
+    // restait ouvert derrière l'accueil après un clic sur le logo.
+    //
+    // Passer par requestCloseModal() plutôt que retirer la classe 'open' à la
+    // main : le formulaire peut contenir une saisie non enregistrée, et c'est
+    // requestCloseModal() qui affiche la confirmation "Annuler la saisie"
+    // (comme la croix, "Annuler" et Échap). Sans ça, corriger l'identifiant
+    // aurait remplacé un bouton sans effet par un bouton qui jette une saisie
+    // en cours sans prévenir. Si une confirmation s'affiche, on interrompt
+    // aussi le retour à l'accueil : l'utilisateur reste sur sa fiche tant
+    // qu'il n'a pas tranché.
+    var overlayEl = document.getElementById('modalOverlay');
+    if(overlayEl && overlayEl.classList.contains('open')){
+      if(typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+        if(typeof requestCloseModal === 'function'){ requestCloseModal(); return; }
+      }
+      if(typeof closeModal === 'function') closeModal();
+      else overlayEl.classList.remove('open');
+    }
     // Fermer le panneau paramètres
     var settingsBoxEl = document.querySelector('.settings-box');
     if(settingsBoxEl) settingsBoxEl.classList.remove('open');
@@ -3153,9 +3155,10 @@ window._setHeaderBackMode = _setHeaderBackMode;
     if(el) el.innerHTML = renderFamilyIconHtml(icon);
   }
 
-  var selectedFamilyIcon = 'svg-generique';
-  var familyIconRow      = document.getElementById('familyIconRow');
-  var familyIconPreviewI = document.getElementById('familyIconPreviewI');
+  // selectedFamilyIcon et familyIconRow sont déclarés dans js/modal.js (chargé
+  // avant celui-ci) et partagés avec le formulaire produit — voir le
+  // commentaire là-bas. Les re-déclarer ici ne créait pas de seconde variable,
+  // ça écrasait la première au chargement.
   var familyIconPickerBtn = document.getElementById('familyIconPickerBtn');
   var iconPickerModal    = document.getElementById('iconPickerModal');
   var iconPickerClose    = document.getElementById('iconPickerClose');
@@ -3380,12 +3383,13 @@ window._setHeaderBackMode = _setHeaderBackMode;
   }
 
   function applyConflictChoices(){
-    var localMap = {};
-    products.forEach(function(p, i){ if(p.ref) localMap[p.ref] = i; });
+    // Map plutôt qu'objet nu — voir doCheckAllSync() plus haut.
+    var localMap = new Map();
+    products.forEach(function(p, i){ if(p.ref) localMap.set(p.ref, i); });
     var touchedByConflict = [];
     _pendingConflicts.forEach(function(c){
       if((_conflictChoices[c.ref] || 'local') === 'server'){
-        var idx = localMap[c.ref];
+        var idx = localMap.get(c.ref);
         if(idx !== undefined){ products[idx] = c.server; touchedByConflict.push(products[idx]); }
       }
     });

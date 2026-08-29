@@ -285,7 +285,7 @@ var _armoireBrowseFamily = null; // famille actuellement ouverte (null = liste d
 // 44×44 avec repli sur une icône si pas de photo ou en erreur de chargement.
 function _armoirePhotoHtml(p){
   return p.photo
-    ? '<img src="' + escapeHtml(p.photo) + '" alt="' + escapeHtml(p.name || p.ref) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo-off&quot;></i>\'">'
+    ? '<img src="' + escapeHtml(p.photo) + '" alt="' + escapeHtml(p.name || p.ref) + '" loading="lazy" data-fallback="photo-icon">'
     : '<i class="ti ti-photo-off"></i>';
 }
 

@@ -314,14 +314,6 @@
         }
       });
     }
-    // Animation 7 — pulse du point de sauvegarde
-    var dot = document.getElementById('filebarDot');
-    if(dot){
-      dot.classList.remove('pulsing');
-      void dot.offsetWidth; // force reflow pour relancer l'animation
-      dot.classList.add('pulsing');
-      dot.addEventListener('animationend', function(){ dot.classList.remove('pulsing'); }, {once:true});
-    }
   }
 
   // ---------- Rendering ----------
@@ -521,6 +513,7 @@
   var _lastRenderKey = '';
   var _vmMenuTimer = null;
   var _lazyScrollHandler = null;
+  var _lazyClickBound = false; // délégation du bouton « Afficher plus », posée une fois
 
   // fastPath=true : appelé depuis la recherche texte, qui ne change jamais
   // le périmètre des marques/familles/séries → on saute leur reconstruction.
@@ -615,7 +608,7 @@
       filtered.slice(0, 40).forEach(function(p){ html += renderCard(p); });
       html += '</div></div>';
       if(filtered.length > 40){
-        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
+        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button type="button" class="btn-load-more">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
       }
     } else {
       // ── Mode normal : groupement par marque/famille/série ──
@@ -640,10 +633,23 @@
         html += '</div></div>';
       });
       if(_lazyItems.length > 0){
-        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button class="btn-load-more" onclick="window._loadMoreCards()">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
+        html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button type="button" class="btn-load-more">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
       }
     }
     contentEl.innerHTML = html;
+
+    // Bouton « Afficher plus » : branché ici plutôt que par un onclick="…"
+    // dans la chaîne HTML ci-dessus (voir la CSP dans index.html). Délégué au
+    // conteneur, parce que le bouton est recréé à chaque rendu — et posé UNE
+    // SEULE FOIS, sinon render() empilerait un écouteur de plus à chaque
+    // appel et un seul clic finirait par charger dix lots de cartes d'un coup.
+    if(!_lazyClickBound){
+      _lazyClickBound = true;
+      contentEl.addEventListener('click', function(e){
+        var moreBtn = e.target.closest && e.target.closest('.btn-load-more');
+        if(moreBtn && typeof window._loadMoreCards === 'function') window._loadMoreCards();
+      });
+    }
 
     // ── Lazy load : charger plus de cartes au clic ou au scroll ──
     var _lazyOffset = 40;
