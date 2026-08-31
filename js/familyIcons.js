@@ -115,5 +115,6 @@ function renderFamilyIconHtml(icon, extraAttrs){
   if(icon && FAMILY_ICON_CHOICES.indexOf(icon) !== -1){
     return '<img src="'+FAMILY_ICONS_BASE_PATH+icon+'.png" alt="" aria-hidden="true" '+extraAttrs+'>';
   }
-  return '<i class="ti '+(icon || 'ti-package')+'" aria-hidden="true"></i>';
+  var safeLegacyIcon = (typeof icon === 'string' && /^ti-[a-z0-9-]+$/i.test(icon)) ? icon : 'ti-package';
+  return '<i class="ti '+safeLegacyIcon+'" aria-hidden="true"></i>';
 }
