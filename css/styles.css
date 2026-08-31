@@ -3452,6 +3452,14 @@
      une seule colonne plein écran à la fois, pilotée en JS via la classe
      .armoire-mobile-hidden (voir _armoireSetMobileView dans armoireConfig.js). */
   .armoire-mobile-switch{ display:flex !important; }
+  /* Sans ça, .tabs (flex-grow:0 par défaut) ne prend que la largeur de son
+     contenu au lieu de toute la largeur disponible dans .armoire-mobile-switch
+     — l'apparition du badge de compte sur "Ma configuration" élargit alors
+     .tabs lui-même, ce qui redimensionne ET décale les deux boutons au lieu
+     de rester fixe (retour utilisateur : "un numero apparait... est ca fais
+     tous bouger"). flex:1 fait remplir toute la largeur disponible dès le
+     départ, indépendamment du texte/badge à l'intérieur des boutons. */
+  .armoire-mobile-switch .tabs{ flex:1; }
   .armoire-cfg-body{ flex-direction:column !important; overflow-y:visible !important; }
   .armoire-cfg-browse{
     flex:1 1 auto !important; min-height:0;
