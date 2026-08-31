@@ -638,20 +638,19 @@ window._setHeaderBackMode = _setHeaderBackMode;
     updateServerSubtitle();
     if(serverUrl){
       setTimeout(function(){
-        // doCheckAllSync()/startSyncPolling() tournent maintenant MÊME sans
-        // connexion — un serveur injoignable l'est pour tout le monde, pas
-        // seulement les comptes authentifiés. Avant, tout ce bloc (donc le
-        // tout premier passage qui aurait pu détecter une panne) était
-        // sauté sans session active, et startSyncPolling() lui-même
-        // refusait de démarrer l'intervalle de vérification pour un compte
-        // déconnecté — le point de statut restait donc bloqué sur son vert
-        // optimiste initial indéfiniment (retour utilisateur : "le statut
-        // du serveur ne passe pas en rouge lorsque le serveur n'est plus
-        // joignable"). syncDeletions() reste réservé aux comptes connectés
-        // (données du catalogue, nécessite une session).
-        doCheckAllSync();
-        startSyncPolling();
-        if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()) syncDeletions();
+        // doCheckAllSync()/startSyncPolling() ne tournent QUE pour un compte
+        // connecté (retour utilisateur : "lorsque le user n'est plus loggin
+        // faudrai arrêté la requête checkAll") — un compte déconnecté ne
+        // relance donc plus aucune requête /checkAll en arrière-plan. Le
+        // point de statut serveur (updateServerSubtitle) reste alors figé
+        // sur son dernier état connu tant qu'on n'est pas reconnecté : choix
+        // assumé, au prix de la précision temps réel de ce point pour un
+        // utilisateur déconnecté.
+        if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()){
+          doCheckAllSync();
+          startSyncPolling();
+          syncDeletions();
+        }
       }, 1500);
       // Sync suppressions toutes les 5 minutes (si connecté)
       setInterval(function(){
@@ -838,36 +837,22 @@ window._setHeaderBackMode = _setHeaderBackMode;
   // depuis le dernier check connu (comparaison locale, pas de refetch aveugle).
   async function doCheckAllSync(){
     if(!serverUrl) return;
-    // La vérification de JOIGNABILITÉ (ce qui pilote le point rouge/vert de
-    // updateServerSubtitle) tourne maintenant TOUJOURS, connecté ou pas — un
-    // serveur injoignable l'est pour tout le monde. Seul le TRAITEMENT des
-    // données (sync catalogue/configs/demandes plus bas) reste réservé aux
-    // comptes connectés, via ce drapeau local plutôt qu'un retour anticipé
-    // en tout début de fonction (retour utilisateur : "le statut du serveur
-    // ne passe pas en rouge lorsque le serveur n'est plus joignable" — la
-    // fonction entière, et startSyncPolling() qui la relance toutes les
-    // 15s, étaient avant sautées sans session active).
-    var loggedIn = typeof authIsLoggedIn === 'function' ? authIsLoggedIn() : true;
+    // Aucune requête /checkAll sans session active (retour utilisateur :
+    // "lorsque le user n'est plus loggin faudrai arrêté la requête
+    // checkAll") — y compris la simple vérification de joignabilité qui
+    // pilote le point rouge/vert de updateServerSubtitle : ce point reste
+    // donc figé sur son dernier état connu tant qu'on n'est pas reconnecté,
+    // plutôt que de continuer à sonder le serveur en arrière-plan pour un
+    // compte déconnecté.
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
     try{
       var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
       delete h['Content-Type'];
       var r = await fetch(serverUrl + '/checkAll', { headers: h });
       if(!r.ok){
         // Ancien serveur sans /checkAll (404) : pas une panne, repli normal
-        // sur l'ancien /check — ne pas marquer "injoignable" pour ça (mais
-        // /check nécessite une session, inutile de l'appeler sans elle).
-        if(r.status === 404) return loggedIn ? doSyncCheck() : undefined;
-        // Sans session, un 401/403 signifie juste "pas autorisé", pas
-        // "serveur éteint" — le serveur a bel et bien répondu. Sans ce cas
-        // particulier, un compte déconnecté verrait le point rester rouge
-        // en permanence dès que /checkAll exige une authentification, même
-        // avec un serveur parfaitement joignable.
-        if(!loggedIn && (r.status === 401 || r.status === 403)){
-          _serverReachable = true;
-          updateServerSubtitle();
-          _cancelServerLogoutCheck();
-          return;
-        }
+        // sur l'ancien /check.
+        if(r.status === 404) return doSyncCheck();
         _serverReachable = false;
         updateServerSubtitle();
         _scheduleServerLogoutCheck();
@@ -876,7 +861,6 @@ window._setHeaderBackMode = _setHeaderBackMode;
       _serverReachable = true;
       updateServerSubtitle();
       _cancelServerLogoutCheck();
-      if(!loggedIn) return; // rien à synchroniser sans session
       var data = await r.json();
       var prev = {};
       try{ prev = JSON.parse(localStorage.getItem(CHECKALL_KEY) || '{}'); }catch(e){}
