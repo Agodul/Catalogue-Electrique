@@ -2878,54 +2878,56 @@
     setExtractLoading(true);
     hintEl.style.display = 'block';
     hintEl.style.color   = 'var(--ink-soft)';
-    hintEl.textContent   = '⏳ Récupération de la page en cours…';
+    hintEl.textContent   = '⏳ Ouverture de la page via l\'extension Chrome…';
 
-    // Proxy dédié (Cloudflare Worker maison, voir product-page-proxy) — plus
-    // de cascade sur des proxies publics tiers (allorigins/corsproxy/
-    // codetabs) : ils étaient tombés en panne ou passés payants, d'où
-    // l'existence même de ce worker. Répond en HTML brut, pas de JSON à
-    // désempaqueter. Décision assumée : si ce worker tombe en panne, cette
-    // fonction échoue purement et simplement (plus de repli) — reste alors
-    // "Coller le code source" à la main.
-    var proxyUrl = 'https://product-page-proxy.catalogue-electric.workers.dev/?url=' + encodeURIComponent(url);
-    var controller = new AbortController();
-    // 12s, légèrement au-dessus du FETCH_TIMEOUT_MS=10000 côté worker — sans
-    // cette marge, un site fournisseur lent mais qui aurait fini par répondre
-    // (le worker patiente jusqu'à 10s) pouvait être coupé côté client avant
-    // que le worker n'ait lui-même renoncé.
-    var timer = setTimeout(function(){ controller.abort(); }, 12000);
-    fetch(proxyUrl, {signal: controller.signal})
-      .then(function(r){
-        clearTimeout(timer);
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        return r.text();
-      })
-      .then(function(html){
-        if(!html || html.length < 100) throw new Error('Contenu vide');
-        // Décoder les entités HTML si jamais elles arrivaient encodées
-        // (filet de sécurité — le worker répond en HTML brut en pratique).
-        if(html.indexOf('&lt;') !== -1){
-          var ta = document.createElement('textarea');
-          ta.innerHTML = html;
-          html = ta.value;
-          if(html.indexOf('&lt;') !== -1){
-            ta.innerHTML = html;
-            html = ta.value;
-          }
-        }
-        fHtml.value = html;
-        document.getElementById('btnExtract').click();
+    // Extraction via l'extension Chrome (plus de fetch serveur/proxy) —
+    // décision : certains sites fournisseurs (Balluff, se.com…) bloquent
+    // activement toute requête venant d'un serveur (Cloudflare/Akamai
+    // anti-bot), même via un proxy dédié maison — aucun fetch serveur ne
+    // peut passer ces protections. L'extension, elle, ouvre la page dans
+    // une VRAIE fenêtre de navigateur (masquée) : la page passe ces
+    // contrôles normalement, exactement comme si l'utilisateur l'avait
+    // ouverte lui-même. Voir catalogue-bridge.js côté extension pour le
+    // relais spi_extract_url_request → spi_extract_url_result.
+    var settled = false;
+    var timer;
+    function onResult(e){
+      if(settled) return;
+      settled = true;
+      window.removeEventListener('spi_extract_url_result', onResult);
+      clearTimeout(timer);
+      var r = e.detail || {};
+      if(!r.ok || !r.html){
         setExtractLoading(false);
-        hintEl.style.color  = '#059669';
-        hintEl.textContent  = '✓ Extraction réussie !';
-        setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
-      })
-      .catch(function(err){
-        clearTimeout(timer);
-        setExtractLoading(false);
-        hintEl.style.color  = '#DC2626';
-        hintEl.textContent  = '✗ Impossible de récupérer la page — collez le code source manuellement.';
-      });
+        hintEl.style.color = '#DC2626';
+        hintEl.textContent = '✗ ' + (r.error || 'Extraction impossible') + ' — collez le code source manuellement.';
+        return;
+      }
+      fHtml.value = r.html;
+      document.getElementById('btnExtract').click();
+      setExtractLoading(false);
+      hintEl.style.color  = '#059669';
+      hintEl.textContent  = '✓ Extraction réussie !';
+      setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
+    }
+    window.addEventListener('spi_extract_url_result', onResult);
+
+    // 22s : le temps qu'une page fournisseur (photos, scripts tiers) charge
+    // entièrement dans la fenêtre ouverte par l'extension, plus une marge.
+    // Si rien ne répond dans ce délai, soit la page met vraiment trop
+    // longtemps, soit l'extension n'est pas installée — dans les deux cas,
+    // spi_extract_url_result ne sera jamais émis, ce timeout est donc le
+    // seul moyen de ne pas rester bloqué en attente indéfiniment.
+    timer = setTimeout(function(){
+      if(settled) return;
+      settled = true;
+      window.removeEventListener('spi_extract_url_result', onResult);
+      setExtractLoading(false);
+      hintEl.style.color = '#DC2626';
+      hintEl.textContent = '✗ Aucune réponse — l\'extension SPI est-elle bien installée ? Sinon, collez le code source manuellement.';
+    }, 22000);
+
+    window.dispatchEvent(new CustomEvent('spi_extract_url_request', { detail: { url: url } }));
   });
 
   document.getElementById('btnExtract').addEventListener('click', function(){
