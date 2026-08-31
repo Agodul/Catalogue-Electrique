@@ -19,9 +19,7 @@
 //     3,3 Mo de bibliothèques ;
 //   • réseau coupé, la coque ET les bibliothèques répondent depuis le cache ;
 //   • les requêtes vers un autre domaine (l'API métier) ne passent jamais
-//     par le cache ;
-//   • le partage d'un lien depuis le téléphone redirige correctement, et
-//     refuse un protocole autre que http/https.
+//     par le cache.
 //
 // Sans dépendance, comme tools/check.mjs.
 // ══════════════════════════════════════════════════════════════════════════
@@ -273,29 +271,6 @@ await test("Les requêtes vers l'API métier ne passent jamais par le cache", as
       assert(!cle.includes('api.exemple.test'), `une réponse de l'API a été mise en cache : ${cle}`);
     }
   }
-});
-
-await test('Le partage d\'un lien redirige vers la page avec le lien en paramètre', async () => {
-  const { sw } = await bootServiceWorker();
-  const res = await sw.dispatch('fetch', {
-    request: request('./share-target?url=' + encodeURIComponent('https://www.sick.com/p/p106823') +
-                     '&title=' + encodeURIComponent('Détecteur WTB4'))
-  });
-  assertEqual(res.status, 302, 'ce n\'est pas une redirection');
-  const dest = new URL(res.headers.get('location'));
-  assertEqual(dest.pathname.endsWith('/index.html'), true, 'mauvaise destination');
-  assertEqual(dest.searchParams.get('share_url'), 'https://www.sick.com/p/p106823', 'lien partagé perdu');
-  assertEqual(dest.searchParams.get('share_title'), 'Détecteur WTB4', 'titre partagé perdu');
-});
-
-await test('Le partage refuse un lien dont le protocole n\'est pas http/https', async () => {
-  const { sw } = await bootServiceWorker();
-  const res = await sw.dispatch('fetch', {
-    request: request('./share-target?url=' + encodeURIComponent('javascript:alert(1)'))
-  });
-  assertEqual(res.status, 302, 'ce n\'est pas une redirection');
-  const dest = new URL(res.headers.get('location'));
-  assertEqual(dest.searchParams.get('share_url'), null, 'un lien javascript: a été transmis à la page');
 });
 
 console.log('');

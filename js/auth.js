@@ -1123,8 +1123,8 @@ function initAuth() {
   // Retire "_authreload" de la barre d'adresse une fois son rôle (forcer la
   // navigation, voir _authReloadAfterLogout) rempli — replaceState ne
   // déclenche pas de nouveau rechargement, juste un nettoyage silencieux de
-  // l'URL affichée. Les AUTRES paramètres éventuels (ex. ?share_url=... venant
-  // d'un partage natif) sont conservés, seul celui-ci est retiré.
+  // l'URL affichée. Les AUTRES paramètres éventuels (ex. ?_swupdate=...) sont
+  // conservés, seul celui-ci est retiré.
   if (window.location.search.indexOf('_authreload=') !== -1) {
     var _cleanParams = new URLSearchParams(window.location.search);
     _cleanParams.delete('_authreload');

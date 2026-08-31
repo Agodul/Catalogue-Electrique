@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260831143021";
+const CACHE = "spi-catalogue-v20260831151329";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -227,37 +227,6 @@ self.addEventListener("fetch", event => {
   // same-origin — aucune n'est concernée par ce bypass.
   if(event.request.url.startsWith('blob:') || url.origin !== self.location.origin){
     event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // ── Intercepter le share target ──────────────────────────────────
-  if(url.pathname.endsWith("share-target")){
-    const sharedUrl   = url.searchParams.get("url")   || "";
-    const sharedTitle = url.searchParams.get("title") || "";
-    const sharedText  = url.searchParams.get("text")  || "";
-
-    const targetUrl = sharedUrl || sharedText || "";
-
-    let safeTargetUrl = "";
-    if(targetUrl){
-      try {
-        const parsed = new URL(targetUrl);
-        if(parsed.protocol === "https:" || parsed.protocol === "http:"){
-          safeTargetUrl = parsed.href;
-        }
-      } catch(e) {}
-    }
-
-    // Rediriger vers index.html à côté de ce service worker — calculé
-    // relativement à sw.js plutôt qu'en chemin absolu figé, pour rester
-    // correct quel que soit le sous-dossier d'hébergement réel.
-    const redirectTo = new URL("./index.html", self.location.href);
-    if(safeTargetUrl) redirectTo.searchParams.set("share_url",   safeTargetUrl);
-    if(sharedTitle)   redirectTo.searchParams.set("share_title", sharedTitle.substring(0, 200));
-
-    event.respondWith(
-      Response.redirect(redirectTo.href, 302)
-    );
     return;
   }
 

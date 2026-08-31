@@ -782,11 +782,16 @@
       modalLeftFoot.textContent = '';
       _formOriginalSnapshot = null;
 
-      if(window.innerWidth <= 768){
-        switchTab('manual');
-      }else{
-        switchTab('auto');
-      }
+      // Seuil aligné sur la règle CSS qui masque tout l'onglet "Extraction
+      // automatique" sur mobile/tablette (voir #productExtractTabs dans
+      // css/styles.css) — 1024px ET pointer:coarse, pas juste 768px comme
+      // avant : sans le pointer:coarse, une fenêtre desktop simplement
+      // redimensionnée en dessous de 1024px (souris, pas tactile) aurait
+      // aussi basculé sur "Saisie manuelle" alors que l'extraction
+      // automatique y fonctionne parfaitement.
+      var _isMobileOrTablet = window.innerWidth <= 1024
+        && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      switchTab(_isMobileOrTablet ? 'manual' : 'auto');
 
       // Affiche la zone prix de vente uniquement en mode création
       sellingPriceZoneEl.style.display = 'block';
@@ -2817,55 +2822,21 @@
   }
 
   // ── Détection iOS → classe sur body ─────────────────────────────
-  if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream){
-    document.body.classList.add('ios');
-  }
-
-  // ── Bouton mobile Android : Coller & Extraire ────────────────────
-  // ── État de chargement partagé entre les deux boutons d'extraction ──
-  // (le clic sur "Coller le lien et extraire" déclenche "Extraire depuis
-  // l'URL" en interne — les deux doivent refléter le même état pendant
-  // l'appel réseau, pour que l'utilisateur voie que quelque chose se passe
-  // et ne puisse pas déclencher plusieurs extractions en même temps).
-  var btnPasteExtract    = document.getElementById('btnPasteExtract');
+  // ── État de chargement du bouton d'extraction ──────────────────────
+  // "Extraction automatique" (donc ce bouton) n'est de toute façon plus
+  // jamais affiché sur mobile/tablette (voir #productExtractTabs dans
+  // css/styles.css) — l'ancien bouton "Coller le lien et extraire"
+  // (Android) et la détection iOS qui l'accompagnait n'avaient plus aucun
+  // effet visible, retirés.
   var btnExtractFromUrl  = document.getElementById('btnExtractFromUrl');
-  var _pasteExtractLabel = btnPasteExtract ? btnPasteExtract.innerHTML : '';
   var _extractUrlLabel   = btnExtractFromUrl ? btnExtractFromUrl.innerHTML : '';
   function setExtractLoading(isLoading){
-    if(btnPasteExtract){
-      btnPasteExtract.disabled = isLoading;
-      btnPasteExtract.innerHTML = isLoading
-        ? '<span class="btn-spinner" aria-hidden="true"></span> Extraction en cours…'
-        : _pasteExtractLabel;
-    }
     if(btnExtractFromUrl){
       btnExtractFromUrl.disabled = isLoading;
       btnExtractFromUrl.innerHTML = isLoading
         ? '<span class="btn-spinner" aria-hidden="true"></span> Extraction…'
         : _extractUrlLabel;
     }
-  }
-
-  if(btnPasteExtract){
-    btnPasteExtract.addEventListener('click', function(){
-      if(navigator.clipboard && navigator.clipboard.readText){
-        navigator.clipboard.readText()
-          .then(function(text){
-            text = (text || '').trim();
-            if(text && /^https?:\/\//.test(text)){
-              fUrl.value = text;
-              btnExtractFromUrl.click();
-            } else {
-              showToast('Aucun lien trouvé dans le presse-papier', 'warn', 2500);
-            }
-          })
-          .catch(function(){
-            showToast('Accès au presse-papier refusé', 'warn', 2500);
-          });
-      } else {
-        showToast('Presse-papier non disponible', 'warn', 2500);
-      }
-    });
   }
 
   btnExtractFromUrl.addEventListener('click', function(){

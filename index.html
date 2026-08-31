@@ -86,21 +86,19 @@
                                  le CSP ne remontant qu'un "Failed to fetch"
                                  générique en erreur JS (repéré en testant :
                                  aucun indice pour l'utilisateur sur la vraie
-                                 cause). Le proxy CORS (Worker Cloudflare
-                                 maison, product-page-proxy) est malgré tout
-                                 nommé explicitement, pour documenter qui
-                                 reçoit les URL fournisseur consultées —
-                                 utilisé à la fois par "Extraire depuis
-                                 l'URL" (js/modal.js) et par la réception de
-                                 partage Android (js/init.js), qui
-                                 s'appuyaient auparavant sur trois proxys
+                                 cause). Plus aucun proxy CORS nommé
+                                 explicitement ici depuis le passage du
+                                 bouton "Extraire depuis l'URL" (js/modal.js)
+                                 à l'extension Chrome (qui ouvre elle-même la
+                                 page dans une vraie fenêtre de navigateur,
+                                 sans requête serveur) et la suppression du
+                                 partage Android (retour utilisateur) — le
+                                 Worker Cloudflare dédié qui servait les deux
+                                 a été supprimé, comme les trois proxys
                                  publics tiers (allorigins/corsproxy/
-                                 codetabs), tombés en panne ou passés
-                                 payants — plus utilisés nulle part dans le
-                                 projet, retirés d'ici.
-     Il n'ouvre l'exécution d'aucun code : ni une image, ni une réponse
-     fetch en clair, ne deviennent un script. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://product-page-proxy.catalogue-electric.workers.dev https: http:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
+                                 codetabs) avant lui.
+     Aucune image ni réponse fetch en clair ne peut devenir un script. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https: http:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" integrity="sha384-enQOo0dFaqOuACimJrhDH3XtzLk5jDIo5gfCGUvfZWLoiAyi/Jf+Ny5+etklU279" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5.3.0/index.css" integrity="sha384-CriTXMxa9KSWUY4RPeIP7Xe+CI39CEWYo20uac1eZ4erQw31mZTTxvq6xZdWgidR" crossorigin="anonymous">
@@ -899,7 +897,7 @@
       </div>
       <!-- ===== FIN CHAMP CARACTÉRISTIQUES ===== -->
 
-      <div class="tabs">
+      <div class="tabs" id="productExtractTabs">
         <button class="tab-btn tab-btn-copper active" data-tab="auto">Extraction automatique</button>
         <button class="tab-btn tab-btn-copper" data-tab="manual">Saisie manuelle</button>
       </div>
@@ -907,19 +905,14 @@
       <div class="tab-pane active" id="tab-auto">
         <div class="field">
           <label for="fUrl">URL de la fiche produit</label>
-          <!-- Champ URL unique (utilisé par desktop ET mobile) -->
+          <!-- Cet onglet entier n'est plus jamais affiché sur mobile/tablette
+               (voir #productExtractTabs dans css/styles.css) — plus besoin
+               de variante mobile ici, un seul bouton pour tous les cas où
+               cette zone reste visible (desktop uniquement). -->
           <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="width:100%;">
-          <!-- Desktop : bouton extraire inline -->
-          <div class="url-field-desktop" style="gap:8px;align-items:center;margin-top:6px;">
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
             <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;padding:9px 12px;">
               ↓ Extraire depuis l'URL
-            </button>
-          </div>
-          <!-- Mobile Android : bouton coller automatique -->
-          <div class="url-field-mobile" style="margin-top:6px;">
-            <button type="button" id="btnPasteExtract" class="copper"
-              style="width:100%;padding:12px;font-size:15px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
-              <i class="ti ti-clipboard-text"></i> Coller le lien et extraire
             </button>
           </div>
           <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>

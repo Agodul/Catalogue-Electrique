@@ -2,7 +2,7 @@
   // navigation après mise à jour, voir plus bas) rempli — même traitement
   // que "_authreload" dans js/auth.js. replaceState ne déclenche pas de
   // nouveau rechargement, juste un nettoyage silencieux de l'URL affichée ;
-  // les autres paramètres éventuels (ex. ?share_url=...) sont conservés.
+  // les autres paramètres éventuels (ex. ?_authreload=...) sont conservés.
   if(window.location.search.indexOf('_swupdate=') !== -1){
     var _swCleanParams = new URLSearchParams(window.location.search);
     _swCleanParams.delete('_swupdate');
@@ -70,10 +70,10 @@
   };
 
   // ── Enregistrement du service worker ──────────────────────────────
-  // Sans cet appel, sw.js n'est jamais activé : ni le cache hors-ligne,
-  // ni l'interception de /share-target (partage natif Android) ne fonctionnent.
-  // sw.js doit rester à la racine du site : un service worker ne peut jamais
-  // couvrir une portée plus large que le dossier où se trouve son fichier
+  // Sans cet appel, sw.js n'est jamais activé : le cache hors-ligne ne
+  // fonctionne pas. sw.js doit rester à la racine du site : un service
+  // worker ne peut jamais couvrir une portée plus large que le dossier où
+  // se trouve son fichier
   // (limitation du navigateur, pas contournable sans en-tête serveur dédié —
   // indisponible sur un hébergement statique comme GitHub Pages).
   if('serviceWorker' in navigator){
@@ -152,9 +152,8 @@
             // paramètre de requête inédit force une navigation non ambiguë ;
             // location.replace() (pas .href=) évite d'empiler une entrée
             // d'historique pour ce simple rechargement. Ajouté (pas
-            // substitué) aux paramètres déjà présents (ex. ?share_url=...
-            // venant d'un partage natif, voir /share-target dans sw.js) pour
-            // ne pas les perdre silencieusement au passage.
+            // substitué) aux paramètres déjà présents (ex. ?_authreload=...)
+            // pour ne pas les perdre silencieusement au passage.
             // URLSearchParams.set() REMPLACE une éventuelle valeur déjà
             // présente (plutôt qu'une concaténation manuelle) — sans ça,
             // chaque mise à jour ajoutait un nouveau "_swupdate=…" à la

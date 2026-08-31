@@ -1690,20 +1690,29 @@
   .photo-preview{ cursor:zoom-in; }
   .photo-preview img{ cursor:zoom-in; }
 
-  /* ── Champ URL adaptatif mobile ── */
-  .url-field-desktop{ display:flex; }
-  .url-field-mobile{ display:none; }
-  @media(max-width:768px) and (pointer: coarse) {
-    .url-field-desktop{ display:none; }
-    .url-field-mobile{ display:block; }
-    /* iOS : masquer le bouton Android, afficher le champ URL */
-    body.ios .url-field-mobile{ display:none; }
-    body.ios .url-field-desktop{ display:flex; }
-  }
-
-  /* ── Zone code source : desktop seulement ── */
-  @media(max-width:768px) and (pointer: coarse) {
-    .html-source-zone{ display:none !important; }
+  /* ── "Extraction automatique" masquée sur mobile/tablette ──────────────
+     Depuis le passage du bouton "Extraire depuis l'URL" à l'extension
+     Chrome (js/modal.js) — qui n'existe sur aucun navigateur mobile
+     (Android/iOS) — tout ce que contenait cet onglet (URL, code source)
+     échoue systématiquement sur mobile/tablette (retour utilisateur).
+     Plutôt que de laisser un onglet qui ne mène nulle part, on le retire
+     entièrement sur cette plage : seule "Saisie manuelle" reste, sans même
+     afficher le sélecteur d'onglets (inutile avec une seule option
+     restante). Même seuil "mobile et tablette" que le reste du site (voir
+     Paramètres, grille catalogue…). #tab-manual en display:block
+     !important (pas juste .active) : filet de sécurité au cas où
+     openModal() (js/modal.js, même seuil 1024px+coarse) ne serait pas
+     encore passé — sans lui, la fenêtre "Ajouter un produit" pourrait
+     rester vide le temps d'un décalage entre CSS et JS. Couvre aussi, en
+     prime, l'ancienne zone "Code source de la page produit (alternative)"
+     (.html-source-zone) et l'ancien bouton Android "Coller le lien et
+     extraire" (#btnPasteExtract, retiré du HTML) : tout ce qui vivait dans
+     #tab-auto disparaît d'un coup avec lui, plus besoin de règles séparées
+     pour chacun. */
+  @media(max-width:1024px) and (pointer: coarse) {
+    #productExtractTabs{ display:none !important; }
+    #tab-auto{ display:none !important; }
+    #tab-manual{ display:block !important; }
   }
 
   /* ── Autocomplete custom (iOS fix) ── */

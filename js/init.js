@@ -43,101 +43,20 @@
   // ── Auth ────────────────────────────────────────────────────────
   if(typeof initAuth === 'function') initAuth();
 
-  // ── Share Target iOS/Android (PWA) ───────────────────────────────
-  (function handleShareTarget(){
-    var params     = new URLSearchParams(window.location.search);
-    var shareUrl   = params.get('share_url');
-    var shareTitle = params.get('share_title');
-    if(!shareUrl) return;
-
-    try {
-      var parsed = new URL(shareUrl);
-      // N'accepter que http:// et https://
-      if(parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        console.warn('[ShareTarget] URL rejetée (protocole non autorisé):', parsed.protocol);
-        showToast('URL partagée invalide', 'err', 4000);
-        return;
-      }
-      shareUrl = parsed.href;
-    } catch(e) {
-      console.warn('[ShareTarget] URL malformée rejetée:', shareUrl);
-      showToast('URL partagée invalide', 'err', 4000);
-      return;
-    }
-
-    // Nettoyer l'URL du navigateur — retirer les DEUX paramètres de partage
-    // et eux seuls. Repartir de window.location.pathname effaçait toute la
-    // chaîne de requête, y compris les paramètres qui n'ont rien à voir (par
-    // exemple _authreload, posé par js/auth.js juste avant un rechargement
-    // après déconnexion). Même usage de URLSearchParams.delete() qu'ailleurs.
-    params.delete('share_url');
-    params.delete('share_title');
-    var _cleanQuery = params.toString();
-    window.history.replaceState(
-      {}, document.title,
-      window.location.pathname + (_cleanQuery ? '?' + _cleanQuery : '') + window.location.hash
-    );
-
-    setTimeout(function(){
-      // Bloquer si non connecté
-      if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()){
-        showToast('Connexion requise pour ajouter un produit', 'warn', 4000);
-        return;
-      }
-      // ── Protection anti-perte : refuser si une fiche produit est déjà
-      // en cours d'édition ou de création (modale déjà ouverte) ─────────
-      if(_extensionGuardBlocked()) return;
-      // Basculer vers le catalogue si on est sur l'accueil
-      if(homePage && !homePage.classList.contains('hidden')){
-        showCatalogueAll();
-      }
-      // Ouvrir la modale d'ajout
-      openModal(null);
-
-      setTimeout(function(){
-        if(fUrl) fUrl.value = shareUrl;
-        // Pas d'échappement ici : affecter .value dépose du texte brut dans le
-        // champ, il n'est jamais interprété comme du HTML. La ligne testait
-        // auparavant l'existence de escapeHtml pour choisir entre deux
-        // expressions strictement identiques — elle laissait croire à une
-        // protection qui n'a jamais existé (et qui n'a pas lieu d'être ici).
-        // La troncature à 200 caractères, elle, est utile : le titre vient
-        // d'une page tierce et sert à pré-remplir le nom du produit.
-        if(shareTitle && fName) fName.value = shareTitle.substring(0, 200);
-        switchTab('auto');
-        showToast('Récupération de la page en cours…', 'ok', 3000);
-
-        // ── Extraction automatique via le proxy dédié ────────────────
-        // Même Worker Cloudflare maison que le bouton "Extraire depuis
-        // l'URL" (js/modal.js) — remplace les trois anciens proxies publics
-        // (allorigins/corsproxy/codetabs), tombés en panne ou passés
-        // payants. Pas de repli : si ce proxy échoue, l'utilisateur colle le
-        // code source à la main (même choix assumé que js/modal.js).
-        var shareProxyUrl = 'https://product-page-proxy.catalogue-electric.workers.dev/?url=' + encodeURIComponent(shareUrl);
-        fetch(shareProxyUrl)
-          .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-          .then(function(html){
-            if(!html || html.length < 100) throw new Error('Contenu vide');
-            if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
-              var ta = document.createElement('textarea');
-              ta.innerHTML = html;
-              html = ta.value;
-            }
-            fHtml.value = html;
-            fUrl.value  = shareUrl;
-            document.getElementById('btnExtract').click();
-            showToast('Extraction réussie via partage ✓', 'ok', 3500);
-          })
-          .catch(function(){
-            showToast('Extraction impossible — collez le code source manuellement', 'warn', 5000);
-          });
-
-      }, 350);
-    }, 600);
-  })();
+  // Le partage Android (Web Share Target) a été retiré : il reposait
+  // entièrement sur le Worker Cloudflare dédié (product-page-proxy) pour
+  // extraire automatiquement la page partagée, or ce worker a été
+  // supprimé (retour utilisateur) — le worker s'apppuyait de toute façon
+  // sur un simple fetch serveur, bloqué par les mêmes protections anti-bot
+  // (Cloudflare/Akamai) que le bouton "Extraire depuis l'URL" (js/modal.js,
+  // qui passe maintenant par l'extension Chrome — solution qui n'existe
+  // pas sur mobile, voir échange avec l'utilisateur). Voir aussi la
+  // suppression du bloc /share-target dans sw.js et de "share_target" dans
+  // manifest.webmanifest — sans ces deux-là, Android ne propose plus le
+  // Catalogue dans la feuille de partage.
   // showHome() déjà appelé en début d'init
 
-  // ── Protection anti-perte partagée (extension + partage) ───────────
+  // ── Protection anti-perte pour l'import via l'extension Chrome ──────
   // Ne bloque plus que s'il y a une SAISIE réellement en cours (pas juste
   // une fenêtre restée ouverte sans rien dedans) — mêmes trois zones déjà
   // protégées lors d'une mise à jour du service worker (voir swUpdateBtn
@@ -146,9 +65,11 @@
   // #modalOverlay ouvert (même une fiche "Ajouter un produit" vierge, ou
   // n'importe quelle autre fenêtre — Réglages, Demandes en attente, une
   // fiche produit en simple consultation…) suffisait à tout refuser (retour
-  // utilisateur : l'extension/le partage ne devrait pas être bloqué par une
-  // fenêtre sans rien en cours). Si rien n'est réellement en cours, ferme
-  // tout le reste automatiquement pour laisser la place au nouveau produit.
+  // utilisateur : l'extension ne devrait pas être bloquée par une fenêtre
+  // sans rien en cours). Si rien n'est réellement en cours, ferme tout le
+  // reste automatiquement pour laisser la place au nouveau produit.
+  // (Utilisée aussi par le partage Android auparavant — retiré depuis, voir
+  // plus haut — cette fonction reste utile telle quelle pour l'extension.)
   function _extensionGuardBlocked(){
     var mo = document.getElementById('modalOverlay');
     if(mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
