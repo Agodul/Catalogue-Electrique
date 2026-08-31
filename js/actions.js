@@ -1048,11 +1048,21 @@ window._setHeaderBackMode = _setHeaderBackMode;
   // jamais être bloquées (retour utilisateur : "comment on fait quand c'est
   // deux sessions identiques ?"). Comparer l'ID de session plutôt que le nom
   // distingue bien deux onglets même identiquement connectés.
+  function _secureRandomBase36(len){
+    var out = '';
+    while(out.length < len){
+      var buf = new Uint8Array(1);
+      window.crypto.getRandomValues(buf);
+      out += (buf[0] % 36).toString(36);
+    }
+    return out.slice(0, len);
+  }
+
   function _editLockSessionId(){
     try {
       var id = sessionStorage.getItem('cat_edit_lock_session');
       if(!id){
-        id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        id = 'sess_' + Date.now() + '_' + _secureRandomBase36(8);
         sessionStorage.setItem('cat_edit_lock_session', id);
       }
       return id;
@@ -1060,7 +1070,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
       // sessionStorage indisponible (navigation privée stricte, etc.) —
       // repli sur un ID généré une fois en mémoire pour la durée de la page.
       if(!window._editLockSessionIdFallback){
-        window._editLockSessionIdFallback = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        window._editLockSessionIdFallback = 'sess_' + Date.now() + '_' + _secureRandomBase36(8);
       }
       return window._editLockSessionIdFallback;
     }
