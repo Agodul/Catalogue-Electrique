@@ -1399,6 +1399,23 @@
   @keyframes fadeBgOut{ from{ background:var(--overlay-scrim); } to{ background:rgba(100,100,100,0); } }
   @keyframes slideDown{ from{ opacity:1; transform:translateY(0) scale(1); } to{ opacity:0; transform:translateY(40px) scale(.98); } }
   @keyframes sheetSlideDown{ from{ opacity:1; transform:translateY(0); } to{ opacity:0; transform:translateY(28px); } }
+  /* ── Configurateur d'armoire — animations d'ouverture/fermeture des
+     éléments internes (retour utilisateur : "ajouter des animations pour
+     les ouverture et fermeture des différents éléments dans le
+     configurateur d'armoire"). La fenêtre principale avait déjà les siennes
+     (fadeBgEdit/sheetSlideUp ci-dessus, comme les autres modales) ; ce sont
+     les éléments À L'INTÉRIEUR (tiroir, bannière, onglets…) qui passaient
+     jusqu'ici de display:none à visible sans transition. Même technique
+     "animation sur changement de display" que le reste du fichier — pas de
+     JS supplémentaire nécessaire à l'ouverture, seule la fermeture (qui
+     doit retarder le display:none le temps de l'anim) passe par
+     window._closeOverlayAnimated (déjà utilisé partout ailleurs dans le
+     projet, voir js/init.js). */
+  @keyframes armoireDrawerSlideIn{ from{ opacity:0; transform:translateX(24px); } to{ opacity:1; transform:translateX(0); } }
+  @keyframes armoireDrawerSlideOut{ from{ opacity:1; transform:translateX(0); } to{ opacity:0; transform:translateX(24px); } }
+  @keyframes armoireFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes armoireBannerSlideIn{ from{ opacity:0; transform:translateY(-8px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes armoireBannerSlideOut{ from{ opacity:1; transform:translateY(0); } to{ opacity:0; transform:translateY(-8px); } }
   #viewOverlay.open{ animation:fadeBg .25s ease forwards; }
   #viewOverlay.open #viewModal{ animation:slideUp .35s cubic-bezier(.32,0,.15,1) forwards; }
   #viewOverlay.closing{ animation:fadeBgOut .22s ease forwards !important; }
@@ -3278,7 +3295,9 @@
   box-shadow:-8px 0 24px rgba(0,0,0,.12);
   flex-direction:column;
   z-index:5;
+  animation: armoireDrawerSlideIn .2s ease forwards;
 }
+.armoire-blocks-drawer.closing{ animation: armoireDrawerSlideOut .16s ease forwards !important; }
 
 /* ── Configurateur d'armoire — mobile / tablette ─────────────────
    Sur desktop, .armoire-cfg-body est une rangée à deux colonnes
@@ -3337,6 +3356,12 @@
   }
   .armoire-cfg-browse.armoire-mobile-hidden,
   .armoire-cfg-draft.armoire-mobile-hidden{ display:none !important; }
+  /* Fondu à la bascule "Parcourir" / "Ma configuration" — retour
+     utilisateur : animations sur les différents éléments du configurateur.
+     Ne se déclenche que sur un vrai passage display:none → visible (donc
+     seulement ici, en mobile/tablette — les deux colonnes restent
+     visibles en permanence côte à côte sur desktop, jamais masquées). */
+  .armoire-cfg-browse, .armoire-cfg-draft{ animation: armoireFadeIn .18s ease forwards; }
   /* Sur mobile le tiroir "Mes blocs" recouvre toute la colonne parcours
      (au lieu d'un panneau ancré à droite comme sur desktop) — pas assez
      de largeur pour un tiroir partiel. Coins arrondis + ombre latérale
@@ -3355,9 +3380,31 @@
   display:inline-block; margin-left:5px; padding:1px 6px;
   border-radius:9px; background:rgba(255,255,255,.25);
   font-size:10.5px; font-weight:700;
+  /* Petit "pop" à l'apparition (badge de compte du brouillon, visible dès
+     qu'un article est ajouté) — réutilise badgeBounce, déjà utilisé
+     ailleurs dans l'app pour ce même effet, plutôt que d'en dupliquer un. */
+  animation: badgeBounce .3s cubic-bezier(.34,1.56,.64,1) forwards;
 }
 .armoire-mobile-tab:not(.active) #armoireMobileDraftBadge{
   background:var(--copper); color:#fff;
+}
+
+/* Bannière "Modification de « … »" (retour utilisateur : animations sur les
+   différents éléments du configurateur) — glissement + fondu à l'apparition
+   ; la fermeture (retour à l'état normal, hors édition) passe par
+   window._closeOverlayAnimated comme le tiroir ci-dessus, voir
+   _armoireUpdateEditingBanner dans js/armoireConfig.js. */
+#armoireEditingBanner{ animation: armoireBannerSlideIn .2s ease forwards; }
+#armoireEditingBanner.closing{ animation: armoireBannerSlideOut .16s ease forwards !important; }
+
+/* Contenu des onglets Blocs/Configurations enregistrés, et bascule mobile
+   Parcourir/Ma configuration — un fondu simple suffit ici (pas de vraie
+   fermeture à animer, juste un changement de contenu affiché) : la couche
+   qui redevient visible rejoue l'anim, l'autre n'est jamais retardée par un
+   quelconque temps d'attente puisqu'elle n'a rien à montrer. */
+#armoireConfigBlocksList, #armoireConfigSavedList,
+#armoireConfigStats{
+  animation: armoireFadeIn .18s ease forwards;
 }
 /* Quantité modifiable directement dans le brouillon de configuration —
    masque les flèches natives du <input type="number"> : elles font double

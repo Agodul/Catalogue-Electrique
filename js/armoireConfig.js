@@ -1066,10 +1066,20 @@ function _armoireUpdateEditingBanner(){
   var textEl = document.getElementById('armoireEditingBannerText');
   if(!banner) return;
   if(_armoireEditingEntry){
+    banner.classList.remove('closing');
     banner.style.display = 'flex';
     if(textEl) textEl.innerHTML = '<i class="ti ti-pencil"></i> Modification de « ' + escapeHtml(_armoireEditingEntry.name) + ' »';
-  } else {
-    banner.style.display = 'none';
+  } else if(banner.style.display !== 'none'){
+    // Animée (glissement+fondu vers le haut, voir css/styles.css) plutôt
+    // qu'un disparition instantanée — retour utilisateur : animations sur
+    // les différents éléments du configurateur. Le if ci-dessus évite de
+    // relancer une fermeture déjà terminée (cette fonction est appelée à
+    // chaque changement du brouillon, pas seulement en sortie d'édition).
+    if(typeof window._closeOverlayAnimated === 'function'){
+      window._closeOverlayAnimated(banner, function(){ banner.style.display = 'none'; });
+    } else {
+      banner.style.display = 'none';
+    }
   }
   // Bouton Enregistrer fusionné (bloc + configuration, voir
   // _armoireSaveChoice) : en édition, on sait déjà de quel type il s'agit
@@ -1123,9 +1133,24 @@ function _armoireOpenBlocksDrawer(){
   }
 }
 
-function _armoireCloseBlocksDrawer(){
+// instant (défaut false) : saute l'animation de fermeture — utilisé
+// seulement pour remettre le tiroir à l'état fermé en arrière-plan (à
+// l'ouverture/fermeture du configurateur lui-même, voir _armoireOpen/
+// _armoireClose plus bas), où une animation supplémentaire n'aurait rien à
+// montrer (le tiroir n'a jamais été visible) et ne ferait que retarder
+// inutilement le display:none. Une vraie fermeture demandée par
+// l'utilisateur (croix, clic à l'extérieur) reste animée — retour
+// utilisateur : "ajouter des animations pour les ouverture et fermeture des
+// différents éléments dans le configurateur d'armoire".
+function _armoireCloseBlocksDrawer(instant){
   var drawer = document.getElementById('armoireBlocksDrawer');
-  if(drawer) drawer.style.display = 'none';
+  if(!drawer || drawer.style.display === 'none') return;
+  if(instant || typeof window._closeOverlayAnimated !== 'function'){
+    drawer.classList.remove('closing');
+    drawer.style.display = 'none';
+    return;
+  }
+  window._closeOverlayAnimated(drawer, function(){ drawer.style.display = 'none'; });
 }
 
 var _armoireDrawerOutsideHandler = null;
@@ -1239,7 +1264,7 @@ function _armoireOpen(){
   _armoireBrowseFamily = null;
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.value = '';
-  _armoireCloseBlocksDrawer();
+  _armoireCloseBlocksDrawer(true); // remise à zéro silencieuse, le tiroir n'a jamais été visible
   _armoireSetMobileView('browse');
   _armoireRenderDraft();
   _armoireRenderSearchResults('');
@@ -1264,7 +1289,7 @@ function _armoireClose(){
   if(_armoireEditingEntry) _armoireCancelEditEntry();
   var overlay = document.getElementById('armoireConfigOverlay');
   document.body.classList.remove('modal-open');
-  _armoireCloseBlocksDrawer();
+  _armoireCloseBlocksDrawer(true); // toute la fenêtre disparaît déjà — pas besoin d'une seconde anim en plus
   function teardown(){
     if(overlay) overlay.style.display = 'none';
     if(_armoireViewportHandler && window.visualViewport){
