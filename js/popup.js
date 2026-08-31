@@ -225,8 +225,16 @@ window._showImageLightbox = _showImageLightbox;
 //   customAlert(titre, message)              -> Promise<void>
 //   customConfirm(titre, message, opts)       -> Promise<boolean>
 //   customPrompt(titre, message, valeurInit)  -> Promise<string|null>
-// Les chaînes titre/message sont insérées telles quelles (HTML) : le
-// caller doit passer les valeurs dynamiques déjà échappées via escapeHtml().
+// Les chaînes dynamiques (titre/message/libellés) sont échappées ici avant
+// insertion dans le HTML des popups pour éviter toute réinterprétation.
+function _escapePopupHtml(value){
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function _popupOverlay(innerHtml){
   var overlay = document.createElement('div');
@@ -244,9 +252,11 @@ function _popupOverlay(innerHtml){
 
 function customAlert(title, message){
   return new Promise(function(resolve){
+    var safeTitle = _escapePopupHtml(title);
+    var safeMessage = _escapePopupHtml(message);
     var overlay = _popupOverlay(
-      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + title + '</div>' +
-      (message ? '<div style="font-size:13px;color:#64748b;margin-bottom:20px;white-space:pre-line;">' + message + '</div>' : '') +
+      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + safeTitle + '</div>' +
+      (message ? '<div style="font-size:13px;color:#64748b;margin-bottom:20px;white-space:pre-line;">' + safeMessage + '</div>' : '') +
       '<div style="display:flex;flex-direction:column;gap:8px;">' +
         '<button id="_popupOk" style="padding:10px 14px;border-radius:8px;border:1px solid var(--copper,#194093);background:var(--copper,#194093);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">OK</button>' +
       '</div>'
@@ -268,12 +278,16 @@ function customConfirm(title, message, opts){
     ? 'border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;'
     : 'border:1px solid var(--copper,#194093);background:var(--copper,#194093);color:#fff;';
   return new Promise(function(resolve){
+    var safeTitle = _escapePopupHtml(title);
+    var safeMessage = _escapePopupHtml(message);
+    var safeOkLabel = _escapePopupHtml(okLabel);
+    var safeCancelLabel = _escapePopupHtml(cancelLabel);
     var overlay = _popupOverlay(
-      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + title + '</div>' +
-      (message ? '<div style="font-size:13px;color:#64748b;margin-bottom:20px;white-space:pre-line;">' + message + '</div>' : '') +
+      '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + safeTitle + '</div>' +
+      (message ? '<div style="font-size:13px;color:#64748b;margin-bottom:20px;white-space:pre-line;">' + safeMessage + '</div>' : '') +
       '<div style="display:flex;flex-direction:column;gap:8px;">' +
-        '<button id="_popupConfirm" style="padding:10px 14px;border-radius:8px;' + okStyle + 'font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">' + okLabel + '</button>' +
-        '<button id="_popupCancel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">' + cancelLabel + '</button>' +
+        '<button id="_popupConfirm" style="padding:10px 14px;border-radius:8px;' + okStyle + 'font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">' + safeOkLabel + '</button>' +
+        '<button id="_popupCancel" style="padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">' + safeCancelLabel + '</button>' +
       '</div>'
     );
     function close(result){ if(overlay.parentNode) document.body.removeChild(overlay); resolve(result); }
