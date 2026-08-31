@@ -418,7 +418,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
         }
       }
     }else{
-      payload.id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      payload.id = 'p_' + Date.now() + '_' + _secureRandomBase36(6);
       // Propager l'icône aux produits existants de la même famille — bump
       // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
       // envoi (pas plus récent que sa version déjà enregistrée).
@@ -1048,11 +1048,28 @@ window._setHeaderBackMode = _setHeaderBackMode;
   // jamais être bloquées (retour utilisateur : "comment on fait quand c'est
   // deux sessions identiques ?"). Comparer l'ID de session plutôt que le nom
   // distingue bien deux onglets même identiquement connectés.
+  // Math.random() n'est pas un générateur cryptographiquement sûr (issue
+  // CodeQL "Insecure randomness") — prévisible en théorie, ce qui permettrait
+  // à quelqu'un de deviner/forger un ID de session ou de produit. Remplacé
+  // partout dans ce fichier (verrou d'édition + ID produit) par
+  // crypto.getRandomValues(), la source d'aléa fournie par le navigateur
+  // lui-même pour cet usage. Alphabet base36 (0-9a-z) comme avant, juste la
+  // source d'aléa change — aucun format d'ID existant n'est cassé.
+  function _secureRandomBase36(len){
+    var out = '';
+    while(out.length < len){
+      var buf = new Uint8Array(1);
+      window.crypto.getRandomValues(buf);
+      out += (buf[0] % 36).toString(36);
+    }
+    return out.slice(0, len);
+  }
+
   function _editLockSessionId(){
     try {
       var id = sessionStorage.getItem('cat_edit_lock_session');
       if(!id){
-        id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        id = 'sess_' + Date.now() + '_' + _secureRandomBase36(8);
         sessionStorage.setItem('cat_edit_lock_session', id);
       }
       return id;
@@ -1060,7 +1077,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
       // sessionStorage indisponible (navigation privée stricte, etc.) —
       // repli sur un ID généré une fois en mémoire pour la durée de la page.
       if(!window._editLockSessionIdFallback){
-        window._editLockSessionIdFallback = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        window._editLockSessionIdFallback = 'sess_' + Date.now() + '_' + _secureRandomBase36(8);
       }
       return window._editLockSessionIdFallback;
     }
@@ -1650,8 +1667,13 @@ window._setHeaderBackMode = _setHeaderBackMode;
     var id = row.getAttribute('data-id');
     var ref = row.getAttribute('data-ref');
     var refLabel = ref || id;
+    // refLabel vient d'une ref/id produit (saisie possible par n'importe
+    // quel utilisateur autorisé à ajouter un produit) — échappé avant
+    // insertion dans le popup HTML, comme les autres appels de
+    // customConfirm/customAlert du projet (issue CodeQL "DOM text
+    // reinterpreted as HTML" : ce site-ci ne le faisait pas encore).
     var ok = typeof customConfirm === 'function'
-      ? await customConfirm('Déverrouiller cette fiche ?', 'Utilise ceci seulement si tu es sûr que ' + refLabel + ' n\'est plus en cours de modification par personne (crash/fermeture du navigateur). Continuer ?', { okLabel: 'Déverrouiller', danger: true })
+      ? await customConfirm('Déverrouiller cette fiche ?', 'Utilise ceci seulement si tu es sûr que ' + escapeHtml(refLabel) + ' n\'est plus en cours de modification par personne (crash/fermeture du navigateur). Continuer ?', { okLabel: 'Déverrouiller', danger: true })
       : confirm('Déverrouiller ' + refLabel + ' ?');
     if(!ok) return;
     btn.disabled = true;
@@ -1920,9 +1942,13 @@ window._setHeaderBackMode = _setHeaderBackMode;
       // serveur) — confirmation appuyée obligatoire, comme pour une
       // suppression, avec le nom du fichier choisi pour que l'admin
       // vérifie qu'il ne s'est pas trompé de fichier.
+      // file.name vient du sélecteur de fichier du système — un nom de
+      // fichier peut contenir n'importe quel caractère selon l'OS, échappé
+      // avant insertion dans le popup HTML pour la même raison que
+      // refLabel plus haut (issue CodeQL "DOM text reinterpreted as HTML").
       var confirmed = await customConfirm(
         'Restaurer une sauvegarde ?',
-        'Le serveur va être restauré à partir de « ' + file.name + ' », en écrasant l\'état actuel. Cette opération est irréversible et affecte TOUS les utilisateurs connectés à ce serveur.',
+        'Le serveur va être restauré à partir de « ' + escapeHtml(file.name) + ' », en écrasant l\'état actuel. Cette opération est irréversible et affecte TOUS les utilisateurs connectés à ce serveur.',
         { okLabel: 'Restaurer', danger: true }
       );
       adminRestoreFileInput.value = '';
@@ -2340,7 +2366,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
         var importConflicts = [];
 
         _pendingImport.forEach(function(p){
-          if(!p.id) p.id = 'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+          if(!p.id) p.id = 'p_'+Date.now()+'_'+_secureRandomBase36(6);
           if(!p.ref){
             // Pas de ref → ajout direct
             products.push(p);
@@ -2471,7 +2497,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
         'Série'            : p.series   || '',
         'Prix catalogue (€)': p.priceCatalogue || priceCatalogue || '',
         'Prix de vente (€)' : p.price   || '',
-        'Description'      : (p.desc    || '').replace(/<[^>]*>/g,''),
+        'Description'      : stripHtmlTags(p.desc || ''),
       };
     });
 
@@ -2788,7 +2814,7 @@ window._setHeaderBackMode = _setHeaderBackMode;
           initPrice = item.newPrice;
         }
         var p = {
-          id       : 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+          id       : 'p_' + Date.now() + '_' + _secureRandomBase36(6),
           ref      : item.ref,
           name     : item.newName,
           brand    : item.newBrand,

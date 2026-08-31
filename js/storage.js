@@ -393,6 +393,23 @@
     });
   }
 
+  // Retire les balises HTML d'une chaîne (description produit potentiellement
+  // collée depuis une page web, avec du HTML dedans) pour n'en garder que le
+  // texte brut. Remplace un ancien .replace(/<[^>]*>/g,'') utilisé à
+  // plusieurs endroits du projet (issue CodeQL "Incomplete multi-character
+  // sanitization" : une regex de ce genre peut être contournée par des
+  // balises malformées/imbriquées, ex. un fragment "<<script>" dont une
+  // seule passe de retrait ne laisse ressortir qu'un "<script>" bien formé).
+  // Laisser le PARSEUR HTML du navigateur lui-même s'en charger est fiable
+  // par construction — jamais d'exécution de script ni d'attribut (onerror,
+  // onload…) sur un nœud qui n'est jamais inséré dans le document, vérifié
+  // en le testant explicitement avant d'adopter ce correctif ici.
+  function stripHtmlTags(html){
+    var container = document.createElement('div');
+    container.innerHTML = html || '';
+    return container.textContent || container.innerText || '';
+  }
+
   // Normalise une chaîne pour la recherche : minuscules + sans accents
   function normalizeSearch(s){
     return (s||'').toLowerCase()

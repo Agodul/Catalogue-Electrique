@@ -86,7 +86,7 @@
     // description contenant du HTML collé par erreur (ex. copié depuis une
     // page web) polluait les suggestions avec des mots comme "html" ou
     // "script" au lieu de vrais mots-clés produit (retour utilisateur).
-    var cleanDesc = (desc || '').replace(/<[^>]*>/g, ' ');
+    var cleanDesc = stripHtmlTags(desc || '');
     var norm = typeof normalizeSearch === 'function' ? normalizeSearch(cleanDesc) : cleanDesc.toLowerCase();
     var words = norm.split(/[\s-]+/).filter(Boolean);
     var existing = {};

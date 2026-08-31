@@ -162,7 +162,7 @@ function _productBadgesCompactHtml(p){
     // une description contenant du HTML collé par erreur affichait les
     // balises en clair ici alors que la carte les nettoyait déjà (retour
     // utilisateur : incohérence entre les deux vues).
-    var fullDesc = (p.desc || '').replace(/<[^>]*>/g, '').trim();
+    var fullDesc = stripHtmlTags(p.desc || '').trim();
     var isMobile = window.innerWidth <= 640;
     var CHAR_LIMIT = isMobile ? 160 : 300;
     vmDesc.style.display = fullDesc ? '' : 'none';
@@ -1717,7 +1717,7 @@ function _productBadgesCompactHtml(p){
     if(p.supplier) meta += (meta ? ' · ' : '') + escapeHtml(p.supplier);
 
     // Description courte : 100 chars max, coupe au dernier espace
-    var rawDesc = (p.desc || '').replace(/<[^>]*>/g, '').trim();
+    var rawDesc = stripHtmlTags(p.desc || '').trim();
     var shortDesc = rawDesc.length > 120
       ? rawDesc.slice(0, rawDesc.lastIndexOf(' ', 120) || 120) + '…'
       : rawDesc;

@@ -115,5 +115,12 @@ function renderFamilyIconHtml(icon, extraAttrs){
   if(icon && FAMILY_ICON_CHOICES.indexOf(icon) !== -1){
     return '<img src="'+FAMILY_ICONS_BASE_PATH+icon+'.png" alt="" aria-hidden="true" '+extraAttrs+'>';
   }
-  return '<i class="ti '+(icon || 'ti-package')+'" aria-hidden="true"></i>';
+  // icon peut porter une ancienne valeur "ti-xxx" enregistrée sur un produit
+  // existant (voir commentaire plus haut) — potentiellement modifiable par
+  // n'importe quel compte pouvant éditer un produit. Validé contre le format
+  // attendu d'une classe d'icône Tabler avant insertion comme attribut HTML
+  // (issue CodeQL "DOM text reinterpreted as HTML") ; toute valeur qui ne
+  // matche pas retombe sur l'icône générique existante plutôt que de planter.
+  var safeLegacyIcon = (typeof icon === 'string' && /^ti-[a-z0-9-]+$/i.test(icon)) ? icon : 'ti-package';
+  return '<i class="ti '+safeLegacyIcon+'" aria-hidden="true"></i>';
 }

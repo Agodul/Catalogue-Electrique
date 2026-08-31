@@ -225,8 +225,18 @@ window._showImageLightbox = _showImageLightbox;
 //   customAlert(titre, message)              -> Promise<void>
 //   customConfirm(titre, message, opts)       -> Promise<boolean>
 //   customPrompt(titre, message, valeurInit)  -> Promise<string|null>
-// Les chaînes titre/message sont insérées telles quelles (HTML) : le
-// caller doit passer les valeurs dynamiques déjà échappées via escapeHtml().
+// Les chaînes titre/message sont insérées TELLES QUELLES (HTML, pas de
+// texte) — volontaire : au moins 2 appels (js/armoireConfig.js, détails
+// bloc/délais) passent un vrai fragment HTML construit (ex. un tableau),
+// pas une simple phrase, donc customAlert/customConfirm ne peuvent pas
+// échapper title/message eux-mêmes sans casser ces popups-là. La règle
+// reste donc : le CALLER doit passer ses valeurs dynamiques déjà échappées
+// via escapeHtml() avant de les concaténer dans title/message — cf. la
+// majorité des appels existants (auth.js, render.js, requests.js…). Une
+// issue CodeQL "DOM text reinterpreted as HTML" a été trouvée sur 2 appels
+// (js/actions.js) qui ne suivaient pas cette règle — corrigés à la source,
+// pas ici, pour ne pas casser les popups à contenu HTML volontaire.
+
 
 function _popupOverlay(innerHtml){
   var overlay = document.createElement('div');
