@@ -162,7 +162,9 @@ function _productBadgesCompactHtml(p){
     // une description contenant du HTML collé par erreur affichait les
     // balises en clair ici alors que la carte les nettoyait déjà (retour
     // utilisateur : incohérence entre les deux vues).
-    var fullDesc = (p.desc || '').replace(/<[^>]*>/g, '').trim();
+    var _descContainer = document.createElement('div');
+    _descContainer.innerHTML = (p.desc || '');
+    var fullDesc = (_descContainer.textContent || _descContainer.innerText || '').trim();
     var isMobile = window.innerWidth <= 640;
     var CHAR_LIMIT = isMobile ? 160 : 300;
     vmDesc.style.display = fullDesc ? '' : 'none';
