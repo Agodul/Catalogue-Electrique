@@ -757,6 +757,40 @@
      .armoire-mobile-tab restent car lus par js/armoireConfig.js comme
      sélecteurs, pas seulement pour le style. */
   .armoire-tab-btn.active, .armoire-mobile-tab.active, .tab-btn-copper.active{ background:var(--copper); color:#fff; border-color:var(--copper); }
+  /* .tabs n'occupe par défaut que la largeur naturelle de son contenu (pas
+     de flex:1/width:100%) — dans le tiroir "Blocs/Configurations", ça
+     laissait le bloc d'onglets bien plus étroit que la place réellement
+     disponible dans l'en-tête (à côté du bouton fermer), forçant "Blocs"
+     et "Configurations" (icône + texte, centrés par défaut sur un bouton)
+     à passer sur deux lignes centrées — l'icône se retrouvait au-dessus du
+     texte au lieu d'être à gauche (retour utilisateur : "fais en sorte que
+     les icon soit bien a gauche"). #armoireBlocksDrawer .tabs{flex:1} lui
+     donne toute la largeur disponible, et .armoire-tab-btn passe en ligne
+     (icône puis texte) alignée à gauche plutôt que centrée sur deux lignes. */
+  /* margin-bottom:0 : .tabs porte par défaut un margin-bottom:14px (pensé
+     pour espacer des onglets du contenu .tab-pane affiché EN DESSOUS
+     ailleurs sur le site) — ici .tabs est un item d'une rangée flex
+     horizontale (avec le bouton fermer), pas empilé au-dessus d'un
+     .tab-pane. Cette marge agrandissait quand même la hauteur de la
+     rangée d'en-tête (margin bas comprise dans la hauteur d'un flex item),
+     ce qui repoussait la bordure-bas (le "trait" séparant l'en-tête de la
+     liste) 14px plus bas que les boutons, avec un vide visible entre les
+     deux (retour utilisateur : "le trait de coupure qui est en dessous des
+     bouton n'est pas corrigé"). */
+  #armoireBlocksDrawer .tabs{ flex:1; margin-bottom:0; }
+  /* height explicite (au lieu du padding hérité de .tab-btn) pour tomber
+     exactement sur les 38px de #armoireBlocksDrawerTrigger — le bouton
+     "Blocs" juste à côté du champ de recherche, qui ouvre ce tiroir
+     (retour utilisateur : mêmes hauteurs). 38px choisi côté trigger/input
+     comme hauteur explicite plutôt que déduite du padding — capture
+     utilisateur à l'appui montrant le bouton nettement plus haut que le
+     champ de recherche malgré un padding identique, écart de rendu selon
+     police/moteur trop fragile pour rester implicite. */
+  .armoire-tab-btn{
+    display:flex; align-items:center; justify-content:flex-start; gap:6px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    height:38px; box-sizing:border-box;
+  }
   .tab-pane{ display:none; }
   .tab-pane.active{ display:block; }
 

@@ -112,10 +112,14 @@ function _armoireComputeStats(){
   return { totalPrice: hasPrice ? totalPrice : null, avgLeadDays: avgLeadDays, maxLeadDays: maxLeadDays, maxLeadRef: maxLeadRef, leadCount: leadDays.length };
 }
 
+// Affichées en permanence (retour utilisateur), même brouillon vide — avant,
+// tout le bloc disparaissait tant qu'aucun produit n'était ajouté ;
+// _armoireComputeStats() gère déjà nativement un brouillon vide (renvoie des
+// stats à null), donc les 3 cases s'affichent alors avec "—" plutôt que de
+// masquer le bloc entier.
 function _armoireRenderStats(){
   var el = document.getElementById('armoireConfigStats');
   if(!el) return;
-  if(!_armoireDraft.length){ el.style.display = 'none'; el.innerHTML = ''; return; }
   var stats = _armoireComputeStats();
   var priceHtml = stats.totalPrice != null
     ? stats.totalPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -418,7 +422,7 @@ function _armoireListItemHtml(entry, kind){
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
     + '<div style="font-size:11px;color:var(--ink-soft);">' + entry.items.length + ' référence' + (entry.items.length > 1 ? 's' : '') + '</div>'
     + '</div>'
-    + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;font-style:italic;font-family:Georgia,serif;">i</button>'
+    + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:none;background:var(--copper);color:#fff;font-size:11px;font-weight:700;font-style:normal;line-height:1;cursor:pointer;flex-shrink:0;">i</button>'
     + '<button type="button" class="' + actionClass + '" style="padding:5px 9px;border-radius:7px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">' + actionLabel + '</button>'
     + (canEditEntry ? '<button type="button" class="' + editClass + '" title="Modifier" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>' : '')
     + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
@@ -1112,7 +1116,7 @@ function _armoireSwitchTab(tab){
   if(savedEl) savedEl.style.display = tab === 'configs' ? '' : 'none';
 }
 
-// ── Tiroir "Blocs enregistrés / Configurations enregistrées" — partagés
+// ── Tiroir "Blocs / Configurations" — partagés
 // entre tous les utilisateurs connectés, pas propres à chacun (d'où le
 // libellé neutre plutôt que "Mes...", retour utilisateur). ─────────────
 // Ouvert à la demande par-dessus la liste de familles (voir CSS
@@ -1127,6 +1131,12 @@ function _armoireOpenBlocksDrawer(){
       var trigger = document.getElementById('armoireBlocksDrawerTrigger');
       if(!d || d.style.display === 'none') return;
       if(d.contains(e.target) || (trigger && trigger.contains(e.target))) return;
+      // Un clic sur/dans une popup ouverte par-dessus (ex. "Voir le
+      // contenu" au clic sur le petit "i", via customAlert) n'est pas un
+      // clic "à l'extérieur" du panneau — sans ce garde-fou, fermer cette
+      // popup fermait aussi le panneau Blocs/Configurations en dessous
+      // (retour utilisateur).
+      if(e.target.closest && e.target.closest('.spi-popup-overlay')) return;
       _armoireCloseBlocksDrawer();
     };
     document.addEventListener('mousedown', _armoireDrawerOutsideHandler);

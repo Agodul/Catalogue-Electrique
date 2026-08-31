@@ -240,6 +240,14 @@ window._showImageLightbox = _showImageLightbox;
 
 function _popupOverlay(innerHtml){
   var overlay = document.createElement('div');
+  // Classe repère (pas seulement pour le style — rien ne l'utilise en CSS)
+  // : permet à un gestionnaire de clic extérieur ailleurs dans le code
+  // (ex. _armoireDrawerOutsideHandler dans js/armoireConfig.js) de
+  // reconnaître qu'un clic est destiné à CETTE popup plutôt qu'à
+  // l'extérieur de tout, et donc de ne pas fermer le panneau qu'il
+  // surveille en même temps (retour utilisateur : cliquer en dehors du
+  // petit "i" fermait aussi le panneau Blocs/Configurations en dessous).
+  overlay.className = 'spi-popup-overlay';
   overlay.style.cssText =
     'position:fixed;inset:0;z-index:var(--z-popup,11000);background:var(--overlay-scrim);' +
     'display:flex;align-items:center;justify-content:center;padding:16px;';

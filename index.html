@@ -1408,8 +1408,8 @@
       <!-- Colonne recherche produits -->
       <div class="armoire-cfg-browse" style="flex:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden;position:relative;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;gap:8px;align-items:center;">
-          <input type="text" id="armoireConfigSearch" placeholder="Rechercher un produit (réf, nom)…" style="flex:1;min-width:0;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--paper);color:var(--ink);">
-          <button type="button" id="armoireBlocksDrawerTrigger" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Blocs enregistrés</button>
+          <input type="text" id="armoireConfigSearch" placeholder="Rechercher un produit (réf, nom)…" style="flex:1;min-width:0;box-sizing:border-box;height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--paper);color:var(--ink);">
+          <button type="button" id="armoireBlocksDrawerTrigger" style="flex-shrink:0;box-sizing:border-box;height:38px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Blocs</button>
         </div>
         <div id="armoireConfigSearchResults" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:120px;"></div>
 
@@ -1421,8 +1421,8 @@
         <div id="armoireBlocksDrawer" class="armoire-blocks-drawer" style="display:none;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;">
             <div class="tabs">
-              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks"><i class="ti ti-package"></i> Blocs enregistrés</button>
-              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs"><i class="ti ti-clipboard-list"></i> Configurations enregistrées</button>
+              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks"><i class="ti ti-package"></i> Blocs</button>
+              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs"><i class="ti ti-clipboard-list"></i> Configurations</button>
             </div>
             <button type="button" id="armoireBlocksDrawerClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;flex-shrink:0;">✕</button>
           </div>
@@ -1438,7 +1438,7 @@
             <div style="font-size:13px;font-weight:700;color:var(--ink);">Configuration en cours</div>
             <button type="button" id="armoireConfigClearBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;">Vider</button>
           </div>
-          <div id="armoireConfigStats" style="display:none;margin-top:8px;gap:8px;"></div>
+          <div id="armoireConfigStats" style="display:flex;margin-top:8px;gap:8px;"></div>
         </div>
         <div id="armoireEditingBanner" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#FFF7ED;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;flex-shrink:0;">
           <span id="armoireEditingBannerText" style="display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i></span>
