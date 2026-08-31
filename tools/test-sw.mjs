@@ -252,8 +252,15 @@ await test("Les requêtes vers l'API métier ne passent jamais par le cache", as
   const avant = state.requests.length;
   await sw.dispatch('fetch', { request: new Request('https://api.exemple.test/pullDatas') });
   const nouvelles = state.requests.slice(avant);
-  assert(nouvelles.includes('https://api.exemple.test/pullDatas'),
-    'la requête distante n\'est pas partie sur le réseau');
+  const requeteApiPresente = nouvelles.some((u) => {
+    try {
+      const parsed = new URL(u);
+      return parsed.origin === 'https://api.exemple.test' && parsed.pathname === '/pullDatas';
+    } catch {
+      return false;
+    }
+  });
+  assert(requeteApiPresente, 'la requête distante n\'est pas partie sur le réseau');
   const noms = await state.caches.keys();
   for (const nom of noms) {
     const c = await state.caches.open(nom);
