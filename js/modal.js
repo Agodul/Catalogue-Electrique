@@ -2880,60 +2880,52 @@
     hintEl.style.color   = 'var(--ink-soft)';
     hintEl.textContent   = '⏳ Récupération de la page en cours…';
 
-    // Essayer plusieurs proxies CORS en cascade
-    var proxies = [
-      function(u){ return 'https://api.allorigins.win/get?url=' + encodeURIComponent(u); },
-      function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); },
-      function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); }
-    ];
-
-    function tryProxy(idx){
-      if(idx >= proxies.length){
+    // Proxy dédié (Cloudflare Worker maison, voir product-page-proxy) — plus
+    // de cascade sur des proxies publics tiers (allorigins/corsproxy/
+    // codetabs) : ils étaient tombés en panne ou passés payants, d'où
+    // l'existence même de ce worker. Répond en HTML brut, pas de JSON à
+    // désempaqueter. Décision assumée : si ce worker tombe en panne, cette
+    // fonction échoue purement et simplement (plus de repli) — reste alors
+    // "Coller le code source" à la main.
+    var proxyUrl = 'https://product-page-proxy.catalogue-electric.workers.dev/?url=' + encodeURIComponent(url);
+    var controller = new AbortController();
+    // 12s, légèrement au-dessus du FETCH_TIMEOUT_MS=10000 côté worker — sans
+    // cette marge, un site fournisseur lent mais qui aurait fini par répondre
+    // (le worker patiente jusqu'à 10s) pouvait être coupé côté client avant
+    // que le worker n'ait lui-même renoncé.
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
+    fetch(proxyUrl, {signal: controller.signal})
+      .then(function(r){
+        clearTimeout(timer);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.text();
+      })
+      .then(function(html){
+        if(!html || html.length < 100) throw new Error('Contenu vide');
+        // Décoder les entités HTML si jamais elles arrivaient encodées
+        // (filet de sécurité — le worker répond en HTML brut en pratique).
+        if(html.indexOf('&lt;') !== -1){
+          var ta = document.createElement('textarea');
+          ta.innerHTML = html;
+          html = ta.value;
+          if(html.indexOf('&lt;') !== -1){
+            ta.innerHTML = html;
+            html = ta.value;
+          }
+        }
+        fHtml.value = html;
+        document.getElementById('btnExtract').click();
+        setExtractLoading(false);
+        hintEl.style.color  = '#059669';
+        hintEl.textContent  = '✓ Extraction réussie !';
+        setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
+      })
+      .catch(function(err){
+        clearTimeout(timer);
         setExtractLoading(false);
         hintEl.style.color  = '#DC2626';
         hintEl.textContent  = '✗ Impossible de récupérer la page — collez le code source manuellement.';
-        return;
-      }
-      hintEl.textContent = '⏳ Tentative '+(idx+1)+'/'+proxies.length+'…';
-      var proxyUrl = proxies[idx](url);
-      var controller = new AbortController();
-      var timer = setTimeout(function(){ controller.abort(); }, 5000);
-      fetch(proxyUrl, {signal: controller.signal})
-        .then(function(r){
-          clearTimeout(timer);
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          return r.text();
-        })
-        .then(function(text){
-          var html = text;
-          try{ var json=JSON.parse(text); if(json.contents) html=json.contents; }catch(e){}
-          if(!html || html.length < 100) throw new Error('Contenu vide');
-          // Décoder les entités HTML si le proxy les a encodées
-          if(html.indexOf('&lt;') !== -1){
-            // Double décodage si nécessaire
-            var ta = document.createElement('textarea');
-            ta.innerHTML = html;
-            html = ta.value;
-            // Si encore encodé
-            if(html.indexOf('&lt;') !== -1){
-              ta.innerHTML = html;
-              html = ta.value;
-            }
-          }
-          fHtml.value = html;
-          document.getElementById('btnExtract').click();
-          setExtractLoading(false);
-          hintEl.style.color  = '#059669';
-          hintEl.textContent  = '✓ Extraction réussie !';
-          setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
-        })
-        .catch(function(err){
-          clearTimeout(timer);
-          tryProxy(idx + 1);
-        });
-    }
-
-    tryProxy(0);
+      });
   });
 
   document.getElementById('btnExtract').addEventListener('click', function(){

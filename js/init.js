@@ -107,38 +107,30 @@
         switchTab('auto');
         showToast('Récupération de la page en cours…', 'ok', 3000);
 
-        // ── Extraction automatique via proxies ─────────────────────
-        var shareProxies = [
-          'https://api.allorigins.win/get?url=' + encodeURIComponent(shareUrl),
-          'https://corsproxy.io/?' + encodeURIComponent(shareUrl),
-          'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(shareUrl)
-        ];
-
-        function tryShareProxy(idx){
-          if(idx >= shareProxies.length){
+        // ── Extraction automatique via le proxy dédié ────────────────
+        // Même Worker Cloudflare maison que le bouton "Extraire depuis
+        // l'URL" (js/modal.js) — remplace les trois anciens proxies publics
+        // (allorigins/corsproxy/codetabs), tombés en panne ou passés
+        // payants. Pas de repli : si ce proxy échoue, l'utilisateur colle le
+        // code source à la main (même choix assumé que js/modal.js).
+        var shareProxyUrl = 'https://product-page-proxy.catalogue-electric.workers.dev/?url=' + encodeURIComponent(shareUrl);
+        fetch(shareProxyUrl)
+          .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+          .then(function(html){
+            if(!html || html.length < 100) throw new Error('Contenu vide');
+            if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
+              var ta = document.createElement('textarea');
+              ta.innerHTML = html;
+              html = ta.value;
+            }
+            fHtml.value = html;
+            fUrl.value  = shareUrl;
+            document.getElementById('btnExtract').click();
+            showToast('Extraction réussie via partage ✓', 'ok', 3500);
+          })
+          .catch(function(){
             showToast('Extraction impossible — collez le code source manuellement', 'warn', 5000);
-            return;
-          }
-          fetch(shareProxies[idx])
-            .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-            .then(function(text){
-              var html = text;
-              try{ var j=JSON.parse(text); if(j.contents) html=j.contents; }catch(e){}
-              if(!html || html.length < 100) throw new Error('Contenu vide');
-              if(html.indexOf('&lt;') !== -1 && html.indexOf('<html') === -1){
-                var ta = document.createElement('textarea');
-                ta.innerHTML = html;
-                html = ta.value;
-              }
-              fHtml.value = html;
-              fUrl.value  = shareUrl;
-              document.getElementById('btnExtract').click();
-              showToast('Extraction réussie via partage ✓', 'ok', 3500);
-            })
-            .catch(function(){ tryShareProxy(idx+1); });
-        }
-
-        tryShareProxy(0);
+          });
 
       }, 350);
     }, 600);

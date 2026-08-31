@@ -86,12 +86,21 @@
                                  le CSP ne remontant qu'un "Failed to fetch"
                                  générique en erreur JS (repéré en testant :
                                  aucun indice pour l'utilisateur sur la vraie
-                                 cause). Les trois proxys CORS sont malgré
-                                 tout nommés explicitement, pour documenter
-                                 qui reçoit les URL fournisseur consultées.
-     Aucun des trois n'ouvre l'exécution de code : ni une image, ni une
-     réponse fetch en clair, ne deviennent un script. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://api.allorigins.win https://corsproxy.io https://api.codetabs.com https: http:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
+                                 cause). Le proxy CORS (Worker Cloudflare
+                                 maison, product-page-proxy) est malgré tout
+                                 nommé explicitement, pour documenter qui
+                                 reçoit les URL fournisseur consultées —
+                                 utilisé à la fois par "Extraire depuis
+                                 l'URL" (js/modal.js) et par la réception de
+                                 partage Android (js/init.js), qui
+                                 s'appuyaient auparavant sur trois proxys
+                                 publics tiers (allorigins/corsproxy/
+                                 codetabs), tombés en panne ou passés
+                                 payants — plus utilisés nulle part dans le
+                                 projet, retirés d'ici.
+     Il n'ouvre l'exécution d'aucun code : ni une image, ni une réponse
+     fetch en clair, ne deviennent un script. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://product-page-proxy.catalogue-electric.workers.dev https: http:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" integrity="sha384-enQOo0dFaqOuACimJrhDH3XtzLk5jDIo5gfCGUvfZWLoiAyi/Jf+Ny5+etklU279" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5.3.0/index.css" integrity="sha384-CriTXMxa9KSWUY4RPeIP7Xe+CI39CEWYo20uac1eZ4erQw31mZTTxvq6xZdWgidR" crossorigin="anonymous">
