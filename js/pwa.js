@@ -48,6 +48,22 @@
         var m = text.match(/spi-catalogue-v(\d+)/);
         if(m && activeVersion && m[1] !== activeVersion && updateRow){
           updateRow.style.display = 'flex';
+          // Ce contrôle (fetch direct de sw.js) est indépendant du cycle de
+          // vie réel du Service Worker : détecter un écart ici ne déclenche
+          // RIEN côté navigateur tout seul. Sans cet appel, la bannière
+          // "Mettre à jour" (#swUpdateBanner, voir plus bas) pouvait ne
+          // jamais apparaître avant la prochaine vérification automatique du
+          // navigateur (souvent différée) — retour utilisateur : le message
+          // "nouvelle version disponible" s'affichait dans Réglages mais la
+          // bannière n'apparaissait jamais. reg.update() force une vraie
+          // vérification immédiate ; si le SW retourné diffère, il s'installe
+          // puis prend la main via skipWaiting()/clients.claim() (déjà dans
+          // sw.js), ce qui déclenche 'controllerchange' et donc la bannière.
+          if('serviceWorker' in navigator){
+            navigator.serviceWorker.getRegistration().then(function(reg){
+              if(reg) reg.update();
+            }).catch(function(){});
+          }
         }
       }
     }catch(e){}
