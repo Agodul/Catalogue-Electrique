@@ -1631,7 +1631,12 @@ window._setHeaderBackMode = _setHeaderBackMode;
           + (expired ? ' (expiré — plus bloquant pour personne, sera nettoyé par la purge serveur)' : '')
         + '</div>'
         + '</div>'
-        + '<button type="button" class="locked-product-unlock" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Déverrouiller</button>'
+        // min-width:130px : ce bouton bascule vers "Déverrouillage…" pendant
+        // l'appel réseau (voir plus bas) — mesuré ~103px pour "Déverrouiller"
+        // contre ~123px pour "Déverrouillage…", sans largeur fixe il
+        // rétrécissait/grossissait visiblement au clic (retour utilisateur :
+        // "je voudrai que la taille soit fixe [...] ça fait trop amateur").
+        + '<button type="button" class="locked-product-unlock" style="flex-shrink:0;min-width:130px;padding:8px 12px;border-radius:8px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Déverrouiller</button>'
         + '</div>';
     }).join('');
   }

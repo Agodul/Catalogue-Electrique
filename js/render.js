@@ -100,6 +100,12 @@ function _productBadgesCompactHtml(p){
     viewingId = id;
     window._viewingId = id; // exposé pour requests.js
     vmInfoMenu.classList.remove('open');
+    // Retire un éventuel verrou de hauteur posé par "Voir plus" sur la
+    // fiche précédente (voir plus bas) — sans ça, ouvrir un nouveau produit
+    // hériterait de la hauteur figée du précédent au lieu de s'ajuster à
+    // son propre contenu.
+    var vmModalEl = document.getElementById('viewModal');
+    if(vmModalEl) vmModalEl.style.height = '';
 
     // Photo — badges Essentiel/3DEXPERIENCE (retour utilisateur : aussi
     // visibles sur la fiche produit, pas seulement sur la carte catalogue).
@@ -1537,6 +1543,7 @@ function _productBadgesCompactHtml(p){
     var toggle = e.target.closest('.vm-desc-toggle');
     if(!toggle) return;
     var isExpanded = toggle.dataset.expanded === 'true';
+    var vmModalEl = document.getElementById('viewModal');
     if(isExpanded){
       var truncated = toggle.dataset.short;
       vmDesc.innerHTML = escapeHtml(truncated)
@@ -1544,7 +1551,18 @@ function _productBadgesCompactHtml(p){
       vmDesc.querySelector('.vm-desc-toggle').dataset.full    = toggle.dataset.full;
       vmDesc.querySelector('.vm-desc-toggle').dataset.short   = truncated;
       vmDesc.querySelector('.vm-desc-toggle').dataset.expanded = 'false';
+      // "Voir moins" : redonne la main à la hauteur naturelle du contenu
+      // (retire le verrou posé ci-dessous à l'ouverture de "Voir plus").
+      if(vmModalEl) vmModalEl.style.height = '';
     } else {
+      // "Voir plus" : verrouille la hauteur ACTUELLE de la fenêtre avant
+      // d'agrandir le texte, pour que le texte en plus se défile dans
+      // .vm-scroll au lieu de faire grandir toute la fiche produit (retour
+      // utilisateur : "lorsqu'on fait voir plus la fiche produit
+      // s'allonge"). Sans ce verrou, #viewModal (hauteur auto plafonnée à
+      // min(80vh,620px)) grandissait pour accueillir le texte complet tant
+      // que ce plafond n'était pas encore atteint.
+      if(vmModalEl) vmModalEl.style.height = vmModalEl.getBoundingClientRect().height + 'px';
       var full = toggle.dataset.full;
       vmDesc.innerHTML = escapeHtml(full)
         + '<span class="vm-desc-toggle" role="button" tabindex="0"> Voir moins</span>';

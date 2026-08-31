@@ -565,7 +565,17 @@
        peu de contenu, ça laissait un grand vide sous le dernier bouton
        ("Voir les pièces de rechange" ne touchait plus le bas de la
        fenêtre comme avant). La fiche s'ajuste donc de nouveau à son
-       contenu, plafonnée à 80vh avec défilement interne au-delà. */
+       contenu, plafonnée à 80vh avec défilement interne au-delà.
+       ⚠ Un plafond plus bas (min(80vh,620px)) a été essayé ICI MÊME pour
+       limiter la croissance entre produits courts/fournis, PUIS ANNULÉ
+       (retour utilisateur, capture à l'appui) : pour un vrai produit avec
+       description + historique de prix (735px de contenu réel mesuré), ça
+       poussait les boutons Suggestions/Caractéristiques/Pièces de rechange
+       sous le pli, invisibles sans défiler ("les boutons sont caché"). Le
+       vrai problème signalé ("Voir plus" qui fait grandir la fenêtre au
+       clic) est résolu indépendamment du plafond, voir le verrou de
+       hauteur posé au clic dans js/render.js (vmDesc listener) — ce
+       plafond-ci n'avait donc plus lieu d'être abaissé. */
     max-height:80vh;
     box-shadow:var(--shadow-modal);
     overflow:hidden; position:relative;
@@ -925,6 +935,12 @@
   /* Ancien bloc conservé masqué (rétrocompat) */
   .ref-check-msg{ display:none !important; }
 
+  /* Même raison que #btnSave plus haut : bascule entre "↓ Extraire depuis
+     l'URL" (~184px mesuré) et l'état de chargement avec spinner
+     ("Extraction…", ~129px) — sans largeur fixe, le bouton rétrécissait
+     visiblement pendant le chargement puis regrossissait au résultat. */
+  #btnExtractFromUrl{ min-width:190px; }
+
   .extract-status{
     font-size:14px; padding:9px 11px; border-radius:3px; margin-top:10px;
     display:none;
@@ -938,6 +954,20 @@
     display:flex; justify-content:space-between; align-items:center; gap:10px;
     flex-shrink:0;
   }
+  /* Largeur figée sur desktop : #btnSave est UN SEUL élément DOM réutilisé
+     par toutes les fenêtres qui passent par .modal-foot (Ajouter/Modifier un
+     produit, Envoyer/Valider une demande…) — son libellé change selon le
+     contexte ("Enregistrer", "Envoyer la demande", "Valider et accepter",
+     "Enregistrer le produit"…), sans largeur fixe il grossissait/rétrécissait
+     visiblement à chaque changement de fenêtre (retour utilisateur : "je
+     voudrai que la taille soit fixe [...] ça fait trop amateur"). 190px
+     mesuré pour couvrir le plus long libellé réel ("Enregistrer le produit",
+     ~179px) avec une petite marge. Sur mobile, #btnSave passe déjà en
+     flex:1 (voir plus bas) — largeur pilotée par le partage d'espace avec
+     Annuler, pas par le texte, donc pas concerné par ce risque : min-width
+     y est explicitement annulé pour ne jamais forcer un débordement sur
+     petit écran. */
+  #btnSave{ min-width:190px; }
 
   .photo-preview{
     width:90px; height:90px; border:1px solid var(--line); border-radius:3px;
@@ -1309,7 +1339,7 @@
     .field label{ font-size:11px; }
     .field input, .field textarea{ font-size:14px; padding:8px 10px; }
     .tab-btn{ font-size:12px; padding:7px; }
-    #btnSave{ flex:1; font-size:13px; padding:10px 8px; }
+    #btnSave{ flex:1; min-width:0; font-size:13px; padding:10px 8px; }
     #btnCancel{ flex:1; font-size:13px; padding:10px 8px; }
 
     /* ── Filebar ── */
@@ -2036,6 +2066,18 @@
     border-top:1.5px solid var(--line);
     border-radius:14px;
     width:100%; max-width:480px;
+    /* min-height : cette boîte est réutilisée telle quelle pour la liste
+       principale ET chaque sous-page (Icônes des familles, Utilisateurs,
+       Serveur, Produits verrouillés…) — sans plancher, elle épouse la
+       hauteur de CHAQUE sous-page (mesuré : de ~155px pour une sous-page
+       courte à ~240px pour une plus fournie), donnant l'impression d'une
+       fenêtre qui saute de taille à chaque clic dans le menu Paramètres
+       (retour utilisateur : "je voudrai que la taille soit fixe [...] pour
+       les fenêtres [...] ça fait trop amateur"). 280px choisi avec une
+       marge au-dessus du max mesuré — n'empêche jamais une sous-page plus
+       longue de grandir au-delà (max-height/scroll interne inchangés),
+       borne seulement le bas. */
+    min-height:280px;
     max-height:82dvh;
     display:flex; flex-direction:column;
     box-shadow:var(--shadow-modal);
@@ -2348,9 +2390,16 @@
     transition:background-color 5000s ease-in-out 0s;
   }
 
+  /* min-height:16px ne suffisait pas à absorber le seul message réellement
+     utilisé ici ("Identifiants incorrects.", voir js/auth.js doLogin) —
+     mesuré à 33px une fois affiché, contre 16px vide : la fenêtre
+     Connexion grandissait de 17px pile au moment de l'erreur (retour
+     utilisateur : "je voudrai que la taille soit fixe [...] pour les
+     fenêtres [...] ça fait trop amateur"). 34px réserve la place à
+     l'avance, avec 1px de marge. */
   .auth-error{
     font-size:13px; color:#DC2626;
-    text-align:center; margin:0; min-height:16px;
+    text-align:center; margin:0; min-height:34px;
   }
 
   #authSubmitBtn{

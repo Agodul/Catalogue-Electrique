@@ -2160,14 +2160,24 @@
   });
 
   // ---------- Tabs ----------
+  // Scopé à #productExtractTabs (Extraction automatique/Saisie manuelle) —
+  // PAS document.querySelectorAll('.tab-btn') tout court : .tab-btn est une
+  // classe générique réutilisée ailleurs sur le site (ex. .req-tab dans le
+  // panneau Demandes, voir js/requests.js). Sans ce scope, resetForm()
+  // (appelée par _openReviewModal en ouvrant le détail d'une demande) et son
+  // switchTab('auto') désactivaient au passage l'onglet actif "Demandes
+  // produit"/"Bugs signalés", qui partage la même classe — l'onglet
+  // redevenait gris après avoir ouvert puis refermé une demande, sans lien
+  // apparent avec ce qui venait d'être cliqué (retour utilisateur : "le
+  // bouton de la section en cours n'est plus sélectionné").
   function switchTab(name){
-    document.querySelectorAll('.tab-btn').forEach(function(b){
+    document.querySelectorAll('#productExtractTabs .tab-btn').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-tab')===name);
     });
     document.getElementById('tab-auto').classList.toggle('active', name==='auto');
     document.getElementById('tab-manual').classList.toggle('active', name==='manual');
   }
-  document.querySelectorAll('.tab-btn').forEach(function(b){
+  document.querySelectorAll('#productExtractTabs .tab-btn').forEach(function(b){
     b.addEventListener('click', function(){ switchTab(b.getAttribute('data-tab')); });
   });
 

@@ -1249,7 +1249,10 @@
       <div class="left-foot"></div>
       <div style="display:flex; gap:10px;">
         <button class="secondary" id="bugReportCancelBtn" type="button">Annuler</button>
-        <button class="copper" id="bugReportSubmitBtn" type="button">Envoyer</button>
+        <!-- min-width : bascule vers "Envoi…" pendant l'envoi (js/requests.js)
+             — écart mesuré faible (~3px) mais gratuit à figer tant qu'on est
+             dessus, même principe que les autres boutons de cette passe. -->
+        <button class="copper" id="bugReportSubmitBtn" type="button" style="min-width:95px;">Envoyer</button>
       </div>
     </div>
   </div>
