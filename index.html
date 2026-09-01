@@ -231,6 +231,11 @@
         <span id="requestsBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:16px;"></span>
       </button>
       <div class="hdr-menu" id="hdrMenu">
+        <!-- Titres de rubrique "Données"/"Outils" : mêmes regroupements que
+             .menu-sheet-section-title côté mobile (voir #menuSheet plus
+             bas) — retour utilisateur : "mettre les titres des différentes
+             rubriques comme sur mobile". -->
+        <div class="hdr-menu-section-title">Données</div>
         <button class="hdr-menu-item" id="btnExport">
           <span class="mi-icon blue"><i class="ti ti-download" aria-hidden="true"></i></span>
           <span class="mi-texts"><span class="mi-title">Exporter JSON</span><span class="mi-sub">Sauvegarde complète</span></span>
@@ -239,7 +244,6 @@
           <span class="mi-icon blue"><i class="ti ti-upload" aria-hidden="true"></i></span>
           <span class="mi-texts"><span class="mi-title">Importer JSON</span><span class="mi-sub">Restaurer ou fusionner</span></span>
         </button>
-        <div class="hdr-menu-sep"></div>
         <button class="hdr-menu-item" id="btnExportXlsx">
           <span class="mi-icon green"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i></span>
           <span class="mi-texts"><span class="mi-title">Exporter Excel</span><span class="mi-sub">Envoi fabricant</span></span>
@@ -249,11 +253,11 @@
           <span class="mi-texts"><span class="mi-title">Importer Excel</span><span class="mi-sub" id="btnImportXlsxSub">Mise à jour des prix</span></span>
         </button>
         <div class="hdr-menu-sep"></div>
+        <div class="hdr-menu-section-title">Outils</div>
         <button class="hdr-menu-item danger" id="btnCleanDescs">
           <span class="mi-icon red"><i class="ti ti-eraser" aria-hidden="true"></i></span>
           <span class="mi-texts"><span class="mi-title">Nettoyer descriptions</span><span class="mi-sub">Supprimer les balises HTML</span></span>
         </button>
-        <div class="hdr-menu-sep"></div>
         <button class="hdr-menu-item" id="btnCompare">
           <span class="mi-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
           <span class="mi-texts"><span class="mi-title">Comparer les offres</span><span class="mi-sub">Importer les fichiers fournisseurs</span></span>
@@ -967,7 +971,10 @@
   <div class="filter-sheet-handle"></div>
   <div class="menu-sheet-header">
     <span class="filter-sheet-title">Menu</span>
-    <button id="menuSheetClose" style="background:none!important;border:none!important;box-shadow:none!important;outline:none!important;font-size:20px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    <!-- class="close sans" : même bouton fermer que #settingsClose
+         (index.html, #settingsOverlay) — retour utilisateur : "la fenêtre
+         menu [doit être] le même style que la fenêtre paramètre". -->
+    <button class="close sans" id="menuSheetClose" aria-label="Fermer">&times;</button>
   </div>
   <div class="menu-sheet-body">
 

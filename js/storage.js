@@ -418,17 +418,36 @@
       .trim();
   }
 
+  // Repli "collé" (espaces/tirets retirés des deux côtés) utilisé quand la
+  // recherche normale échoue à cause d'un séparateur en trop ou en moins
+  // entre la saisie et la référence stockée — retour utilisateur : "GV2L08"
+  // (sans tiret) ne retrouvait pas "GV2-L08", ni "BESM08EG" (sans espace)
+  // "BES M08EG". Comparé uniquement EN REPLI (voir termMatchesField
+  // ci-dessous), jamais à la place de la recherche exacte, qui reste
+  // prioritaire : "coller" systématiquement risquerait, sur un terme très
+  // court, de faire chevaucher deux mots qui n'ont rien à voir.
+  function termMatchesField(term, field){
+    if(field.indexOf(term) !== -1) return true;
+    var termC = term.replace(/[\s-]/g, '');
+    if(!termC) return false;
+    return field.replace(/[\s-]/g, '').indexOf(termC) !== -1;
+  }
+
 
   // ─────────────────────────────────────────────────────────────
   //  RECHERCHE PAR PERTINENCE
   //  Un produit correspond si TOUS les mots tapés se retrouvent quelque part
-  //  (référence, nom, tags, marque, famille ou description). Le classement
-  //  privilégie ensuite les correspondances les plus fortes :
+  //  (référence, nom, tags, marque ou famille). Le classement privilégie
+  //  ensuite les correspondances les plus fortes :
   //    100 — référence exacte              80 — référence commence par le terme
   //     70 — nom exact complet              60 — nom commence par le terme
   //     50 — marque ou famille exacte
   //  + un petit bonus par terme selon le champ où il a été trouvé (réf > nom
-  //  > tags > marque/famille > description), pour départager le reste.
+  //  > tags > marque/famille), pour départager le reste.
+  //  La description N'EST PAS cherchée (retour utilisateur : elle parle
+  //  souvent d'un AUTRE produit en rapport — ex. une alimentation dont la
+  //  description recommande "protégée par un disjoncteur" — et remontait
+  //  alors dans une recherche "disjoncteur" alors que ce n'en est pas un).
   //  Le score est calculé à la volée pour la recherche en cours — il n'est
   //  jamais écrit sur les produits eux-mêmes (voir l'ancien champ _score,
   //  supprimé, qui restait figé une fois enregistré par erreur).
@@ -439,7 +458,6 @@
     var tags   = normalizeSearch((p.tags||[]).join(' '));
     var brand  = normalizeSearch(p.brand || '');
     var family = normalizeSearch(p.family || '');
-    var desc   = normalizeSearch(p.desc || '');
 
     var score = 0;
     if(ref === raw) score = 100;
@@ -449,11 +467,10 @@
     else if(brand === raw || family === raw) score = 50;
 
     terms.forEach(function(t){
-      if(ref.indexOf(t) !== -1) score += 8;
-      else if(name.indexOf(t) !== -1) score += 6;
-      else if(tags.indexOf(t) !== -1) score += 5;
-      else if(brand.indexOf(t) !== -1 || family.indexOf(t) !== -1) score += 3;
-      else if(desc.indexOf(t) !== -1) score += 1;
+      if(termMatchesField(t, ref)) score += 8;
+      else if(termMatchesField(t, name)) score += 6;
+      else if(termMatchesField(t, tags)) score += 5;
+      else if(termMatchesField(t, brand) || termMatchesField(t, family)) score += 3;
     });
     return score;
   }
@@ -485,17 +502,17 @@
     var terms = raw.split(/\s+/).filter(Boolean);
 
     // Filtrer : le produit doit contenir chaque terme dans au moins un des
-    // champs recherchés (référence, nom, tags, marque, famille, description)
+    // champs recherchés (référence, nom, tags, marque, famille — PAS la
+    // description, voir le commentaire au-dessus de scoreProductMatch)
     var matched = filtered.filter(function(p){
       var ref    = normalizeSearch(p.ref || '');
       var name   = normalizeSearch(p.name || '');
       var tags   = normalizeSearch((p.tags||[]).join(' '));
       var brandN = normalizeSearch(p.brand || '');
       var familyN= normalizeSearch(p.family || '');
-      var desc   = normalizeSearch(p.desc || '');
       return terms.every(function(t){
-        return ref.indexOf(t) !== -1 || name.indexOf(t) !== -1 || tags.indexOf(t) !== -1
-          || brandN.indexOf(t) !== -1 || familyN.indexOf(t) !== -1 || desc.indexOf(t) !== -1;
+        return termMatchesField(t, ref) || termMatchesField(t, name) || termMatchesField(t, tags)
+          || termMatchesField(t, brandN) || termMatchesField(t, familyN);
       });
     });
 
