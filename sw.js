@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260901003001";
+const CACHE = "spi-catalogue-v20260901093649";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -107,17 +107,48 @@ const FILES = [
   "./assets/three-d-badge.png",
   "./css/styles.css",
   "./index.html",
-  "./js/actions.js",
+  "./js/actions-backup.js",
+  "./js/actions-compare.js",
+  "./js/actions-conflicts.js",
+  "./js/actions-core.js",
+  "./js/actions-editlock.js",
+  "./js/actions-home.js",
+  "./js/actions-import-export.js",
+  "./js/actions-mobile-chrome.js",
+  "./js/actions-save.js",
+  "./js/actions-search.js",
+  "./js/actions-settings-nav.js",
+  "./js/actions-settings-sync.js",
+  "./js/actions-sync-core.js",
   "./js/armoireConfig.js",
   "./js/auth.js",
   "./js/familyIcons.js",
   "./js/init.js",
-  "./js/modal.js",
+  "./js/modal-autocomplete.js",
+  "./js/modal-browse-catalogue.js",
+  "./js/modal-core.js",
+  "./js/modal-editlock-heartbeat.js",
+  "./js/modal-extraction.js",
+  "./js/modal-price-history-form.js",
+  "./js/modal-ref-duplicate.js",
+  "./js/modal-request-review.js",
+  "./js/modal-spareparts-form.js",
+  "./js/modal-spareparts-suggestions-dnd.js",
+  "./js/modal-specs-editor.js",
+  "./js/modal-suggestions-autocomplete.js",
+  "./js/modal-tabs-price-zone.js",
+  "./js/modal-tag-suggestions.js",
   "./js/popup.js",
   "./js/pwa.js",
-  "./js/render.js",
+  "./js/render-card-grid.js",
+  "./js/render-documents.js",
+  "./js/render-pdf-viewer.js",
+  "./js/render-price-helpers.js",
+  "./js/render-view-modal-close.js",
+  "./js/render-view-modal.js",
   "./js/requests.js",
   "./js/storage.js",
+  "./js/templates.js",
   "./manifest.webmanifest",
 ];
 // <<< FILES <<<

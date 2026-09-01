@@ -117,13 +117,59 @@
   <link rel="preload" href="js/storage.js" as="script">
   <link rel="preload" href="js/init.js" as="script">
   <link rel="preload" href="css/styles.css" as="style">
+  <!-- Doit être le tout premier script chargé : injecte le contenu des
+       grandes fenêtres modales (voir js/templates.js) avant que quoi que
+       ce soit d'autre ne référence leurs éléments. -->
+  <script src="js/templates.js" defer></script>
   <script src="js/popup.js" defer></script>
   <script src="js/auth.js" defer></script>
 <script src="js/familyIcons.js" defer></script>
 <script src="js/storage.js" defer></script>
-<script src="js/render.js" defer></script>
-<script src="js/modal.js" defer></script>
-<script src="js/actions.js" defer></script>
+<!-- render.js découpé par sujet (retour utilisateur : "corrigé le problème de
+     code html trop imposant... voir pour mettre en place un js par
+     fonction") — l'ordre ci-dessous DOIT rester identique à celui du
+     fichier d'origine : scripts classiques chargés avec defer, exécutés
+     dans l'ordre des balises script, et plusieurs de ces morceaux
+     déclarent des variables top-level utilisées par les suivants (ex.
+     render-view-modal.js déclare vmPhoto/vmRef/... repris par
+     render-view-modal-close.js plus bas). -->
+<script src="js/render-view-modal.js" defer></script>
+<script src="js/render-documents.js" defer></script>
+<script src="js/render-pdf-viewer.js" defer></script>
+<script src="js/render-view-modal-close.js" defer></script>
+<script src="js/render-price-helpers.js" defer></script>
+<script src="js/render-card-grid.js" defer></script>
+<!-- modal.js découpé par sujet, même contrainte d'ordre que ci-dessus
+     (modal-core.js déclare fBrand/fRef/.../fSparePartsDrop, réutilisés par
+     tous les morceaux suivants ET par actions-save.js plus bas). -->
+<script src="js/modal-core.js" defer></script>
+<script src="js/modal-spareparts-form.js" defer></script>
+<script src="js/modal-tag-suggestions.js" defer></script>
+<script src="js/modal-price-history-form.js" defer></script>
+<script src="js/modal-editlock-heartbeat.js" defer></script>
+<script src="js/modal-ref-duplicate.js" defer></script>
+<script src="js/modal-autocomplete.js" defer></script>
+<script src="js/modal-suggestions-autocomplete.js" defer></script>
+<script src="js/modal-spareparts-suggestions-dnd.js" defer></script>
+<script src="js/modal-browse-catalogue.js" defer></script>
+<script src="js/modal-specs-editor.js" defer></script>
+<script src="js/modal-request-review.js" defer></script>
+<script src="js/modal-tabs-price-zone.js" defer></script>
+<script src="js/modal-extraction.js" defer></script>
+<!-- actions.js découpé par sujet, même contrainte d'ordre que ci-dessus. -->
+<script src="js/actions-core.js" defer></script>
+<script src="js/actions-save.js" defer></script>
+<script src="js/actions-search.js" defer></script>
+<script src="js/actions-settings-sync.js" defer></script>
+<script src="js/actions-editlock.js" defer></script>
+<script src="js/actions-sync-core.js" defer></script>
+<script src="js/actions-settings-nav.js" defer></script>
+<script src="js/actions-backup.js" defer></script>
+<script src="js/actions-compare.js" defer></script>
+<script src="js/actions-import-export.js" defer></script>
+<script src="js/actions-home.js" defer></script>
+<script src="js/actions-conflicts.js" defer></script>
+<script src="js/actions-mobile-chrome.js" defer></script>
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
 <script src="js/requests.js" defer></script>
@@ -725,347 +771,30 @@
 </div>
 
 <!-- ===== MODALE CONSULTATION ===== -->
+<!-- Le contenu de #viewModal (photo, description, boutons d'actions...)
+     est généré par JS au démarrage plutôt qu'écrit ici en dur (voir le
+     tout début de js/render.js, juste avant les
+     document.getElementById('vmXxx') qui suivent — il faut que ce bloc
+     existe déjà à ce moment précis, d'où l'injection en tout premier dans
+     ce fichier précis plutôt que dans un autre script chargé après).
+     Décision retour utilisateur : "corrigé le problème de code html trop
+     imposant... lorsqu'on clique sur un produit un code js génère la
+     page au lieu de devoir avoir de vrai lien". #viewOverlay/#viewModal
+     eux-mêmes restent ici : c'est sur EUX que le reste du JS bascule
+     .open/.classList, jamais sur leur contenu interne. -->
 <div id="viewOverlay">
-  <div id="viewModal">
-    <div class="vm-inner">
-      <div class="vm-photo" id="vmPhoto">
-        <span class="ph-placeholder">Pas de photo</span>
-      </div>
-      <button class="vm-close-btn" id="vmCloseBtn" title="Fermer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-        <button class="vm-info-btn" id="vmInfoBtn" title="Actions">i</button>
-        <div class="vm-info-menu" id="vmInfoMenu">
-          <button id="vmEditBtn">Modifier la fiche</button>
-          <button id="vmProposeMenuBtn" style="display:none;">Proposer une modification</button>
-          <hr>
-          <button id="vmDeleteBtn" class="danger">Supprimer le produit</button>
-        </div>
-      <div class="vm-scroll">
-        <div class="vm-body">
-          <div class="vm-ref" id="vmRef"></div>
-          <div class="vm-name" id="vmName"></div>
-          <div class="vm-tags" id="vmTags"></div>
-          <div class="vm-meta" id="vmMeta"></div>
-          <div class="vm-desc" id="vmDesc"></div>
-          <div class="vm-price-row">
-            <div class="vm-price" id="vmPrice"></div>
-          </div>
-          <div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:var(--font-sans);"></div>
-      <div class="vm-price-history" id="vmPriceHistory"></div>
-      <!-- ===== BOUTONS DOC + SUGGESTIONS ===== -->
-      <div class="vm-actions-row">
-        <div id="vmDocBtnWrap" style="display:none;">
-          <button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-            <i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents
-          </button>
-        </div>
-        <div id="vmSuggestionsSection" style="display:none;margin-top:8px;">
-          <button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-            <i class="ti ti-bulb" style="font-size:17px;"></i>
-            <span id="vmSuggestionsToggleLabel">Afficher suggestions</span>
-          </button>
-        </div>
-        <div id="vmSpecsSection" style="display:none;margin-top:8px;">
-          <button id="vmSpecsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-            <i class="ti ti-list-details" style="font-size:17px;"></i>
-            <span id="vmSpecsToggleLabel">Voir les caractéristiques</span>
-          </button>
-        </div>
-        <div id="vmSparePartsSection" style="display:none;margin-top:8px;">
-          <button id="vmSparePartsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-            <i class="ti ti-tool" style="font-size:17px;"></i>
-            <span id="vmSparePartsToggleLabel">Voir les pièces de rechange</span>
-          </button>
-        </div>
-      </div>
-      <!-- ===== FIN BOUTONS DOC + SUGGESTIONS ===== -->
-
-        </div>
-      </div>
-    </div>
-  </div>
+  <div id="viewModal"></div>
 </div>
 
 <!-- ===== MODAL ===== -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="modalTitle">Ajouter un produit</h3>
-      <button class="close sans" id="modalClose">&times;</button>
-    </div>
-    <div class="modal-body">
-
-      <div class="field-row">
-        <div class="field">
-          <label for="fBrand">Marque</label>
-          <div class="autocomplete-wrap"><input type="text" id="fBrand" placeholder="ex. Acme Studio" autocomplete="off">
-          <div class="autocomplete-suggestions" id="brandSuggestions"></div></div>
-        </div>
-        <div class="field">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
-            <label for="fRef" style="margin:0;">Référence</label>
-            <span class="ref-dup-icon" id="refDupIcon"><i class="ti ti-info-circle-filled"></i><span class="ref-dup-tooltip" id="refDupTooltip"></span></span>
-          </div>
-          <input type="text" id="fRef" placeholder="ex. AS-2291-BLK">
-          <div id="refCheckMsg" class="ref-check-msg"></div>
-          <div id="refDupBanner" class="ref-dup-banner"></div>
-        </div>
-      </div>
-
-      <div class="field-row">
-        <div class="field">
-          <label for="fFamily">Famille de produit</label>
-          <div class="autocomplete-wrap"><input type="text" id="fFamily" placeholder="ex. Sacs &amp; bagagerie" autocomplete="off">
-          <div class="autocomplete-suggestions" id="familySuggestions"></div></div>
-          <div class="family-icon-row" id="familyIconRow">
-            <div class="family-icon-label">Icône de la famille</div>
-            <div class="family-icon-preview" id="familyIconPreview"><img src="assets/icons/families/svg-generique.png" alt="" aria-hidden="true"></div>
-            <button type="button" class="family-icon-picker-btn" id="familyIconPickerBtn">
-              <i class="ti ti-grid-dots"></i> Choisir une icône
-            </button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="fSeries">Série</label>
-          <div class="autocomplete-wrap"><input type="text" id="fSeries" placeholder="ex. Voyager" autocomplete="off">
-          <div class="autocomplete-suggestions" id="seriesSuggestions"></div></div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="fSupplier">Fournisseur</label>
-        <div class="autocomplete-wrap"><input type="text" id="fSupplier" placeholder="ex. Dupont Distribution" autocomplete="off">
-        <div class="autocomplete-suggestions" id="supplierSuggestions"></div></div>
-      </div>
-      <div class="field">
-        <label for="fLeadTime">Délai de disponibilité</label>
-        <input type="text" id="fLeadTime" placeholder="ex. 3-5 jours, 2 semaines, sur commande...">
-      </div>
-      <div class="field field-checkbox">
-        <div class="checkbox-row">
-          <input type="checkbox" id="f3dAvailable">
-          <span class="checkbox-label">3DEXPERIENCE</span>
-          <input type="checkbox" id="fEssential" style="margin-left:18px;">
-          <span class="checkbox-label">Essentiel</span>
-        </div>
-      </div>
-      <div class="field" id="f3dLinkRow" style="display:none;">
-        <label for="f3dLink">Lien 3DEXPERIENCE</label>
-        <input type="url" id="f3dLink" placeholder="https://...">
-      </div>
-
-      <!-- ===== CHAMP SUGGESTIONS ===== -->
-      <div class="field" id="fSuggestionsRow">
-        <label>Produits suggérés</label>
-        <div style="display:flex;gap:8px;align-items:flex-start;">
-          <div class="sug-autocomplete-wrap" style="position:relative;flex:1;min-width:0;">
-            <input type="text" id="fSuggestionsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
-            <div class="autocomplete-suggestions" id="fSuggestionsDrop" style="display:none;"></div>
-          </div>
-          <button type="button" id="btnSugBrowse" class="sug-browse-btn" title="Parcourir le catalogue par catégorie">
-            <i class="ti ti-category-2"></i>
-          </button>
-        </div>
-        <div class="sug-chips" id="fSuggestionsChips"></div>
-      </div>
-      <!-- ===== FIN CHAMP SUGGESTIONS ===== -->
-
-      <!-- ===== CHAMP PIÈCES DE RECHANGE ===== -->
-      <div class="field" id="fSparePartsRow">
-        <label>Pièces de rechange</label>
-        <div style="display:flex;gap:8px;align-items:flex-start;">
-          <div class="sug-autocomplete-wrap" style="position:relative;flex:1;min-width:0;">
-            <input type="text" id="fSparePartsSearch" placeholder="Rechercher par réf, nom, famille ou marque…" autocomplete="off" style="width:100%;">
-            <div class="autocomplete-suggestions" id="fSparePartsDrop" style="display:none;"></div>
-          </div>
-          <button type="button" id="btnSparePartsBrowse" class="sug-browse-btn" title="Parcourir le catalogue par catégorie">
-            <i class="ti ti-category-2"></i>
-          </button>
-        </div>
-        <div class="sug-chips" id="fSparePartsChips"></div>
-      </div>
-      <!-- ===== FIN CHAMP PIÈCES DE RECHANGE ===== -->
-
-      <!-- ===== CHAMP CARACTÉRISTIQUES (fenêtre dédiée) ===== -->
-      <div class="field" id="fSpecsRow">
-        <label>Caractéristiques techniques <span style="font-size:11px;color:var(--ink-soft);font-weight:400;">(ex: nombre d'entrées, connecteur…)</span></label>
-        <button type="button" id="btnOpenSpecs" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">
-          <i class="ti ti-list-details" style="font-size:17px;"></i>
-          <span id="btnOpenSpecsLabel">Ajouter des caractéristiques</span>
-        </button>
-      </div>
-      <!-- ===== FIN CHAMP CARACTÉRISTIQUES ===== -->
-
-      <div class="tabs" id="productExtractTabs">
-        <button class="tab-btn tab-btn-copper active" data-tab="auto">Extraction automatique</button>
-        <button class="tab-btn tab-btn-copper" data-tab="manual">Saisie manuelle</button>
-      </div>
-
-      <div class="tab-pane active" id="tab-auto">
-        <div class="field">
-          <label for="fUrl">URL de la fiche produit</label>
-          <!-- Cet onglet entier n'est plus jamais affiché sur mobile/tablette
-               (voir #productExtractTabs dans css/styles.css) — plus besoin
-               de variante mobile ici, un seul bouton pour tous les cas où
-               cette zone reste visible (desktop uniquement). -->
-          <input type="text" id="fUrl" placeholder="https://www.marque.com/produit/..." style="width:100%;">
-          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-            <button type="button" id="btnExtractFromUrl" class="secondary" style="white-space:nowrap;padding:9px 12px;">
-              ↓ Extraire depuis l'URL
-            </button>
-          </div>
-          <div class="hint" id="extractUrlHint" style="display:none;margin-top:5px;"></div>
-        </div>
-        <!-- Desktop uniquement : zone code source -->
-        <div class="field html-source-zone">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-            <input type="checkbox" id="chkShowHtml" style="width:16px;height:16px;">
-            Code source de la page produit (alternative)
-          </label>
-          <div id="htmlSourceContent" style="display:none;margin-top:8px;">
-            <textarea id="fHtml" rows="6" placeholder="Ouvrez la fiche produit sur le site → clic droit → « Afficher le code source de la page » (ou Ctrl+U) → Ctrl+A, Ctrl+C → collez ici."></textarea>
-            <div class="hint">Le navigateur ne peut pas aller chercher une autre page web tout seul (sécurité). En collant le code source ici, l'outil retrouve automatiquement l'image, le nom, la description et le prix depuis les informations standard de la page (balises Open Graph / données produit).</div>
-            <button class="secondary" id="btnExtract" type="button" style="margin-top:8px;">Extraire les informations</button>
-            <div class="extract-status" id="extractStatus"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-pane" id="tab-manual">
-        <div class="photo-row">
-          <div class="photo-preview" id="photoPreview"><span class="hint sans" style="padding:6px;text-align:center;">aperçu</span></div>
-          <div class="field" style="flex:1; margin-bottom:0;">
-            <label for="fPhoto">URL de la photo</label>
-            <input type="text" id="fPhoto" placeholder="https://...">
-          </div>
-        </div>
-        <!-- Galerie de sélection — visible uniquement si plusieurs photos extraites -->
-        <div class="photo-gallery" id="photoGallery">
-          <div class="photo-gallery-label">Choisir une photo parmi les images trouvées sur la page</div>
-          <div class="photo-gallery-grid" id="photoGalleryGrid"></div>
-        </div>
-        <div class="field" style="margin-top:14px;">
-          <label for="fName">Nom du produit</label>
-          <input type="text" id="fName" placeholder="ex. Sac à dos Voyager 24L">
-        </div>
-        <div class="field">
-          <label for="fDesc">Description</label>
-          <textarea id="fDesc" rows="3" placeholder="Description courte du produit"></textarea>
-        </div>
-        <div class="field">
-          <label for="fTags">Tags</label>
-          <input type="text" id="fTags" placeholder="ex. éclairage, installation, borne">
-          <div class="hint">Séparez plusieurs tags par des virgules pour mieux retrouver le produit.</div>
-          <div class="tag-suggestions" id="tagSuggestions" style="display:none;"></div>
-        </div>
-        <div class="field">
-          <!-- Mode création : champ texte visible -->
-          <div id="priceCreateRow">
-            <label for="fPrice">Prix catalogue (€)</label>
-            <input type="text" id="fPrice" placeholder="ex. 89,90 (le € est ajouté automatiquement)">
-            <div class="hint">Saisissez juste le montant, le symbole € est ajouté automatiquement. <span id="pricePreview"></span></div>
-          </div>
-          <!-- Mode édition : affichage + bouton modale -->
-          <div id="priceDisplayRow" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);">
-            <div>
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:1px;">Prix actuel</div>
-              <div style="font-size:15px;font-weight:600;color:var(--ink);" id="priceDisplayVal">—</div>
-            </div>
-            <button type="button" id="btnOpenPriceModal" style="display:none;white-space:nowrap;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-              <i class="ti ti-history" aria-hidden="true"></i> Modifier les prix
-            </button>
-          </div>
-        </div>
-
-        <!-- Zone prix de vente — visible uniquement en mode création -->
-        <div class="field selling-price-zone" id="sellingPriceZone" style="display:none;">
-          <label for="fSellingPrice">Votre prix d'achat / prix de vente (€)</label>
-          <input type="text" id="fSellingPrice" placeholder="ex. 89,90 — votre prix négocié">
-          <div class="hint" id="sellingPriceHint"></div>
-        </div>
-      </div>
-
-      <!-- ===== SECTION PDF/IMAGES FORMULAIRE ===== -->
-      <div id="modalPdfSection" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
-        <div id="modalPdfSectionTitle" style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Documents</div>
-        <!-- Liste des fichiers existants (multi-doc) -->
-        <div id="modalPdfList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
-        <!-- Zone d'ajout -->
-        <label id="modalPdfUpload" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;">
-          <i class="ti ti-file-plus" style="font-size:18px;color:var(--copper);"></i>
-          Ajouter un ou plusieurs PDF/images
-          <input type="file" id="modalPdfInput" accept=".pdf,application/pdf,image/*" multiple style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
-        </label>
-      </div>
-      <!-- ===== FIN SECTION PDF FORMULAIRE ===== -->
-
-      <!-- ===== DOCUMENTS JOINTS À LA DEMANDE (mode révision, visionnage seul) ===== -->
-      <div id="modalReqDocsSection" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
-        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Documents joints à la demande</div>
-        <div id="modalReqDocsList" style="display:flex;flex-direction:column;gap:6px;"></div>
-      </div>
-      <!-- ===== FIN DOCUMENTS JOINTS À LA DEMANDE ===== -->
-
-    </div>
-    <div id="modalNoSyncBanner" style="display:none;align-items:flex-start;gap:8px;background:#FEE2E2;border-top:1px solid #FECACA;color:#991B1B;padding:10px 20px;font-size:12.5px;line-height:1.4;">
-      <i class="ti ti-cloud-off" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i>
-      <span id="modalNoSyncBannerText"></span>
-    </div>
-    <div class="modal-foot" id="modalFoot">
-      <div class="left-foot" id="modalLeftFoot"></div>
-      <div style="display:flex; gap:10px;">
-        <button class="secondary" id="btnCancel" type="button">Annuler</button>
-        <button class="copper" id="btnSave" type="button">Enregistrer le produit</button>
-        <!-- Boutons de la vue "demande produit" verrouillée (consultation
-             avant décision) — remplacent Annuler/Enregistrer tant que
-             window._reviewLocked est vrai. "Modifier" déverrouille les
-             champs SUR CETTE MÊME fenêtre plutôt que d'en ouvrir une autre
-             (retour utilisateur : rester sur la même page). -->
-        <button class="secondary" id="btnReviewRefuse" type="button" style="display:none;color:#991B1B;border-color:#FECACA;"><i class="ti ti-x"></i> Refuser</button>
-        <button class="secondary" id="btnReviewUnlock" type="button" style="display:none;"><i class="ti ti-pencil"></i> Modifier</button>
-        <button class="copper" id="btnReviewAccept" type="button" style="display:none;"><i class="ti ti-check"></i> Accepter</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="modal-overlay" id="modalOverlay"></div>
 
 <!-- ===== MODALE IMPORT EXCEL ===== -->
 <div id="xlsxImportOverlay" style="
   position:fixed;inset:0;background:var(--overlay-scrim);
   display:none;align-items:center;justify-content:center;
   padding:20px;z-index:100;
-">
-  <div style="
-    background:var(--paper-card);border-radius:12px;
-    width:100%;max-width:720px;max-height:85vh;
-    display:flex;flex-direction:column;
-    box-shadow:0 24px 80px rgba(0,0,0,.3);
-    overflow:hidden;
-    font-family:var(--font-sans);
-  ">
-    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <div style="font-size:18px;font-weight:700;color:var(--ink);">Aperçu de l'import Excel</div>
-        <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;" id="xlsxImportSummary"></div>
-      </div>
-      <button id="btnCloseXlsxImport" type="button" aria-label="Fermer" style="background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;">✕</button>
-    </div>
-    <div style="overflow-y:auto;flex:1;padding:16px 24px;">
-      <div style="overflow-x:auto;">
-        <table id="xlsxPreviewTable" style="width:100%;min-width:480px;border-collapse:collapse;font-size:13px;">
-          <thead id="xlsxPreviewHead"></thead>
-          <tbody id="xlsxPreviewBody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div style="padding:14px 24px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;align-items:center;">
-      <span id="xlsxImportInfo" style="font-size:13px;color:var(--ink-soft);flex:1;"></span>
-      <button class="secondary" type="button" id="btnCancelXlsxImport">Annuler</button>
-      <button class="copper" id="btnConfirmXlsxImport">✓ Confirmer l'import</button>
-    </div>
-  </div>
-</div>
+"></div>
 
 <div id="imgPreviewOverlay">
   <img id="imgPreviewImg" src="" alt="Aperçu">
@@ -1140,123 +869,15 @@
 
 
 <!-- ===== PANNEAU DEMANDES ===== -->
-<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:center;justify-content:center;padding:16px;">
-  <div id="requestsPanel" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
-             — masquée par défaut, affichée uniquement quand ce panneau a été
-             ouvert depuis le tiroir menu mobile, à la place de la croix de
-             droite, à gauche du titre comme les sous-pages de Paramètres.
-             Même bouton (.win-back-btn) qu'ailleurs, pour tomber exactement
-             au même endroit. -->
-        <button id="requestsBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
-        <i class="ti ti-bell" style="font-size:20px;color:#194093;"></i>
-        <span style="font-size:15px;font-weight:700;color:var(--ink);">Demandes en attente</span>
-      </div>
-      <button id="requestsPanelClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;line-height:1;">✕</button>
-    </div>
-    <!-- Onglets Demandes produit / Bugs signalés -->
-    <div id="requestsTabs" class="tabs" style="padding:12px 20px 10px;border-bottom:1px solid var(--line);flex-shrink:0;margin-bottom:0;">
-      <button class="req-tab tab-btn tab-btn-copper active" data-tab="product" id="reqTabProduct"><i class="ti ti-package"></i> Demandes produit</button>
-      <button class="req-tab tab-btn tab-btn-copper" data-tab="bug" id="reqTabBug"><i class="ti ti-bug"></i> Bugs signalés</button>
-    </div>
-    <!-- Corps -->
-    <div id="requestsBody" style="flex:1;overflow-y:auto;"></div>
-    <!-- Footer admin -->
-    <div id="requestsFooter" style="display:none;padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
-      <button id="btnAcceptAllRequests" class="copper" style="padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
-        <i class="ti ti-check"></i> Tout accepter
-      </button>
-      <button id="btnRefuseAllRequests" style="padding:8px 18px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">
-        <i class="ti ti-x"></i> Tout refuser
-      </button>
-    </div>
-  </div>
-</div>
+<div id="requestsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:var(--z-requests);align-items:center;justify-content:center;padding:16px;"></div>
 <!-- ===== FIN PANNEAU DEMANDES ===== -->
 
 <!-- ===== MODALE DÉTAIL DEMANDE ===== -->
-<div id="reqDetailOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10900;align-items:center;justify-content:center;padding:16px;">
-  <div id="reqDetailModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4);">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">
-      <div>
-        <div id="reqDetailTitle" style="font-size:15px;font-weight:700;color:var(--ink);"></div>
-        <div id="reqDetailSubtitle" style="font-size:12px;color:var(--ink-soft);margin-top:2px;"></div>
-      </div>
-      <button id="reqDetailClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);">✕</button>
-    </div>
-    <div id="reqDetailBody" style="flex:1;overflow-y:auto;padding:20px;"></div>
-    <div id="reqDetailFooter" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">
-      <button id="reqDetailRefuse" class="req-btn-refuse"><i class="ti ti-x"></i> Refuser</button>
-      <button id="reqDetailEdit" style="display:none;padding:9px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i> Modifier</button>
-      <button id="reqDetailAccept" class="req-btn-accept"><i class="ti ti-check"></i> Accepter</button>
-    </div>
-  </div>
-</div>
+<div id="reqDetailOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10900;align-items:center;justify-content:center;padding:16px;"></div>
 <!-- ===== FIN MODALE DÉTAIL DEMANDE ===== -->
 
 <!-- ===== MODALE SIGNALER UN BUG ===== -->
-<div class="modal-overlay" id="bugReportOverlay">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-head">
-      <div class="win-header-titlewrap">
-        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
-             — masquée par défaut, affichée à gauche du titre uniquement
-             quand cette fenêtre a été ouverte depuis le tiroir menu mobile,
-             à la place de la croix de droite. Même bouton (.win-back-btn) et
-             même structure que Paramètres/Demandes/Comparateur, pour tomber
-             exactement au même endroit qu'ailleurs. -->
-        <button id="bugReportBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
-        <h3><i class="ti ti-bug"></i> Signaler un bug</h3>
-      </div>
-      <button class="close sans" id="bugReportCloseBtn" type="button">&times;</button>
-    </div>
-    <div class="modal-body">
-      <label for="bugReportTitle" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Titre</label>
-      <input type="text" id="bugReportTitle" placeholder="Ex. : Le bouton Enregistrer ne répond pas" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;box-sizing:border-box;margin-bottom:14px;">
-
-      <label for="bugReportSeverity" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Gravité</label>
-      <select id="bugReportSeverity" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;box-sizing:border-box;margin-bottom:14px;background:var(--paper);color:var(--ink);">
-        <option value="low">Faible</option>
-        <option value="medium" selected>Moyenne</option>
-        <option value="high">Élevée</option>
-        <option value="critical">Critique — bloquant</option>
-      </select>
-
-      <label for="bugReportDesc" style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;">Décrivez le problème rencontré</label>
-      <textarea id="bugReportDesc" rows="6" placeholder="Ex. : le bouton Enregistrer ne répond pas quand je..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-sans);font-size:13.5px;resize:vertical;box-sizing:border-box;"></textarea>
-      <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4;">La page actuelle, votre navigateur et les éventuelles erreurs techniques récentes sont joints automatiquement pour aider au diagnostic.</div>
-
-      <label style="font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-top:16px;margin-bottom:6px;">Capture d'écran (facultatif)</label>
-      <input type="file" id="bugReportImageInput" accept="image/*" style="display:none;">
-      <!-- Même style de zone que "Ajouter un ou plusieurs PDF" dans la fiche
-           produit (retour utilisateur : cohérence entre les fenêtres) —
-           glisser-déposer et collage (Ctrl/Cmd+V) supportés en plus du clic. -->
-      <label id="bugReportImageDropzone" for="bugReportImageInput" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;border:1.5px dashed var(--line);background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;">
-        <i class="ti ti-photo-plus" style="font-size:18px;color:var(--copper);"></i>
-        Glisser une image, coller (Ctrl/Cmd+V) ou cliquer pour choisir
-      </label>
-      <div id="bugReportImagePreviewWrap" style="display:none;margin-top:10px;">
-        <div style="position:relative;width:fit-content;">
-          <img id="bugReportImagePreview" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid var(--line);display:block;cursor:zoom-in;">
-          <button type="button" id="bugReportImageRemove" title="Retirer l'image" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#1e293b;color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;">✕</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <div class="left-foot"></div>
-      <div style="display:flex; gap:10px;">
-        <button class="secondary" id="bugReportCancelBtn" type="button">Annuler</button>
-        <!-- min-width : bascule vers "Envoi…" pendant l'envoi (js/requests.js)
-             — écart mesuré faible (~3px) mais gratuit à figer tant qu'on est
-             dessus, même principe que les autres boutons de cette passe. -->
-        <button class="copper" id="bugReportSubmitBtn" type="button" style="min-width:95px;">Envoyer</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="modal-overlay" id="bugReportOverlay"></div>
 <!-- ===== FIN MODALE SIGNALER UN BUG ===== -->
 
 <!-- ── Modale Login ─────────────────────────────────────── -->
@@ -1299,249 +920,31 @@
 <div id="authToast"></div>
 
 <!-- ===== MODALE CONFLITS SYNC ===== -->
-<div id="conflictOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10500;align-items:center;justify-content:center;padding:20px;">
-  <div id="conflictModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.32);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--ink);"><i class="ti ti-alert-triangle"></i> Conflits de synchronisation</div>
-        <div id="conflictSubtitle" style="font-size:13px;color:var(--ink-soft);margin-top:2px;"></div>
-      </div>
-      <button id="conflictCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-    <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
-      <div id="conflictList" style="width:220px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;padding:8px 0;box-sizing:border-box;"></div>
-      <div id="conflictDetail" style="flex:1;overflow-y:auto;padding:20px;min-width:0;"></div>
-    </div>
-    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">
-      <button id="conflictKeepAllLocal" style="padding:9px 18px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Garder tout le local</button>
-      <button id="conflictKeepAllServer" style="padding:9px 18px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Garder tout le serveur</button>
-      <button id="conflictApplyBtn" style="padding:9px 22px;border:none;border-radius:8px;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Appliquer les choix</button>
-    </div>
-  </div>
-</div>
+<div id="conflictOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10500;align-items:center;justify-content:center;padding:20px;"></div>
 <!-- ===== FIN MODALE CONFLITS ===== -->
 
 <!-- ===== MODALE DOCUMENTS ===== -->
-<div id="docOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
-  <div id="docModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);"><i class="ti ti-files"></i> Documents produit</div>
-      <button id="docCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-    <div id="docList" style="flex:1;overflow-y:auto;padding:20px;min-height:0;"></div>
-  </div>
-</div>
+<div id="docOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;"></div>
 <!-- ===== FIN MODALE DOCUMENTS ===== -->
 
 <!-- ===== MODALE SUGGESTIONS ===== -->
-<div id="sugOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
-  <div id="sugModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugModalTitle"><i class="ti ti-bulb"></i> Produits suggérés</div>
-      <button id="sugCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-    <div id="sugList" style="flex:1;overflow-y:auto;padding:20px;min-height:0;"></div>
-  </div>
-</div>
+<div id="sugOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;"></div>
 <!-- ===== FIN MODALE SUGGESTIONS ===== -->
 
 <!-- ===== MODALE PARCOURIR LE CATALOGUE (sélection de suggestions) ===== -->
-<div id="sugPickerOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10650;align-items:center;justify-content:center;padding:20px;">
-  <div id="sugPickerModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:880px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);" id="sugPickerTitle"><i class="ti ti-folder-open"></i> Parcourir le catalogue</div>
-      <button id="sugPickerCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-    <div style="padding:14px 24px 0;flex-shrink:0;">
-      <input type="text" id="sugPickerSearch" placeholder="Filtrer par réf, nom, marque…" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);box-sizing:border-box;font-size:14px;">
-    </div>
-    <div id="sugPickerList" style="flex:1;overflow-y:auto;padding:16px 24px;min-height:0;"></div>
-    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;">
-      <span id="sugPickerCount" style="font-size:13px;color:var(--ink-soft);">0 sélectionné</span>
-      <div style="display:flex;gap:10px;">
-        <button type="button" class="secondary" id="sugPickerCancelBtn">Annuler</button>
-        <button type="button" class="copper" id="sugPickerSaveBtn">Enregistrer</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="sugPickerOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10650;align-items:center;justify-content:center;padding:20px;"></div>
 <!-- ===== FIN MODALE PARCOURIR LE CATALOGUE ===== -->
 
 <!-- ===== MODALE CARACTÉRISTIQUES TECHNIQUES ===== -->
-<div id="specsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;">
-  <div id="specsModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);flex:1;min-width:0;"><i class="ti ti-tool"></i> Caractéristiques techniques</div>
-      <button type="button" id="specsDeleteAllBtn" title="Tout supprimer" style="background:none;border:1px solid var(--line);border-radius:7px;color:#991B1B;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px;font-family:var(--font-sans);display:flex;align-items:center;gap:5px;flex-shrink:0;">
-        <i class="ti ti-trash" style="font-size:14px;"></i> Tout supprimer
-      </button>
-      <button id="specsCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;flex-shrink:0;">✕</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:20px;min-height:0;">
-      <div id="specsColHeaders" style="display:none;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;padding:0 2px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">
-        <span>Nom</span><span>Valeur</span><span></span>
-      </div>
-      <div id="specsRows" style="display:flex;flex-direction:column;gap:8px;"></div>
-      <button type="button" id="btnAddSpecRow" style="margin-top:12px;background:none;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink-soft);cursor:pointer;font-size:12.5px;font-weight:600;padding:8px 14px;font-family:var(--font-sans);">+ Ajouter une caractéristique</button>
-    </div>
-    <div style="padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">
-      <button type="button" id="specsSaveBtn" style="width:100%;padding:10px;border:none;border-radius:9px;background:var(--copper);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);">Enregistrer</button>
-    </div>
-  </div>
-</div>
+<div id="specsOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:20px;"></div>
 <!-- ===== FIN MODALE CARACTÉRISTIQUES ===== -->
 
 <!-- ===== MODALE CONFIGURATEUR D'ARMOIRE (admin) ===== -->
-<div id="armoireConfigOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:16px;">
-  <div id="armoireConfigModal" style="background:var(--paper-card);border-radius:14px;width:100%;max-width:1120px;height:min(820px,90vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
-    <div style="padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:15px;font-weight:700;color:var(--ink);"><i class="ti ti-tools"></i> Configurateur d'armoire</div>
-      <button id="armoireConfigCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:4px 8px;">✕</button>
-    </div>
-
-    <!-- Bascule mobile : une seule colonne visible à la fois, plein écran
-         (caché sur desktop où les deux colonnes restent côte à côte). -->
-    <div class="armoire-mobile-switch" style="display:none;padding:10px 16px 0;flex-shrink:0;">
-      <div class="tabs">
-        <button type="button" class="armoire-mobile-tab tab-btn active" data-view="browse"><i class="ti ti-search"></i> Parcourir</button>
-        <button type="button" class="armoire-mobile-tab tab-btn" data-view="draft"><i class="ti ti-shopping-cart"></i> Ma configuration<span id="armoireMobileDraftBadge" style="display:none;"></span></button>
-      </div>
-    </div>
-
-    <div class="armoire-cfg-body" style="flex:1;min-height:0;display:flex;overflow:hidden;">
-
-      <!-- Colonne recherche produits -->
-      <div class="armoire-cfg-browse" style="flex:2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden;position:relative;">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;gap:8px;align-items:center;">
-          <input type="text" id="armoireConfigSearch" placeholder="Rechercher un produit (réf, nom)…" style="flex:1;min-width:0;box-sizing:border-box;height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--paper);color:var(--ink);">
-          <button type="button" id="armoireBlocksDrawerTrigger" style="flex-shrink:0;box-sizing:border-box;height:38px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-package" style="font-size:15px;" aria-hidden="true"></i> Blocs</button>
-        </div>
-        <div id="armoireConfigSearchResults" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:120px;"></div>
-
-        <!-- Tiroir "Blocs enregistrés / Configurations enregistrées" — masqué par défaut, ouvert
-             à la demande par-dessus la liste de familles au lieu d'être empilé
-             en permanence dessous (retour utilisateur : ça compressait la liste
-             de familles). Voir _armoireOpenBlocksDrawer/_armoireCloseBlocksDrawer
-             dans armoireConfig.js. -->
-        <div id="armoireBlocksDrawer" class="armoire-blocks-drawer" style="display:none;">
-          <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;">
-            <div class="tabs">
-              <button type="button" class="armoire-tab-btn tab-btn active" data-tab="blocks"><i class="ti ti-package"></i> Blocs</button>
-              <button type="button" class="armoire-tab-btn tab-btn" data-tab="configs"><i class="ti ti-clipboard-list"></i> Configurations</button>
-            </div>
-            <button type="button" id="armoireBlocksDrawerClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;flex-shrink:0;">✕</button>
-          </div>
-          <div id="armoireConfigBlocksList" style="flex:1;overflow-y:auto;padding:10px 14px;box-sizing:border-box;"></div>
-          <div id="armoireConfigSavedList" style="display:none;flex:1;overflow-y:auto;padding:10px 14px;box-sizing:border-box;"></div>
-        </div>
-      </div>
-
-      <!-- Colonne configuration en cours -->
-      <div class="armoire-cfg-draft" style="flex:1;min-width:260px;display:flex;flex-direction:column;overflow:hidden;">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div style="font-size:13px;font-weight:700;color:var(--ink);">Configuration en cours</div>
-            <button type="button" id="armoireConfigClearBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;">Vider</button>
-          </div>
-          <div id="armoireConfigStats" style="display:flex;margin-top:8px;gap:8px;"></div>
-        </div>
-        <div id="armoireEditingBanner" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#FFF7ED;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;flex-shrink:0;">
-          <span id="armoireEditingBannerText" style="display:flex;align-items:center;gap:6px;"><i class="ti ti-pencil"></i></span>
-          <button type="button" id="armoireEditingCancelBtn" style="background:none;border:none;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;flex-shrink:0;">Annuler</button>
-        </div>
-        <div id="armoireConfigDraftList" style="flex:1;overflow-y:auto;padding:10px 14px;"></div>
-        <div style="padding:12px 14px;border-top:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
-          <button type="button" id="armoireConfigExportBtn" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cfe0bd;background:#eef4e8;color:#3b6d11;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-file-spreadsheet" style="font-size:15px;" aria-hidden="true"></i> Exporter en Excel <span style="font-weight:500;opacity:.75;">(par fournisseur)</span></button>
-          <button type="button" id="armoireConfigQuoteBtn" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-mail" style="font-size:15px;" aria-hidden="true"></i> Demande de devis</button>
-          <button type="button" id="armoireConfigSaveBtn" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--copper);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><i class="ti ti-device-floppy" style="font-size:15px;" aria-hidden="true"></i> Enregistrer</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
+<div id="armoireConfigOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10600;align-items:center;justify-content:center;padding:16px;"></div>
 <!-- ===== FIN MODALE CONFIGURATEUR D'ARMOIRE ===== -->
 
 <!-- ===== PDF VIEWER ===== -->
-<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;">
-  <div style="background:#1a1a1a;border-radius:14px;width:100%;max-width:1040px;height:94vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#2a2a2a;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-        <!-- Icône adaptée au type de fichier (PDF/image) — voir
-             _pdfUpdateTypeIcon dans js/render.js, retour utilisateur :
-             "faut que l'icône de la visionneuse s'adapte au fichier". -->
-        <i id="pdfViewerTypeIcon" class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;flex-shrink:0;"></i>
-        <span id="pdfViewerTitle" style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-      </div>
-      <!-- Rechercher dans le document — retour utilisateur : "est-ce qu'on
-           peut faire des recherches sur un pdf ?". Toujours affiché (pas
-           conditionné au nombre de pages, contrairement à la nav de page) ;
-           masqué uniquement pour une image (voir _pdfUpdateSearchUI dans
-           js/render.js — une image n'a pas de texte à chercher). -->
-      <button id="pdfViewerSearchToggle" title="Rechercher dans le document" aria-label="Rechercher dans le document" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 6px;line-height:1;display:flex;align-items:center;flex-shrink:0;margin:0 4px;"><i class="ti ti-search" aria-hidden="true"></i></button>
-      <!-- Navigation page — PDF multi-pages uniquement (masqué pour un PDF
-           d'1 seule page ou une image, voir _pdfUpdatePageNavUI dans
-           js/render.js). Chevrons haut/bas (pas gauche/droite) : les pages
-           s'empilent verticalement dans #pdfViewerScroll, "suivant" fait
-           donc défiler vers le bas — retour utilisateur : "numéro de page /
-           navigation" sur les PDF multi-pages. Le numéro courant est un
-           champ saisissable (pas juste affiché) — retour utilisateur : "est
-           qu'on peut rentrer le numéro d'une page ?" — Entrée ou perte de
-           focus saute directement à la page tapée (voir _pdfJumpFromInput
-           dans js/render.js), une saisie invalide/hors bornes revient
-           simplement sur la page réelle plutôt que de planter. -->
-      <div id="pdfViewerPageNav" style="display:none;align-items:center;gap:3px;flex-shrink:0;margin:0 6px;">
-        <button id="pdfViewerPrevPage" title="Page précédente" aria-label="Page précédente" style="background:none;border:none;font-size:17px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
-        <input id="pdfViewerPageInput" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="Aller à la page" style="width:26px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:4px;color:#fff;font-size:12px;text-align:center;padding:3px 2px;font-variant-numeric:tabular-nums;font-family:inherit;">
-        <span id="pdfViewerPageTotal" style="font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;font-variant-numeric:tabular-nums;"></span>
-        <button id="pdfViewerNextPage" title="Page suivante" aria-label="Page suivante" style="background:none;border:none;font-size:17px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
-      </div>
-      <!-- Zoom — jusqu'ici uniquement possible au pincement tactile (mobile),
-           donc inaccessible à la souris/au trackpad sur desktop (retour
-           utilisateur : "il y a que tout mobile"). Boutons +/- réutilisant
-           exactement le même mécanisme de zoom que le pincement
-           (_pdfSetZoom/_pdfSharpenPages, voir js/render.js), ancrés sur le
-           centre de la zone visible plutôt que le point du doigt (qui
-           n'existe pas au clic). Toujours affiché (contrairement à la nav
-           de page, pas conditionné au nombre de pages) — pertinent même
-           sur un document d'1 page ou une image. -->
-      <div id="pdfViewerZoomControls" style="display:flex;align-items:center;gap:2px;flex-shrink:0;margin:0 6px;">
-        <button id="pdfViewerZoomOut" title="Zoom arrière" aria-label="Zoom arrière" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-zoom-out" aria-hidden="true"></i></button>
-        <span id="pdfViewerZoomLabel" style="font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;min-width:38px;text-align:center;font-variant-numeric:tabular-nums;">100%</span>
-        <button id="pdfViewerZoomIn" title="Zoom avant" aria-label="Zoom avant" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;"><i class="ti ti-zoom-in" aria-hidden="true"></i></button>
-        <!-- Réinitialiser le zoom à 100% en un clic — retour utilisateur :
-             "est-ce qu'on peut ajouter un bouton pour reset le zoom ?".
-             Désactivé quand déjà à 100% (rien à réinitialiser). -->
-        <button id="pdfViewerZoomReset" title="Réinitialiser le zoom (100%)" aria-label="Réinitialiser le zoom" style="background:none;border:none;font-size:15px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;margin-left:2px;"><i class="ti ti-zoom-reset" aria-hidden="true"></i></button>
-      </div>
-      <button id="pdfViewerClose" style="background:none;border:none;font-size:22px;cursor:pointer;color:rgba(255,255,255,.6);padding:0 4px;line-height:1;flex-shrink:0;">✕</button>
-    </div>
-    <!-- Barre de recherche — masquée par défaut, affichée en cliquant sur
-         la loupe ci-dessus. Entrée = résultat suivant, Échap = fermer (voir
-         _initPdfSearch dans js/render.js). -->
-    <div id="pdfViewerSearchBar" style="display:none;align-items:center;gap:6px;padding:8px 16px;background:#232323;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;">
-      <i class="ti ti-search" style="color:rgba(255,255,255,.4);font-size:14px;flex-shrink:0;" aria-hidden="true"></i>
-      <input id="pdfViewerSearchInput" type="text" placeholder="Rechercher dans le document…" autocomplete="off" style="flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:13px;padding:6px 10px;font-family:inherit;">
-      <span id="pdfViewerSearchCount" style="font-size:12px;color:rgba(255,255,255,.55);white-space:nowrap;min-width:56px;text-align:center;font-variant-numeric:tabular-nums;"></span>
-      <button id="pdfViewerSearchPrev" title="Occurrence précédente" aria-label="Occurrence précédente" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
-      <button id="pdfViewerSearchNext" title="Occurrence suivante" aria-label="Occurrence suivante" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
-      <button id="pdfViewerSearchClose" title="Fermer la recherche" aria-label="Fermer la recherche" style="background:none;border:none;font-size:16px;cursor:pointer;color:rgba(255,255,255,.7);padding:4px 5px;line-height:1;display:flex;align-items:center;flex-shrink:0;"><i class="ti ti-x" aria-hidden="true"></i></button>
-    </div>
-    <!-- Loader -->
-    <div id="pdfViewerLoader" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:14px;">
-      <i class="ti ti-loader-2" style="font-size:36px;color:#fff;animation:spin 1s linear infinite;"></i>
-      <span style="font-size:13px;color:rgba(255,255,255,.5);">Chargement…</span>
-    </div>
-    <!-- Rendu PDF.js sur canvas — permet le pincement pour zoomer sur mobile,
-         impossible à intercepter avec l'ancien lecteur natif en iframe. Le
-         zoom redimensionne directement les canvas (pas de transform CSS) pour
-         que le défilement fonctionne de façon fiable sur iOS Safari. -->
-    <div id="pdfViewerScroll" style="display:none;flex:1;overflow:auto;background:#525252;">
-      <div id="pdfViewerPages"></div>
-    </div>
-  </div>
-</div>
+<div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;"></div>
 <!-- ===== FIN PDF VIEWER ===== -->
 
 <!-- ===== FLOATING SEARCH (mobile) ===== -->

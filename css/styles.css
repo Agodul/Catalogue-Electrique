@@ -1145,7 +1145,22 @@
   #btnScrollTop svg{ width:20px; height:20px; }
   
   /* ── Toolbar ≤768px : 2 lignes fixes ────────────────────────── */
-  @media(max-width:768px) and (pointer: coarse) {
+  /* Le ", (max-height:500px) and (orientation:landscape) and (pointer: coarse)"
+     ajouté à CETTE requête et aux ~23 autres "max-width:...px and (pointer: coarse)"
+     du fichier (recherche possible : "orientation:landscape") corrige un bug
+     réel : un téléphone tenu en paysage garde une hauteur d'écran petite
+     (~360-430px) mais sa LARGEUR peut dépasser 768/1024px et sortir de ces
+     seuils — l'app basculait alors sur la mise en page desktop (pas de
+     bottom-nav, menus au survol...) sur un écran tactile, où ces contrôles
+     ne fonctionnent pas (retour utilisateur : "lorsqu'un usr mais ton
+     mobile en mode paysage sa passe en mode desktop donc aucun contrôle ne
+     fonctionne"). La clause OR détecte ce cas via la hauteur (constante,
+     peu importe la largeur en rotation) plutôt que la largeur seule. Les
+     requêtes "min-width:...and max-width:...px and (pointer:coarse)"
+     (bandes tablette) n'ont pas besoin de ce correctif : leur borne basse
+     est déjà généralement satisfaite par la largeur d'un téléphone en
+     paysage. */
+  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .toolbar{ flex-wrap:wrap; gap:6px; margin-bottom:12px; }
     .search-field{ display:none; }
     /* 🔍 | Marques | Familles | Séries | ⊘ | ↕Prix */
@@ -1167,8 +1182,7 @@
     .filters-visible select#familyFilter{ display:flex; }
   }
 
-  @media (max-width:640px) and (pointer: coarse) {
-
+  @media (max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* ── Header compact ── */
     header{ padding:0 12px; height:50px; gap:8px; flex-wrap:nowrap; }
     .brandmark .logo-mark{ height:26px; }
@@ -1353,7 +1367,7 @@
 
   
   
-  @media (max-width:380px) and (pointer: coarse) {
+  @media (max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* Header encore plus compact */
     header{ height:50px; padding:0 10px; gap:5px; }
     .brandmark .logo-mark{ height:24px; }
@@ -1402,7 +1416,7 @@
   }
 
   
-  @media (max-width:320px) and (pointer: coarse) {
+  @media (max-width:320px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     header{ height:48px; padding:0 8px; gap:4px; }
     .brandmark .logo-mark{ height:20px; }
     .hdr-sep{ margin:0 6px; height:14px; }
@@ -1680,7 +1694,7 @@
     border-color:var(--copper);
     background:#EEF4FF;
   }
-  @media(max-width:640px) and (pointer: coarse) {
+  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stats{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stat-val{ font-size:20px; }
@@ -1691,7 +1705,7 @@
     .home-family-count{ font-size:10px; }
     #homePage{ padding:16px 12px 32px; }
   }
-  @media(max-width:380px) and (pointer: coarse) {
+  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:5px; }
     .home-stats{ gap:5px; }
     .home-stat{ padding:10px 6px; }
@@ -1739,7 +1753,7 @@
      extraire" (#btnPasteExtract, retiré du HTML) : tout ce qui vivait dans
      #tab-auto disparaît d'un coup avec lui, plus besoin de règles séparées
      pour chacun. */
-  @media(max-width:1024px) and (pointer: coarse) {
+  @media(max-width:1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #productExtractTabs{ display:none !important; }
     #tab-auto{ display:none !important; }
     #tab-manual{ display:block !important; }
@@ -2083,6 +2097,17 @@
     box-shadow:var(--shadow-modal);
     overflow:hidden;
   }
+  /* Le plancher de 280px ci-dessus a été mesuré sur les sous-pages
+     accessibles UNE FOIS CONNECTÉ (Icônes des familles, Utilisateurs,
+     Serveur, Produits verrouillés). Déconnecté, il n'y a plus de sous-page
+     du tout — juste "Serveur de données" + "Version installée" (~215px de
+     contenu réel) — donc ce même plancher, pensé pour éviter les sauts de
+     taille ENTRE sous-pages, ne protège plus rien dans cet état et ne fait
+     plus que créer un grand vide en bas (retour utilisateur : "lorsque je
+     suis pas log il y a trop de vide dessous"). .auth-readonly reflète déjà
+     l'état déconnecté (voir applyAuthUI dans js/auth.js) — pas besoin d'une
+     nouvelle classe dédiée. */
+  body.auth-readonly .settings-box{ min-height:220px; }
   .settings-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px;
@@ -2210,19 +2235,19 @@
   .card .name, .card .ref, .card .price{ user-select:text; -webkit-user-select:text; }
 
   /* ── Touch targets min 44px mobile ──────────────────────────── */
-  @media(max-width:768px) and (pointer: coarse) {
+  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .tab-btn{ min-height:40px; }
   }
 
   /* ── PWA Banner petit écran ──────────────────────────────────── */
   #pwaInstallBanner{ max-width:min(340px, calc(100vw - 24px)); }
-  @media(max-width:380px) and (pointer: coarse) {
+  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #pwaInstallBanner{ border-radius:12px; padding:12px 14px 10px; }
     #pwaInstallBanner img{ width:36px; height:36px; }
   }
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
-  @media(max-width:640px) and (pointer: coarse) {
+  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
   }
   /* Paramètres : bottom sheet sur mobile ET tablette — même seuil que
@@ -2230,7 +2255,7 @@
      panneaux se comportent pareil sur toute la plage mobile/tablette
      (retour utilisateur : Paramètres restait en modale centrée sur
      tablette alors que le Menu passait déjà en tiroir bas). */
-  @media(max-width:1024px) and (pointer: coarse) {
+  @media(max-width:1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #settingsOverlay{ padding:0; align-items:flex-end; justify-content:center; padding-bottom:var(--nav-h, 56px); }
     .settings-box{
       width:100%; max-width:100%;
@@ -2256,7 +2281,7 @@
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
-  @media(max-width:380px) and (pointer: coarse) {
+  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
     .tab-btn{ flex-shrink:0; }
   }
@@ -2288,14 +2313,14 @@
   }
 
   /* ── Cartes très petit écran 320px ──────────────────────────── */
-  @media(max-width:320px) and (pointer: coarse) {
+  @media(max-width:320px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .card .name{ font-size:11px; }
     .card .price{ font-size:12px; }
     .card .tags{ display:none; }
   }
 
   /* ── Éviter zoom iOS sur focus input (<16px) ─────────────────── */
-  @media(max-width:768px) and (pointer: coarse) {
+  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     input[type="text"], input[type="url"], input[type="number"],
     input[type="search"], input[type="password"], textarea, select{
       font-size:max(16px,1em) !important;
@@ -2392,14 +2417,21 @@
 
   /* min-height:16px ne suffisait pas à absorber le seul message réellement
      utilisé ici ("Identifiants incorrects.", voir js/auth.js doLogin) —
-     mesuré à 33px une fois affiché, contre 16px vide : la fenêtre
-     Connexion grandissait de 17px pile au moment de l'erreur (retour
-     utilisateur : "je voudrai que la taille soit fixe [...] pour les
-     fenêtres [...] ça fait trop amateur"). 34px réserve la place à
-     l'avance, avec 1px de marge. */
+     mesuré à 33px une fois affiché (à l'époque en 16px de police), contre
+     16px vide : la fenêtre Connexion grandissait de 17px pile au moment de
+     l'erreur (retour utilisateur : "je voudrai que la taille soit fixe
+     [...] pour les fenêtres [...] ça fait trop amateur"). 34px réservait
+     la place à l'avance, avec 1px de marge.
+     Le font-size est passé à 13px juste en dessous (même retour, fenêtre
+     Connexion) sans réajuster cette réserve à la baisse : le texte réel ne
+     tient plus qu'en ~17px, laissant en permanence un grand vide sous le
+     champ mot de passe même sans aucune erreur affichée (retour
+     utilisateur, capture annotée à l'appui : "il y a trop de vide
+     dessous"). 18px readapté au texte actuel (13px), avec la même marge de
+     1px. */
   .auth-error{
     font-size:13px; color:#DC2626;
-    text-align:center; margin:0; min-height:34px;
+    text-align:center; margin:0; min-height:18px;
   }
 
   #authSubmitBtn{
@@ -2465,7 +2497,7 @@
     font-weight:700;
   }
 
-  @media(max-width:640px) and (pointer: coarse) {
+  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* ── Modale conflit mobile ───────────────────── */
     #conflictOverlay{
       padding:8px;
@@ -2634,7 +2666,7 @@
 .filter-sheet {
   display: none;
 }
-@media (max-width: 1024px) and (pointer: coarse) {
+@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .filter-sheet {
     display: block;
     position: fixed;
@@ -2724,7 +2756,7 @@
 }
 
 /* Fiche produit : animation slide-up sur mobile */
-@media (max-width: 640px) and (pointer: coarse) {
+@media (max-width: 640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   #viewOverlay {
     top: 0 !important;
     align-items: flex-end !important;
@@ -2770,7 +2802,7 @@
   display: none;
 }
 
-@media (max-width: 1024px) and (pointer: coarse) {
+@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
   .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: var(--z-sheet-high) !important; }
   .bottom-nav {
@@ -3054,7 +3086,7 @@
 .menu-sheet {
   display: none;
 }
-@media (max-width: 1024px) and (pointer: coarse) {
+@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .menu-sheet {
     position: fixed;
     bottom: 0;
@@ -3127,7 +3159,7 @@
   font-size: 16px; color: var(--ink-soft); flex-shrink: 0;
 }
 
-@media (max-width: 1024px) and (pointer: coarse) {
+@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   /* Masquer les 3 petits points header sur mobile */
   #hdrMenuWrap { display: none !important; }
 }
@@ -3247,7 +3279,7 @@
 }
 
 /* Mobile ≤640px : 3 colonnes (~110px/carte) — badge très compact */
-@media(max-width:640px) and (pointer: coarse) {
+@media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .essential-badge{
     font-size:8px;
     padding:0 7px;
@@ -3259,7 +3291,7 @@
 }
 
 /* Mobile ≤380px : 2 colonnes (~160px/carte) — un peu plus de place */
-@media(max-width:380px) and (pointer: coarse) {
+@media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .essential-badge{
     font-size:8.5px;
     padding:0 7px;
@@ -3377,7 +3409,7 @@
 .sheet-handle-bar{
   display: none;
 }
-@media(max-width: 640px) and (pointer: coarse) {
+@media(max-width: 640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .sheet-handle-bar{
     display: block;
     width: 40px; height: 4px;
@@ -3418,7 +3450,7 @@
 /* !important nécessaire : les éléments de cette modale sont stylés en
    inline (style="..."), qui prime toujours sur une règle externe sans
    !important — même convention que .fab-stack plus haut dans ce fichier. */
-@media(max-width:768px) and (pointer: coarse) {
+@media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   /* La modale est calée en position:fixed avec top/bottom explicites au
      lieu d'une hauteur calculée en vh/dvh : sur iOS Safari, 100vh (et même
      100dvh sur certaines versions/contextes PWA) peut être plus grand que

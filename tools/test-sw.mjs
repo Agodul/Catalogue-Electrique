@@ -165,7 +165,7 @@ await test("L'installation met la coque de l'application en cache", async () => 
   const coque = await state.caches.open(sw.CACHE);
   assert(await coque.match('./index.html'), 'index.html absent du cache');
   assert(await coque.match('./css/styles.css'), 'styles.css absent du cache');
-  assert(await coque.match('./js/actions.js'), 'actions.js absent du cache');
+  assert(await coque.match('./js/actions-core.js'), 'actions-core.js absent du cache');
   assert(state.skipWaitingAppelé, 'skipWaiting() jamais appelé');
   void sw;
 });
