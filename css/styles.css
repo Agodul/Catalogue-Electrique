@@ -2140,6 +2140,25 @@
      l'état déconnecté (voir applyAuthUI dans js/auth.js) — pas besoin d'une
      nouvelle classe dédiée. */
   body.auth-readonly .settings-box{ min-height:220px; }
+  /* Contour bleu au survol, pour les 5 lignes de #settingsMainBody
+     (#btnOpenFamilyIcons/#btnOpenMyAccount/#btnOpenUserSettings/
+     #btnOpenServerSettings/#btnOpenLockedProducts) — remplace le câblage
+     JS mouseover/mouseout par bouton (js/actions-settings-nav.js), qui
+     n'avait en fait été posé que sur 2 des 5 boutons : les 3 autres
+     n'avaient jamais de surbrillance au survol (retour utilisateur : "dans
+     les paramètres il n'y a pas de contour bleu lorsqu'on passe le curseur
+     dessus"). Une seule règle CSS, plutôt que devoir se souvenir de la
+     reposer sur chaque nouveau bouton ajouté à cette liste.
+     La bordure DE BASE (pas seulement :hover) est reprise ici aussi : ces
+     5 boutons la portaient jusqu'ici en style inline
+     (border:1px solid var(--line), voir index.html), qui l'emporte
+     toujours sur une règle externe sans !important — :hover ne prenait
+     donc jamais le dessus (bug du 1er correctif, retour utilisateur : "il
+     n'y a pas de contour bleu ?" après coup). En la posant ici plutôt
+     qu'en inline, base et survol viennent du même niveau de spécificité et
+     :hover l'emporte normalement. */
+  .settings-row-btn{ border:1px solid var(--line); }
+  .settings-row-btn:hover{ border-color:var(--copper); }
   .settings-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px;

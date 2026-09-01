@@ -160,13 +160,13 @@
   // Bouton Mon compte géré dans auth.js
   var btnUserPageBack = document.getElementById('btnUserPageBack');
   if(btnUserPageBack) btnUserPageBack.addEventListener('click', function(){ showSettingsMain(); });
-  btnOpenFamilyIcons.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
-  btnOpenFamilyIcons.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
+  // Surbrillance au survol : voir .settings-row-btn:hover (css/styles.css)
+  // — auparavant posée ici en JS mais seulement sur ces deux boutons (les 3
+  // autres lignes de cette liste n'avaient jamais ce survol, retour
+  // utilisateur).
   btnFamilyPageBack.addEventListener('click', function(){ showSettingsMain(); });
 
   btnOpenServerSettings.addEventListener('click', function(){ showSettingsServerPage(); });
-  btnOpenServerSettings.addEventListener('mouseover', function(){ this.style.borderColor='var(--copper)'; });
-  btnOpenServerSettings.addEventListener('mouseout',  function(){ this.style.borderColor='var(--line)'; });
   btnServerPageBack.addEventListener('click', function(){ showSettingsMain(); });
 
   // Vérifie qu'un serveur répond, avec un timeout court : une IP mal saisie

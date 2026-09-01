@@ -466,7 +466,7 @@
       <button class="close sans" id="settingsClose" aria-label="Fermer">&times;</button>
     </div>
     <div class="settings-body" id="settingsMainBody">
-      <button id="btnOpenFamilyIcons" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+      <button id="btnOpenFamilyIcons" class="settings-row-btn" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#EEF4FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-category" style="font-size:20px;color:var(--copper);"></i>
         </span>
@@ -477,7 +477,7 @@
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
       <!-- Bouton Mon compte - visible pour les non-admins connectés -->
-      <button id="btnOpenMyAccount" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+      <button id="btnOpenMyAccount" class="settings-row-btn" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-user-circle" style="font-size:20px;color:#7C3AED;"></i>
         </span>
@@ -488,7 +488,7 @@
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
 
-      <button id="btnOpenUserSettings" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+      <button id="btnOpenUserSettings" class="settings-row-btn" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-users" style="font-size:20px;color:#3B82F6;"></i>
         </span>
@@ -498,7 +498,7 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
-      <button id="btnOpenServerSettings" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
+      <button id="btnOpenServerSettings" class="settings-row-btn" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-server" style="font-size:20px;color:#059669;"></i>
         </span>
@@ -514,7 +514,7 @@
            côté client (une purge côté serveur libère aussi les verrous
            toutes les 20 min) — un admin doit pouvoir le lever immédiatement
            sans attendre l'un ou l'autre. Admin uniquement. -->
-      <button id="btnOpenLockedProducts" style="display:none;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
+      <button id="btnOpenLockedProducts" class="settings-row-btn" style="display:none;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;">
         <span style="width:38px;height:38px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-lock-open" style="font-size:20px;color:#DC2626;"></i>
         </span>
