@@ -39,11 +39,11 @@
 
   // Restaurer depuis un fichier choisi par l'admin (retour utilisateur :
   // /admin/restore doit accepter le fichier de sauvegarde de l'admin, pas
-  // se contenter de restaurer une sauvegarde fixe côté serveur — le Swagger
-  // ne documentait pas de corps de requête pour cette route, contrairement
-  // à /pushDocsReq par ex., donc le nom exact du champ multipart ("file"
-  // ci-dessous) est une supposition raisonnable, PAS confirmé — à vérifier
-  // au premier essai réel (ajuster ici si 422/erreur de validation).
+  // se contenter de restaurer une sauvegarde fixe côté serveur). Champ
+  // multipart "backup_file" (nom confirmé par le Swagger, POST /admin/restore
+  // — voir mémoire project_backend_api_swagger) — un premier essai avec
+  // "file" a produit une 422 (FastAPI valide le nom du champ multipart
+  // strictement), confirmant qu'il fallait bien le nom exact du Swagger.
   var adminRestoreFileInput = document.getElementById('adminRestoreFileInput');
   if(btnAdminRestoreEl && adminRestoreFileInput){
     btnAdminRestoreEl.addEventListener('click', function(){
@@ -78,9 +78,19 @@
         var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
         delete h['Content-Type']; // laisser fetch fixer le boundary multipart
         var fd = new FormData();
-        fd.append('file', file, file.name);
+        fd.append('backup_file', file, file.name);
         var r = await fetch(url + '/admin/restore', { method:'POST', headers: h, body: fd });
-        if(!r.ok) throw new Error('HTTP ' + r.status);
+        if(!r.ok){
+          // Détail FastAPI (422 notamment : {detail:[{loc,msg,...}]}) affiché
+          // s'il existe, plutôt qu'un simple "HTTP 422" sans info exploitable
+          // — retour utilisateur, premier essai réel sur cette route neuve.
+          var errDetail = '';
+          try{
+            var errBody = await r.json();
+            if(errBody && errBody.detail) errDetail = ' — ' + (typeof errBody.detail === 'string' ? errBody.detail : JSON.stringify(errBody.detail));
+          }catch(eParse){}
+          throw new Error('HTTP ' + r.status + errDetail);
+        }
         showToast('Sauvegarde restaurée ✓ — rechargement du catalogue…', 'ok', 3000);
         // Le contenu du serveur a potentiellement tout changé — recharger
         // depuis zéro plutôt que de tenter une fusion différentielle.

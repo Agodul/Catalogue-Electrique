@@ -130,8 +130,16 @@
   function reqStartPolling(){
     reqStopPolling();
     if(!reqServerUrl() || !reqIsAdmin()) return;
+    // N'autorise plus que les notifications navigateur ici — l'appel
+    // immédiat à reqUpdateBadge() qui suivait a été retiré : la connexion
+    // (js/auth.js, authLogin) déclenche maintenant doCheckAllSync()
+    // directement, qui rappelle déjà window._reqUpdateBadge() lui-même SI
+    // catalogueRequests/bugs a changé depuis le dernier état connu (et
+    // sinon, l'ancien compte affiché reste juste correct tel quel — pas la
+    // peine de refaire la requête pour un résultat identique). Le
+    // faire ici EN PLUS aurait dupliqué le même /checkReq+/checkBugs deux
+    // fois de suite à chaque connexion.
     _reqAskNotifPermission();
-    reqUpdateBadge(); // premier affichage immédiat à la connexion
   }
   function reqStopPolling(){ _reqLastCount = 0; _reqLastCountProduct = 0; _reqLastCountBug = 0; }
   window._reqStartPolling = reqStartPolling;

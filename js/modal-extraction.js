@@ -201,12 +201,20 @@
                                            'meta[property="product:mpn"]','meta[name="mpn"]']);
 
     // ── Sélecteurs DOM génériques (itemprop, data-attributes) ─────────
+    // '[class*="-reference"]' (tiret devant) plutôt que '[class*="reference"]'
+    // seul — testé en vrai sur se.com (Schneider) : "reference" est un
+    // simple SOUS-TEXTE de "preference", donc le sélecteur nu attrapait la
+    // bannière de cookies OneTrust ("save-preference-btn-handler") avant
+    // même d'atteindre un vrai champ référence produit (retour utilisateur :
+    // "l'extension ne mets plus la référence"). Le tiret élimine ce faux
+    // positif tout en gardant les classes composées habituelles
+    // (product-reference, article-reference…).
     if(!result.ref){
       result.ref = txt([
         '[itemprop="sku"]','[itemprop="mpn"]','[itemprop="productID"]',
         '[data-sku]','[data-ref]','[data-product-ref]','[data-product-id]',
         '[class*="product-ref"]','[class*="product-sku"]','[class*="sku"]',
-        '[class*="ref-produit"]','[class*="reference"]'
+        '[class*="ref-produit"]','[class*="-reference"]'
       ]);
     }
     if(!result.brand){
@@ -235,7 +243,17 @@
       if(!result.brand) result.brand = 'IFM';
     }
     if(hostname.includes('schneider') || hostname.includes('se.com')){
-      if(!result.ref)   result.ref   = txt(['.product-reference','.ref','[class*="reference"]','[data-reference]']);
+      // '[class*="product-id"]' EN PREMIER : c'est le vrai champ référence
+      // sur se.com (ex. <h2 class="main-product-info__bottom-item--
+      // product-id">GB2DB05</h2>, testé en vrai) — placé avant
+      // '[class*="reference"]' qui, sur ce site, attrapait la bannière de
+      // cookies OneTrust ("save-preference-btn-handler" contient
+      // "reference" comme sous-texte de "preference") avant d'atteindre un
+      // vrai champ (retour utilisateur : "l'extension ne mets plus la
+      // référence"). '-reference' (tiret devant) au lieu de 'reference' nu
+      // pour ce même sélecteur, en repli, écarte ce faux positif tout en
+      // gardant les classes composées habituelles.
+      if(!result.ref)   result.ref   = txt(['[class*="product-id"]','.product-reference','.ref','[class*="-reference"]','[data-reference]']);
       if(!result.brand) result.brand = 'Schneider Electric';
       // se.com est un catalogue pro qui n'affiche jamais de prix public —
       // les deux fallbacks génériques plus bas (sélecteur [class*="price"]
@@ -281,22 +299,42 @@
     }
     if(hostname.includes('sonepar')){
       // Référence fournisseur
+      // [data-testid="ref-product-manufacturerRefId"] vérifié EN PREMIER, et
+      // REMPLACE même une valeur déjà trouvée par le repli générique plus
+      // haut (donc PAS de garde "if(!result.ref)" ici, volontairement) —
+      // testé en vrai sur GV2L14 : le sélecteur générique
+      // '[class*="product-ref"]' (repli DOM générique, avant les règles par
+      // site) matche "product-ref**erences**_buttonsContainer", le
+      // CONTENEUR englobant À LA FOIS le bouton "Réf.fab" (référence
+      // fabricant, ce qu'on veut) ET un second bouton "Réf." (référence
+      // INTERNE Sonepar, un identifiant différent) — son .textContent
+      // concatène donc les deux ("CopieRéf.fab GV2L14CopieRéf.
+      // 00002021327"), jamais exploitable, et comme le générique passe
+      // AVANT cette règle-ci, result.ref était déjà "pollué" avant même
+      // d'arriver ici — un simple repli "si rien trouvé" n'aurait donc
+      // jamais pu corriger quoi que ce soit (retour utilisateur, repro
+      // confirmée). Le testid cible directement le bon bouton, sans
+      // ambiguïté.
+      var mfrRefBtn = doc.querySelector('[data-testid="ref-product-manufacturerRefId"]');
+      if(mfrRefBtn){
+        var mfrRef = mfrRefBtn.textContent.replace(/^\s*R[ée]f\.?\s*fab\.?\s*:?\s*/i, '').trim();
+        if(mfrRef) result.ref = mfrRef;
+      }
       if(!result.ref){
-        // Chercher "Réf. Fournisseur" puis valeur suivante
-        var refLabel = doc.querySelector('[class*="supplier-ref"],[class*="product-ref"],[data-ref]');
+        var refLabel = doc.querySelector('[class*="supplier-ref"],[data-ref]');
         if(refLabel) result.ref = refLabel.textContent.trim();
+      }
+      if(!result.ref){
         // Fallback : meta-keywords contient la ref (ex: "GV2L14,SCH,SCHGV2L14")
-        if(!result.ref){
-          var kw = doc.querySelector('meta[name="meta-keywords"]') || doc.querySelector('meta[name="keywords"]');
-          if(kw){
-            var kwVal = kw.getAttribute('content') || '';
-            // Prendre le premier token qui ressemble à une ref produit
-            var kwParts = kwVal.split(',');
-            for(var ki=0; ki<kwParts.length; ki++){
-              var kp = kwParts[ki].trim();
-              if(kp.length >= 4 && kp.length <= 20 && /[A-Z][A-Z0-9]/.test(kp) && !/^\d+$/.test(kp)){
-                result.ref = kp; break;
-              }
+        var kw = doc.querySelector('meta[name="meta-keywords"]') || doc.querySelector('meta[name="keywords"]');
+        if(kw){
+          var kwVal = kw.getAttribute('content') || '';
+          // Prendre le premier token qui ressemble à une ref produit
+          var kwParts = kwVal.split(',');
+          for(var ki=0; ki<kwParts.length; ki++){
+            var kp = kwParts[ki].trim();
+            if(kp.length >= 4 && kp.length <= 20 && /[A-Z][A-Z0-9]/.test(kp) && !/^\d+$/.test(kp)){
+              result.ref = kp; break;
             }
           }
         }

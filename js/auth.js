@@ -64,8 +64,19 @@ function _defaultPermissions(isAdmin) {
     canManageUsers: !!isAdmin,
     canViewDocs:    true,
     canUploadDocs:  !!isAdmin,
-    canExport:      !!isAdmin,
-    canSyncServer:  !!isAdmin
+    canExport:      !!isAdmin
+    // canSyncServer retiré (retour utilisateur : trop risqué comme
+    // permission granulaire configurable côté serveur — un dev/admin peut
+    // se tromper et l'activer pour tout le monde, comme constaté en vrai.
+    // "Charger depuis le serveur"/"Envoyer le catalogue local au serveur"
+    // écrasent respectivement TOUT products[] local ou TOUT le catalogue
+    // serveur (upsert complet, voir pushCatalogToServer) — un mauvais
+    // moment pour ça (copie locale périmée) écrase silencieusement le
+    // travail de quelqu'un d'autre. applyAuthUI() n'utilise donc plus
+    // cette clé du tout, quoi que le serveur renvoie dans
+    // user.permissions — ces deux boutons sont désormais strictement
+    // admin, au même titre que serverAdminBackupSection juste à côté qui
+    // l'était déjà pour la même raison).
   };
 }
 
@@ -298,11 +309,34 @@ async function authLogin(username, password) {
       if (typeof showHome === 'function') showHome();
       document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
-      // Démarrer le polling demandes si admin
+      // Démarrer le polling demandes si admin (garde déjà l'admin/serveur en
+      // interne — ne fait plus qu'autoriser les notifications navigateur,
+      // voir requests.js : le premier /checkReq+/checkBugs immédiat qu'elle
+      // déclenchait ici a été retiré, doublon avec doCheckAllSync juste en
+      // dessous).
       if (typeof window._reqStartPolling === 'function') window._reqStartPolling();
-      // Sync serveur en arrière-plan uniquement
+      // Un SEUL /checkAll à la connexion (au lieu de deux appels
+      // systématiques en parallèle : /checkReq+/checkBugs immédiats via
+      // _reqStartPolling ci-dessus, ET /pullDatas à +300ms via
+      // syncFromServer — aucun des deux ne regardait si quoi que ce soit
+      // avait réellement changé). C'est /checkAll lui-même (doCheckAllSync,
+      // js/actions-settings-sync.js) qui décide ENSUITE, collection par
+      // collection (revision/count/changedAt comparés au dernier état
+      // local connu), lesquels de ces appels sont réellement nécessaires :
+      // pullDatas+syncDeletions si le catalogue a changé, configBlocks/
+      // savedConfigs si l'armoire a changé, checkReq+checkBugs (via
+      // window._reqUpdateBadge, qui se neutralise déjà seul si
+      // non-admin) si les demandes/bugs ont changé. Rien de perdu à la
+      // toute première connexion : hasChanged() traite l'absence de
+      // référence locale comme "a changé", donc tout est rattrapé quand
+      // même — retour utilisateur : "à la connexion faut uniquement faire
+      // un checkAll puis après selon les permissions faire les appels
+      // dont la revision a changé". Même principe déjà en place pour une
+      // session restaurée au chargement de la page (loadServerConfig,
+      // js/actions-settings-sync.js), auquel cette connexion interactive
+      // s'aligne maintenant.
       if (typeof startSyncPolling === 'function' && sUrl) startSyncPolling();
-      if (typeof syncFromServer === 'function') setTimeout(function(){ syncFromServer(true); }, 300);
+      if (typeof doCheckAllSync === 'function') doCheckAllSync();
       return true;
     }
   }
@@ -486,6 +520,13 @@ function applyAuthUI() {
   var btnSettingsSub = document.getElementById('btnSettingsSub');
   if (btnSettingsSub) btnSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
 
+  // Sync serveur manuelle ("Charger depuis le serveur"/"Envoyer le catalogue
+  // local au serveur") — strictement admin, PAS de permission granulaire
+  // configurable ici (retour utilisateur : un dev/admin peut se tromper et
+  // l'activer pour tout le monde côté serveur — ces deux boutons écrasent
+  // respectivement tout products[] local ou tout le catalogue serveur, un
+  // risque trop élevé pour dépendre d'un simple flag serveur). Même
+  // traitement que serverAdminBackupSection juste en dessous.
   var serverButtonsSection = document.getElementById('serverButtonsSection');
   if (serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';
 
@@ -496,7 +537,6 @@ function applyAuthUI() {
   var canViewDocs    = isAdmin || !!perms.canViewDocs;
   var canUploadDocs  = isAdmin || !!perms.canUploadDocs;
   var canExport      = isAdmin || !!perms.canExport;
-  var canSyncServer  = isAdmin || !!perms.canSyncServer;
 
   // Mode lecture seule
   document.body.classList.toggle('auth-readonly', !loggedIn);
@@ -605,18 +645,14 @@ function applyAuthUI() {
   if(_hdrSeps[0]) _hdrSeps[0].style.display = _hdrAllHidden(_hdrDataIds) ? 'none' : '';
   if(_hdrSeps[1]) _hdrSeps[1].style.display = _hdrAllHidden(_hdrToolIds) ? 'none' : '';
 
-  // Sync serveur manuelle
-  var serverButtonsSection = document.getElementById('serverButtonsSection');
-  if (serverButtonsSection) serverButtonsSection.style.display = canSyncServer ? '' : 'none';
-
-  // Sauvegarde/restauration serveur — admin uniquement (pas canSyncServer,
-  // action bien plus sensible que le simple chargement/envoi du catalogue).
+  // Sauvegarde/restauration serveur — admin uniquement, comme
+  // serverButtonsSection plus haut désormais.
   var serverAdminBackupSection = document.getElementById('serverAdminBackupSection');
   if (serverAdminBackupSection) serverAdminBackupSection.style.display = isAdmin ? '' : 'none';
 
   // Exposer les permissions pour les autres modules
   window._userPerms = {
-    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, canSyncServer, isAdmin, loggedIn, canPropose
+    canEdit, canDelete, canViewDocs, canUploadDocs, canExport, isAdmin, loggedIn, canPropose
   };
 
   updateAuthHeaderBtn(loggedIn, user);
@@ -788,7 +824,7 @@ function _renderUserList(container, users, isServer) {
     } else {
       var permList = [
         ['canEdit','Éditer'],['canDelete','Supprimer'],['canViewDocs','Docs'],
-        ['canExport','Export'],['canSyncServer','Data']
+        ['canExport','Export']
       ];
       permList.forEach(function(p) {
         var active = !!perms[p[0]];
@@ -853,8 +889,9 @@ function openAddUserModal() {
     ['canDelete',      'Supprimer des produits'],
     ['canViewDocs',    'Voir les documents PDF'],
     ['canUploadDocs',  'Envoyer des documents PDF'],
-    ['canExport',      'Exporter le catalogue'],
-    ['canSyncServer',  'Data serveur']
+    ['canExport',      'Exporter le catalogue']
+    // canSyncServer retiré : sync serveur manuelle strictement admin
+    // désormais, plus une permission accordable (voir _defaultPermissions).
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
@@ -973,8 +1010,9 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canDelete',      'Supprimer des produits'],
     ['canViewDocs',    'Voir les documents PDF'],
     ['canUploadDocs',  'Envoyer des documents PDF'],
-    ['canExport',      'Exporter le catalogue'],
-    ['canSyncServer',  'Data serveur']
+    ['canExport',      'Exporter le catalogue']
+    // canSyncServer retiré : sync serveur manuelle strictement admin
+    // désormais, plus une permission accordable (voir _defaultPermissions).
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
