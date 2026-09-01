@@ -515,6 +515,12 @@
     var next  = document.getElementById('pdfViewerNextPage');
     var input = document.getElementById('pdfViewerPageInput');
     if(scrollEl) scrollEl.addEventListener('scroll', _pdfDetectCurrentPageFromScroll, {passive:true});
+    // Rattrape la netteté des pages nouvellement approchées après un zoom
+    // (voir _pdfSharpenNearbyOnScroll plus bas) — sans effet tant qu'aucune
+    // page n'a été laissée floue par _pdfSharpenPages (cas normal : zoom
+    // jamais utilisé, ou document assez court pour que tout ait déjà été
+    // rendu net d'un coup).
+    if(scrollEl) scrollEl.addEventListener('scroll', _pdfSharpenNearbyOnScroll, {passive:true});
     if(prev) prev.addEventListener('click', function(){ _pdfGoToPage(_pdfCurrentPage - 1); });
     if(next) next.addEventListener('click', function(){ _pdfGoToPage(_pdfCurrentPage + 1); });
     if(input){
@@ -534,19 +540,55 @@
   // Après le pincement, on re-rend chaque page à la résolution correspondant
   // au zoom final pour rester net (le redimensionnement CSS pendant le geste
   // ne fait qu'étirer le bitmap existant, ce qui devient flou en zoomant fort).
+  //
+  // UNIQUEMENT les pages visibles (+ une marge d'une hauteur d'écran au-dessus
+  // et en dessous) — pas tout le document. Sur un PDF de nombreuses pages, un
+  // fort zoom fait grimper CHAQUE canvas jusqu'à MAX_PDF_CANVAS_DIM (4096px de
+  // côté) ; les re-rendre TOUTES à la fois pouvait réclamer plusieurs
+  // centaines de Mo à quelques Go de mémoire canvas simultanément — largement
+  // au-delà de ce qu'un onglet mobile tolère, d'où un plantage qui emportait
+  // avec lui la fiche produit ET le lecteur (retour utilisateur : "lorsqu'il
+  // y a beaucoup de page et que je veux zoomer en pinçant ça crash"). Les
+  // pages hors de cette marge restent à leur résolution actuelle (visibles,
+  // juste un peu moins nettes tant qu'on n'a pas défilé jusqu'à elles) —
+  // _pdfSharpenNearbyOnScroll ci-dessous les rattrape au fur et à mesure du
+  // défilement.
   function _pdfSharpenPages(){
+    var scrollEl = document.getElementById('pdfViewerScroll');
+    if(!scrollEl) return;
+    var margin = scrollEl.clientHeight; // une hauteur d'écran de battement de chaque côté
+    var visibleTop    = scrollEl.scrollTop - margin;
+    var visibleBottom = scrollEl.scrollTop + scrollEl.clientHeight + margin;
+
     _pdfPageInfos.forEach(function(info){
       // Une image bitmap n'a pas de "re-rendu" PDF.js à refaire à plus haute
       // résolution : le navigateur redimensionne déjà le bitmap existant
       // correctement (contrairement au canvas PDF, dont le rendu initial est
       // volontairement basse résolution pour rester rapide à l'ouverture).
       if(info.isImage) return;
+
+      var pageTop = _pdfPageTopInScroll(info, scrollEl);
+      var pageBottom = pageTop + info.cssHeight0 * _pdfZoom;
+      if(pageBottom < visibleTop || pageTop > visibleBottom){
+        info._needsSharpen = true; // sera rattrapée si on défile jusqu'à elle
+        return;
+      }
+
       var targetScale = info.baseScale * _pdfZoom * Math.min(window.devicePixelRatio || 1, 2);
       var viewport = info.page.getViewport({ scale: targetScale });
       if(Math.max(viewport.width, viewport.height) > MAX_PDF_CANVAS_DIM){
         var capFactor = MAX_PDF_CANVAS_DIM / Math.max(viewport.width, viewport.height);
         viewport = info.page.getViewport({ scale: targetScale * capFactor });
       }
+      // Déjà rendue à cette résolution (page déjà nette, pas de nouveau
+      // cran de zoom depuis) : rien à refaire — sans ce filet, chaque
+      // défilement redéclencherait un rendu PDF.js pour toutes les pages
+      // déjà visibles/nettes, à chaque appel de _pdfSharpenNearbyOnScroll.
+      if(!info._needsSharpen && info.canvas.width === Math.round(viewport.width) && info.canvas.height === Math.round(viewport.height)){
+        return;
+      }
+      info._needsSharpen = false;
+
       if(info.renderTask) info.renderTask.cancel();
       info.canvas.width  = viewport.width;
       info.canvas.height = viewport.height;
@@ -554,6 +596,19 @@
       info.renderTask = task;
       task.promise.catch(function(e){ if(e && e.name !== 'RenderingCancelledException') console.warn('[PDF] re-rendu échoué:', e); });
     });
+  }
+
+  // Rattrape la netteté des pages qui viennent d'entrer dans la marge
+  // visible (voir _pdfSharpenPages ci-dessus) au fur et à mesure du
+  // défilement après un zoom — sans ça, une page jamais visible au moment du
+  // pincement resterait à sa résolution d'avant zoom, floue, même une fois
+  // scrollée jusqu'à elle. Throttlé (comme _pdfSharpenPages elle-même,
+  // simple appel direct ici — bon marché : la boucle ne re-rend RIEN pour
+  // les pages déjà à la bonne résolution, voir le filet juste au-dessus).
+  var _pdfScrollSharpenTimer = null;
+  function _pdfSharpenNearbyOnScroll(){
+    clearTimeout(_pdfScrollSharpenTimer);
+    _pdfScrollSharpenTimer = setTimeout(_pdfSharpenPages, 150);
   }
 
   // Pincement à deux doigts : capté sur le conteneur qui défile, sans
