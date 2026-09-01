@@ -115,6 +115,7 @@
     var html = '';
     var url  = '';
     var autoSpecs = true;
+    var pendingSpecs = null;
     try{
       html = localStorage.getItem('cat_pending_html') || '';
       url  = localStorage.getItem('cat_pending_url')  || '';
@@ -124,6 +125,18 @@
       // rien au comportement existant tant que rien n'a été explicitement
       // désactivé.
       autoSpecs = localStorage.getItem('cat_pending_autospecs') !== '0';
+      // Caractéristiques DÉJÀ extraites côté extension (ajouterAuCatalogue
+      // dans background.js — même moteur robuste que son bouton séparé
+      // "Récupérer les caractéristiques techniques" : Shadow DOM, grilles
+      // CSS, paires label/span, clic auto sur l'onglet Caractéristiques,
+      // filtrage du bruit). Absent sur les versions d'extension
+      // antérieures à ce réglage — reste alors null, et on retombe sur le
+      // parsing HTML habituel (extractFromHtml/collectSpecs) plus bas,
+      // sans aucun changement de comportement dans ce cas.
+      var specsRaw = localStorage.getItem('cat_pending_specs');
+      if(specsRaw){
+        try{ pendingSpecs = JSON.parse(specsRaw); }catch(e){ pendingSpecs = null; }
+      }
       // Ignorer si données trop vieilles (> 5 min)
       if(!html || (Date.now() - ts) > 5 * 60 * 1000) return;
       // Nettoyer immédiatement pour éviter un double-déclenchement
@@ -131,6 +144,7 @@
       localStorage.removeItem('cat_pending_url');
       localStorage.removeItem('cat_pending_ts');
       localStorage.removeItem('cat_pending_autospecs');
+      localStorage.removeItem('cat_pending_specs');
     }catch(e){ return; }
 
     if(url){
@@ -168,8 +182,24 @@
         // infos sans rapport avec le produit). Ne concerne QUE ce chemin
         // (extension) : coller le code source à la main continue de tout
         // extraire, comme avant.
-        if(!autoSpecs && typeof window._specsRows !== 'undefined' && window._specsRows.length){
-          window._specsRows = [];
+        if(!autoSpecs){
+          if(typeof window._specsRows !== 'undefined' && window._specsRows.length){
+            window._specsRows = [];
+            if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
+          }
+        } else if(pendingSpecs && typeof pendingSpecs === 'object' && Object.keys(pendingSpecs).length){
+          // Caractéristiques extraites côté extension disponibles (voir
+          // plus haut) — PRIORITAIRES sur ce que btnExtract vient de
+          // trouver via le parsing HTML basique du Catalogue
+          // (extractFromHtml/collectSpecs : seulement tr/td, dt/dd et
+          // paires de div simples), remplacées ici par le résultat du
+          // moteur plus robuste de l'extension (Shadow DOM, grilles CSS,
+          // label/span, onglet Caractéristiques…) — retour utilisateur :
+          // "il faut que tous les paramètres pour avoir le maximum de
+          // fiabilité se fasse du côté de l'extension".
+          window._specsRows = Object.keys(pendingSpecs).map(function(k){
+            return { key: k, value: pendingSpecs[k] };
+          });
           if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
         }
         showToast('Extraction depuis l\'extension Chrome ✓', 'ok', 3500);
