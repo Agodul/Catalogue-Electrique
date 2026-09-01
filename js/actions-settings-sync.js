@@ -179,7 +179,7 @@
       // ouverte, et on prévient clairement — popup bloquante plutôt qu'un
       // toast, l'utilisateur pouvant très bien être absent au moment où
       // cette synchro tourne en arrière-plan (comme la fermeture automatique
-      // pour inactivité, voir js/modal.js).
+      // pour inactivité, voir js/modal-editlock-heartbeat.js).
       var editingProduct = (typeof editingId !== 'undefined' && editingId)
         ? products.find(function(p){ return p.id === editingId; })
         : null;

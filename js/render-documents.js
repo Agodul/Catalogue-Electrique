@@ -60,7 +60,7 @@
   }
 
   // Types image acceptés à l'upload (voir accept="image/*" sur #modalPdfInput,
-  // js/modal.js) — même liste que _isImg là-bas, pour rester cohérent entre
+  // js/modal-autocomplete.js) — même liste que _isImg là-bas, pour rester cohérent entre
   // la modale d'édition et la visionneuse.
   var IMG_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
 
@@ -89,7 +89,7 @@
   // pouvait pas deviner qu'il fallait se (re)connecter. Bouton "Ouvrir les
   // paramètres serveur" : ferme cette fenêtre de documents et saute
   // directement sur la sous-page Serveur (openSettingsOverlay/
-  // showSettingsServerPage, définies dans js/actions.js — accessibles ici
+  // showSettingsServerPage, définies dans js/actions-settings-nav.js — accessibles ici
   // car tous les scripts de l'app sont des scripts globaux classiques, pas
   // des modules isolés).
   function _docConnectServerMessage(reason){

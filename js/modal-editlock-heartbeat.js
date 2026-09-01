@@ -1,13 +1,13 @@
   // ── Heartbeat du verrou "en cours d'édition" ────────────────────────
   // Tant que le formulaire reste réellement utilisé (activité dans les 8
   // dernières minutes), rafraîchit périodiquement _editingAt côté serveur
-  // (voir _refreshProductEditLock dans js/actions.js) pour qu'une édition
+  // (voir _refreshProductEditLock dans js/actions-editlock.js) pour qu'une édition
   // légitime de plus de 10 min ne se fasse jamais "voler" par quelqu'un
   // d'autre (voir EDIT_LOCK_TTL_MS). Basé sur l'activité RÉELLE (frappe/clic
   // dans le formulaire), pas sur la simple présence de la fenêtre ouverte —
   // un onglet oublié ouvert sans personne devant doit continuer à laisser
   // le verrou expirer normalement (retour utilisateur). Démarré/arrêté
-  // explicitement par l'appelant (voir vmEditBtn dans js/render.js et
+  // explicitement par l'appelant (voir vmEditBtn dans js/render-view-modal-close.js et
   // closeModal ci-dessous) plutôt que déduit d'un état ambiant — seul le
   // vrai flux d'édition (verrou effectivement posé) doit le déclencher.
   var EDIT_LOCK_HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000;
@@ -35,8 +35,9 @@
       if(!_editLockHeartbeatId || editingId !== _editLockHeartbeatId) return; // fermé/changé entre-temps
       var idleMs = Date.now() - _editLockLastActivityAt;
       // Inactif depuis au moins le TTL du verrou (10 min, EDIT_LOCK_TTL_MS
-      // dans js/actions.js — repli local si jamais indisponible, modal.js
-      // étant chargé AVANT actions.js dans index.html) : au-delà, le verrou
+      // dans js/actions-editlock.js — repli local si jamais indisponible,
+      // les fichiers modal-*.js étant chargés AVANT les fichiers
+      // actions-*.js dans index.html) : au-delà, le verrou
       // n'est de toute façon plus protégé — n'importe qui d'autre peut déjà
       // éditer la même fiche sans être bloqué (voir
       // _checkProductEditLockBlocks). Laisser cette fenêtre ouverte
@@ -73,7 +74,7 @@
     }
     editingId = null;
     // Libère un éventuel verrou "en cours d'édition" (voir
-    // _tryLockProductForEdit/_releaseProductEditLock dans js/actions.js).
+    // _tryLockProductForEdit/_releaseProductEditLock dans js/actions-editlock.js).
     // Couvre Enregistrer (déjà nettoyé explicitement côté payload, donc sans
     // effet ici) ET Annuler/fermeture directe (seul cas réellement utile,
     // sinon le verrou resterait posé jusqu'à expiration de son TTL). Sans

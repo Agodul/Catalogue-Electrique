@@ -473,7 +473,8 @@ function applyAuthUI() {
   if (btnFamilyIcons) btnFamilyIcons.style.display = isAdmin ? 'flex' : 'none';
 
   // Bouton Fiches verrouillées : visible admin uniquement (voir
-  // js/actions.js, showSettingsLockedPage/_adminForceUnlockProduct).
+  // showSettingsLockedPage dans js/actions-settings-nav.js et
+  // _adminForceUnlockProduct dans js/actions-editlock.js).
   var btnLockedProducts = document.getElementById('btnOpenLockedProducts');
   if (btnLockedProducts) btnLockedProducts.style.display = isAdmin ? 'flex' : 'none';
 
@@ -681,7 +682,7 @@ function openAuthModal() {
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
   // Sur mobile, si la connexion a été ouverte DEPUIS le tiroir menu (voir
-  // msAuth dans js/actions.js), la croix (ou une connexion réussie — les
+  // msAuth dans js/actions-mobile-chrome.js), la croix (ou une connexion réussie — les
   // deux passent par ici) doit "revenir" au menu plutôt que de retomber sur
   // la page du dessous — même principe que Paramètres/Demandes/Signaler un
   // bug/Comparateur.

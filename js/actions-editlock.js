@@ -107,7 +107,8 @@
   }
 
   // Vérification partagée par _tryLockProductForEdit (avant d'ouvrir
-  // "Modifier") ET deleteProduct (avant "Supprimer", voir js/render.js) — un
+  // "Modifier") ET deleteProduct (avant "Supprimer", voir
+  // js/render-card-grid.js) — un
   // produit en cours d'édition par quelqu'un d'autre ne devrait pas non plus
   // pouvoir être supprimé sous ses pieds (retour utilisateur). Retourne
   // {blocked:false} si l'action peut continuer, {blocked:true, message,
@@ -145,8 +146,9 @@
     if(serverState && serverState._editingBy && !isMySession && serverState._editingAt && (Date.now() - serverState._editingAt) < EDIT_LOCK_TTL_MS){
       // lockedBy exposé à part (en plus de "message", déjà composé pour un
       // affichage texte brut) pour que l'appelant puisse construire une
-      // popup HTML en échappant lui-même ce nom (voir vmEditBtn/deleteProduct
-      // dans js/render.js) — un nom d'utilisateur reste une donnée
+      // popup HTML en échappant lui-même ce nom (voir vmEditBtn dans
+      // js/render-view-modal-close.js et deleteProduct dans
+      // js/render-card-grid.js) — un nom d'utilisateur reste une donnée
       // dynamique, jamais insérée telle quelle dans du HTML.
       // Même compte mais autre session (deux onglets/appareils connectés
       // sous le même identifiant) : message dédié plutôt que d'afficher à
@@ -164,7 +166,7 @@
   }
   window._checkProductEditLockBlocks = _checkProductEditLockBlocks;
 
-  // Appelé au clic sur "Modifier" (voir vmEditBtn dans js/render.js), AVANT
+  // Appelé au clic sur "Modifier" (voir vmEditBtn dans js/render-view-modal-close.js), AVANT
   // d'ouvrir le formulaire. Retourne {ok:true} si l'édition peut commencer,
   // {ok:false, message, lockedBy?} sinon.
   async function _tryLockProductForEdit(p){
@@ -189,7 +191,7 @@
   window._tryLockProductForEdit = _tryLockProductForEdit;
 
   // Libère le verrou posé ci-dessus — appelé à la fermeture du formulaire
-  // (voir closeModal dans js/modal.js), qu'il s'agisse d'un Enregistrer
+  // (voir closeModal dans js/modal-editlock-heartbeat.js), qu'il s'agisse d'un Enregistrer
   // (déjà nettoyé explicitement dans btnSave, ceci est alors sans effet) ou
   // d'un Annuler/fermeture directe (seul cas où c'est réellement utile,
   // sinon le verrou resterait posé jusqu'à expiration du TTL ci-dessus). Ne
@@ -221,7 +223,7 @@
   window._releaseProductEditLock = _releaseProductEditLock;
 
   // Rafraîchit _editingAt sur le verrou déjà posé par CETTE session —
-  // appelé périodiquement par le "heartbeat" (voir js/modal.js,
+  // appelé périodiquement par le "heartbeat" (voir js/modal-editlock-heartbeat.js,
   // _startEditLockHeartbeat) tant que l'utilisateur interagit réellement
   // avec le formulaire "Modifier le produit" (retour utilisateur : sans ça,
   // éditer une fiche plus de 10 min d'affilée laisserait quelqu'un d'autre

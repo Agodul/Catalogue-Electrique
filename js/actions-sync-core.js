@@ -117,7 +117,7 @@
         // QUELS du serveur — les repousser serait un aller-retour inutile,
         // et surtout, undefined fait basculer pushToServer() sur la
         // TOTALITÉ du catalogue local (voir le commentaire détaillé dans
-        // pushToServer, storage.js/actions.js — retour utilisateur : vieux
+        // pushToServer, storage.js/js/actions-settings-sync.js — retour utilisateur : vieux
         // catalogue local repoussé en entier et écrasant des modifs
         // récentes d'autrui). sugMergedProducts reste [] si rien à
         // fusionner : pushToServer() traite désormais un tableau vide comme

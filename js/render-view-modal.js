@@ -296,7 +296,7 @@ function _productBadgesCompactHtml(p){
     var sugOverlay = document.getElementById('sugOverlay');
     var sugList    = document.getElementById('sugList');
     // Filtrer les refs vides, masquées SUR CETTE FICHE (p.suggestionsHidden —
-    // voir la case à cocher par puce dans le formulaire, js/modal.js) ET
+    // voir la case à cocher par puce dans le formulaire, js/modal-suggestions-autocomplete.js) ET
     // vérifier que les produits existent réellement
     var _allProds = window.products || [];
     var _hiddenSugs = Array.isArray(p.suggestionsHidden) ? p.suggestionsHidden : [];
@@ -450,7 +450,7 @@ function _productBadgesCompactHtml(p){
             // dans une grille 2 colonnes différente) : séparateur entre chaque
             // ligne + white-space:pre-wrap pour respecter les retours à la
             // ligne saisis dans la valeur (voir textarea .spec-value dans
-            // js/modal.js) — avant, une caractéristique regroupant plusieurs
+            // js/modal-specs-editor.js) — avant, une caractéristique regroupant plusieurs
             // sous-valeurs (ex. puissance par tension) formait un seul long
             // paragraphe illisible, sans distinction visuelle claire entre
             // chaque ligne (retour utilisateur, capture à l'appui).

@@ -286,7 +286,7 @@
     // qu'il disparaisse progressivement des fiches plutôt que de rester figé.
     // _docFiles (préfixe "_" = local uniquement, même convention) : liste des
     // fichiers joints mise en cache pendant que la sous-modale PDF d'un
-    // produit est ouverte (voir js/modal.js) — jamais destinée à être
+    // produit est ouverte (voir js/modal-autocomplete.js) — jamais destinée à être
     // persistée. Une session gardait une valeur différente d'une autre selon
     // ce qu'elle avait ouvert/chargé, ce qui déclenchait un faux conflit à
     // chaque synchro (retour utilisateur, capture à l'appui : "hasDoc
@@ -606,7 +606,7 @@
       // jamais été codée (retour utilisateur : bouton retour pour "quand
       // on s'est trompé de catégorie") — ajoutée ici, dans le bandeau
       // lui-même plutôt que la barre d'outils (restée display:none dans ce
-      // mode, testé en vrai). Délégation d'événement dans js/actions.js
+      // mode, testé en vrai). Délégation d'événement dans js/actions-home.js
       // (le bandeau est régénéré à chaque rendu, un listener direct posé
       // ici serait perdu au rendu suivant).
       html += '<div class="active-filter-banner">'

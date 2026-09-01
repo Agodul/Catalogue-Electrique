@@ -1,6 +1,6 @@
   // ── Pièces de rechange — même mécanique que Produits suggérés ci-dessus
   // (champ + suggestions, puces, case à cocher, liaison réciproque côté
-  // js/actions.js) — retour utilisateur : "ajouter une rubrique pièce de
+  // js/actions-save.js) — retour utilisateur : "ajouter une rubrique pièce de
   // rechange comme pour les suggestions". ──
   function _sparePartsRenderChips(){
     if(!fSparePartsChips) return;

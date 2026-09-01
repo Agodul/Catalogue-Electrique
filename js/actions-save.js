@@ -353,7 +353,7 @@
     // créant le doublon que l'utilisateur voit apparaître après coup (retour
     // utilisateur : "quand je modifie la référence, ça crée un nouveau
     // produit"). Supprimer explicitement l'ancienne ref côté serveur une fois
-    // la nouvelle poussée — même API que deleteProduct() dans js/render.js.
+    // la nouvelle poussée — même API que deleteProduct() dans js/render-card-grid.js.
     if(typeof refChangedOnEdit !== 'undefined' && refChangedOnEdit){
       (function(oldRef){
         var sUrl = localStorage.getItem('cat_server_url');
@@ -382,7 +382,8 @@
     // présentes avant cet enregistrement, ni à celles retirées côté A
     // (retirer un lien ou le masquer reste local à la fiche éditée — pour le
     // masquer aussi côté B, il faut le décocher directement sur la fiche B,
-    // à la main, voir la case à cocher par puce dans js/modal.js). Si B a
+    // à la main, voir la case à cocher par puce dans js/modal-suggestions-autocomplete.js/
+    // js/modal-spareparts-suggestions-dnd.js). Si B a
     // déjà A dans sa propre liste (retiré puis re-proposé, ou ajouté à la
     // main des deux côtés), on ne le re-rajoute pas.
     function _linkReciprocal(field){

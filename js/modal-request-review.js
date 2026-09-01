@@ -1,5 +1,5 @@
   // ── Documents joints à une demande (mode révision, visionnage seul) ────
-  // Réutilise window._openPdfViewerWithBuffer (js/render.js) pour
+  // Réutilise window._openPdfViewerWithBuffer (js/render-pdf-viewer.js) pour
   // l'affichage — il gère déjà PDF et image selon l'extension — mais la
   // récupération du buffer est propre à ce fichier : /pullDocsReq
   // (stockage des documents de DEMANDE) est distinct de /pullDocs

@@ -98,7 +98,7 @@
 
     // Empêche de supprimer un produit que quelqu'un d'autre est en train de
     // modifier (retour utilisateur) — même vérification que "Modifier" (voir
-    // _checkProductEditLockBlocks dans js/actions.js), avant même la
+    // _checkProductEditLockBlocks dans js/actions-editlock.js), avant même la
     // confirmation pour ne pas faire croire que la suppression va aboutir.
     if(typeof window._checkProductEditLockBlocks === 'function'){
       var lockCheck = await window._checkProductEditLockBlocks(p, 'supprimer');

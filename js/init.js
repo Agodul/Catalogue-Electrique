@@ -48,7 +48,7 @@
   // extraire automatiquement la page partagée, or ce worker a été
   // supprimé (retour utilisateur) — le worker s'apppuyait de toute façon
   // sur un simple fetch serveur, bloqué par les mêmes protections anti-bot
-  // (Cloudflare/Akamai) que le bouton "Extraire depuis l'URL" (js/modal.js,
+  // (Cloudflare/Akamai) que le bouton "Extraire depuis l'URL" (js/modal-extraction.js,
   // qui passe maintenant par l'extension Chrome — solution qui n'existe
   // pas sur mobile, voir échange avec l'utilisateur). Voir aussi la
   // suppression du bloc /share-target dans sw.js et de "share_target" dans
@@ -251,7 +251,7 @@
     // ── Fermeture générale (bottom nav) ─────────────────────────────────
     // Changer d'onglet dans la barre de navigation mobile ne fermait que
     // Paramètres/Configurateur d'armoire/tiroirs/connexion (traités au cas
-    // par cas dans _initBottomNav, js/actions.js) — toutes les AUTRES
+    // par cas dans _initBottomNav, js/actions-mobile-chrome.js) — toutes les AUTRES
     // fenêtres de cette liste (caractéristiques, documents, suggestions,
     // demandes, conflits, etc.) restaient ouvertes derrière, invisibles
     // mais toujours actives (retour utilisateur : vérifié sur les autres
@@ -259,10 +259,11 @@
     // même liste MODALS (clic sur le vrai bouton fermer de chacune, pour
     // repasser par sa logique de fermeture propre — ex. confirmation de
     // saisie non enregistrée sur la fiche produit) plutôt que de dupliquer
-    // une seconde liste dans actions.js. viewOverlay est volontairement
-    // exclu : son bouton fermer peut REMONTER d'un niveau au lieu de
-    // fermer (navigation depuis une suggestion, voir closeView() dans
-    // js/render.js) — _initBottomNav le ferme donc directement de son côté.
+    // une seconde liste dans js/actions-mobile-chrome.js. viewOverlay est
+    // volontairement exclu : son bouton fermer peut REMONTER d'un niveau au
+    // lieu de fermer (navigation depuis une suggestion, voir closeView()
+    // dans js/render-view-modal-close.js) — _initBottomNav le ferme donc
+    // directement de son côté.
     window._closeAllOverlays = function(exceptOverlayIds){
       var except = exceptOverlayIds || [];
       MODALS.forEach(function(m){

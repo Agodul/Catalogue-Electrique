@@ -116,7 +116,7 @@
   }
 
   // ── Polling ───────────────────────────────────────────────────
-  // Plus de setInterval dédié ici — doCheckAllSync() (js/actions.js, toutes
+  // Plus de setInterval dédié ici — doCheckAllSync() (js/actions-settings-sync.js, toutes
   // les 15s) appelle déjà /checkAll qui inclut catalogueRequests/bugs
   // (revision/count/changedAt) ; il relance reqUpdateBadge() UNIQUEMENT
   // quand l'un des deux a changé, via window._reqUpdateBadge ci-dessous,
@@ -536,7 +536,7 @@
     // Produit : ouvre directement le formulaire complet, verrouillé par
     // défaut (fusion de l'ancienne vue résumé + fenêtre "Modifier" séparée
     // en une seule fenêtre — voir _openReviewModal/_reviewSetLocked dans
-    // js/modal.js). "Accepter"/"Refuser" agissent directement depuis cet
+    // js/modal-request-review.js). "Accepter"/"Refuser" agissent directement depuis cet
     // état verrouillé ; "Modifier" déverrouille SUR CETTE MÊME fenêtre,
     // sans en ouvrir une autre (retour utilisateur).
     //
@@ -946,7 +946,7 @@
   function reqClosePanel(){
     var overlay = document.getElementById('requestsOverlay');
     // Sur mobile/tablette, si "Demandes en attente" a été ouvert DEPUIS le
-    // tiroir menu (voir js/actions.js), la croix doit "revenir" au menu
+    // tiroir menu (voir js/actions-mobile-chrome.js), la croix doit "revenir" au menu
     // plutôt que de retomber sur la page du dessous (retour utilisateur).
     // Ne se déclenche que pour cette entrée précise — pas pour un accepter/
     // refuser (qui rafraîchit la liste sans fermer) ni pour une fermeture
@@ -959,7 +959,7 @@
       // le rouvrir avant que l'animation de fermeture (fadeBgOut) soit
       // terminée empilait un instant son fond grisé par-dessus celui du
       // menu tout juste réouvert (même correctif que pour Paramètres, voir
-      // closeSettingsOverlay dans js/actions.js — retour utilisateur :
+      // closeSettingsOverlay dans js/actions-compare.js — retour utilisateur :
       // "souci d'overlay").
       if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
     }
@@ -1049,7 +1049,7 @@
   function _bugReportClose(){
     var overlay = document.getElementById('bugReportOverlay');
     // Sur mobile, si "Signaler un bug" a été ouvert DEPUIS le tiroir menu
-    // (voir msWithBack('msReportBug', ...) dans js/actions.js), la croix
+    // (voir msWithBack('msReportBug', ...) dans js/actions-mobile-chrome.js), la croix
     // (ou "Annuler", ou un envoi réussi — tout passe par ici) doit "revenir"
     // au menu plutôt que de retomber sur la page du dessous — même principe
     // que Paramètres/Demandes/Connexion/Comparateur.

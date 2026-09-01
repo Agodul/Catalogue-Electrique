@@ -117,7 +117,7 @@
   function _pdfNormalizeSearchText(s){
     // Minuscules + retrait des accents — même principe que les autres
     // normalisations de recherche/comparaison de l'app (ex. norm() dans
-    // l'import Excel, js/actions.js). Préserve la longueur caractère par
+    // l'import Excel, js/actions-import-export.js). Préserve la longueur caractère par
     // caractère pour les accents latins courants, ce qui permet de réutiliser
     // directement les mêmes décalages sur le texte NON normalisé du span
     // (voir _pdfHighlightAllMatches).

@@ -292,8 +292,9 @@
     if(el) el.innerHTML = renderFamilyIconHtml(icon);
   }
 
-  // selectedFamilyIcon et familyIconRow sont déclarés dans js/modal.js (chargé
-  // avant celui-ci) et partagés avec le formulaire produit — voir le
+  // selectedFamilyIcon et familyIconRow sont déclarés dans
+  // js/modal-spareparts-form.js (chargé avant celui-ci) et partagés avec le
+  // formulaire produit — voir le
   // commentaire là-bas. Les re-déclarer ici ne créait pas de seconde variable,
   // ça écrasait la première au chargement.
   var familyIconPickerBtn = document.getElementById('familyIconPickerBtn');

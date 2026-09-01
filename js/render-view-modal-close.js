@@ -83,7 +83,7 @@
     var id = viewingId;
     var p = products.find(function(x){ return x.id === id; });
     // Empêche deux utilisateurs de modifier le même produit en même temps
-    // (retour utilisateur) — voir _tryLockProductForEdit dans js/actions.js.
+    // (retour utilisateur) — voir _tryLockProductForEdit dans js/actions-editlock.js.
     if(p && typeof window._tryLockProductForEdit === 'function'){
       var vmEditBtnEl = document.getElementById('vmEditBtn');
       if(vmEditBtnEl) vmEditBtnEl.disabled = true;
@@ -104,7 +104,7 @@
     }
     closeView();
     openModal(id);
-    // Démarre le heartbeat du verrou (voir js/modal.js) — seulement ici,
+    // Démarre le heartbeat du verrou (voir js/modal-editlock-heartbeat.js) — seulement ici,
     // juste après un verrou effectivement posé par _tryLockProductForEdit
     // ci-dessus, pas dans openModal() lui-même (aussi utilisé pour "Ajouter
     // un produit" et "Proposer une modification", qui ne posent jamais ce

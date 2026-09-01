@@ -232,10 +232,11 @@ window._showImageLightbox = _showImageLightbox;
 // échapper title/message eux-mêmes sans casser ces popups-là. La règle
 // reste donc : le CALLER doit passer ses valeurs dynamiques déjà échappées
 // via escapeHtml() avant de les concaténer dans title/message — cf. la
-// majorité des appels existants (auth.js, render.js, requests.js…). Une
+// majorité des appels existants (auth.js, render-*.js, requests.js…). Une
 // issue CodeQL "DOM text reinterpreted as HTML" a été trouvée sur 2 appels
-// (js/actions.js) qui ne suivaient pas cette règle — corrigés à la source,
-// pas ici, pour ne pas casser les popups à contenu HTML volontaire.
+// (dans les fichiers actions-*.js) qui ne suivaient pas cette règle —
+// corrigés à la source, pas ici, pour ne pas casser les popups à contenu
+// HTML volontaire.
 
 
 function _popupOverlay(innerHtml){

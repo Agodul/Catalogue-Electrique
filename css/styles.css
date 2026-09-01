@@ -574,7 +574,7 @@
        sous le pli, invisibles sans défiler ("les boutons sont caché"). Le
        vrai problème signalé ("Voir plus" qui fait grandir la fenêtre au
        clic) est résolu indépendamment du plafond, voir le verrou de
-       hauteur posé au clic dans js/render.js (vmDesc listener) — ce
+       hauteur posé au clic dans js/render-view-modal.js (vmDesc listener) — ce
        plafond-ci n'avait donc plus lieu d'être abaissé. */
     max-height:80vh;
     box-shadow:var(--shadow-modal);
@@ -665,7 +665,7 @@
      Classe séparée de .vm-meta-item (réutilisée ailleurs dans une grille
      2 colonnes différente) — chaque ligne a son propre séparateur et la
      valeur respecte les retours à la ligne saisis dans le formulaire
-     (textarea .spec-value, voir js/modal.js) au lieu de tout afficher en un
+     (textarea .spec-value, voir js/modal-specs-editor.js) au lieu de tout afficher en un
      seul bloc de texte compact et illisible (retour utilisateur, capture à
      l'appui). */
   .spec-list-item{
@@ -1736,7 +1736,7 @@
 
   /* ── "Extraction automatique" masquée sur mobile/tablette ──────────────
      Depuis le passage du bouton "Extraire depuis l'URL" à l'extension
-     Chrome (js/modal.js) — qui n'existe sur aucun navigateur mobile
+     Chrome (js/modal-extraction.js) — qui n'existe sur aucun navigateur mobile
      (Android/iOS) — tout ce que contenait cet onglet (URL, code source)
      échoue systématiquement sur mobile/tablette (retour utilisateur).
      Plutôt que de laisser un onglet qui ne mène nulle part, on le retire
@@ -1745,7 +1745,7 @@
      restante). Même seuil "mobile et tablette" que le reste du site (voir
      Paramètres, grille catalogue…). #tab-manual en display:block
      !important (pas juste .active) : filet de sécurité au cas où
-     openModal() (js/modal.js, même seuil 1024px+coarse) ne serait pas
+     openModal() (js/modal-autocomplete.js, même seuil 1024px+coarse) ne serait pas
      encore passé — sans lui, la fenêtre "Ajouter un produit" pourrait
      rester vide le temps d'un décalage entre CSS et JS. Couvre aussi, en
      prime, l'ancienne zone "Code source de la page produit (alternative)"
@@ -2066,14 +2066,22 @@
   #requestsOverlay.closing #requestsPanel{ animation:slideDown .22s cubic-bezier(.32,0,.15,1) forwards !important; }
 
   /* ── Modale Paramètres ── */
+  /* pointer-events:none retiré : #settingsOverlay n'avait à l'origine aucun
+     fond visible (voir --overlay-scrim plus haut, "fenêtres qui n'en
+     avaient pas, ex. #settingsOverlay") — un fond grisé lui a été ajouté
+     depuis, mais ce pointer-events:none n'avait jamais été retiré en même
+     temps. Résultat : le fond grisé était purement visuel, les clics ET le
+     scroll le traversaient directement vers le contenu en dessous (retour
+     utilisateur : "je peux scroll le contenu qui se trouve derrière et
+     même pouvoir ouvrir des fiche produit alors que j'ai déjà une fenêtre
+     d'ouverte" — reproduit avec document.elementFromPoint() : un clic sur
+     la zone grisée atteignait directement <header> derrière). */
   #settingsOverlay{
     position:fixed; inset:0; z-index:var(--z-panel);
     background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:16px;
-    pointer-events:none;
   }
-  .settings-box{ pointer-events:all; }
   #settingsOverlay.show{ display:flex; }
   .settings-box{
     background:var(--paper-card);
@@ -2266,7 +2274,7 @@
          tiroirs mobiles. Le JS (btnSettings) doit poser display:flex puis
          forcer un reflow avant d'ajouter .show, sinon le navigateur fusionne
          les deux changements et saute la transition (même technique que
-         #menuSheet, voir js/actions.js). */
+         #menuSheet, voir js/actions-mobile-chrome.js). */
       transform:translateY(100%);
       transition:transform .3s cubic-bezier(.32,.72,0,1);
     }
@@ -2690,7 +2698,7 @@
   width: 40px; height: 4px;
   background: var(--line); border-radius: 2px;
   margin: 10px auto 0;
-  touch-action: none; /* glisser-pour-fermer (js/actions.js, _initSheetDragHandles) */
+  touch-action: none; /* glisser-pour-fermer (js/actions-mobile-chrome.js, _initSheetDragHandles) */
 }
 .filter-sheet-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2867,7 +2875,7 @@
   }
 
   /* Rouge #E53E3E aligné sur le style des badges "Demandes en attente"
-     (requestsBadge/msBadge, voir js/actions.js) plutôt que le bleu --copper
+     (requestsBadge/msBadge, voir js/actions-mobile-chrome.js) plutôt que le bleu --copper
      d'origine — pour que toutes les pastilles de notif de la bottom nav
      (Filtres actifs, Menu/Demandes) soient visuellement cohérentes entre
      elles (retour utilisateur). */
@@ -3417,7 +3425,7 @@
     border-radius: 4px;
     margin: 10px auto 4px;
     flex-shrink: 0;
-    touch-action: none; /* glisser-pour-fermer (js/actions.js, _initSheetDragHandles) */
+    touch-action: none; /* glisser-pour-fermer (js/actions-mobile-chrome.js, _initSheetDragHandles) */
   }
 }
 
@@ -3566,7 +3574,7 @@
   -webkit-appearance:none; margin:0;
 }
 
-/* ── Liens cliquables dans la visionneuse PDF (js/render.js —
+/* ── Liens cliquables dans la visionneuse PDF (js/render-pdf-viewer.js —
    _openPdfCanvas/pdfjsLib.AnnotationLayer) ──────────────────────────────
    Retour utilisateur : "lorsque le pdf a des options, par exemple des liens
    pour envoyer sur une page ou un site, je voudrais que ça fonctionne" —
@@ -3588,7 +3596,7 @@
    une petite image se retrouve isolée dans le coin haut-gauche d'une grande
    zone vide en dessous (retour utilisateur : "faudrait afficher l'image au
    centre de la visionneuse"). Activée seulement pour une image (voir
-   _openImageViewer dans js/render.js) : jamais sur un PDF, où empiler
+   _openImageViewer dans js/render-pdf-viewer.js) : jamais sur un PDF, où empiler
    plusieurs pages centrées verticalement n'aurait pas de sens. Le
    défilement (si l'image est plus grande que la zone visible) continue de
    fonctionner normalement : min-height ne fait que garantir AU MOINS la
@@ -3614,7 +3622,7 @@
   opacity:.25; background:#ff0; box-shadow:0 2px 10px #ff0;
 }
 
-/* ── Recherche dans le PDF (js/render.js — _pdfSearch*) ────────────────
+/* ── Recherche dans le PDF (js/render-pdf-viewer.js — _pdfSearch*) ────────────────
    Retour utilisateur : "est-ce qu'on peut faire des recherches sur un
    pdf ?" — sous-ensemble minimal du .textLayer officiel de PDF.js (texte
    invisible mais sélectionnable, superposé au canvas, même mécanisme de

@@ -43,7 +43,7 @@
   var _sugRefs = []; // tableau des refs sélectionnées (liaison bidirectionnelle avec ces produits)
   // Sous-ensemble de _sugRefs masqué sur CETTE fiche uniquement (la liaison
   // reste connue des deux côtés — voir la case à cocher par puce plus bas et
-  // le lien automatique réciproque dans js/actions.js — mais l'affichage sur
+  // le lien automatique réciproque dans js/actions-save.js — mais l'affichage sur
   // la fiche produit reste indépendant par fiche : pour masquer une réf. sur
   // l'autre fiche, il faut aller la décocher là-bas, à la main — retour
   // utilisateur).

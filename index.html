@@ -88,7 +88,7 @@
                                  aucun indice pour l'utilisateur sur la vraie
                                  cause). Plus aucun proxy CORS nommé
                                  explicitement ici depuis le passage du
-                                 bouton "Extraire depuis l'URL" (js/modal.js)
+                                 bouton "Extraire depuis l'URL" (js/modal-extraction.js)
                                  à l'extension Chrome (qui ouvre elle-même la
                                  page dans une vraie fenêtre de navigateur,
                                  sans requête serveur) et la suppression du
@@ -283,7 +283,7 @@
   <div class="compare-box">
     <div class="compare-header">
       <div class="win-header-titlewrap">
-        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+        <!-- Flèche "retour au menu" (voir js/actions-core.js — window._setHeaderBackMode)
              — masquée par défaut, affichée à gauche du titre uniquement
              quand ce comparateur a été ouvert depuis le tiroir menu mobile,
              à la place de la croix de droite. Même bouton (.win-back-btn)
@@ -448,7 +448,7 @@
     <div class="sheet-handle-bar"></div>
     <div class="settings-header">
       <div class="win-header-titlewrap">
-        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+        <!-- Flèche "retour au menu" (voir js/actions-core.js — window._setHeaderBackMode)
              — masquée par défaut, affichée à gauche du titre uniquement
              quand Paramètres a été ouvert depuis le tiroir menu mobile, à la
              place de la croix de droite. Visible seulement sur cette liste
@@ -773,7 +773,7 @@
 <!-- ===== MODALE CONSULTATION ===== -->
 <!-- Le contenu de #viewModal (photo, description, boutons d'actions...)
      est généré par JS au démarrage plutôt qu'écrit ici en dur (voir le
-     tout début de js/render.js, juste avant les
+     tout début de js/render-view-modal.js, juste avant les
      document.getElementById('vmXxx') qui suivent — il faut que ce bloc
      existe déjà à ce moment précis, d'où l'injection en tout premier dans
      ce fichier précis plutôt que dans un autre script chargé après).
@@ -887,7 +887,7 @@
     <div class="auth-box-header">
       <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
       <h2>
-        <!-- Flèche "retour au menu" (voir js/actions.js — window._setHeaderBackMode)
+        <!-- Flèche "retour au menu" (voir js/actions-core.js — window._setHeaderBackMode)
              — masquée par défaut, affichée à gauche du titre uniquement
              quand la connexion a été ouverte depuis le tiroir menu mobile,
              à la place de la croix en haut à droite. Même bouton

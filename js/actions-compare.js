@@ -154,7 +154,7 @@
           if(supplier) products[idx].supplier = supplier;
           // [products[idx]] : seul CE produit a été touché — voir les autres
           // correctifs de ce type dans ce fichier (syncFromServer,
-          // pushToServer) et dans js/modal.js/js/render.js.
+          // pushToServer) et dans les fichiers modal-*.js/render-*.js.
           save(false, [products[idx]]);
           btn.textContent = '✓ Appliqué';
           btn.disabled = true;

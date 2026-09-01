@@ -561,7 +561,7 @@ function _armoireRound2(n){
 // gratuite de SheetJS) : ExcelJS les écrit nativement via son API, donc plus
 // aucune manipulation manuelle de fichier — moins de risque de corruption
 // qu'avec le bricolage précédent. Auto-hébergé (js/exceljs.min.js), même
-// principe que ensureXLSX (js/actions.js) pour le reste de l'app (import/
+// principe que ensureXLSX (js/actions-core.js) pour le reste de l'app (import/
 // comparaison/tarifs), qui continue d'utiliser SheetJS et n'est pas
 // concerné par ce changement.
 var _exceljsLoadPromise = null;
@@ -579,7 +579,7 @@ function ensureExcelJS(){
 }
 
 // Même protection anti-injection de formule que _patchXlsxFormulaInjection
-// (js/actions.js) pour le reste de l'app : neutralise toute cellule texte
+// (js/actions-core.js) pour le reste de l'app : neutralise toute cellule texte
 // commençant par =, +, -, @ (ou tabulation/retour chariot) en la préfixant
 // d'une apostrophe, pour qu'Excel l'affiche comme du texte brut au lieu de
 // l'interpréter comme une formule (référence, produit ou fournisseur dont
@@ -788,7 +788,7 @@ async function _armoireExportExcel(){
 // conservé le champ "folder" — certaines API minimalistes se contentent de
 // renvoyer tel quel le corps envoyé sans vraiment le stocker (même
 // constat déjà fait pour "familyIcon", voir verifyFamilyIconOnServer dans
-// js/actions.js). Vérifié ici en relisant la liste fraîchement récupérée
+// js/actions-editlock.js). Vérifié ici en relisant la liste fraîchement récupérée
 // (pas la réponse du POST, qui pourrait être un simple écho) : si le
 // dossier saisi n'a pas été conservé, on le dit clairement plutôt que de
 // laisser l'entrée retomber silencieusement dans "Sans dossier".
@@ -1003,7 +1003,7 @@ async function _armoireDeleteBlock(id){
   // Le bouton ✕ est déjà masqué sans ce droit (voir _armoireListItemHtml),
   // mais cette fonction reste techniquement accessible directement (console,
   // autre appel) — vérifier ici aussi plutôt que de se reposer uniquement
-  // sur l'UI (même garde que deleteProduct dans js/render.js).
+  // sur l'UI (même garde que deleteProduct dans js/render-card-grid.js).
   var _perms = window._userPerms || {};
   if(!(_perms.canDelete || _perms.isAdmin)){
     if(typeof showToast === 'function') showToast('Droit de suppression requis', 'err', 3000);
