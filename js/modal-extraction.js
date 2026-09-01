@@ -453,25 +453,58 @@
     // même limite que pour les autres champs : l'extension capture le HTML
     // tel qu'affiché au moment du clic droit.
     (function collectSpecs(){
-      function collectPairsFrom(container){
+      function addPair(pairs, k, v){
+        k = k.replace(/\s+/g,' ').trim();
+        v = v.replace(/\s+/g,' ').trim();
+        // k.length>=2 : élimine les glyphes d'icône (police d'icônes rendue
+        // en un seul caractère, ex. "i", "→") faussement pris pour une clé
+        // — repéré en testant un lien "icône + texte" (ex. bouton Retour)
+        // à l'intérieur d'un conteneur "spec", voir garde anti-lien plus
+        // bas pour la même raison.
+        if(k && v && k !== v && k.length >= 2 && k.length < 80 && v.length < 200 && !pairs[k]) pairs[k] = v;
+      }
+      // includeGenericRows : en plus des <tr>/<dt><dd> (tableaux/listes de
+      // définition classiques), ramasse aussi le motif "div de ligne" —
+      // <div><div>Clé</div><div>Valeur</div></div> — très courant sur les
+      // sites modernes (React/Vue) qui n'utilisent plus de balises
+      // sémantiques pour leurs tableaux de caractéristiques (retour
+      // utilisateur : "quand j'ajoute au catalogue via l'extension les
+      // caractéristiques techniques ne sont plus remplies" — repéré en
+      // testant plusieurs structures HTML réalistes : seuls tr/dt-dd
+      // étaient couverts jusqu'ici, rien pour ce motif très répandu).
+      // Restreint aux enfants "feuilles" (aucun des deux n'a lui-même
+      // d'enfant) pour ne pas remonter un conteneur plus large qui
+      // engloberait plusieurs vraies lignes en une seule "paire", et
+      // UNIQUEMENT quand includeGenericRows est vrai (jamais sur le repli
+      // toute-la-page ci-dessous, qui ramasserait alors n'importe quelle
+      // mise en page à 2 colonnes sans rapport — nav, grille produits…).
+      function collectPairsFrom(container, includeGenericRows){
         var pairs = {};
         if(!container) return pairs;
         container.querySelectorAll('tr').forEach(function(row){
           var cells = row.querySelectorAll('th, td');
-          if(cells.length === 2){
-            var k = cells[0].textContent.replace(/\s+/g,' ').trim();
-            var v = cells[1].textContent.replace(/\s+/g,' ').trim();
-            if(k && v && k.length < 80 && v.length < 200) pairs[k] = v;
-          }
+          if(cells.length === 2) addPair(pairs, cells[0].textContent, cells[1].textContent);
         });
         container.querySelectorAll('dt').forEach(function(dt){
           var dd = dt.nextElementSibling;
-          if(dd && dd.tagName === 'DD'){
-            var k = dt.textContent.replace(/\s+/g,' ').trim();
-            var v = dd.textContent.replace(/\s+/g,' ').trim();
-            if(k && v && k.length < 80 && v.length < 200) pairs[k] = v;
-          }
+          if(dd && dd.tagName === 'DD') addPair(pairs, dt.textContent, dd.textContent);
         });
+        if(includeGenericRows){
+          container.querySelectorAll('*').forEach(function(el){
+            if(el.children.length !== 2) return;
+            if(el.tagName === 'TR' || el.tagName === 'DL') return;
+            // Jamais un lien/bouton (ni un de ses descendants) — un bouton
+            // "Retour"/"Partager"/"Imprimer" avec icône + texte à côté a
+            // exactement la même forme (2 enfants "feuilles") qu'une vraie
+            // ligne clé/valeur, mais n'en est pas une (repéré en testant :
+            // un tel lien à l'intérieur d'un conteneur "spec" remontait
+            // comme fausse caractéristique).
+            if(el.closest('a, button, nav')) return;
+            var a = el.children[0], b = el.children[1];
+            if(a.children.length > 0 || b.children.length > 0) return;
+            addPair(pairs, a.textContent, b.textContent);
+          });
+        }
         return pairs;
       }
 
@@ -481,12 +514,13 @@
         '[class*="technical" i], [id*="technical" i], [class*="attribute" i], [id*="attribute" i]'
       );
       for(var si=0; si<targeted.length; si++){
-        var found = collectPairsFrom(targeted[si]);
+        var found = collectPairsFrom(targeted[si], true);
         Object.keys(found).forEach(function(k){ if(!specs[k]) specs[k] = found[k]; });
       }
-      // Repli générique (toute la page) si aucun conteneur ciblé trouvé.
+      // Repli générique (toute la page) si aucun conteneur ciblé trouvé —
+      // motif "div de ligne" volontairement PAS activé ici (voir plus haut).
       if(Object.keys(specs).length === 0){
-        specs = collectPairsFrom(doc.body);
+        specs = collectPairsFrom(doc.body, false);
       }
       var keys = Object.keys(specs).slice(0, 40);
       if(keys.length){
