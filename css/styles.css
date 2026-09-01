@@ -1999,7 +1999,6 @@
   .compare-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px;
-    min-height:23px;
     border-bottom:1px solid var(--line);
     flex-shrink:0;
   }
@@ -2162,7 +2161,6 @@
   .settings-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px;
-    min-height:23px;
     border-bottom:1px solid var(--line);
   }
   .settings-header h3{ font-size:16px; font-weight:700; color:var(--ink); margin:0; }
@@ -2191,7 +2189,7 @@
      fenêtres (documents, suggestions, prix…) — non touchée globalement pour
      ne pas les affecter ; seule "Signaler un bug" (qui a la flèche retour)
      est recalée ici sur le même padding/min-height que les autres. */
-  #bugReportOverlay .modal-head{ padding:18px 20px; min-height:23px; }
+  #bugReportOverlay .modal-head{ padding:18px 20px; }
   #bugReportOverlay .modal-head h3{ font-size:16px; font-weight:700; }
   /* overflow-y:auto sans barre visible : sur certains navigateurs
      "scrollbar-gutter:stable" seul ne suffit pas à empêcher un décalage —
@@ -3160,9 +3158,12 @@
 }
 .menu-sheet-header {
   display: flex; align-items: center; justify-content: space-between;
-  /* padding/min-height identiques à .settings-header (index.html,
-     #settingsOverlay) — même bandeau de titre sur les deux fenêtres. */
-  padding: 18px 20px; min-height: 23px;
+  /* padding identique à .settings-header (index.html, #settingsOverlay) —
+     même bandeau de titre sur les deux fenêtres. min-height retiré
+     partout (ici et ailleurs) : redondant avec la hauteur naturelle du
+     bouton flèche (22px) + ce padding, et source d'un écart visuel signalé
+     par l'utilisateur sur son navigateur. */
+  padding: 18px 20px;
   position: sticky; top: 0;
   background: var(--paper-card);
   border-bottom: 1px solid var(--line);

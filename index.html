@@ -549,7 +549,7 @@
 
     <!-- Sous-page Serveur -->
     <div id="settingsServerPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);">
         <button id="btnServerPageBack" class="win-back-btn" style="display:inline-flex;">
           <i class="ti ti-arrow-left"></i>
         </button>
@@ -596,7 +596,7 @@
 
     <!-- Sous-page Utilisateurs -->
     <div id="settingsUserPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);">
         <div style="display:flex;align-items:center;gap:10px;">
           <button id="btnUserPageBack" class="win-back-btn" style="display:inline-flex;">
             <i class="ti ti-arrow-left"></i>
@@ -619,14 +619,20 @@
 
     <!-- Sous-page Fiches verrouillées -->
     <div id="settingsLockedPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);">
         <div style="display:flex;align-items:center;gap:10px;">
           <button id="btnLockedPageBack" class="win-back-btn" style="display:inline-flex;">
             <i class="ti ti-arrow-left"></i>
           </button>
           <span style="font-size:15px;font-weight:700;color:var(--ink);">Fiches verrouillées</span>
         </div>
-        <button id="btnLockedPageRefresh" title="Actualiser" style="background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer;padding:6px 8px;color:var(--ink);font-size:15px;display:flex;align-items:center;">
+        <!-- 22×22, comme .win-back-btn (css/styles.css) : même hauteur que la
+             flèche retour, pour que ce bandeau fasse la même hauteur totale
+             que les autres sous-pages Paramètres (retour utilisateur :
+             "corrige aussi Fiches verrouillées" — ce bouton, avec son
+             padding d'origine, rendait ce bandeau plus haut que les
+             autres). -->
+        <button id="btnLockedPageRefresh" title="Actualiser" style="width:22px;height:22px;padding:0;background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-refresh"></i>
         </button>
       </div>
@@ -637,7 +643,7 @@
 
     <!-- Sous-page icônes familles -->
     <div id="settingsFamilyPage" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;min-height:23px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);">
         <button id="btnFamilyPageBack" class="win-back-btn" style="display:inline-flex;">
           <i class="ti ti-arrow-left"></i>
         </button>
