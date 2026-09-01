@@ -533,8 +533,16 @@
           <span>Version installée</span>
           <span id="appVersionActive" style="font-weight:600;color:var(--ink);font-family:monospace;">—</span>
         </div>
-        <div id="appVersionUpdateRow" style="display:none;align-items:center;gap:5px;margin-top:6px;color:#B45309;font-weight:600;">
-          <i class="ti ti-alert-triangle" style="font-size:13px;"></i> Nouvelle version disponible — voir le bandeau "Mettre à jour"
+        <!-- Bouton "Mettre à jour" ajouté ici (auparavant un simple texte
+             renvoyant vers #swUpdateBanner, pas toujours déjà affiché au
+             moment où l'utilisateur ouvre Paramètres — retour utilisateur :
+             "lorsqu'on clique sur mise à jour le sw soit mis à jour + faut
+             que le site se rafraîchisse"). Même action que #swUpdateBtn
+             (voir _performSwUpdate dans js/pwa.js) — un seul chemin de
+             mise à jour, appelé depuis les deux endroits. -->
+        <div id="appVersionUpdateRow" style="display:none;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;color:#B45309;font-weight:600;">
+          <span style="display:flex;align-items:center;gap:5px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> Nouvelle version disponible</span>
+          <button type="button" id="appVersionUpdateBtn" style="padding:4px 10px;border-radius:6px;border:none;background:#B45309;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">Mettre à jour</button>
         </div>
       </div>
     </div>

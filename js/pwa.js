@@ -69,6 +69,96 @@
     }catch(e){}
   };
 
+  // ── Action "Mettre à jour" partagée ─────────────────────────────────
+  // Appelée depuis #swUpdateBtn (bannière, n'apparaît qu'APRÈS que le
+  // nouveau SW a déjà pris la main — voir 'controllerchange' plus bas) ET
+  // depuis #appVersionUpdateBtn (Paramètres > Version installée, qui peut
+  // lui être cliqué AVANT que cette bascule ait eu lieu — le mésappariement
+  // y est détecté par un simple fetch de sw.js, indépendant du cycle de vie
+  // réel du Service Worker). Un seul chemin pour les deux, plutôt que
+  // dupliquer la logique de rechargement (retour utilisateur : "lorsqu'on
+  // clique sur mise à jour le sw soit mis à jour + faut que le site se
+  // rafraîchisse afin d'appliquer les correctifs").
+  window._performSwUpdate = async function(){
+    // Réutilise les mêmes détections de saisie non enregistrée que celles
+    // déjà utilisées pour confirmer une fermeture au clic/Échap (formulaire
+    // produit, caractéristiques techniques, configurateur d'armoire) — un
+    // clic manuel sur "Mettre à jour" ne doit pas faire perdre en silence
+    // ce que ces fenêtres protègent déjà.
+    var warnings = [];
+    var mo = document.getElementById('modalOverlay');
+    if(mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+      warnings.push('le formulaire produit en cours');
+    }
+    var so = document.getElementById('specsOverlay');
+    if(so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges()){
+      warnings.push('les caractéristiques techniques en cours');
+    }
+    if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
+      warnings.push('la configuration d\'armoire en cours');
+    }
+    if(warnings.length && typeof customConfirm === 'function'){
+      var ok = await customConfirm(
+        'Modifications non enregistrées',
+        'Mettre à jour maintenant effacera : ' + warnings.join(', ') + '. Continuer ?',
+        { okLabel: 'Mettre à jour quand même', danger: true }
+      );
+      if(!ok) return;
+    }
+
+    // S'assurer que le nouveau Service Worker a bien pris la main AVANT de
+    // recharger — sinon un simple rechargement re-servirait juste l'ancienne
+    // version depuis le cache déjà en place (cas #appVersionUpdateBtn : rien
+    // ne garantit que 'controllerchange' soit déjà passé au moment du clic).
+    // reg.update() relance une vraie vérification ; sw.js applique déjà
+    // self.skipWaiting()/clients.claim() sans confirmation nécessaire, donc
+    // la bascule suit normalement en quelques centaines de ms — le
+    // setTimeout n'est qu'un filet de sécurité pour ne jamais bloquer
+    // indéfiniment si l'événement, pour une raison quelconque, n'arrivait
+    // pas (SW déjà à jour, navigateur qui ne le déclenche pas, etc.).
+    if('serviceWorker' in navigator){
+      try{
+        var reg = await navigator.serviceWorker.getRegistration();
+        if(reg){
+          await reg.update();
+          var alreadyCurrent = navigator.serviceWorker.controller && !reg.waiting && !reg.installing;
+          if(!alreadyCurrent){
+            await new Promise(function(resolve){
+              var settled = false;
+              function finish(){ if(!settled){ settled = true; resolve(); } }
+              navigator.serviceWorker.addEventListener('controllerchange', finish, { once:true });
+              setTimeout(finish, 4000);
+            });
+          }
+        }
+      }catch(e){}
+    }
+
+    // location.reload() peut laisser une PWA en mode standalone (ajoutée à
+    // l'écran d'accueil, notamment iOS) sur un état figé/blanc une fois le
+    // nouveau service worker aux commandes — obligeant à fermer
+    // complètement l'app puis la rouvrir pour voir la mise à jour (retour
+    // utilisateur). Réassigner location.href vers l'URL EXACTEMENT identique
+    // s'est révélé insuffisant en pratique (retour utilisateur : toujours
+    // besoin d'un F5 manuel sur desktop, et de fermer l'app sur mobile) —
+    // plusieurs navigateurs traitent une navigation vers une URL
+    // rigoureusement identique comme un no-op silencieux. Un paramètre de
+    // requête inédit force une navigation non ambiguë ; location.replace()
+    // (pas .href=) évite d'empiler une entrée d'historique pour ce simple
+    // rechargement. Ajouté (pas substitué) aux paramètres déjà présents
+    // (ex. ?_authreload=...) pour ne pas les perdre silencieusement au
+    // passage. URLSearchParams.set() REMPLACE une éventuelle valeur déjà
+    // présente (plutôt qu'une concaténation manuelle) — sans ça, chaque
+    // mise à jour ajoutait un nouveau "_swupdate=…" à la suite des
+    // précédents au lieu de le remplacer, et l'URL grossissait indéfiniment
+    // (même bug que _authreload dans js/auth.js, retour utilisateur).
+    var _swParams = new URLSearchParams(window.location.search);
+    _swParams.set('_swupdate', Date.now());
+    window.location.replace(
+      window.location.pathname + '?' + _swParams.toString() + window.location.hash
+    );
+  };
+
   // ── Enregistrement du service worker ──────────────────────────────
   // Sans cet appel, sw.js n'est jamais activé : le cache hors-ligne ne
   // fonctionne pas. sw.js doit rester à la racine du site : un service
@@ -112,61 +202,11 @@
           }
         });
         window.addEventListener('resize', _positionUpdateBanner);
-        if(swUpdateBtn){
-          swUpdateBtn.addEventListener('click', async function(){
-            // Réutilise les mêmes détections de saisie non enregistrée que
-            // celles déjà utilisées pour confirmer une fermeture au clic/Échap
-            // (formulaire produit, caractéristiques techniques, configurateur
-            // d'armoire) — un clic manuel sur "Mettre à jour" ne doit pas
-            // faire perdre en silence ce que ces fenêtres protègent déjà.
-            var warnings = [];
-            var mo = document.getElementById('modalOverlay');
-            if(mo && mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
-              warnings.push('le formulaire produit en cours');
-            }
-            var so = document.getElementById('specsOverlay');
-            if(so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges()){
-              warnings.push('les caractéristiques techniques en cours');
-            }
-            if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
-              warnings.push('la configuration d\'armoire en cours');
-            }
-            if(warnings.length && typeof customConfirm === 'function'){
-              var ok = await customConfirm(
-                'Modifications non enregistrées',
-                'Mettre à jour maintenant effacera : ' + warnings.join(', ') + '. Continuer ?',
-                { okLabel: 'Mettre à jour quand même', danger: true }
-              );
-              if(!ok) return;
-            }
-            // location.reload() peut laisser une PWA en mode standalone
-            // (ajoutée à l'écran d'accueil, notamment iOS) sur un état
-            // figé/blanc une fois le nouveau service worker aux commandes —
-            // obligeant à fermer complètement l'app puis la rouvrir pour
-            // voir la mise à jour (retour utilisateur). Réassigner
-            // location.href vers l'URL EXACTEMENT identique s'est révélé
-            // insuffisant en pratique (retour utilisateur : toujours besoin
-            // d'un F5 manuel sur desktop, et de fermer l'app sur mobile) —
-            // plusieurs navigateurs traitent une navigation vers une URL
-            // rigoureusement identique comme un no-op silencieux. Un
-            // paramètre de requête inédit force une navigation non ambiguë ;
-            // location.replace() (pas .href=) évite d'empiler une entrée
-            // d'historique pour ce simple rechargement. Ajouté (pas
-            // substitué) aux paramètres déjà présents (ex. ?_authreload=...)
-            // pour ne pas les perdre silencieusement au passage.
-            // URLSearchParams.set() REMPLACE une éventuelle valeur déjà
-            // présente (plutôt qu'une concaténation manuelle) — sans ça,
-            // chaque mise à jour ajoutait un nouveau "_swupdate=…" à la
-            // suite des précédents au lieu de le remplacer, et l'URL
-            // grossissait indéfiniment (même bug que _authreload dans
-            // js/auth.js, retour utilisateur).
-            var _swParams = new URLSearchParams(window.location.search);
-            _swParams.set('_swupdate', Date.now());
-            window.location.replace(
-              window.location.pathname + '?' + _swParams.toString() + window.location.hash
-            );
-          });
-        }
+        // Logique de rechargement partagée avec #appVersionUpdateBtn (voir
+        // window._performSwUpdate plus haut).
+        if(swUpdateBtn) swUpdateBtn.addEventListener('click', window._performSwUpdate);
+        var appVersionUpdateBtn = document.getElementById('appVersionUpdateBtn');
+        if(appVersionUpdateBtn) appVersionUpdateBtn.addEventListener('click', window._performSwUpdate);
 
         // Vérifier explicitement les mises à jour à chaque retour au
         // premier plan — un onglet/PWA resté en arrière-plan plusieurs

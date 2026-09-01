@@ -582,9 +582,28 @@ function applyAuthUI() {
   // demande à valider par un admin pour un simple "proposeur".
   var btnImportXlsxSub = document.getElementById('btnImportXlsxSub');
   if(btnImportXlsxSub) btnImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
-  // Séparateur entre export et compare — cacher si pas canExport
-  var _menuSeps = document.querySelectorAll('.hdr-menu-sep');
-  // (les séparateurs restent visibles pour ne pas casser le layout)
+  // Cacher les titres de rubrique ("Données"/"Outils") et leur séparateur
+  // quand TOUS les boutons qu'ils annoncent sont masqués — sans ça un titre
+  // pouvait rester affiché seul, sans aucun bouton dessous (retour
+  // utilisateur, capture à l'appui : "DONNÉES" visible alors que ni
+  // Export/Import JSON ni Export/Import Excel n'étaient autorisés pour cet
+  // utilisateur). Même logique que updateMenuAuth() dans
+  // js/actions-mobile-chrome.js (tiroir menu mobile), qui gérait déjà
+  // correctement ce cas — celui-ci manquait côté menu ⋮ desktop.
+  function _hdrAllHidden(ids){
+    return ids.every(function(id){
+      var el = document.getElementById(id);
+      return !el || el.style.display === 'none';
+    });
+  }
+  var _hdrDataIds = ['btnExport','btnImport','btnExportXlsx','btnImportXlsx'];
+  var _hdrToolIds = ['btnCompare','btnCleanDescs'];
+  var _hdrTitles  = document.querySelectorAll('#hdrMenu .hdr-menu-section-title');
+  var _hdrSeps    = document.querySelectorAll('#hdrMenu .hdr-menu-sep');
+  if(_hdrTitles[0]) _hdrTitles[0].style.display = _hdrAllHidden(_hdrDataIds) ? 'none' : '';
+  if(_hdrTitles[1]) _hdrTitles[1].style.display = _hdrAllHidden(_hdrToolIds) ? 'none' : '';
+  if(_hdrSeps[0]) _hdrSeps[0].style.display = _hdrAllHidden(_hdrDataIds) ? 'none' : '';
+  if(_hdrSeps[1]) _hdrSeps[1].style.display = _hdrAllHidden(_hdrToolIds) ? 'none' : '';
 
   // Sync serveur manuelle
   var serverButtonsSection = document.getElementById('serverButtonsSection');
