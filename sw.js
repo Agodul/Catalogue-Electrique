@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260901120939";
+const CACHE = "spi-catalogue-v20260901134704";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -56,8 +56,10 @@ const FILES = [
   "./assets/icons/families/svg-boite-a-bouton.png",
   "./assets/icons/families/svg-borne.png",
   "./assets/icons/families/svg-bouton.png",
+  "./assets/icons/families/svg-bride.png",
   "./assets/icons/families/svg-cable-de-liaison.png",
   "./assets/icons/families/svg-cable-de-raccordement.png",
+  "./assets/icons/families/svg-cable-moteur-brushless.png",
   "./assets/icons/families/svg-capteur-magnetique.png",
   "./assets/icons/families/svg-capteur-pneumatique.png",
   "./assets/icons/families/svg-capteur.png",
@@ -80,6 +82,7 @@ const FILES = [
   "./assets/icons/families/svg-disjoncteur.png",
   "./assets/icons/families/svg-eclairage.png",
   "./assets/icons/families/svg-ecran.png",
+  "./assets/icons/families/svg-electrovanne.png",
   "./assets/icons/families/svg-fibre-optique.png",
   "./assets/icons/families/svg-generique.png",
   "./assets/icons/families/svg-goulotte.png",
@@ -92,6 +95,7 @@ const FILES = [
   "./assets/icons/families/svg-presse-etoupe.png",
   "./assets/icons/families/svg-prise.png",
   "./assets/icons/families/svg-rail-din.png",
+  "./assets/icons/families/svg-reducteur.png",
   "./assets/icons/families/svg-relais-de-securite.png",
   "./assets/icons/families/svg-relais.png",
   "./assets/icons/families/svg-repartiteur.png",

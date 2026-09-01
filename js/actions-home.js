@@ -47,6 +47,18 @@
     { keys:['moteur','motor'],                                      icon:'svg-moteur-brushless' },
     { keys:['ventilat','fan'],                                      icon:'svg-ventilateur' },
     { keys:['vision','camera','caméra'],                            icon:'svg-vision' },
+    { keys:['bride'],                                               icon:'svg-bride' },
+    { keys:['electrovanne','électrovanne'],                         icon:'svg-electrovanne' },
+    { keys:['reducteur','réducteur'],                               icon:'svg-reducteur' },
+    // "svg-cable-moteur-brushless" (nouvelle icône dédiée, plus précise que
+    // le "moteur"/"motor" générique ci-dessus qui retombe sur
+    // svg-moteur-brushless) volontairement PAS ajoutée ici en détection par
+    // mots-clés : "câble" ET "moteur" pointent déjà chacun vers une icône
+    // différente plus haut dans cette liste (le premier qui matche
+    // l'emporte, voir getFamilyIcon ci-dessous) — un mot-clé composé
+    // risquerait de mal deviner selon l'ordre des mots dans le nom réel de
+    // la famille. Reste sélectionnable à la main dans le picker d'icônes
+    // (FAMILY_ICON_CHOICES, js/familyIcons.js).
   ];
 
   function getFamilyIcon(name){
