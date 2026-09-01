@@ -184,7 +184,11 @@ function _productBadgesCompactHtml(p){
     var vmBadgesHtml = (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')
       + (p.essential ? '<div class="essential-badge" title="Produit essentiel"><i class="ti ti-star-filled"></i> Standard</div>' : '');
     if(p.photo){
-      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" style="width:100%;height:100%;object-fit:contain;transform:scale(1.12);display:block;" data-fallback="replace-self">' + vmBadgesHtml;
+      // Pas de loading="lazy" (retiré, même raison que render-card-grid.js) :
+      // sur une fiche produit, la photo est la seule/l'unique image affichée
+      // et déjà visible dès l'ouverture — la charger en différé n'apportait
+      // aucun bénéfice, seulement un léger délai avant apparition.
+      vmPhoto.innerHTML = '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" style="width:100%;height:100%;object-fit:contain;transform:scale(1.12);display:block;" data-fallback="replace-self">' + vmBadgesHtml;
     }else{
       vmPhoto.innerHTML = '<span class="ph-placeholder">Pas de photo</span>' + vmBadgesHtml;
     }

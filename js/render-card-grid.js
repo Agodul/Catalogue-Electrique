@@ -2,8 +2,16 @@
 
   function renderCard(p){
     var idx = _cardIdx++;
+    // Pas de loading="lazy" ici (retiré, retour utilisateur : "toutes les
+    // images des produits [...] chargées automatiquement") — les photos de
+    // la grille catalogue se chargent maintenant dès l'affichage de la
+    // page plutôt qu'au fur et à mesure du scroll. Volontairement PAS
+    // étendu aux listes de vignettes secondaires (résultats de recherche,
+    // sélecteurs de suggestions/pièces de rechange, parcourir par
+    // catégorie…) qui, elles, restent en chargement paresseux : ce sont de
+    // longues listes où charger tout d'un coup n'aurait pas de sens.
     var photo = p.photo
-      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" loading="lazy" data-fallback="append-note">'
+      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" data-fallback="append-note">'
       : '<span class="ph-placeholder sans">Pas de photo</span>';
     var tags = '';
     var tagItems = [];
