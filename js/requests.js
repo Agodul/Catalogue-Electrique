@@ -5,6 +5,25 @@
 // ═══════════════════════════════════════════════════════════════
 
   var _reqPanelTab     = 'product'; // onglet actif : 'product' ou 'bug' (plus une histoire de rôle — voir reqRefreshPanel)
+  // Filtre par gravité, onglet "Bugs signalés" uniquement (retour
+  // utilisateur : "je voudrai pouvoir les filtrer par niveau de gravité") —
+  // '' = toutes. Appliqué côté client sur la liste déjà récupérée (voir
+  // reqLoadAdminList/reqLoadMineList), pas de paramètre serveur dédié pour
+  // ça dans /pullBugs.
+  var _reqSeverityFilter = '';
+
+  // Mêmes libellés FR que le <select> du formulaire d'envoi (voir
+  // bugReportOverlay, js/templates.js) — retour utilisateur : "les remontées
+  // (le niveau de gravité) se font en anglais". Le champ "severity" est
+  // stocké et renvoyé par l'API en anglais brut ('low'/'medium'/'high'/
+  // 'critical', voir _reqNormalizeBugItem plus bas) : jamais traduit avant
+  // affichage nulle part (ni dans le détail d'un bug, ni dans la liste) —
+  // corrigé en passant systématiquement par ce mapper avant de l'afficher.
+  var REQ_SEVERITY_LABELS = { low: 'Faible', medium: 'Moyenne', high: 'Élevée', critical: 'Critique — bloquant' };
+  // Valeur inconnue/absente : on affiche la valeur brute plutôt que de la
+  // masquer (mieux vaut un mot en anglais visible qu'une gravité qui
+  // disparaît silencieusement si l'API renvoie un jour autre chose).
+  function _reqSeverityLabel(sev){ return REQ_SEVERITY_LABELS[sev] || sev || ''; }
 
   // ── Helpers ───────────────────────────────────────────────────
   function reqServerUrl(){ return localStorage.getItem('cat_server_url') || ''; }
@@ -575,7 +594,7 @@
     if(subtitleEl){
       var subParts = [];
       if(user && user !== '—') subParts.push('Signalé par ' + user);
-      if(data.severity) subParts.push('Gravité : ' + data.severity);
+      if(data.severity) subParts.push('Gravité : ' + _reqSeverityLabel(data.severity));
       if(data._reqAt) subParts.push(new Date(data._reqAt).toLocaleString('fr-FR'));
       subtitleEl.textContent = subParts.join(' · ');
     }
@@ -735,11 +754,23 @@
       // migration (garde-fou, voir commentaire en tête de fonction).
       var bugItems = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
       var items = (type === 'bug') ? bugItems : productItems;
+      // Filtre par gravité (onglet bugs uniquement, voir _reqSeverityFilter
+      // plus haut) — appliqué APRÈS le choix bug/produit ci-dessus, jamais
+      // sur les demandes produit qui n'ont pas ce champ.
+      if(type === 'bug' && _reqSeverityFilter){
+        items = items.filter(function(it){ return (it.data||{}).severity === _reqSeverityFilter; });
+      }
 
       var footer = document.getElementById('requestsFooter');
       if(items.length === 0){
-        body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>'
-          + (type === 'bug' ? 'Aucun bug signalé' : 'Aucune demande en attente') + '</div>';
+        // Distingue "rien à afficher parce que le filtre exclut tout" de
+        // "vraiment aucun bug" — sinon le message laisse croire à tort que
+        // la boîte est vide alors qu'un filtre de gravité est juste actif
+        // (retour utilisateur : filtre par gravité).
+        var emptyMsg = (type === 'bug')
+          ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
+          : 'Aucune demande en attente';
+        body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>' + emptyMsg + '</div>';
         if(footer) footer.style.display = 'none';
         return;
       }
@@ -789,9 +820,16 @@
     var isNew  = !data._reqOriginal;
     var titleText = isBug ? (data.title || 'Bug signalé') : item.ref;
     var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
-    var badgeBg   = isBug ? '#FEE2E2' : (isNew ? '#DCFCE7' : '#FEF3C7');
-    var badgeFg   = isBug ? '#991B1B' : (isNew ? '#065F46' : '#92400E');
-    var badgeText = isBug ? '<i class="ti ti-bug"></i> Bug' : (isNew ? 'Nouveau' : 'Modification');
+    // Badge coloré par GRAVITÉ pour un bug (plutôt qu'un badge "Bug"
+    // générique identique pour tous) — retour utilisateur : voir la gravité
+    // d'un coup d'œil dans la liste, pas seulement en ouvrant le détail.
+    // Couleurs les plus vives réservées à "critique" (le plus urgent) ;
+    // "medium" par défaut si la gravité est absente/inconnue.
+    var REQ_SEVERITY_COLORS = { critical: ['#FEE2E2', '#991B1B'], high: ['#FFEDD5', '#9A3412'], medium: ['#FEF3C7', '#92400E'], low: ['#E5E7EB', '#374151'] };
+    var sevColors = REQ_SEVERITY_COLORS[data.severity] || REQ_SEVERITY_COLORS.medium;
+    var badgeBg   = isBug ? sevColors[0] : (isNew ? '#DCFCE7' : '#FEF3C7');
+    var badgeFg   = isBug ? sevColors[1] : (isNew ? '#065F46' : '#92400E');
+    var badgeText = isBug ? ('<i class="ti ti-bug"></i> ' + escapeHtml(_reqSeverityLabel(data.severity) || 'Bug')) : (isNew ? 'Nouveau' : 'Modification');
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
@@ -846,10 +884,16 @@
       var mineProduct = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
       var mineBugs     = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
       var items = (type === 'bug') ? mineBugs : mineProduct;
+      // Même filtre par gravité que la liste admin (reqLoadAdminList).
+      if(type === 'bug' && _reqSeverityFilter){
+        items = items.filter(function(it){ return (it.data||{}).severity === _reqSeverityFilter; });
+      }
 
       if(items.length === 0){
-        body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>'
-          + (type === 'bug' ? 'Aucun bug signalé' : 'Aucune demande en attente') + '</div>';
+        var emptyMsgMine = (type === 'bug')
+          ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
+          : 'Aucune demande en attente';
+        body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>' + emptyMsgMine + '</div>';
         return;
       }
       function renderMineItem(it){
@@ -1206,8 +1250,22 @@
         _reqPanelTab = tab.getAttribute('data-tab');
         document.querySelectorAll('.req-tab').forEach(function(t){ t.classList.remove('active'); });
         tab.classList.add('active');
+        // Le filtre par gravité n'a de sens que sur l'onglet "Bugs
+        // signalés" — masqué sur "Demandes produit" (ce champ n'existe pas
+        // pour ce type). La sélection en cours est conservée d'un onglet à
+        // l'autre plutôt que réinitialisée : si l'utilisateur revient sur
+        // "Bugs" après être passé sur "Demandes produit", son filtre est
+        // toujours actif.
+        var sevWrap = document.getElementById('reqSeverityFilterWrap');
+        if(sevWrap) sevWrap.style.display = (_reqPanelTab === 'bug') ? 'block' : 'none';
         reqRefreshPanel();
       });
+    });
+
+    var reqSeverityFilterEl = document.getElementById('reqSeverityFilter');
+    if(reqSeverityFilterEl) reqSeverityFilterEl.addEventListener('change', function(){
+      _reqSeverityFilter = reqSeverityFilterEl.value;
+      reqRefreshPanel();
     });
 
     var btnAccept = document.getElementById('btnAcceptAllRequests');

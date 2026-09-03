@@ -551,6 +551,12 @@ function applyAuthUI() {
   // Bouton "Configurateur d'armoire" (accueil) — tout utilisateur connecté
   var btnOpenArmoireConfig = document.getElementById('btnOpenArmoireConfig');
   if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = loggedIn ? '' : 'none';
+  // Même accès, mais permanent (pas seulement l'accueil) — bulle flottante
+  // au-dessus de "Ajouter un produit" plutôt qu'une entrée de menu (retour
+  // utilisateur : "je ne veux pas le bouton configurateur dans le menu mais
+  // juste au dessus du petit plus", voir .fab-stack dans index.html).
+  var btnFabArmoireConfig = document.getElementById('btnFabArmoireConfig');
+  if (btnFabArmoireConfig) btnFabArmoireConfig.style.display = loggedIn ? '' : 'none';
 
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';

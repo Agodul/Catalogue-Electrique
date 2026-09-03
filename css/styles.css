@@ -728,6 +728,69 @@
   .vm-price{ font-size:26px; font-weight:700; }
   .vm-price-history{ margin-top:4px; }
 
+  /* Actions en bas de la fiche produit (Documents/Suggestions/
+     Caractéristiques/Pièces de rechange/Ajouter à la configuration) —
+     retour utilisateur : "revoir la disposition" puis "petit icon pour
+     gagné de la place". Une 1ère version passait par une grille 2 colonnes
+     avec libellé complet par bouton (encore assez haut en pile de 5) ;
+     remplacée ici par une rangée de petites icônes carrées (le libellé
+     complet reste accessible en infobulle via l'attribut title="" posé en
+     JS sur chaque <button>, voir js/render-view-modal.js) — flex-wrap plutôt
+     qu'une grille fixe : les icônes se réenroulent naturellement sur
+     plusieurs lignes si la largeur de la fiche ne suffit pas (mobile),
+     inutile d'avoir un media query dédié comme avec la grille précédente.
+     Les wrappers gardent leur display:none individuel (JS) : un wrapper
+     caché ne prend simplement pas de place dans la rangée. */
+  .vm-actions-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    /* Espace avec le texte au-dessus (prix / historique de prix) — retour
+       utilisateur : "trop collé au texte du dessus". Les boutons n'ayant
+       plus de texte, ce n'était plus qu'une icône directement sous le prix
+       sans respiration ; sur les wrappers eux-mêmes ce margin-top est
+       neutralisé juste en dessous (redondant avec ce margin-top de la
+       rangée elle-même). */
+    margin-top:14px;
+  }
+  .vm-actions-row > div{ margin-top:0 !important; }
+  .vm-action-btn{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:44px;
+    height:44px;
+    border-radius:9px;
+    border:1.5px solid #194093;
+    background:var(--paper-card);
+    color:#194093;
+    cursor:pointer;
+    font-family:var(--font-sans);
+    padding:0;
+  }
+  /* Petite pastille de comptage (suggestions/caractéristiques/pièces de
+     rechange) — vide et invisible tant que le JS n'y met pas de nombre
+     (produit sans aucune suggestion, etc., le bouton reste alors masqué de
+     toute façon par son wrapper). */
+  .vm-action-badge{
+    position:absolute;
+    top:-6px;
+    right:-6px;
+    min-width:16px;
+    height:16px;
+    padding:0 4px;
+    border-radius:999px;
+    background:#194093;
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    line-height:16px;
+    text-align:center;
+    font-family:var(--font-sans);
+  }
+  .vm-action-badge:empty{ display:none; }
+
   .empty-state{
     border:1px dashed var(--line);
     border-radius:6px;
@@ -1147,11 +1210,12 @@
     border:1px solid var(--copper);
     color:#fff;
   }
-  #btnFabSearch{
+  #btnFabSearch, #btnFabArmoireConfig{
     background:var(--paper-card);
     border:1px solid var(--line);
     color:var(--copper);
   }
+  #btnFabArmoireConfig:hover{ background:var(--paper); border-color:var(--copper); transform:translateY(-2px); }
   #btnFabSearch:hover{ background:var(--paper); border-color:var(--copper); transform:translateY(-2px); }
   #btnFabSearch svg{ width:20px; height:20px; }
 

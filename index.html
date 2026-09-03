@@ -768,6 +768,29 @@
 
 
 <div class="fab-stack">
+  <!-- Accès à la configuration en cours depuis N'IMPORTE OÙ dans l'app
+       (retour utilisateur : "accéder à la configuration en cours ou même
+       pouvoir en créer une") — jusqu'ici le SEUL point d'entrée était
+       #btnOpenArmoireConfig sur la page d'accueil, invisible dès qu'on
+       parcourt le catalogue. Essayé d'abord dans le menu ⋮/tiroir mobile,
+       puis retour utilisateur : "je ne veux pas le bouton configurateur
+       dans le menu mais juste au dessus du petit plus" — placé D'ABORD, tout
+       en haut du .fab-stack (empile en colonne dans l'ordre du DOM, voir
+       css/styles.css), plutôt qu'entre #btnFabPropose et #btnFabAdd : ces
+       deux-là sont MUTUELLEMENT EXCLUSIFS (l'un OU l'autre selon
+       canEdit/canPropose, jamais les deux, voir js/auth.js), donc le mettre
+       entre eux inversait sa position relative à "l'action principale"
+       selon le type de compte (au-dessus pour un canEdit, en-dessous pour
+       un simple utilisateur — retour utilisateur : "la disposition [...]
+       n'est pas pareil pour un user simple et un user avec canEdit"). En
+       tête de liste, sa position reste identique pour tout le monde,
+       peu importe lequel des deux boutons "principaux" est visible. Style
+       "secondaire" (fond clair, contour) comme #btnFabSearch, pas rempli
+       comme #btnFabAdd/#btnFabPropose — pour ne pas se confondre avec ces
+       actions-là. -->
+  <button id="btnFabArmoireConfig" class="fab sans" aria-label="Configurateur d'armoire" title="Configurateur d'armoire" style="display:none;">
+    <i class="ti ti-tools" style="font-size:18px;"></i>
+  </button>
   <button id="btnFabPropose" class="fab sans" aria-label="Proposer un produit" title="Proposer un produit" style="display:none;">
     <i class="ti ti-edit" style="font-size:18px;"></i>
   </button>

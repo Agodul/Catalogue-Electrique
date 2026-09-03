@@ -11,6 +11,61 @@
 "use strict";
 
 var _armoireDraft = []; // [{ref, qty}]
+
+// Clé localStorage pour ne pas perdre une configuration en cours non
+// enregistrée en cas de fermeture inattendue (crash, fermeture accidentelle
+// de l'onglet/du navigateur…) — retour utilisateur : "comment faire pour
+// éviter de perdre la config alors qu'on a pas enregistré ?". _armoireDraft
+// n'était qu'une variable en mémoire jusqu'ici, perdue au moindre rechargement
+// de page. Voir _armoireSaveDraftToStorage (appelée à chaque
+// _armoireRenderDraft, donc à chaque modification réelle du brouillon) et la
+// restauration juste en dessous.
+var ARMOIRE_DRAFT_STORAGE_KEY = 'cat_armoire_draft';
+
+function _armoireSaveDraftToStorage(){
+  // Ne jamais persister PENDANT l'édition d'un bloc/config existant :
+  // _armoireDraft contient alors TEMPORAIREMENT le contenu de l'entrée
+  // éditée (voir _armoireStartEditEntry/_armoireDraftBackup plus bas), pas
+  // la vraie configuration en cours de l'utilisateur — l'écraser ici la
+  // perdrait pour de bon en cas de crash pendant une édition.
+  if(_armoireEditingEntry) return;
+  try{
+    if(_armoireDraft.length) localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify(_armoireDraft));
+    else localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
+  }catch(e){
+    // Navigation privée / quota dépassé : tant pis, pas de sauvegarde de
+    // secours possible, mais ça ne doit jamais faire planter le
+    // configurateur pour autant.
+  }
+}
+
+// Mis à true si un brouillon non vide a été restauré au chargement de la
+// page — consommé une seule fois par _armoireOpen() (toast d'info) pour que
+// l'utilisateur comprenne D'OÙ viennent ces produits déjà présents la
+// première fois qu'il ouvre le configurateur cette session, sans répéter le
+// toast à chaque réouverture du panneau.
+var _armoireDraftWasRestored = false;
+
+function _armoireRestoreDraftFromStorage(){
+  try{
+    var raw = localStorage.getItem(ARMOIRE_DRAFT_STORAGE_KEY);
+    if(!raw) return;
+    var parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) return;
+    var restored = parsed.filter(function(it){
+      return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
+    });
+    if(restored.length){
+      _armoireDraft = restored;
+      _armoireDraftWasRestored = true;
+    }
+  }catch(e){
+    // Contenu corrompu/illisible : on repart simplement d'un brouillon vide
+    // plutôt que de faire planter le chargement de la page.
+  }
+}
+_armoireRestoreDraftFromStorage();
+
 var _armoireBlocks = [];
 var _armoireSavedConfigs = [];
 var _armoireActiveTab = 'blocks';
@@ -245,6 +300,13 @@ async function _armoireQuoteRequest(){
 }
 
 function _armoireRenderDraft(){
+  // Appelée à chaque modification réelle du brouillon (ajout/quantité/
+  // retrait/vidage/chargement d'une config enregistrée) — le point d'entrée
+  // unique le plus fiable pour garder la sauvegarde de secours à jour, AVANT
+  // le "if(!el) return" ci-dessous pour que la persistance ait lieu même si
+  // le panneau n'a jamais été affiché cette session (ex. ajout depuis une
+  // fiche produit).
+  _armoireSaveDraftToStorage();
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
   _armoireRenderStats();
@@ -1282,6 +1344,17 @@ function _armoireOpen(){
   _armoireFetchBlocks();
   _armoireFetchSavedConfigs();
 
+  // Retour utilisateur : "comment éviter de perdre la config [...] alors
+  // qu'on a pas enregistré ?" — voir _armoireRestoreDraftFromStorage plus
+  // haut. Prévient explicitement, une seule fois par session, que le
+  // contenu déjà présent vient d'une restauration automatique (sinon
+  // déroutant : des produits apparaissent sans que l'utilisateur les ait
+  // ajoutés cette fois-ci).
+  if(_armoireDraftWasRestored){
+    _armoireDraftWasRestored = false;
+    if(typeof showToast === 'function') showToast('Configuration en cours restaurée (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' non enregistrée' + (_armoireDraft.length > 1 ? 's' : '') + ')', 'ok', 4000);
+  }
+
   _armoireSyncMobileHeight();
   if(window.visualViewport && !_armoireViewportHandler){
     _armoireViewportHandler = function(){ _armoireSyncMobileHeight(); };
@@ -1328,6 +1401,17 @@ function _armoireClose(){
 (function _initArmoireConfig(){
   var btnOpen = document.getElementById('btnOpenArmoireConfig');
   if(btnOpen) btnOpen.addEventListener('click', _armoireOpen);
+
+  // Second point d'entrée, accessible depuis n'importe quelle page — voir
+  // index.html, #btnFabArmoireConfig (bulle flottante juste au-dessus de
+  // "Ajouter un produit") : contrairement à #btnOpenArmoireConfig (page
+  // d'accueil uniquement, invisible dès qu'on parcourt le catalogue), ce
+  // bouton reste joignable en permanence. Essayé d'abord comme entrée de
+  // menu (⋮ desktop + tiroir mobile), puis retour utilisateur : "je ne veux
+  // pas le bouton configurateur dans le menu mais juste au dessus du petit
+  // plus".
+  var btnFabArmoireConfig = document.getElementById('btnFabArmoireConfig');
+  if(btnFabArmoireConfig) btnFabArmoireConfig.addEventListener('click', _armoireOpen);
 
   var btnClose = document.getElementById('armoireConfigCloseBtn');
   if(btnClose) btnClose.addEventListener('click', _armoireClose);

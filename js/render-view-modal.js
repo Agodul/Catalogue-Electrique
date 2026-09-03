@@ -53,27 +53,41 @@ function _productBadgesCompactHtml(p){
           '<div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:var(--font-sans);"></div>' +
           '<div class="vm-price-history" id="vmPriceHistory"></div>' +
           '<div class="vm-actions-row">' +
-            '<div id="vmDocBtnWrap" style="display:none;">' +
-              '<button id="vmDocBtn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid #194093;background:var(--paper-card);color:#194093;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">' +
-                '<i class="ti ti-file-type-pdf" style="font-size:17px;color:#E53E3E;"></i> Documents' +
+            '<div id="vmDocBtnWrap" class="vm-action-wrap" style="display:none;">' +
+              '<button id="vmDocBtn" class="vm-action-btn" title="Documents">' +
+                // Icône générique de document (même icône que le titre de la
+                // modale "Documents produit" elle-même, voir docOverlay dans
+                // js/templates.js) plutôt que le logo PDF — retour
+                // utilisateur : les documents ne sont pas tous des PDF.
+                '<i class="ti ti-files" style="font-size:19px;"></i>' +
               '</button>' +
             '</div>' +
-            '<div id="vmSuggestionsSection" style="display:none;margin-top:8px;">' +
-              '<button id="vmSuggestionsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">' +
-                '<i class="ti ti-bulb" style="font-size:17px;"></i>' +
-                '<span id="vmSuggestionsToggleLabel">Afficher suggestions</span>' +
+            '<div id="vmSuggestionsSection" class="vm-action-wrap" style="display:none;">' +
+              '<button id="vmSuggestionsToggle" class="vm-action-btn" title="Afficher suggestions">' +
+                '<i class="ti ti-bulb" style="font-size:19px;"></i>' +
+                '<span id="vmSuggestionsToggleLabel" class="vm-action-badge"></span>' +
               '</button>' +
             '</div>' +
-            '<div id="vmSpecsSection" style="display:none;margin-top:8px;">' +
-              '<button id="vmSpecsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">' +
-                '<i class="ti ti-list-details" style="font-size:17px;"></i>' +
-                '<span id="vmSpecsToggleLabel">Voir les caractéristiques</span>' +
+            '<div id="vmSpecsSection" class="vm-action-wrap" style="display:none;">' +
+              '<button id="vmSpecsToggle" class="vm-action-btn" title="Voir les caractéristiques">' +
+                '<i class="ti ti-list-details" style="font-size:19px;"></i>' +
+                '<span id="vmSpecsToggleLabel" class="vm-action-badge"></span>' +
               '</button>' +
             '</div>' +
-            '<div id="vmSparePartsSection" style="display:none;margin-top:8px;">' +
-              '<button id="vmSparePartsToggle" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1.5px solid var(--copper);background:var(--paper-card);color:var(--copper);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);width:100%;">' +
-                '<i class="ti ti-tool" style="font-size:17px;"></i>' +
-                '<span id="vmSparePartsToggleLabel">Voir les pièces de rechange</span>' +
+            '<div id="vmSparePartsSection" class="vm-action-wrap" style="display:none;">' +
+              '<button id="vmSparePartsToggle" class="vm-action-btn" title="Voir les pièces de rechange">' +
+                '<i class="ti ti-tool" style="font-size:19px;"></i>' +
+                '<span id="vmSparePartsToggleLabel" class="vm-action-badge"></span>' +
+              '</button>' +
+            '</div>' +
+            '<div id="vmAddToConfigWrap" class="vm-action-wrap" style="display:none;">' +
+              '<button id="vmAddToConfigBtn" class="vm-action-btn" title="Ajouter à la configuration">' +
+                // "+" plutôt que list-check (retour utilisateur) — même
+                // icône que les autres actions d'ajout du configurateur
+                // d'armoire (ex. "Insérer" un bloc, "Ajouter un
+                // fournisseur", voir armoireConfig.js/index.html), plus
+                // immédiatement lisible comme "ajouter" que la coche.
+                '<i id="vmAddToConfigIcon" class="ti ti-plus" style="font-size:19px;"></i>' +
               '</button>' +
             '</div>' +
           '</div>' +
@@ -281,6 +295,57 @@ function _productBadgesCompactHtml(p){
     if(vmDocBtn) vmDocBtn.onclick = function(){ window._openDocModal(p, sUrlDoc); };
     // ── Fin bouton Document ─────────────────────────────────────────
 
+    // ── Bouton "Ajouter à la configuration" ─────────────────────────
+    // Retour utilisateur (1) : "ajouter un bouton [...] lorsqu'on a une
+    // configuration en cours" — visible à l'origine uniquement s'il y avait
+    // déjà quelque chose dans le brouillon (_armoireDraft, voir
+    // js/armoireConfig.js). Retour utilisateur (2), ensuite : "accéder à la
+    // configuration en cours ou même pouvoir en créer une" — la condition
+    // "déjà un brouillon non vide" empêchait justement de DÉMARRER une
+    // configuration depuis une fiche produit (le tout premier ajout n'avait
+    // alors aucun bouton pour le déclencher). _armoireAddToDraft gère déjà
+    // nativement un brouillon vide (push le 1er item), donc plus besoin de
+    // cette condition — le bouton crée la configuration à la volée si
+    // besoin. Un 2nd bouton "ouvrir le configurateur complet" a été ajouté
+    // ici un temps, puis retiré (retour utilisateur (3) : "je veux
+    // seulement le bouton ajouter à la configuration [...] je veux qu'il
+    // [l'accès au configurateur] soit pas dans la fiche produit") — cet
+    // accès reste disponible ailleurs, désormais via une bulle flottante
+    // permanente juste au-dessus de "Ajouter un produit" (voir
+    // #btnFabArmoireConfig, index.html/js/auth.js), juste plus sur la fiche
+    // produit elle-même. Même règle d'accès que le configurateur lui-même
+    // (accueil, js/auth.js) : tout utilisateur connecté, pas seulement
+    // canEdit — ce n'est pas une modification du
+    // catalogue, juste une liste personnelle.
+    var vmAddToConfigWrap = document.getElementById('vmAddToConfigWrap');
+    var vmAddToConfigBtn  = document.getElementById('vmAddToConfigBtn');
+    var vmAddToConfigIcon = document.getElementById('vmAddToConfigIcon');
+    var _armoireLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
+    if(vmAddToConfigWrap) vmAddToConfigWrap.style.display = (_armoireLoggedIn && p.ref) ? '' : 'none';
+
+    if(vmAddToConfigBtn){
+      vmAddToConfigBtn.onclick = function(){
+        if(typeof _armoireAddToDraft !== 'function' || !p.ref) return;
+        _armoireAddToDraft(p.ref, 1);
+        var existing = _armoireDraft.find(function(it){ return it.ref === p.ref; });
+        var qty = existing ? existing.qty : 1;
+        if(typeof showToast === 'function') showToast('Ajouté à la configuration en cours (' + qty + ' ex.)', 'ok', 2500);
+        // Bouton devenu icône seule (retour utilisateur : "petit icon pour
+        // gagné de la place") — plus de texte "Ajouté ✓" à afficher, le
+        // retour visuel passe par l'icône elle-même (coche verte, 1,4s)
+        // en plus du toast déjà affiché ci-dessus.
+        if(vmAddToConfigIcon){
+          vmAddToConfigIcon.className = 'ti ti-check';
+          vmAddToConfigIcon.style.color = '#2E7D32';
+          setTimeout(function(){
+            vmAddToConfigIcon.className = 'ti ti-plus';
+            vmAddToConfigIcon.style.color = '';
+          }, 1400);
+        }
+      };
+    }
+    // ── Fin bouton Ajouter à la configuration ───────────────────────
+
     // Appliquer permissions sur les boutons de la fiche
     // Par défaut : interdit si non connecté ou permissions non chargées
     var _perms   = window._userPerms || {};
@@ -313,7 +378,11 @@ function _productBadgesCompactHtml(p){
     if(sugSection){
       if(sugRefs.length){
         sugSection.style.display = '';
-        if(sugLabel) sugLabel.textContent = 'Afficher les suggestions (' + sugRefs.length + ')';
+        // Icône seule (retour utilisateur : gagner de la place) : le
+        // libellé complet passe en infobulle (title) sur le bouton, seul le
+        // nombre reste visible en permanence, dans une petite pastille.
+        if(sugToggle) sugToggle.title = 'Afficher les suggestions (' + sugRefs.length + ')';
+        if(sugLabel) sugLabel.textContent = sugRefs.length;
 
         if(sugToggle) sugToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');
@@ -389,7 +458,8 @@ function _productBadgesCompactHtml(p){
     if(sparePartsSection){
       if(sparePartsRefs.length){
         sparePartsSection.style.display = '';
-        if(sparePartsLabel) sparePartsLabel.textContent = 'Voir les pièces de rechange (' + sparePartsRefs.length + ')';
+        if(sparePartsToggle) sparePartsToggle.title = 'Voir les pièces de rechange (' + sparePartsRefs.length + ')';
+        if(sparePartsLabel) sparePartsLabel.textContent = sparePartsRefs.length;
 
         if(sparePartsToggle) sparePartsToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');
@@ -444,7 +514,8 @@ function _productBadgesCompactHtml(p){
     if(specsSection){
       if(specEntries.length){
         specsSection.style.display = '';
-        if(specsToggleLabel) specsToggleLabel.textContent = 'Voir les caractéristiques (' + specEntries.length + ')';
+        if(specsToggle) specsToggle.title = 'Voir les caractéristiques (' + specEntries.length + ')';
+        if(specsToggleLabel) specsToggleLabel.textContent = specEntries.length;
 
         if(specsToggle) specsToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');

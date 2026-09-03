@@ -1,14 +1,30 @@
   // ---------- Scroll to top ----------
   var btnScrollTop = document.getElementById('btnScrollTop');
-  // Écouter scroll sur appContent (mobile) ou window (desktop)
+  // Retour utilisateur : "le bouton pour remonter en haut n'est pas
+  // visible" — #appContent n'a en réalité AUCUN style de conteneur de scroll
+  // (pas d'overflow/height dédiés, voir css/styles.css), sur aucun
+  // breakpoint : c'est bien window/document qui défile, mobile compris.
+  // "_appContent ? ... : window" n'écoutait donc jamais le bon élément dès
+  // qu'#appContent existait dans le DOM (systématiquement, puisqu'il est
+  // toujours présent) — la bulle ne recevait jamais sa classe .show, quel
+  // que soit le scroll réel. Corrigé en écoutant les DEUX cibles et en
+  // retenant le plus grand des deux scrollTop/scrollY, comme le fait déjà
+  // le bouton "Accueil" de la nav mobile (js/actions-mobile-chrome.js,
+  // qui appelle déjà les deux scrollTo() sans se demander laquelle est la
+  // "vraie") plutôt que de choisir une seule cible au hasard.
   var _appContent = document.getElementById('appContent');
-  var _scrollTarget = _appContent || window;
-  _scrollTarget.addEventListener('scroll', function(){
-    var _scrollY = _appContent ? _appContent.scrollTop : window.scrollY;
-    btnScrollTop.classList.toggle('show', _scrollY > 400);
+  function _currentScrollY(){
+    return Math.max(window.scrollY || document.documentElement.scrollTop || 0, _appContent ? _appContent.scrollTop : 0);
+  }
+  window.addEventListener('scroll', function(){
+    btnScrollTop.classList.toggle('show', _currentScrollY() > 400);
+  });
+  if(_appContent) _appContent.addEventListener('scroll', function(){
+    btnScrollTop.classList.toggle('show', _currentScrollY() > 400);
   });
   btnScrollTop.addEventListener('click', function(){
-    var _acEl2=document.getElementById('appContent'); if(_acEl2) _acEl2.scrollTo({top:0,behavior:'smooth'}); else window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo({top:0,behavior:'smooth'});
+    if(_appContent) _appContent.scrollTo({top:0,behavior:'smooth'});
   });
 
   // ---------- Page d'accueil ----------

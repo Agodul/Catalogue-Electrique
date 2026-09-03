@@ -2,16 +2,30 @@
 
   function renderCard(p){
     var idx = _cardIdx++;
-    // Pas de loading="lazy" ici (retiré, retour utilisateur : "toutes les
-    // images des produits [...] chargées automatiquement") — les photos de
-    // la grille catalogue se chargent maintenant dès l'affichage de la
-    // page plutôt qu'au fur et à mesure du scroll. Volontairement PAS
-    // étendu aux listes de vignettes secondaires (résultats de recherche,
-    // sélecteurs de suggestions/pièces de rechange, parcourir par
-    // catégorie…) qui, elles, restent en chargement paresseux : ce sont de
-    // longues listes où charger tout d'un coup n'aurait pas de sens.
+    // Pas de loading="lazy" ici en temps normal (retiré, retour
+    // utilisateur : "toutes les images des produits [...] chargées
+    // automatiquement") — les photos de la grille catalogue se chargent
+    // dès l'affichage de la page plutôt qu'au fur et à mesure du scroll.
+    // Volontairement PAS étendu aux listes de vignettes secondaires
+    // (résultats de recherche, sélecteurs de suggestions/pièces de
+    // rechange, parcourir par catégorie…) qui, elles, restent en
+    // chargement paresseux : ce sont de longues listes où charger tout
+    // d'un coup n'aurait pas de sens.
+    //
+    // SAUF en mode "Voir tout le catalogue" (viewAll) : ce mode-là est
+    // justement une très longue liste plate (potentiellement des milliers
+    // de produits, chargée par lots de 40 au scroll, voir render()/
+    // _loadMoreCards() dans js/storage.js) — exactement le cas que le
+    // paragraphe ci-dessus dit vouloir éviter, oublié lors du retrait
+    // initial car renderCard() est partagée entre les deux usages. Chaque
+    // nouveau lot de 40 forçait 40 décodages d'image simultanés pendant le
+    // scroll (retour utilisateur : "méchant freeze lors de l'affichage des
+    // produits" en cliquant "Voir tout le catalogue"). loading="lazy" y
+    // est donc réactivé spécifiquement, comme pour les autres longues
+    // listes.
+    var eagerLoad = !viewAll;
     var photo = p.photo
-      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'" data-fallback="append-note">'
+      ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name||p.ref)+'"'+(eagerLoad ? '' : ' loading="lazy"')+' data-fallback="append-note">'
       : '<span class="ph-placeholder sans">Pas de photo</span>';
     var tags = '';
     var tagItems = [];

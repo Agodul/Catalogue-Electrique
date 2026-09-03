@@ -16,8 +16,51 @@
     return view[0] === 0x50 && view[1] === 0x4B;
   }
 
-  // Cache des buffers PDF déjà téléchargés (clé = ref + filename)
+  // Cache des buffers PDF déjà EXTRAITS (clé = ref + filename) — un fichier
+  // précis, prêt à afficher tel quel.
   var _pdfBufferCache = {};
+
+  // Cache de la réponse BRUTE /pullDocs?ref=... — un product peut avoir
+  // plusieurs documents regroupés côté serveur en UN SEUL ZIP sous la même
+  // ref (voir _isZipBuffer plus bas). Retour utilisateur : "un document met
+  // du temps à charger" — avant, cette requête (téléchargement + JSZip.
+  // loadAsync, potentiellement coûteux sur un gros ZIP) était refaite EN
+  // ENTIER à chaque document consulté, même pour un 2e/3e fichier déjà
+  // présent dans un ZIP déjà téléchargé pour un document précédent de la
+  // MÊME fiche produit — et même simplement en SURVOLANT plusieurs lignes de
+  // la liste (préchargement au survol, voir _docRenderItem), qui pouvait
+  // ainsi déclencher autant de téléchargements complets et redondants du
+  // même ZIP que de lignes survolées. Clé = ref SEUL (pas ref+filename
+  // comme _pdfBufferCache ci-dessus) : le ZIP entier n'est plus téléchargé/
+  // décompressé qu'UNE SEULE fois par ref, quel que soit le nombre de
+  // documents qu'on y consulte ensuite.
+  var _pdfRawCache = {}; // ref -> Promise<{isZip:true, zip:JSZip} | {isZip:false, raw:ArrayBuffer}>
+
+  function _fetchPdfRawByRef(sUrl, ref, h){
+    if(_pdfRawCache[ref]) return _pdfRawCache[ref];
+    var url = sUrl + '/pullDocs?ref=' + encodeURIComponent(ref);
+    var p = fetch(url, { headers: h })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(ab){
+        // Plafond généreux (100 Mo) pour ne bloquer aucun cas d'usage réel.
+        var PDF_MAX_BYTES = 100 * 1024 * 1024;
+        if(ab.byteLength > PDF_MAX_BYTES){
+          throw new Error('Document trop volumineux (' + Math.round(ab.byteLength/1024/1024) + ' Mo)');
+        }
+        if(!_isZipBuffer(ab)) return { isZip: false, raw: ab };
+        return new Promise(function(resolve, reject){
+          _loadJSZip(function(){
+            JSZip.loadAsync(ab).then(function(zip){ resolve({ isZip: true, zip: zip }); }).catch(reject);
+          });
+        });
+      });
+    // Un échec (réseau, ZIP corrompu…) ne doit pas rester "collé" en cache —
+    // sinon tout nouvel essai échouerait silencieusement jusqu'au rechargement
+    // de la page, au lieu de simplement retenter la requête.
+    p.catch(function(){ delete _pdfRawCache[ref]; });
+    _pdfRawCache[ref] = p;
+    return p;
+  }
 
   function _fetchPdfByName(sUrl, ref, filename, h, cb){
     var cacheKey = ref + '::' + filename;
@@ -25,38 +68,26 @@
       cb(null, _pdfBufferCache[cacheKey], filename);
       return;
     }
-    var url = sUrl + '/pullDocs?ref=' + encodeURIComponent(ref);
-    fetch(url, { headers: h })
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-      .then(function(ab){
-        // Plafond généreux (100 Mo) pour ne bloquer aucun cas d'usage réel.
-        var PDF_MAX_BYTES = 100 * 1024 * 1024;
-        if(ab.byteLength > PDF_MAX_BYTES){
-          cb(new Error('Document trop volumineux (' + Math.round(ab.byteLength/1024/1024) + ' Mo)'));
-          return;
-        }
-        if(_isZipBuffer(ab)){
-          _loadJSZip(function(){
-            JSZip.loadAsync(ab).then(function(zip){
-              var target = null;
-              zip.forEach(function(path, f){
-                if(path === filename || path.split('/').pop() === filename) target = f;
-              });
-              if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
-              if(target){
-                target.async('arraybuffer').then(function(buf){
-                  _pdfBufferCache[cacheKey] = buf;
-                  cb(null, buf, filename);
-                });
-              } else cb(new Error('Fichier non trouvé dans le ZIP'));
-            }).catch(function(e){ cb(e); });
-          });
-        } else {
-          _pdfBufferCache[cacheKey] = ab;
-          cb(null, ab, filename);
-        }
-      })
-      .catch(function(e){ cb(e); });
+    _fetchPdfRawByRef(sUrl, ref, h).then(function(result){
+      if(!result.isZip){
+        // Pas un ZIP : un seul fichier existe pour cette ref, il correspond
+        // forcément à celui demandé.
+        _pdfBufferCache[cacheKey] = result.raw;
+        cb(null, result.raw, filename);
+        return;
+      }
+      var zip = result.zip;
+      var target = null;
+      zip.forEach(function(path, f){
+        if(path === filename || path.split('/').pop() === filename) target = f;
+      });
+      if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
+      if(!target){ cb(new Error('Fichier non trouvé dans le ZIP')); return; }
+      target.async('arraybuffer').then(function(buf){
+        _pdfBufferCache[cacheKey] = buf;
+        cb(null, buf, filename);
+      }).catch(function(e){ cb(e); });
+    }).catch(function(e){ cb(e); });
   }
 
   // Types image acceptés à l'upload (voir accept="image/*" sur #modalPdfInput,
