@@ -116,6 +116,7 @@
     var url  = '';
     var autoSpecs = true;
     var pendingSpecs = null;
+    var pendingFields = null;
     try{
       html = localStorage.getItem('cat_pending_html') || '';
       url  = localStorage.getItem('cat_pending_url')  || '';
@@ -137,6 +138,17 @@
       if(specsRaw){
         try{ pendingSpecs = JSON.parse(specsRaw); }catch(e){ pendingSpecs = null; }
       }
+      // Nom/référence/marque/description/photo déjà extraits CÔTÉ EXTENSION
+      // (sites/*.json + interpréteur dans ajouterAuCatalogue, background.js)
+      // — même principe que pendingSpecs ci-dessus, mais retour utilisateur
+      // explicite cette fois : "je voulais que ça se passe du côté de
+      // l'extension" (plutôt que dans extractFromHtml ci-dessous, qui reste
+      // le repli — collage manuel, site sans règle dédiée, ou rien trouvé
+      // côté extension pour un champ donné).
+      var fieldsRaw = localStorage.getItem('cat_pending_fields');
+      if(fieldsRaw){
+        try{ pendingFields = JSON.parse(fieldsRaw); }catch(e){ pendingFields = null; }
+      }
       // Ignorer si données trop vieilles (> 5 min)
       if(!html || (Date.now() - ts) > 5 * 60 * 1000) return;
       // Nettoyer immédiatement pour éviter un double-déclenchement
@@ -145,6 +157,7 @@
       localStorage.removeItem('cat_pending_ts');
       localStorage.removeItem('cat_pending_autospecs');
       localStorage.removeItem('cat_pending_specs');
+      localStorage.removeItem('cat_pending_fields');
     }catch(e){ return; }
 
     if(url){
@@ -201,6 +214,27 @@
             return { key: k, value: pendingSpecs[k] };
           });
           if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
+        }
+        // Champs nom/référence/marque/description/photo extraits côté
+        // extension — PRIORITAIRES sur ce que btnExtract vient de trouver
+        // via le parsing HTML générique du Catalogue, un par un (un champ
+        // absent de pendingFields, ex. l'extension n'a rien trouvé pour la
+        // description sur ce site, garde la valeur que btnExtract avait
+        // déjà posée — jamais de vide qui écraserait un résultat correct).
+        if(pendingFields && typeof pendingFields === 'object'){
+          if(pendingFields.name && fName)   fName.value   = pendingFields.name;
+          if(pendingFields.ref && fRef)     fRef.value    = pendingFields.ref;
+          if(pendingFields.brand && fBrand) fBrand.value  = pendingFields.brand;
+          if(pendingFields.supplier && fSupplier) fSupplier.value = pendingFields.supplier;
+          if(pendingFields.desc && fDesc){
+            fDesc.value = pendingFields.desc;
+            if(typeof renderTagSuggestions === 'function') renderTagSuggestions();
+          }
+          if(pendingFields.photo && fPhoto){
+            fPhoto.value = pendingFields.photo;
+            if(typeof updatePhotoPreview === 'function') updatePhotoPreview();
+          }
+          if((pendingFields.ref || pendingFields.brand) && typeof checkDuplicateRef === 'function') checkDuplicateRef();
         }
         showToast('Extraction depuis l\'extension Chrome ✓', 'ok', 3500);
       }, 300);

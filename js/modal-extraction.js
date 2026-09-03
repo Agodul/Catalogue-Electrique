@@ -74,8 +74,13 @@
     // ── Détection du fournisseur depuis l'URL ──────────────────────────
     var hostname = '';
     try{ hostname = new URL(pageUrl).hostname.replace('www.',''); }catch(e){}
-    // Certains sites (catalogues pro sans prix public, ex. se.com) n'ont
-    // jamais de prix à extraire — voir règle Schneider plus bas.
+    // Plus de prix jamais trouvable sur certains sites (catalogues pro,
+    // ex. se.com) : ce cas est géré par l'extension (sites/*.json côté
+    // extension), qui envoie directement les champs déjà extraits. Ici,
+    // volontairement générique — extraction purement générique dans tous
+    // les cas (retour utilisateur : "je veux que seul l'extension gère
+    // l'extraction [par site], pas l'app" — voir SPI catalogue extension/
+    // spi-extension/background.js pour les règles par site).
     var noPricingSite = false;
 
     var supplierMap = {
@@ -223,166 +228,6 @@
         '[class*="product-brand"]','[class*="manufacturer"]',
         '[itemprop="manufacturer"]'
       ]);
-    }
-
-    // ── Règles spécifiques par site fournisseur ────────────────────────
-    if(hostname.includes('balluff')){
-      if(!result.ref)   result.ref   = txt(['.product-ordernumber','.order-number','[class*="ordernumber"]','[class*="article-number"]']);
-      if(!result.brand) result.brand = 'Balluff';
-    }
-    if(hostname.includes('phoenixcontact')){
-      if(!result.ref)   result.ref   = txt(['.product-order-number','.order-nr','[class*="article"]','[data-article-number]']);
-      if(!result.brand) result.brand = 'Phoenix Contact';
-    }
-    if(hostname.includes('sick')){
-      if(!result.ref)   result.ref   = txt(['.part-number','.product-id','[class*="partNumber"]','[data-part-number]']);
-      if(!result.brand) result.brand = 'SICK';
-    }
-    if(hostname.includes('ifm')){
-      if(!result.ref)   result.ref   = txt(['[class*="article-number"]','.article-no','[data-article]']);
-      if(!result.brand) result.brand = 'IFM';
-    }
-    if(hostname.includes('schneider') || hostname.includes('se.com')){
-      // '[class*="product-id"]' EN PREMIER : c'est le vrai champ référence
-      // sur se.com (ex. <h2 class="main-product-info__bottom-item--
-      // product-id">GB2DB05</h2>, testé en vrai) — placé avant
-      // '[class*="reference"]' qui, sur ce site, attrapait la bannière de
-      // cookies OneTrust ("save-preference-btn-handler" contient
-      // "reference" comme sous-texte de "preference") avant d'atteindre un
-      // vrai champ (retour utilisateur : "l'extension ne mets plus la
-      // référence"). '-reference' (tiret devant) au lieu de 'reference' nu
-      // pour ce même sélecteur, en repli, écarte ce faux positif tout en
-      // gardant les classes composées habituelles.
-      if(!result.ref)   result.ref   = txt(['[class*="product-id"]','.product-reference','.ref','[class*="-reference"]','[data-reference]']);
-      if(!result.brand) result.brand = 'Schneider Electric';
-      // se.com est un catalogue pro qui n'affiche jamais de prix public —
-      // les deux fallbacks génériques plus bas (sélecteur [class*="price"]
-      // et regex sur tout le texte de la page) tombaient régulièrement sur
-      // un faux positif du type "1 $" sans rapport avec un prix réel
-      // (retour utilisateur). On coupe donc explicitement la recherche de
-      // prix pour ce site plutôt que d'essayer de rendre les fallbacks
-      // génériques infaillibles pour un cas qui n'a de toute façon jamais
-      // de prix à trouver.
-      noPricingSite = true;
-    }
-    if(hostname.includes('wago')){
-      if(!result.ref)   result.ref   = txt(['.article-number','[class*="article"]','[data-article-number]']);
-      if(!result.brand) result.brand = 'WAGO';
-    }
-    if(hostname.includes('siemens')){
-      if(!result.ref)   result.ref   = txt(['.mlfb','[class*="mlfb"]','[class*="article-number"]','[data-mlfb]']);
-      if(!result.brand) result.brand = 'Siemens';
-    }
-    if(hostname.includes('rs-online') || hostname.includes('rs-components')){
-      if(!result.ref)   result.ref   = txt(['.keyAttribute','[class*="stock-no"]','[class*="part-number"]']);
-      if(!result.supplier && !result.brand) result.supplier = 'RS Components';
-    }
-    if(hostname.includes('automation24')){
-      if(!result.supplier) result.supplier = 'Automation24';
-      // La page ne marque en structuré (itemprop="sku") QUE le numéro
-      // d'article INTERNE Automation24 (ex. "104356", "101561") — jamais la
-      // référence du fabricant, qui n'apparaît qu'en texte libre dans le
-      // titre, toujours au format "<catégorie> <marque> <référence>" (vérifié
-      // en vrai : "Capteur inductif Datasensing AK1/AP-3A" → AK1/AP-3A,
-      // "Capteur de pression WIKA A-10 - 12824837" → A-10 - 12824837) —
-      // retour utilisateur : "j'arrive pas à extraire les data produit". On
-      // retire donc la marque (déjà connue à ce stade) et tout ce qui la
-      // précède pour isoler la vraie référence, en écrasant le numéro
-      // interne récupéré plus haut par le repli générique itemprop="sku".
-      if(result.name && result.brand){
-        var a24BrandIdx = result.name.toLowerCase().lastIndexOf(result.brand.toLowerCase());
-        if(a24BrandIdx !== -1){
-          var a24AfterBrand = result.name.slice(a24BrandIdx + result.brand.length).replace(/^[\s\-:]+/, '').trim();
-          if(a24AfterBrand) result.ref = a24AfterBrand;
-        }
-      }
-    }
-    if(hostname.includes('sonepar')){
-      // Référence fournisseur
-      // [data-testid="ref-product-manufacturerRefId"] vérifié EN PREMIER, et
-      // REMPLACE même une valeur déjà trouvée par le repli générique plus
-      // haut (donc PAS de garde "if(!result.ref)" ici, volontairement) —
-      // testé en vrai sur GV2L14 : le sélecteur générique
-      // '[class*="product-ref"]' (repli DOM générique, avant les règles par
-      // site) matche "product-ref**erences**_buttonsContainer", le
-      // CONTENEUR englobant À LA FOIS le bouton "Réf.fab" (référence
-      // fabricant, ce qu'on veut) ET un second bouton "Réf." (référence
-      // INTERNE Sonepar, un identifiant différent) — son .textContent
-      // concatène donc les deux ("CopieRéf.fab GV2L14CopieRéf.
-      // 00002021327"), jamais exploitable, et comme le générique passe
-      // AVANT cette règle-ci, result.ref était déjà "pollué" avant même
-      // d'arriver ici — un simple repli "si rien trouvé" n'aurait donc
-      // jamais pu corriger quoi que ce soit (retour utilisateur, repro
-      // confirmée). Le testid cible directement le bon bouton, sans
-      // ambiguïté.
-      var mfrRefBtn = doc.querySelector('[data-testid="ref-product-manufacturerRefId"]');
-      if(mfrRefBtn){
-        var mfrRef = mfrRefBtn.textContent.replace(/^\s*R[ée]f\.?\s*fab\.?\s*:?\s*/i, '').trim();
-        if(mfrRef) result.ref = mfrRef;
-      }
-      if(!result.ref){
-        var refLabel = doc.querySelector('[class*="supplier-ref"],[data-ref]');
-        if(refLabel) result.ref = refLabel.textContent.trim();
-      }
-      if(!result.ref){
-        // Fallback : meta-keywords contient la ref (ex: "GV2L14,SCH,SCHGV2L14")
-        var kw = doc.querySelector('meta[name="meta-keywords"]') || doc.querySelector('meta[name="keywords"]');
-        if(kw){
-          var kwVal = kw.getAttribute('content') || '';
-          // Prendre le premier token qui ressemble à une ref produit
-          var kwParts = kwVal.split(',');
-          for(var ki=0; ki<kwParts.length; ki++){
-            var kp = kwParts[ki].trim();
-            if(kp.length >= 4 && kp.length <= 20 && /[A-Z][A-Z0-9]/.test(kp) && !/^\d+$/.test(kp)){
-              result.ref = kp; break;
-            }
-          }
-        }
-      }
-      // Nom : meta-title est plus propre que og:title sur Sonepar
-      if(!result.name){
-        var mt = doc.querySelector('meta[name="meta-title"]');
-        if(mt) result.name = mt.getAttribute('content') || '';
-      }
-      // Description Sonepar — chercher dans les metas ET via regex sur HTML brut
-      if(!result.desc){
-        // 1. Via DOMParser (fonctionne si le <head> est présent)
-        var md = doc.querySelector('meta[name="meta-description"]')
-               || doc.querySelector('meta[name="description"]');
-        if(md){
-          var mdVal = md.getAttribute('content') || '';
-          mdVal = mdVal.replace(/&lt;[^&]+&gt;/g,'').replace(/&amp;/g,'&');
-          mdVal = mdVal.replace(/<[^>]+>/g,'');
-          mdVal = mdVal.replace(/\s+/g,' ').trim();
-          if(mdVal.length > 10) result.desc = mdVal;
-        }
-        // 2. Regex sur HTML brut (si le proxy ne retourne pas le <head>)
-        if(!result.desc){
-          var descRegex = /meta[^>]+(?:name=["'](?:meta-)?description["'][^>]+content|content=["']([^"']+)["'][^>]+name=["'](?:meta-)?description)["']\s*([^"']*)/i;
-          var mContent = htmlStr.match(/name=["']meta-description["'][^>]*content=["']([^"']+)["']/i)
-                      || htmlStr.match(/content=["']([^"']+)["'][^>]*name=["']meta-description["']/i)
-                      || htmlStr.match(/name=["']description["'][^>]*content=["']([^"']+)["']/i)
-                      || htmlStr.match(/content=["']([^"']+)["'][^>]*name=["']description["']/i);
-          if(mContent && mContent[1]){
-            var raw = mContent[1];
-            raw = raw.replace(/&lt;[^&]+&gt;/g,'').replace(/&amp;/g,'&').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-            if(raw.length > 10) result.desc = raw;
-          }
-        }
-        // 3. Fallback DOM
-        if(!result.desc){
-          var descEl = doc.querySelector('[class*="description-detaillee"],[class*="product-description"],[class*="long-desc"],[itemprop="description"]');
-          if(descEl) result.desc = descEl.textContent.replace(/\s+/g,' ').trim().slice(0, 500);
-        }
-      }
-      // Marque
-      if(!result.brand) result.brand = 'Schneider Electric'; // défaut Sonepar FR majoritairement SE
-      // Photo : prendre la première image cloudinary PRODUCT/IMAGE
-      if(!result.photo){
-        var imgs = doc.querySelectorAll('img[src*="PRODUCT/IMAGE"]');
-        if(imgs.length > 0) result.photo = imgs[0].getAttribute('src') || '';
-      }
-      if(!result.supplier) result.supplier = 'Sonepar';
     }
 
     // ── Nettoyage de la référence ──────────────────────────────────────
@@ -547,9 +392,17 @@
       }
 
       var specs = {};
+      // "feature" ajouté — testé en vrai sur eshop.weidmueller.com : les 105
+      // lignes de caractéristiques (motif "div de ligne", déjà couvert par
+      // collectPairsFrom) vivent dans un conteneur ".feature-sml", jamais
+      // trouvé sans ce mot-clé (spec/characteristic/technical/attribute
+      // n'y apparaissent nulle part) — aucune caractéristique n'était donc
+      // jamais collectée sur ce site, quelle que soit la structure DOM en
+      // dessous (retour utilisateur : "aucune extraction").
       var targeted = doc.querySelectorAll(
         '[class*="spec" i], [id*="spec" i], [class*="characteristic" i], [id*="characteristic" i], ' +
-        '[class*="technical" i], [id*="technical" i], [class*="attribute" i], [id*="attribute" i]'
+        '[class*="technical" i], [id*="technical" i], [class*="attribute" i], [id*="attribute" i], ' +
+        '[class*="feature" i], [id*="feature" i]'
       );
       for(var si=0; si<targeted.length; si++){
         var found = collectPairsFrom(targeted[si], true);
@@ -675,6 +528,18 @@
     if(result.name)  result.name  = stripJunkPhrases(stripHtml(result.name).replace(/\s+/g,' ').trim());
     if(result.desc)  result.desc  = stripJunkPhrases(stripHtml(result.desc).replace(/\s+/g,' ').trim());
     if(result.price) result.price = stripJunkPhrases(decodeEntities(result.price).replace(/\s+/g,' ').trim());
+    // Repli général : result.photo (LA photo principale, utilisée pour
+    // fPhoto) restait null tant qu'aucune source dédiée (JSON-LD, og:image,
+    // règle par site) ne la remplissait — même quand result.photos[] (la
+    // galerie, elle, alimentée aussi par un simple balayage générique de
+    // toutes les <img> plus haut) avait déjà trouvé la bonne image. Testé
+    // en vrai sur eshop.weidmueller.com : aucun JSON-LD/og:image sur cette
+    // page, mais une <img> de galerie tout à fait normale et valide — sans
+    // ce repli, aucune photo n'était jamais proposée malgré une image
+    // trouvable (retour utilisateur : "il ne peux trouve plus l'image du
+    // produit"). Générique, profite à tout site dans le même cas, pas
+    // seulement Weidmüller.
+    if(!result.photo && result.photos.length) result.photo = result.photos[0];
 
     return result;
   }
