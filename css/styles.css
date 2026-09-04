@@ -1228,13 +1228,13 @@
   #btnFabAdd:hover{ background:var(--copper-deep); border-color:var(--copper-deep); transform:translateY(-2px); }
   #btnFabAdd svg{ width:22px; height:22px; }
   #btnScrollTop{
-    background:var(--ink);
-    border:1px solid var(--ink);
-    color:var(--paper);
+    background:var(--copper);
+    border:1px solid var(--copper);
+    color:#fff;
     opacity:0; visibility:hidden; transform:translateY(8px);
   }
   #btnScrollTop.show{ opacity:1; visibility:visible; transform:translateY(0); }
-  #btnScrollTop:hover{ background:var(--copper); border-color:var(--copper); transform:translateY(-2px); }
+  #btnScrollTop:hover{ background:var(--copper-deep); border-color:var(--copper-deep); transform:translateY(-2px); }
   #btnScrollTop svg{ width:20px; height:20px; }
   
   /* ── Toolbar ≤768px : 2 lignes fixes ────────────────────────── */
