@@ -137,25 +137,34 @@ async function promptAndUploadExtension(file){
   await uploadExtensionPlugin(finalFile);
 }
 
-// Vérifie la version actuellement disponible sur le serveur — requête HEAD
-// (pas un GET complet : inutile de retélécharger tout le zip juste pour lire
-// son nom) — jamais bloquant, jamais d'erreur visible : un simple affichage
-// qui reste silencieux s'il échoue (serveur ne renvoyant pas
-// Content-Disposition sur HEAD, ou pas du tout, par exemple).
+// Vérifie la version actuellement disponible sur le serveur — via
+// "/plugin/file/name" (GET, {"filename": "..."}), un endpoint dédié ajouté
+// par le développeur backend spécifiquement pour ça (voir commentaire
+// _extractVersionFromFilename ci-dessus). Deux raisons à cet endpoint séparé
+// plutôt qu'un simple HEAD sur "/plugin/file" (ancienne approche,
+// abandonnée) :
+//  1. Le nom de fichier arrive ici comme un vrai champ JSON — pas soumis au
+//     blocage CORS par défaut des navigateurs sur la lecture d'en-têtes de
+//     réponse cross-origin (retour utilisateur : "le serveur me donne bien
+//     le nom [...] mais du coup faudra recupere seulement la version").
+//  2. Sur ce serveur, un HEAD sur "/plugin/file" nécessitait quand même de
+//     télécharger le fichier en entier côté serveur pour construire la
+//     réponse (retour utilisateur : "pour afficher la version il fallait
+//     obligatoirement télécharger le fichier") — donc même sans le souci
+//     CORS, ça aurait été un gaspillage de bande passante à chaque simple
+//     affichage de version. "/plugin/file/name" est un vrai raccourci léger.
+// Toujours en best-effort : jamais bloquant, jamais d'erreur visible.
 async function _refreshExtensionVersionDisplay(){
   var sUrl = localStorage.getItem('cat_server_url');
   if(!sUrl) return;
   try{
     var h = Object.assign({}, typeof authHeaders === 'function' ? authHeaders() : {});
     delete h['Content-Type'];
-    var r = await fetch(sUrl + '/plugin/file', { method:'HEAD', headers: h });
+    var r = await fetch(sUrl + '/plugin/file/name', { headers: h });
     if(!r.ok) return;
-    var cd = r.headers.get('Content-Disposition') || r.headers.get('content-disposition');
-    if(!cd) return;
-    var m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
-    if(!m || !m[1]) return;
-    var filename = m[1];
-    try{ filename = decodeURIComponent(filename); }catch(eDecode){}
+    var data = await r.json();
+    var filename = data && data.filename;
+    if(!filename) return;
     var version = _extractVersionFromFilename(filename);
     if(!version) return;
     ['#btnDownloadExtension .mi-sub', '#msDownloadExtension .menu-sheet-sub'].forEach(function(sel){
