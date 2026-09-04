@@ -348,8 +348,24 @@
             countNew++;
           } else {
             oldPrice = existing.price || '';
-            var currentCatForCheck     = normPrice(existing.priceCatalogue || '');
-            var currentSellingForCheck = normPrice(existing.price           || '');
+            // Même repli que l'export (voir "priceCatalogue" plus haut dans
+            // ce fichier, colonne "Prix catalogue (€)") : la plupart des
+            // produits n'ont pas de champ priceCatalogue dédié rempli, le
+            // prix catalogue exporté vient alors du 1er historique de prix.
+            // Sans ce même repli ici, comparer contre existing.priceCatalogue
+            // (vide) trouvait TOUJOURS une "différence" avec la valeur
+            // exportée, même sur un export réimporté sans aucune
+            // modification (retour utilisateur : "il me trouve plein de
+            // différence alors que c'est exactement le même fichier").
+            var existingCatalogue = existing.priceCatalogue
+              || (Array.isArray(existing.priceHistory) && existing.priceHistory.length > 0 ? existing.priceHistory[0].price : '')
+              || '';
+            var currentCatForCheck     = normPrice(existingCatalogue);
+            var currentSellingForCheck = normPrice(existing.price || '');
+            // Même repli que l'export pour la description (stripHtmlTags) —
+            // même raison : existing.desc peut contenir du HTML, jamais égal
+            // à la version texte brut réimportée depuis l'Excel.
+            var existingDescPlain = stripHtmlTags(existing.desc || '');
             var hasChange = (newCataloguePrice && normPrice(newCataloguePrice) !== currentCatForCheck)
               || (newSellingPrice && normPrice(newSellingPrice) !== currentSellingForCheck)
               || (newName     && newName     !== (existing.name     ||''))
@@ -357,7 +373,7 @@
               || (newFamily   && newFamily   !== (existing.family   ||''))
               || (newSeries   && newSeries   !== (existing.series   ||''))
               || (newSupplier && newSupplier !== (existing.supplier ||''))
-              || (newDesc     && newDesc     !== (existing.desc     ||''));
+              || (newDesc     && newDesc     !== existingDescPlain);
             status = hasChange ? 'update' : 'nochange';
             if(hasChange) countUpdate++; else countNoChange++;
           }
