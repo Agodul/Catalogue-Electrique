@@ -83,6 +83,16 @@
     // spi-extension/background.js pour les règles par site).
     var noPricingSite = false;
 
+    // Retour utilisateur : "l'extraction automatique... ça ne remplit pas le
+    // fournisseur" — deux décalages trouvés en comparant cette table à celle,
+    // équivalente, des sites gérés par l'extension (sites/*.json) : Sonepar
+    // manquait ENTIÈREMENT ici (aucune entrée), et Weidmüller n'avait que
+    // l'orthographe SANS le "e" allemand ("weidmuller.com/.fr") alors que le
+    // vrai domaine ("weidmueller.com", ex. eshop.weidmueller.com — testé en
+    // direct plusieurs fois cette session) s'écrit "weidmueller". "Cembre.com"
+    // (avec majuscule) ne pouvait aussi jamais matcher : hostname est TOUJOURS
+    // en minuscules (spec URL), une entrée de table avec une majuscule est
+    // donc du code mort silencieux.
     var supplierMap = {
       'balluff.com'           : 'Balluff',
       'balluff.fr'            : 'Balluff',
@@ -93,6 +103,8 @@
       'se.com'                : 'Schneider Electric',
       'schneider-electric.com': 'Schneider Electric',
       'schneider-electric.fr' : 'Schneider Electric',
+      'sonepar.fr'            : 'Sonepar',
+      'sonepar.com'           : 'Sonepar',
       'ifm.com'               : 'IFM',
       'pepperl-fuchs.com'     : 'Pepperl+Fuchs',
       'pepperl-fuchs.fr'      : 'Pepperl+Fuchs',
@@ -105,6 +117,7 @@
       'smc.eu'                : 'SMC',
       'smc.fr'                : 'SMC',
       'rs-online.com'         : 'RS Components',
+      'rs-components.com'     : 'RS Components',
       'rs-components.fr'      : 'RS Components',
       'distrelec.fr'          : 'Distrelec',
       'conrad.fr'             : 'Conrad',
@@ -113,6 +126,10 @@
       'farnell.com'           : 'Farnell',
       'element14.com'         : 'Farnell',
       'automation24.fr'       : 'Automation24',
+      'automation24.com'      : 'Automation24',
+      'automation24.de'       : 'Automation24',
+      'weidmueller.com'       : 'Weidmüller',
+      'weidmueller.fr'        : 'Weidmüller',
       'weidmuller.com'        : 'Weidmüller',
       'weidmuller.fr'         : 'Weidmüller',
       'wago.com'              : 'WAGO',
@@ -135,7 +152,7 @@
       'leuze.com'             : 'Leuze',
       'leuze.fr'              : 'Leuze',
       'carlo-gavazzi.com'     : 'Carlo Gavazzi',
-      'Cembre.com'            : 'Cembre',
+      'cembre.com'            : 'Cembre',
     };
     for(var domain in supplierMap){
       if(hostname === domain || hostname.endsWith('.' + domain)){
