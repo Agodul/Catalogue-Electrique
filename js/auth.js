@@ -655,20 +655,33 @@ function applyAuthUI() {
     var el = document.getElementById(id);
     if(el) el.style.display = isAdmin ? '' : 'none';
   });
-  // Export Excel — si permission canExport
+  // Export Excel — même accès que l'import (retour utilisateur : "le export
+  // devrait être accessible aussi [si] tu as accès à l'import excel") —
+  // aucune action destructive ni écriture ici (juste une lecture des
+  // produits déjà visibles dans le catalogue, voir btnExportXlsx dans
+  // js/actions-import-export.js, sans aucune vérification de permission au
+  // clic), donc pas de raison de le restreindre plus que l'import.
   var btnExportXlsxEl = document.getElementById('btnExportXlsx');
-  if(btnExportXlsxEl) btnExportXlsxEl.style.display = canExport ? '' : 'none';
-  // Import Excel — si permission canExport (édition directe) OU droit de
+  if(btnExportXlsxEl) btnExportXlsxEl.style.display = (canEdit || canPropose) ? '' : 'none';
+  // Import Excel — si droit d'édition directe (canEdit, comme
+  // hasDirectEditRights dans js/actions-import-export.js) OU droit de
   // proposer (l'import passe alors par le circuit de demandes — jamais
-  // d'écriture directe au catalogue pour ces utilisateurs).
+  // d'écriture directe au catalogue pour ces utilisateurs). Basé sur
+  // canEdit et non canExport (retour utilisateur : "je veux que import
+  // excel si pas canEdit alors passe en proposition") — canExport ne
+  // contrôlait en réalité QUE l'export, le code d'import lui-même a
+  // toujours décidé via canEdit/isAdmin ; l'affichage ici ne correspondait
+  // donc pas au comportement réel (ex. un utilisateur avec canEdit mais
+  // sans canExport ne voyait même pas le bouton, alors que l'import aurait
+  // pourtant écrit directement pour lui).
   var btnImportXlsxEl = document.getElementById('btnImportXlsx');
-  if(btnImportXlsxEl) btnImportXlsxEl.style.display = (canExport || canPropose) ? '' : 'none';
+  if(btnImportXlsxEl) btnImportXlsxEl.style.display = (canEdit || canPropose) ? '' : 'none';
   // Sous-titre adapté à la conséquence réelle pour CET utilisateur (retour
   // utilisateur : le texte doit correspondre à la permission) — l'import
-  // écrit directement le catalogue pour canExport, mais passe par une
+  // écrit directement le catalogue pour canEdit, mais passe par une
   // demande à valider par un admin pour un simple "proposeur".
   var btnImportXlsxSub = document.getElementById('btnImportXlsxSub');
-  if(btnImportXlsxSub) btnImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
+  if(btnImportXlsxSub) btnImportXlsxSub.textContent = canEdit ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
   // Cacher les titres de rubrique ("Données"/"Outils") et leur séparateur
   // quand TOUS les boutons qu'ils annoncent sont masqués — sans ça un titre
   // pouvait rester affiché seul, sans aucun bouton dessous (retour
@@ -708,7 +721,12 @@ function applyAuthUI() {
   var _btnReqMenu = document.getElementById('btnRequestsMenu');
   var _reqMenuSep = document.getElementById('reqMenuSep');
   var _sUrl       = localStorage.getItem('cat_server_url') || '';
-  var _showReq    = loggedIn && !!_sUrl;
+  // Masqué pour un utilisateur qui peut éditer directement (canEdit) — il
+  // n'a jamais besoin de passer par le circuit de demandes pour modifier un
+  // produit, donc rien à y suivre (retour utilisateur). Les admins le
+  // voient toujours (ils traitent les demandes des AUTRES), tout comme un
+  // utilisateur sans droit d'édition (lui doit passer par une demande).
+  var _showReq    = loggedIn && !!_sUrl && (isAdmin || !canEdit);
   if(_btnReqMenu) _btnReqMenu.style.display = _showReq ? '' : 'none';
   if(_reqMenuSep) _reqMenuSep.style.display = _showReq ? '' : 'none';
   // Sous-titre : les admins y traitent les demandes REÇUES des autres
@@ -717,6 +735,12 @@ function applyAuthUI() {
   // contenu du panneau lui-même de la même façon).
   var _btnReqMenuSub = document.getElementById('btnRequestsMenuSub');
   if(_btnReqMenuSub) _btnReqMenuSub.textContent = isAdmin ? 'Modifications proposées' : 'Suivi de vos demandes';
+  // Titre du bouton lui-même, pas seulement son sous-titre (retour
+  // utilisateur : un non-admin n'y voit QUE ses propres demandes/bugs — le
+  // libellé doit le refléter, "Demandes en attente" laissant à tort penser
+  // qu'il y a une file d'attente à traiter comme pour un admin).
+  var _btnReqMenuTitle = document.getElementById('btnRequestsMenuTitle');
+  if(_btnReqMenuTitle) _btnReqMenuTitle.textContent = isAdmin ? 'Demandes en attente' : 'Mes demandes en attente';
   if(!loggedIn){
     var _badge     = document.getElementById('requestsBadge');
     var _badgeMenu = document.getElementById('requestsBadgeMenu');
@@ -871,7 +895,7 @@ function _renderUserList(container, users, isServer) {
     } else {
       var permList = [
         ['canEdit','Éditer'],['canDelete','Supprimer'],['canViewDocs','Docs'],
-        ['canExport','Export']
+        ['canUploadDocs','Envoyer docs']
       ];
       permList.forEach(function(p) {
         var active = !!perms[p[0]];
@@ -936,15 +960,27 @@ function openAddUserModal() {
     ['canDelete',      'Supprimer des produits'],
     ['canViewDocs',    'Voir les documents PDF'],
     ['canUploadDocs',  'Envoyer des documents PDF'],
-    ['canExport',      'Exporter le catalogue']
     // canSyncServer retiré : sync serveur manuelle strictement admin
     // désormais, plus une permission accordable (voir _defaultPermissions).
+    // canExport gardé mais désactivé (retour utilisateur : "remet le
+    // canExport dans la liste mais faut griser sa case et changer son
+    // intitulé") : ne contrôle plus rien depuis que l'accès à Export/Import
+    // Excel suit canEdit (voir commentaires sur btnImportXlsx/btnExportXlsx
+    // plus haut dans ce fichier) — gardée visible pour ne pas faire
+    // disparaître silencieusement une permission encore présente sur des
+    // comptes existants, mais grisée pour ne pas laisser croire qu'elle
+    // change encore quelque chose.
+    ['canExport',      'Exporter le catalogue (obsolète, sans effet)']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
+    var isLegacy = p[0] === 'canExport';
     var checked = p[0] === 'canViewDocs' ? ' checked' : '';
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:2px 0;">'
-      + '<input type="checkbox" class="_nuPerm" data-perm="'+p[0]+'"'+checked+'> '+p[1]+'</label>';
+    var disabled = isLegacy ? ' disabled' : '';
+    var labelColor = isLegacy ? 'var(--ink-soft)' : 'var(--ink)';
+    var cursor = isLegacy ? 'default' : 'pointer';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:2px 0;">'
+      + '<input type="checkbox" class="_nuPerm" data-perm="'+p[0]+'"'+checked+disabled+'> '+p[1]+'</label>';
   }).join('');
 
   var ov = document.createElement('div');
@@ -1057,17 +1093,23 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     ['canDelete',      'Supprimer des produits'],
     ['canViewDocs',    'Voir les documents PDF'],
     ['canUploadDocs',  'Envoyer des documents PDF'],
-    ['canExport',      'Exporter le catalogue']
     // canSyncServer retiré : sync serveur manuelle strictement admin
     // désormais, plus une permission accordable (voir _defaultPermissions).
+    // canExport gardé mais désactivé — voir commentaire équivalent dans
+    // openAddUserModal() juste au-dessus dans ce fichier.
+    ['canExport',      'Exporter le catalogue (obsolète, sans effet)']
   ];
 
   var permCheckboxes = PERM_LIST.map(function(p) {
+    var isLegacy  = p[0] === 'canExport';
     var checked   = currentPerms[p[0]] ? ' checked' : '';
+    var disabled  = isLegacy ? ' disabled' : '';
+    var labelColor = isLegacy ? 'var(--ink-soft)' : 'var(--ink)';
+    var cursor    = isLegacy ? 'default' : 'pointer';
     var permKey   = _escapeHtml(p[0]);
     var permLabel = _escapeHtml(p[1]);
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:3px 0;">'
-      + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+'> '+permLabel+'</label>';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:3px 0;">'
+      + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+disabled+'> '+permLabel+'</label>';
   }).join('');
 
   var ov = document.createElement('div');

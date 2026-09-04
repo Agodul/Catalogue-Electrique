@@ -501,8 +501,13 @@
       function show(id, v){ var el=document.getElementById(id); if(el) el.style.display=v?'':'none'; }
       show('msExport',     isAdmin);
       show('msImport',     isAdmin);
-      show('msExportXlsx', canExport);
-      show('msImportXlsx', canExport || canPropose);
+      // Même accès que l'import — miroir exact de btnExportXlsx côté
+      // desktop (js/auth.js).
+      show('msExportXlsx', canEdit || canPropose);
+      // Basé sur canEdit (comme hasDirectEditRights dans
+      // js/actions-import-export.js), pas canExport — miroir exact de
+      // btnImportXlsx côté desktop (js/auth.js).
+      show('msImportXlsx', canEdit || canPropose);
       show('msCleanDescs', isAdmin);
       show('msCompare',    true);
       // Miroir mobile de #btnDownloadExtension (menu ⋮ desktop, voir
@@ -510,7 +515,9 @@
       show('msDownloadExtension', loggedIn);
       // Miroir mobile de #btnUploadExtension — ADMIN uniquement.
       show('msUploadExtension', isAdmin);
-      show('msRequests',   loggedIn && !!sUrl);
+      // Masqué pour un utilisateur qui peut éditer directement (canEdit) —
+      // miroir exact de _showReq côté desktop (js/auth.js).
+      show('msRequests',   loggedIn && !!sUrl && (isAdmin || !canEdit));
       // Signaler un bug : ouvert à TOUT utilisateur connecté avec serveur
       // (pas seulement les admins) — un bug peut être trouvé par n'importe
       // qui, même sans droit d'édition. Miroir exact de btnReportBug côté
@@ -521,9 +528,12 @@
       // Sous-titres adaptés à la conséquence réelle pour CET utilisateur
       // (retour utilisateur) — miroir exact de js/auth.js côté desktop.
       var msImportXlsxSub = document.getElementById('msImportXlsxSub');
-      if(msImportXlsxSub) msImportXlsxSub.textContent = canExport ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
+      if(msImportXlsxSub) msImportXlsxSub.textContent = canEdit ? 'Mise à jour des prix' : 'Propose une mise à jour (validation admin)';
       var msRequestsSub = document.getElementById('msRequestsSub');
       if(msRequestsSub) msRequestsSub.textContent = isAdmin ? 'Modifications proposées' : 'Suivi de vos demandes';
+      // Miroir exact de btnRequestsMenuTitle côté desktop (js/auth.js).
+      var msRequestsTitle = document.getElementById('msRequestsTitle');
+      if(msRequestsTitle) msRequestsTitle.textContent = isAdmin ? 'Demandes en attente' : 'Mes demandes en attente';
       // Miroir exact de btnSettingsSub côté desktop (js/auth.js).
       var msSettingsSub = document.getElementById('msSettingsSub');
       if(msSettingsSub) msSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';

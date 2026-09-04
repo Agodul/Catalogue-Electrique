@@ -866,11 +866,16 @@
       var prodRaw = dProd.items || [];
 
       // /pullBugs ne documente aucun paramètre "user" (seulement id/date) —
-      // contrairement à /pullDatasReq. Hypothèse : le serveur scope déjà la
-      // réponse via le token d'auth envoyé dans les headers (admin = tout,
-      // utilisateur normal = ses propres rapports), comme c'est l'usage pour
-      // une API dédiée avec authentification. À vérifier côté serveur si
-      // cette liste s'avère incomplète ou trop large en pratique.
+      // contrairement à /pullDatasReq. L'hypothèse de départ était que le
+      // serveur scope déjà la réponse via le token d'auth envoyé dans les
+      // headers (admin = tout, utilisateur normal = ses propres rapports) —
+      // CONFIRMÉE FAUSSE en pratique (retour utilisateur : connecté avec un
+      // compte non-admin, la fenêtre "Demandes en attente" est identique à
+      // celle d'un admin) : le serveur renvoie TOUS les bugs à TOUT le monde,
+      // sans tenir compte du token. Filtre client ajouté ci-dessous en filet
+      // de sécurité, sur le même principe que le "?user=" déjà envoyé à
+      // /pullDatasReq — sans lui, un utilisateur normal verrait les bugs
+      // signalés par les AUTRES en plus des siens dans "Mes demandes".
       var bugItemsRaw = [];
       try {
         var rBugs = await fetch(sUrl + '/pullBugs', { headers: h, cache: 'no-store' });
@@ -879,7 +884,7 @@
           bugItemsRaw = Array.isArray(dBugs) ? dBugs : (dBugs && (dBugs.items || dBugs.data)) || [];
         }
       } catch(eBugs){ console.warn('reqLoadMineList: /pullBugs indisponible', eBugs); }
-      var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem);
+      var bugRaw = bugItemsRaw.map(_reqNormalizeBugItem).filter(function(it){ return it.user === username; });
 
       var mineProduct = prodRaw.filter(function(it){ return (it.data||{}).type !== 'bug'; });
       var mineBugs     = bugRaw.concat(prodRaw.filter(function(it){ return (it.data||{}).type === 'bug'; }));
@@ -969,6 +974,12 @@
   // propres soumissions), indépendamment de l'onglet (type) sélectionné.
   function reqRefreshPanel(){
     var isAdmin = reqIsAdmin();
+    // Titre de la fenêtre lui-même (pas seulement le bouton qui l'ouvre,
+    // voir btnRequestsMenuTitle dans js/auth.js) — même logique, pour ne pas
+    // laisser un non-admin sur un titre générique "Demandes en attente" qui
+    // suggère à tort une file d'attente à traiter comme pour un admin.
+    var panelTitle = document.getElementById('requestsPanelTitle');
+    if(panelTitle) panelTitle.textContent = isAdmin ? 'Demandes en attente' : 'Mes demandes en attente';
     if(isAdmin){
       reqLoadAdminList(_reqPanelTab);
     } else {
