@@ -231,7 +231,11 @@
 
   function renderPriceHistory(product){ /* géré par la modale prix */ }
   function resetForm(){
-    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value=''; if(chkShowHtml){ chkShowHtml.checked=false; } if(htmlSourceContent){ htmlSourceContent.style.display='none'; }
+    // chkShowHtml/htmlSourceContent n'existent plus (retour utilisateur :
+    // "je voudrai supprimer le mode collé le code source", voir
+    // js/templates.js/js/modal-core.js) — fHtml reste à vider, c'est
+    // toujours un rouage interne du moteur d'extraction générique.
+    fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value='';
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'svg-generique';
     _setFamilyIconPreview('svg-generique');

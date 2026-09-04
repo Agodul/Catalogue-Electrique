@@ -486,8 +486,17 @@ function _armoireListItemHtml(entry, kind){
     + '</div>'
     + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:none;background:var(--copper);color:#fff;font-size:11px;font-weight:700;font-style:normal;line-height:1;cursor:pointer;flex-shrink:0;">i</button>'
     + '<button type="button" class="' + actionClass + '" style="padding:5px 9px;border-radius:7px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">' + actionLabel + '</button>'
-    + (canEditEntry ? '<button type="button" class="' + editClass + '" title="Modifier" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>' : '')
-    + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
+    // Retour utilisateur : "faudrai faire en sorte que le bouton edition et
+    // suppression [soient] plus mis en avant" — avant, icône seule sans
+    // fond ni bordure (juste var(--ink-soft), la même couleur que le texte
+    // secondaire des lignes) : difficiles à repérer/toucher à côté du bouton
+    // "Insérer" plein et du rond bleu "i", nettement plus visibles. Même
+    // principe de fond teinté + bordure que le reste de l'app (ex. badges
+    // "Nettoyer descriptions"/danger du menu ⋮) : bleu pour Modifier
+    // (cohérent avec le "i" déjà bleu), rouge pour Supprimer (signale une
+    // action destructrice, cohérent avec customConfirm({danger:true})).
+    + (canEditEntry ? '<button type="button" class="' + editClass + '" title="Modifier" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;background:#EFF6FF;border:1px solid #C7D9F5;border-radius:7px;color:#194093;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>' : '')
+    + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:7px;color:#DC2626;font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
     + '</div>';
 }
 
@@ -1071,7 +1080,11 @@ async function _armoireDeleteBlock(id){
     if(typeof showToast === 'function') showToast('Droit de suppression requis', 'err', 3000);
     return;
   }
-  if(!(await customConfirm('Supprimer ce bloc ?', '', { okLabel: 'Supprimer', danger: true }))) return;
+  // Retour utilisateur : "pour tout ce qui est suppression de produit etc.
+  // faudrait préciser que c'est irréversible" — ce popup n'avait auparavant
+  // aucun message du tout (chaîne vide), rien n'indiquait que c'était
+  // définitif.
+  if(!(await customConfirm('Supprimer ce bloc ?', 'Ce bloc sera supprimé définitivement. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true }))) return;
   _armoireApi('/configBlocks/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchBlocks(); })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -1083,7 +1096,7 @@ async function _armoireDeleteSavedConfig(id){
     if(typeof showToast === 'function') showToast('Droit de suppression requis', 'err', 3000);
     return;
   }
-  if(!(await customConfirm('Supprimer cette configuration ?', '', { okLabel: 'Supprimer', danger: true }))) return;
+  if(!(await customConfirm('Supprimer cette configuration ?', 'Cette configuration sera supprimée définitivement. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true }))) return;
   _armoireApi('/configSavedConfigs/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchSavedConfigs(); })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -1491,7 +1504,7 @@ function _armoireClose(){
   var clearBtn = document.getElementById('armoireConfigClearBtn');
   if(clearBtn) clearBtn.addEventListener('click', async function(){
     if(!_armoireDraft.length) return;
-    if(!(await customConfirm('Vider la configuration en cours ?', '', { okLabel: 'Vider', danger: true }))) return;
+    if(!(await customConfirm('Vider la configuration en cours ?', 'Toutes les références ajoutées seront retirées. Cette opération est irréversible.', { okLabel: 'Vider', danger: true }))) return;
     if(_armoireEditingEntry){
       // Vider pendant une édition = l'abandonner — restaure la
       // configuration en cours mise de côté (voir _armoireCancelEditEntry)

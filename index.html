@@ -166,6 +166,7 @@
 <script src="js/actions-settings-nav.js" defer></script>
 <script src="js/actions-backup.js" defer></script>
 <script src="js/actions-compare.js" defer></script>
+<script src="js/actions-plugin-download.js" defer></script>
 <script src="js/actions-import-export.js" defer></script>
 <script src="js/actions-home.js" defer></script>
 <script src="js/actions-conflicts.js" defer></script>
@@ -261,6 +262,26 @@
         <button class="hdr-menu-item" id="btnCompare">
           <span class="mi-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
           <span class="mi-texts"><span class="mi-title">Comparer les offres</span><span class="mi-sub">Importer les fichiers fournisseurs</span></span>
+        </button>
+        <!-- Distribution de l'extension Chrome depuis le serveur (API
+             "/plugin/file" ajoutée par le développeur backend) — retour
+             utilisateur : "mettre à disposition l'extension [...] à tous
+             les user loggin". Visible dès qu'on est connecté, pas
+             seulement admin (voir js/auth.js) — c'est un simple
+             téléchargement, pas une action de gestion. -->
+        <button class="hdr-menu-item" id="btnDownloadExtension" style="display:none;">
+          <span class="mi-icon" style="background:#EFF6FF;"><i class="ti ti-puzzle" style="color:#194093;"></i></span>
+          <span class="mi-texts"><span class="mi-title">Télécharger l'extension</span><span class="mi-sub">Extension Chrome SPI Catalogue</span></span>
+        </button>
+        <!-- Envoi d'une nouvelle version (POST /plugin/file) — ADMIN
+             uniquement (retour utilisateur : "faudrai pouvoir ajouter
+             depuis le client mais seulement pour les admins") : remplace le
+             fichier que TOUS les utilisateurs téléchargent ensuite via le
+             bouton ci-dessus, une portée qui dépasse un simple compte
+             utilisateur normal. -->
+        <button class="hdr-menu-item" id="btnUploadExtension" style="display:none;">
+          <span class="mi-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
+          <span class="mi-texts"><span class="mi-title">Envoyer une nouvelle version</span><span class="mi-sub">Remplace le fichier distribué à tous</span></span>
         </button>
         <div class="hdr-menu-sep"></div>
         <button class="hdr-menu-item" id="btnRequestsMenu" style="display:none;">
@@ -844,6 +865,9 @@
 
 <input type="file" id="fileImport" accept="application/json" style="display:none;">
 <input type="file" id="fileImportXlsx" accept=".xlsx,.xls" style="display:none;">
+<!-- Envoi d'une nouvelle version de l'extension (POST /plugin/file, admin
+     uniquement) — voir js/actions-plugin-download.js. -->
+<input type="file" id="fileUploadExtension" accept=".zip,application/zip" style="display:none;">
 
   <!-- ── Popup installation PWA ────────────────────────────────────── -->
   <div id="pwaInstallBanner" style="
@@ -928,19 +952,26 @@
     <button id="authCloseBtn" title="Fermer"><i class="ti ti-x" aria-hidden="true"></i></button>
     <div class="auth-box-header">
       <div class="auth-logo"><i class="ti ti-lock" aria-hidden="true"></i></div>
-      <h2>
+      <div style="position:relative;">
         <!-- Flèche "retour au menu" (voir js/actions-core.js — window._setHeaderBackMode)
-             — masquée par défaut, affichée à gauche du titre uniquement
-             quand la connexion a été ouverte depuis le tiroir menu mobile,
-             à la place de la croix en haut à droite. Même bouton
-             (.win-back-btn, 22×22) qu'ailleurs, pour une taille cohérente —
-             la mise en page centrée (logo au-dessus du titre) de cette
-             fenêtre est structurellement différente des autres, donc la
-             flèche ne peut pas tomber au même x/y exact que sur les
-             en-têtes en bandeau, mais reste à gauche du titre "Connexion"
-             quel qu'en soit le contenu. -->
-        <button id="authBackBtn" class="win-back-btn" style="vertical-align:middle;margin-right:2px;" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
-        Connexion</h2>
+             — masquée par défaut, affichée uniquement quand la connexion a
+             été ouverte depuis le tiroir menu mobile, à la place de la
+             croix en haut à droite. Positionnée en absolu (ancrée sur ce
+             wrapper autour du seul <h2>, pas tout .auth-box) plutôt qu'en
+             ligne avec le titre — retour utilisateur : "recentre le
+             connexion" — la mettre EN LIGNE avec "Connexion" décalait le
+             texte vers la droite dès que la flèche apparaissait (le titre
+             n'était alors plus vraiment centré, juste le bloc flèche+titre
+             pris ensemble). En absolu, elle n'influence plus du tout le
+             centrage du texte, qui reste toujours au milieu — et un essai
+             encore plus éloigné, ancré sur toute la boîte au même niveau
+             que la croix, avait déjà été tenté puis annulé (retour
+             utilisateur : "se rend pas bien", trop détaché visuellement du
+             titre) : ancrée ici sur le titre lui-même, à sa hauteur exacte
+             quel que soit son contenu, sans valeur codée en dur. -->
+        <button id="authBackBtn" class="win-back-btn" style="position:absolute;left:0;top:50%;transform:translateY(-50%);" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+        <h2>Connexion</h2>
+      </div>
       <p>Accès réservé</p>
     </div>
     <div class="auth-fields">
@@ -1085,6 +1116,16 @@
     <button class="menu-sheet-item" id="msCompare">
       <span class="menu-sheet-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
       <span class="menu-sheet-texts"><span class="menu-sheet-title">Comparer les offres</span><span class="menu-sheet-sub">Importer les fichiers fournisseurs</span></span>
+    </button>
+    <!-- Miroir mobile de #btnDownloadExtension (menu ⋮ desktop, voir plus haut). -->
+    <button class="menu-sheet-item" id="msDownloadExtension" style="display:none;">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-puzzle" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Télécharger l'extension</span><span class="menu-sheet-sub">Extension Chrome SPI Catalogue</span></span>
+    </button>
+    <!-- Miroir mobile de #btnUploadExtension (menu ⋮ desktop) — admin uniquement. -->
+    <button class="menu-sheet-item" id="msUploadExtension" style="display:none;">
+      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Envoyer une nouvelle version</span><span class="menu-sheet-sub">Remplace le fichier distribué à tous</span></span>
     </button>
     <button class="menu-sheet-item danger" id="msCleanDescs">
       <span class="menu-sheet-icon" style="background:#FEF2F2;"><i class="ti ti-eraser" style="color:#DC2626;"></i></span>

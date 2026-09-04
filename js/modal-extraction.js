@@ -616,6 +616,19 @@
       }
       fHtml.value = r.html;
       document.getElementById('btnExtract').click();
+      // Champs/caractéristiques DÉJÀ résolus côté extension (site reconnu
+      // dans sites/*.json, moteur interpreter.js) — retour utilisateur :
+      // "seule l'extension doit choisir la bonne règle [...] j'ai besoin de
+      // tous les éléments". PRIORITAIRES sur ce que btnExtract vient de
+      // trouver via le parsing générique de cette page (même mécanisme de
+      // priorité que le pont localStorage, voir _applyExtractedFields/
+      // _applyExtractedSpecs dans js/init.js, réutilisées ici telles
+      // quelles) — le parsing générique ci-dessus reste la base (photos de
+      // la galerie, repli si l'extension n'a rien trouvé pour ce champ ou
+      // que le site n'est pas dans sites/*.json), pas remplacé, seulement
+      // complété/corrigé champ par champ.
+      if(typeof window._applyExtractedFields === 'function') window._applyExtractedFields(r.fields);
+      if(typeof window._applyExtractedSpecs === 'function') window._applyExtractedSpecs(r.specs, true);
       setExtractLoading(false);
       hintEl.style.color  = '#059669';
       hintEl.textContent  = '✓ Extraction réussie !';

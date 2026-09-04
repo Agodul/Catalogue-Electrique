@@ -95,6 +95,66 @@
     return false;
   }
 
+  // ── Application de champs/caractéristiques DÉJÀ RÉSOLUS côté extension ──
+  // Factorisé ici plutôt que dupliqué : deux ponts DIFFÉRENTS reçoivent le
+  // même genre de données résolues par l'extension (sites/*.json +
+  // interpreter.js) et doivent les appliquer au formulaire de la MÊME
+  // façon — le pont localStorage (triggerExtensionExtraction ci-dessous,
+  // déclenché depuis une page fournisseur) et le pont événementiel
+  // "Extraire depuis un lien" (js/modal-extraction.js, spi_extract_url_result).
+  // Retour utilisateur : "seule l'extension doit choisir la bonne règle" —
+  // ces deux fonctions ne FONT que poser dans le formulaire ce que
+  // l'extension a déjà décidé, aucune connaissance de site ici.
+
+  // Caractéristiques : PRIORITAIRES sur ce que btnExtract vient de trouver
+  // via le parsing HTML basique du Catalogue (extractFromHtml/collectSpecs :
+  // seulement tr/td, dt/dd et paires de div simples), remplacées par le
+  // résultat du moteur plus robuste de l'extension (Shadow DOM, grilles
+  // CSS, label/span, onglet Caractéristiques…) — retour utilisateur : "il
+  // faut que tous les paramètres pour avoir le maximum de fiabilité se
+  // fasse du côté de l'extension". autoSpecs=false vide plutôt qu'ignore
+  // (réglage "Importer aussi les caractéristiques techniques" de
+  // l'extension, désactivé) — ne concerne QUE les ponts extension : coller
+  // le code source à la main continue de tout extraire, comme avant.
+  window._applyExtractedSpecs = function(pendingSpecs, autoSpecs){
+    if(!autoSpecs){
+      if(typeof window._specsRows !== 'undefined' && window._specsRows.length){
+        window._specsRows = [];
+        if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
+      }
+      return;
+    }
+    if(pendingSpecs && typeof pendingSpecs === 'object' && Object.keys(pendingSpecs).length){
+      window._specsRows = Object.keys(pendingSpecs).map(function(k){
+        return { key: k, value: pendingSpecs[k] };
+      });
+      if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
+    }
+  };
+
+  // Champs nom/référence/marque/fournisseur/description/photo : PRIORITAIRES
+  // sur ce que btnExtract vient de trouver via le parsing HTML générique du
+  // Catalogue, un par un (un champ absent de pendingFields, ex. l'extension
+  // n'a rien trouvé pour la description sur ce site, garde la valeur que
+  // btnExtract avait déjà posée — jamais de vide qui écraserait un résultat
+  // correct).
+  window._applyExtractedFields = function(pendingFields){
+    if(!pendingFields || typeof pendingFields !== 'object') return;
+    if(pendingFields.name && fName)   fName.value   = pendingFields.name;
+    if(pendingFields.ref && fRef)     fRef.value    = pendingFields.ref;
+    if(pendingFields.brand && fBrand) fBrand.value  = pendingFields.brand;
+    if(pendingFields.supplier && fSupplier) fSupplier.value = pendingFields.supplier;
+    if(pendingFields.desc && fDesc){
+      fDesc.value = pendingFields.desc;
+      if(typeof renderTagSuggestions === 'function') renderTagSuggestions();
+    }
+    if(pendingFields.photo && fPhoto){
+      fPhoto.value = pendingFields.photo;
+      if(typeof updatePhotoPreview === 'function') updatePhotoPreview();
+    }
+    if((pendingFields.ref || pendingFields.brand) && typeof checkDuplicateRef === 'function') checkDuplicateRef();
+  };
+
   // ═══════════════════════════════════════════════════════════════
   //  EXTENSION CHROME — Injection via localStorage
   //  Le content script de l'extension écrit le HTML complet de la
@@ -189,53 +249,12 @@
         // Déclencher le même bouton que le copier-coller manuel
         document.getElementById('btnExtract').click();
         // btnExtract remplit _specsRows de façon synchrone (extractFromHtml
-        // ne fait aucun appel asynchrone) — vider juste après si le réglage
-        // "Importer aussi les caractéristiques techniques" est désactivé
-        // côté extension (retour utilisateur : ça importait parfois des
-        // infos sans rapport avec le produit). Ne concerne QUE ce chemin
-        // (extension) : coller le code source à la main continue de tout
-        // extraire, comme avant.
-        if(!autoSpecs){
-          if(typeof window._specsRows !== 'undefined' && window._specsRows.length){
-            window._specsRows = [];
-            if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
-          }
-        } else if(pendingSpecs && typeof pendingSpecs === 'object' && Object.keys(pendingSpecs).length){
-          // Caractéristiques extraites côté extension disponibles (voir
-          // plus haut) — PRIORITAIRES sur ce que btnExtract vient de
-          // trouver via le parsing HTML basique du Catalogue
-          // (extractFromHtml/collectSpecs : seulement tr/td, dt/dd et
-          // paires de div simples), remplacées ici par le résultat du
-          // moteur plus robuste de l'extension (Shadow DOM, grilles CSS,
-          // label/span, onglet Caractéristiques…) — retour utilisateur :
-          // "il faut que tous les paramètres pour avoir le maximum de
-          // fiabilité se fasse du côté de l'extension".
-          window._specsRows = Object.keys(pendingSpecs).map(function(k){
-            return { key: k, value: pendingSpecs[k] };
-          });
-          if(typeof window._specsRenderRows === 'function') window._specsRenderRows();
-        }
-        // Champs nom/référence/marque/description/photo extraits côté
-        // extension — PRIORITAIRES sur ce que btnExtract vient de trouver
-        // via le parsing HTML générique du Catalogue, un par un (un champ
-        // absent de pendingFields, ex. l'extension n'a rien trouvé pour la
-        // description sur ce site, garde la valeur que btnExtract avait
-        // déjà posée — jamais de vide qui écraserait un résultat correct).
-        if(pendingFields && typeof pendingFields === 'object'){
-          if(pendingFields.name && fName)   fName.value   = pendingFields.name;
-          if(pendingFields.ref && fRef)     fRef.value    = pendingFields.ref;
-          if(pendingFields.brand && fBrand) fBrand.value  = pendingFields.brand;
-          if(pendingFields.supplier && fSupplier) fSupplier.value = pendingFields.supplier;
-          if(pendingFields.desc && fDesc){
-            fDesc.value = pendingFields.desc;
-            if(typeof renderTagSuggestions === 'function') renderTagSuggestions();
-          }
-          if(pendingFields.photo && fPhoto){
-            fPhoto.value = pendingFields.photo;
-            if(typeof updatePhotoPreview === 'function') updatePhotoPreview();
-          }
-          if((pendingFields.ref || pendingFields.brand) && typeof checkDuplicateRef === 'function') checkDuplicateRef();
-        }
+        // ne fait aucun appel asynchrone) — appliquer par-dessus les
+        // caractéristiques/champs déjà résolus côté extension (voir les
+        // deux fonctions partagées ci-dessous, réutilisées aussi par le pont
+        // événementiel "Extraire depuis un lien", js/modal-extraction.js).
+        _applyExtractedSpecs(pendingSpecs, autoSpecs);
+        _applyExtractedFields(pendingFields);
         showToast('Extraction depuis l\'extension Chrome ✓', 'ok', 3500);
       }, 300);
     }, 700);

@@ -8,15 +8,11 @@
   var fSupplier  = document.getElementById('fSupplier');
   var fLeadTime  = document.getElementById('fLeadTime');
   var fUrl = document.getElementById('fUrl');
+  // #fHtml reste un rouage interne du moteur d'extraction générique
+  // (jamais affiché ni actionné à la main désormais — retour utilisateur :
+  // "je voudrai supprimer le mode collé le code source", voir
+  // js/templates.js) : plus de case à cocher à câbler ici.
   var fHtml = document.getElementById('fHtml');
-  var chkShowHtml = document.getElementById('chkShowHtml');
-  var htmlSourceContent = document.getElementById('htmlSourceContent');
-  if(chkShowHtml){
-    chkShowHtml.addEventListener('change', function(){
-      htmlSourceContent.style.display = chkShowHtml.checked ? 'block' : 'none';
-      if(chkShowHtml.checked){ fHtml.focus(); }
-    });
-  }
   var fName = document.getElementById('fName');
   var fDesc = document.getElementById('fDesc');
 

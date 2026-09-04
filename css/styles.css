@@ -151,11 +151,16 @@
     position:absolute; top:calc(100% + 8px); right:0;
     background:var(--paper-card); border:1px solid var(--line);
     border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.14);
-    /* Un peu plus large qu'avant (248→280px) : les lignes passent en
+    /* Un peu plus large qu'avant (248→280px→300px) : les lignes passent en
        cartes à bordure comme #settingsMainBody (voir plus bas), qui ont
        besoin d'un peu plus de place que de simples lignes pleine largeur
-       pour ne pas paraître comprimées. */
-    width:280px; max-width:calc(100vw - 24px);
+       pour ne pas paraître comprimées. 300px (retour utilisateur : "que
+       tous les bouton fasse bien tous la même hauteur") — à 280px, le titre
+       le plus long ("Envoyer une nouvelle version") passait sur 2 lignes
+       par ~5px, rendant CETTE seule carte plus haute que toutes les
+       autres ; mesuré en vrai (largeur naturelle du texte ~193px contre
+       188px de place disponible à 280px) plutôt que deviné. */
+    width:300px; max-width:calc(100vw - 24px);
     padding:10px; z-index:60;
     display:none;
   }
@@ -2246,6 +2251,22 @@
     background:none; border:none; cursor:pointer; padding:0; margin:0;
     color:var(--ink); font-size:18px; line-height:1;
     border-radius:4px; transition:background .12s;
+  }
+  /* Le "min-height" annoncé dans le commentaire ci-dessus n'avait en fait
+     jamais été posé — seul le padding l'avait été. Conséquence mesurée en
+     vrai : Comparateur/Paramètres (icône dans un <h3>, sans taille forcée)
+     faisaient 59px de haut, Signaler un bug/Demandes (structure de titre
+     légèrement différente — icône à taille fixe à côté d'un <span>, pas
+     dans le <h3>) tombaient à 58px — 1px d'écart selon la fenêtre, invisible
+     au premier coup d'œil mais bien réel. Fixé ici en dur plutôt que de
+     dépendre du contenu de chaque en-tête. #requestsPanel n'a pas de classe
+     dédiée sur son en-tête (juste des styles en ligne, voir js/templates.js)
+     — ciblé par sa position dans le DOM plutôt que d'ajouter une classe
+     rien que pour ça. */
+  .compare-header, .settings-header,
+  #bugReportOverlay .modal-head,
+  #requestsPanel > div:first-child{
+    min-height:59px;
   }
   .win-back-btn:hover{ background:var(--paper); }
   .win-header-titlewrap{ display:flex; align-items:center; gap:10px; min-width:0; }

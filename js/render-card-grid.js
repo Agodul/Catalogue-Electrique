@@ -133,7 +133,7 @@
       }
     }
 
-    var confirmed = await customConfirm('Supprimer ce produit ?', '« '+escapeHtml(p.name||p.ref)+' » sera supprimé définitivement du catalogue.', { okLabel: 'Supprimer', danger: true });
+    var confirmed = await customConfirm('Supprimer ce produit ?', '« '+escapeHtml(p.name||p.ref)+' » sera supprimé définitivement du catalogue. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true });
     if(confirmed){
       var ref = p.ref;
       var sUrl = localStorage.getItem('cat_server_url');

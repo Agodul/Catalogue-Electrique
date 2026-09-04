@@ -505,6 +505,11 @@
       show('msImportXlsx', canExport || canPropose);
       show('msCleanDescs', isAdmin);
       show('msCompare',    true);
+      // Miroir mobile de #btnDownloadExtension (menu ⋮ desktop, voir
+      // js/auth.js) — visible pour tout utilisateur connecté.
+      show('msDownloadExtension', loggedIn);
+      // Miroir mobile de #btnUploadExtension — ADMIN uniquement.
+      show('msUploadExtension', isAdmin);
       show('msRequests',   loggedIn && !!sUrl);
       // Signaler un bug : ouvert à TOUT utilisateur connecté avec serveur
       // (pas seulement les admins) — un bug peut être trouvé par n'importe
@@ -526,7 +531,7 @@
       // Cacher sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }
       var dataIds=['msExport','msImport','msExportXlsx','msImportXlsx'];
-      var toolIds=['msCompare','msCleanDescs'];
+      var toolIds=['msCompare','msDownloadExtension','msUploadExtension','msCleanDescs'];
       var titles = document.querySelectorAll('#menuSheet .menu-sheet-section-title');
       var seps   = document.querySelectorAll('#menuSheet .menu-sheet-sep');
       if(titles[0]) titles[0].style.display = allHidden(dataIds) ? 'none' : '';

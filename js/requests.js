@@ -918,7 +918,7 @@
           var id = btn.getAttribute('data-req-cancel-id') || '';
           var isBug = btn.getAttribute('data-req-cancel-bug') === '1';
           var attachmentId = btn.getAttribute('data-req-cancel-attachment') || null;
-          if(!(await customConfirm('Annuler la demande ?', 'Annuler la demande pour ' + escapeHtml(ref) + ' ?', { okLabel: 'Annuler la demande', danger: true }))) return;
+          if(!(await customConfirm('Annuler la demande ?', 'Annuler la demande pour ' + escapeHtml(ref) + ' ? Cette opération est irréversible.', { okLabel: 'Annuler la demande', danger: true }))) return;
           btn.disabled = true;
           // Rapport de bug → API dédiée (reqCancelBug), sinon demande
           // produit classique (reqCancel) — deux stockages désormais
@@ -1288,7 +1288,7 @@
 
     var btnRefuse = document.getElementById('btnRefuseAllRequests');
     if(btnRefuse) btnRefuse.addEventListener('click', async function(){
-      if(!(await customConfirm('Refuser toutes les demandes ?', '', { okLabel: 'Refuser tout', danger: true }))) return;
+      if(!(await customConfirm('Refuser toutes les demandes ?', 'Toutes les demandes en attente seront rejetées. Cette opération est irréversible.', { okLabel: 'Refuser tout', danger: true }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
       var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });

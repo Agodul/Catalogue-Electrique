@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260904090801";
+const CACHE = "spi-catalogue-v20260904134015";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -119,6 +119,7 @@ const FILES = [
   "./js/actions-home.js",
   "./js/actions-import-export.js",
   "./js/actions-mobile-chrome.js",
+  "./js/actions-plugin-download.js",
   "./js/actions-save.js",
   "./js/actions-search.js",
   "./js/actions-settings-nav.js",

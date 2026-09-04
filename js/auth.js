@@ -558,6 +558,18 @@ function applyAuthUI() {
   var btnFabArmoireConfig = document.getElementById('btnFabArmoireConfig');
   if (btnFabArmoireConfig) btnFabArmoireConfig.style.display = loggedIn ? '' : 'none';
 
+  // Téléchargement de l'extension Chrome (menu ⋮) — visible pour TOUT
+  // utilisateur connecté, pas seulement admin (retour utilisateur : "mettre
+  // à disposition l'extension [...] à tous les user loggin"), voir
+  // js/actions-plugin-download.js.
+  var btnDownloadExtension = document.getElementById('btnDownloadExtension');
+  if (btnDownloadExtension) btnDownloadExtension.style.display = loggedIn ? '' : 'none';
+  // Envoi d'une nouvelle version : ADMIN uniquement (retour utilisateur :
+  // "faudrai pouvoir ajouter depuis le client mais seulement pour les
+  // admins") — remplace le fichier distribué à tout le monde.
+  var btnUploadExtension = document.getElementById('btnUploadExtension');
+  if (btnUploadExtension) btnUploadExtension.style.display = isAdmin ? '' : 'none';
+
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
   var canPropose = loggedIn && !canEdit && !!_sUrlReq;
@@ -643,7 +655,7 @@ function applyAuthUI() {
     });
   }
   var _hdrDataIds = ['btnExport','btnImport','btnExportXlsx','btnImportXlsx'];
-  var _hdrToolIds = ['btnCompare','btnCleanDescs'];
+  var _hdrToolIds = ['btnCompare','btnDownloadExtension','btnUploadExtension','btnCleanDescs'];
   var _hdrTitles  = document.querySelectorAll('#hdrMenu .hdr-menu-section-title');
   var _hdrSeps    = document.querySelectorAll('#hdrMenu .hdr-menu-sep');
   if(_hdrTitles[0]) _hdrTitles[0].style.display = _hdrAllHidden(_hdrDataIds) ? 'none' : '';
@@ -875,7 +887,7 @@ function _renderUserList(container, users, isServer) {
   container.querySelectorAll('.btnDelUser').forEach(function(btn) {
     btn.addEventListener('click', async function() {
       var uname = this.getAttribute('data-user');
-      if (!(await customConfirm('Supprimer cet utilisateur ?', 'L\'utilisateur « ' + escapeHtml(uname) + ' » sera supprimé définitivement.', { okLabel: 'Supprimer', danger: true }))) return;
+      if (!(await customConfirm('Supprimer cet utilisateur ?', 'L\'utilisateur « ' + escapeHtml(uname) + ' » sera supprimé définitivement. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true }))) return;
       var ok = await authDeleteUser(uname);
       if (ok) { showAuthToast('Utilisateur supprimé ✓'); renderUserPage(); }
       else showAuthToast('Erreur suppression', 'err', 3000);
