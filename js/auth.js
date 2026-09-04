@@ -309,6 +309,14 @@ async function authLogin(username, password) {
       if (typeof showHome === 'function') showHome();
       document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
+      // Version de l'extension affichée sur le bouton "Télécharger
+      // l'extension" (js/actions-plugin-download.js) : l'appel fait au
+      // chargement du script échoue silencieusement si l'utilisateur n'était
+      // pas déjà connecté à ce moment-là (l'API est authentifiée) — sans ce
+      // rappel ici, le sous-texte de version resterait vide jusqu'au
+      // prochain rechargement complet de la page (retour utilisateur :
+      // "faut attendre que le user se connecte").
+      if (typeof window._refreshExtensionVersionDisplay === 'function') window._refreshExtensionVersionDisplay();
       // Démarrer le polling demandes si admin (garde déjà l'admin/serveur en
       // interne — ne fait plus qu'autoriser les notifications navigateur,
       // voir requests.js : le premier /checkReq+/checkBugs immédiat qu'elle
