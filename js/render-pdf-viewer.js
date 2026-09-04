@@ -210,11 +210,36 @@
     if(_pdfSearchCurrentIndex < 0) return;
     var marks = document.querySelectorAll('#pdfViewerPages mark[data-match-index="' + _pdfSearchCurrentIndex + '"]');
     marks.forEach(function(m){ m.classList.add('pdf-search-hit-current'); });
-    // Pas besoin de passer par _pdfGoToPage/sa suppression de détection :
-    // scrollIntoView déclenche de vrais événements 'scroll' que
-    // _pdfDetectCurrentPageFromScroll interprète très bien tout seul pour
-    // garder "X / Y" (nav de page) juste, sans logique spéciale ici.
-    if(scrollToIt && marks.length) marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // "X / Y" (nav de page) mis à jour directement depuis la page RÉELLE du
+    // résultat (déjà connue : _pdfSearchMatches[...].pageIdx) plutôt que
+    // laissée à la détection de scroll (_pdfDetectCurrentPageFromScroll,
+    // basée sur "le haut de la page a-t-il franchi le haut du viewport ?") —
+    // retour utilisateur : "les recherches sur un pdf ne fonctionnent plus
+    // correctement". scrollIntoView({block:'center'}) centre le résultat
+    // mais ne fait pas toujours défiler jusqu'à franchir la frontière de la
+    // page suivante (résultat proche du haut de sa page) : le numéro de page
+    // affiché restait alors bloqué sur l'ancienne page alors que le résultat
+    // affiché à l'écran était bien sur la nouvelle — repéré en testant une
+    // recherche dont le résultat se trouvait en page 2 pendant qu'on était
+    // sur la page 1 : "1 / 2" restait affiché malgré le contenu de la page 2
+    // clairement visible à l'écran.
+    var match = _pdfSearchMatches[_pdfSearchCurrentIndex];
+    if(match && match.pageIdx !== _pdfCurrentPage){
+      _pdfCurrentPage = match.pageIdx;
+      _pdfUpdatePageNavUI();
+    }
+    if(scrollToIt && marks.length){
+      // Suppression de la détection libre pendant l'anim (même mécanisme que
+      // _pdfGoToPage, voir _pdfSuppressScrollDetect plus bas) : sans ça, les
+      // événements 'scroll' intermédiaires du scrollIntoView animé
+      // recalculaient une page "de transition" (pas encore arrivée) et
+      // écrasaient la valeur déjà correcte fixée juste au-dessus, provoquant
+      // un scintillement du numéro de page pendant l'animation.
+      _pdfSuppressScrollDetect = true;
+      clearTimeout(_pdfScrollEndTimer);
+      _pdfScrollEndTimer = setTimeout(function(){ _pdfSuppressScrollDetect = false; }, 500);
+      marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   function _pdfRunSearch(query){

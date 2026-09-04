@@ -92,9 +92,23 @@
           throw new Error('HTTP ' + r.status + errDetail);
         }
         showToast('Sauvegarde restaurée ✓ — rechargement du catalogue…', 'ok', 3000);
-        // Le contenu du serveur a potentiellement tout changé — recharger
-        // depuis zéro plutôt que de tenter une fusion différentielle.
-        setTimeout(function(){ if(typeof syncFromServer === 'function') syncFromServer(false); }, 800);
+        // Le contenu du serveur a potentiellement TOUT changé (catalogue,
+        // blocs/configurations armoire, demandes en attente, bugs) — pas
+        // seulement le catalogue. Reprend exactement la même séquence que
+        // doCheckAllSync() (js/actions-settings-sync.js) quand elle détecte
+        // un changement, plutôt que le seul syncFromServer(false) d'avant :
+        // celui-ci est un pull DIFFÉRENTIEL, qui ne peut jamais voir une
+        // suppression (voir commentaire de doCheckAllSync) — une
+        // restauration vers un état plus ancien, par nature, en comporte
+        // potentiellement beaucoup (produits, configs, etc. qui n'existaient
+        // pas encore dans la sauvegarde restaurée).
+        setTimeout(function(){
+          if(typeof syncFromServer === 'function') syncFromServer(false);
+          if(typeof syncDeletions === 'function') syncDeletions();
+          if(typeof _armoireFetchBlocks === 'function') _armoireFetchBlocks();
+          if(typeof _armoireFetchSavedConfigs === 'function') _armoireFetchSavedConfigs();
+          if(typeof window._reqUpdateBadge === 'function') window._reqUpdateBadge();
+        }, 800);
       }catch(e){
         showToast('Erreur lors de la restauration : '+e.message, 'err', 4000);
       }finally{

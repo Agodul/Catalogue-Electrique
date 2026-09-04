@@ -592,11 +592,21 @@
         <div id="serverTestResult" style="display:none;padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
 
         <div id="serverButtonsSection" style="border-top:1px solid var(--line);padding-top:16px;margin-top:16px;">
+          <!-- Visible à tout utilisateur connecté (pas seulement admin, voir
+               js/auth.js) : ne fait que rapatrier l'état du serveur dans
+               l'affichage LOCAL de la personne qui clique, jamais l'inverse —
+               contrairement à "Envoyer" ci-dessous, aucun risque pour les
+               autres utilisateurs ou pour le serveur. Sert de filet de
+               secours pour se resynchroniser manuellement en attendant une
+               resynchronisation automatique (retour utilisateur : après une
+               restauration de sauvegarde par un admin, les autres clients ne
+               voient pas la modification avant un correctif serveur — voir
+               js/actions-settings-sync.js/doCheckAllSync). -->
           <button id="btnSyncFromServer" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;color:var(--ink);">
-            ↓ Charger depuis le serveur maintenant
+            <i class="ti ti-download" aria-hidden="true"></i> Charger depuis le serveur maintenant
           </button>
           <button id="btnPushToServer" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;margin-top:6px;color:var(--ink);">
-            ↑ Envoyer le catalogue local au serveur
+            <i class="ti ti-upload" aria-hidden="true"></i> Envoyer le catalogue local au serveur
           </button>
         </div>
 

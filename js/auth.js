@@ -529,14 +529,35 @@ function applyAuthUI() {
   if (btnSettingsSub) btnSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
 
   // Sync serveur manuelle ("Charger depuis le serveur"/"Envoyer le catalogue
-  // local au serveur") — strictement admin, PAS de permission granulaire
-  // configurable ici (retour utilisateur : un dev/admin peut se tromper et
-  // l'activer pour tout le monde côté serveur — ces deux boutons écrasent
-  // respectivement tout products[] local ou tout le catalogue serveur, un
-  // risque trop élevé pour dépendre d'un simple flag serveur). Même
-  // traitement que serverAdminBackupSection juste en dessous.
+  // local au serveur") — désormais scindée en deux niveaux d'accès distincts
+  // (retour utilisateur : après une restauration de sauvegarde par un admin,
+  // les autres utilisateurs connectés n'ont aucun moyen de forcer une
+  // resynchronisation en attendant le correctif serveur du "changedAt" —
+  // voir doCheckAllSync, js/actions-settings-sync.js) :
+  //  - "Charger depuis le serveur" (btnSyncFromServer) : accessible à TOUT
+  //    utilisateur connecté. Ne fait que rapatrier l'état serveur dans
+  //    l'affichage LOCAL de la personne qui clique (products = data.items,
+  //    voir js/actions-settings-nav.js) — aucun risque pour les autres
+  //    utilisateurs ni pour le serveur, contrairement à "Envoyer" ci-dessous.
+  //  - "Envoyer le catalogue local au serveur" (btnPushToServer) : reste
+  //    strictement admin, PAS de permission granulaire configurable ici
+  //    (retour utilisateur historique : un dev/admin peut se tromper et
+  //    l'activer pour tout le monde côté serveur — ce bouton écrase tout le
+  //    catalogue serveur avec la copie locale de qui clique, un risque trop
+  //    élevé pour dépendre d'un simple flag serveur). Même traitement que
+  //    serverAdminBackupSection juste en dessous.
   var serverButtonsSection = document.getElementById('serverButtonsSection');
-  if (serverButtonsSection) serverButtonsSection.style.display = isAdmin ? '' : 'none';
+  if (serverButtonsSection) serverButtonsSection.style.display = loggedIn ? '' : 'none';
+  var btnPushToServer = document.getElementById('btnPushToServer');
+  // 'flex' explicite (pas '') : ce bouton a display:flex dans son attribut
+  // style HTML pour aligner son icône + son texte — remettre '' n'efface
+  // QUE la propriété display du style inline, retombant sur le display
+  // par défaut d'un <button> (inline-block), pas sur le display:flex
+  // d'origine. Repéré en testant : le texte semblait centré au lieu
+  // d'aligné à gauche comme "Charger depuis le serveur" (retour
+  // utilisateur : "le envoyer le catalogue local au serveur est encore
+  // centrer").
+  if (btnPushToServer) btnPushToServer.style.display = isAdmin ? 'flex' : 'none';
 
   // Récupérer les permissions granulaires
   var perms = (user && user.permissions) || {};
