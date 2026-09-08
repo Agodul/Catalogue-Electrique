@@ -44,21 +44,25 @@ fi
 #
 # Les .min.js vont dans FILES_DEFERRED : ce sont les bibliothèques lourdes
 # auto-hébergées (PDF.js, SheetJS, ExcelJS, JSZip), téléchargées après
-# l'activation plutôt que pendant l'installation.
+# l'activation plutôt que pendant l'installation. Les .bcmap (js/cmaps/,
+# tables de correspondance PDF.js pour les polices intégrées en Identity-H/V
+# — voir getDocument() dans js/render-pdf-viewer.js) suivent le même
+# traitement : uniquement utiles au moment d'ouvrir un PDF, pas au
+# chargement initial de l'app.
 ALL_FILES=$(find . \
     \( -name .git -o -name node_modules -o -name tools \) -prune -o \
     -type f \( -name '*.js'   -o -name '*.css'  -o -name '*.html' \
             -o -name '*.webmanifest' -o -name '*.png' -o -name '*.ico' \
             -o -name '*.svg'  -o -name '*.mp4'  -o -name '*.webm' \
-            -o -name '*.woff' -o -name '*.woff2' \) -print \
+            -o -name '*.woff' -o -name '*.woff2' -o -name '*.bcmap' \) -print \
   | sed 's|^\./||' \
   | grep -v '^sw\.js$' \
   | grep -v '^\.' \
   | grep -v '/\.' \
   | LC_ALL=C sort)
 
-SHELL_FILES=$(echo "$ALL_FILES" | grep -v '\.min\.js$' || true)
-LIB_FILES=$(echo "$ALL_FILES" | grep    '\.min\.js$' || true)
+SHELL_FILES=$(echo "$ALL_FILES" | grep -Ev '\.min\.js$|\.bcmap$' || true)
+LIB_FILES=$(echo "$ALL_FILES" | grep -E '\.min\.js$|\.bcmap$' || true)
 
 if [ -z "$SHELL_FILES" ]; then
   echo "Erreur : aucun fichier trouvé à mettre en cache — mauvais dossier ?" >&2

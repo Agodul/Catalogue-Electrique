@@ -419,7 +419,14 @@ function _armoireRenderSearchResults(query){
 
   var all = window.products || [];
   var results = all.filter(function(p){
-    return normalizeSearch(p.ref || '').indexOf(norm) !== -1 || normalizeSearch(p.name || '').indexOf(norm) !== -1;
+    // Tags inclus dans la recherche, comme sur le catalogue principal
+    // (voir getFilteredProducts/scoreProductMatch, js/storage.js) — retour
+    // utilisateur : "ajouter la recherche par tags dans le configurateur
+    // d'armoire".
+    var tags = normalizeSearch((p.tags || []).join(' '));
+    return normalizeSearch(p.ref || '').indexOf(norm) !== -1
+        || normalizeSearch(p.name || '').indexOf(norm) !== -1
+        || tags.indexOf(norm) !== -1;
   }).slice(0, 60);
   if(!results.length){
     el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:16px 8px;">Aucun résultat.</div>';

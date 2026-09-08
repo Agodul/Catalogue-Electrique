@@ -1,6 +1,13 @@
 // ---------- Init ----------
   load();
   render();
+  // Capturé AVANT showHome() ci-dessous, qui remet toujours ce drapeau à
+  // "0" en interne (voir window._setViewAll, js/storage.js) — sinon la
+  // restauration plus bas ("Restaurer 'Voir tout le catalogue' si actif
+  // avant F5") ne se déclenchait JAMAIS : sessionStorage était déjà remis à
+  // "0" par showHome() avant même d'être relu (retour utilisateur :
+  // "corriger l'affichage du catalogue complet [...] même après un F5").
+  var _wasViewAllBeforeInit = sessionStorage.getItem('cat_view_all') === '1';
   // S'assurer que catalogueWrap est caché et homePage visible au démarrage
   var _cw = document.getElementById('catalogueWrap');
   var _hp = document.getElementById('homePage');
@@ -31,8 +38,10 @@
     }
   }
 
-  // Restaurer "Voir tout le catalogue" si actif avant F5
-  if(sessionStorage.getItem('cat_view_all') === '1'){
+  // Restaurer "Voir tout le catalogue" si actif avant F5 — utilise la
+  // valeur capturée AVANT showHome() (voir _wasViewAllBeforeInit plus haut),
+  // pas une relecture de sessionStorage qui serait maintenant toujours "0".
+  if(_wasViewAllBeforeInit){
     setTimeout(function(){
       if(typeof showCatalogueAll === 'function') showCatalogueAll();
     }, 100);

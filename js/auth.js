@@ -300,6 +300,13 @@ async function authLogin(username, password) {
   if (sUrl) {
     var serverUser = await authLoginServer(username, password);
     if (serverUser) {
+      // Capturé AVANT showHome() plus bas, qui remet toujours ce drapeau à
+      // "0" (voir window._setViewAll, js/storage.js) — sinon un utilisateur
+      // qui consultait "Voir tout le catalogue" avant de se connecter se
+      // retrouvait renvoyé sur l'accueil après connexion, sans lien avec ce
+      // qu'il regardait (retour utilisateur : "corriger l'affichage du
+      // catalogue complet lors de la connexion").
+      var _wasViewAllBeforeLogin = sessionStorage.getItem('cat_view_all') === '1';
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
@@ -307,6 +314,7 @@ async function authLogin(username, password) {
       if (typeof render === 'function') render();
       if (typeof renderHome === 'function') renderHome();
       if (typeof showHome === 'function') showHome();
+      if (_wasViewAllBeforeLogin && typeof showCatalogueAll === 'function') showCatalogueAll();
       document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
       // Version de l'extension affichée sur le bouton "Télécharger

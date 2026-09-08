@@ -242,6 +242,23 @@
     }
   }
 
+  // Position visuelle réelle (haut, gauche) du premier fragment de texte
+  // touché par une correspondance — utilisée pour trier les résultats d'une
+  // page dans l'ordre de LECTURE (haut → bas), qui ne correspond pas
+  // toujours à l'ordre dans lequel le contenu du PDF a été trouvé (voir
+  // _pdfRunSearch juste en dessous).
+  function _pdfMatchVisualPosition(info, m){
+    var offsets = info.searchOffsets || [];
+    for(var i = 0; i < offsets.length; i++){
+      var o = offsets[i];
+      if(Math.max(m.start, o.start) < Math.min(m.end, o.end)){
+        var r = o.span.getBoundingClientRect();
+        return { top: r.top, left: r.left };
+      }
+    }
+    return { top: 0, left: 0 };
+  }
+
   function _pdfRunSearch(query){
     _pdfClearSearchHighlights();
     _pdfSearchQuery = (query || '').trim();
@@ -250,13 +267,29 @@
     if(normQuery){
       _pdfPageInfos.forEach(function(info, pageIdx){
         if(!info.searchText) return;
+        var pageMatches = [];
         var idx = 0;
         while(true){
           idx = info.searchText.indexOf(normQuery, idx);
           if(idx === -1) break;
-          _pdfSearchMatches.push({ pageIdx: pageIdx, start: idx, end: idx + normQuery.length });
+          pageMatches.push({ pageIdx: pageIdx, start: idx, end: idx + normQuery.length });
           idx += 1; // autorise les correspondances qui se chevauchent (ex. "aa" dans "aaa")
         }
+        // Trie les résultats de CETTE page par position visuelle réelle
+        // (haut puis gauche) plutôt que par ordre d'apparition dans le
+        // texte extrait du PDF — cet ordre suit les opérateurs de dessin du
+        // flux PDF, qui ne va pas forcément de haut en bas (tableaux,
+        // colonnes, documents générés par certains outils) (retour
+        // utilisateur : "je recherche capteur, je fais suivant, ça saute
+        // pas sur le capteur juste en dessous du premier"). Sans ce tri, la
+        // flèche "suivant" pouvait sauter dans le désordre visuel au lieu
+        // de descendre naturellement la page.
+        pageMatches.forEach(function(m){ m._pos = _pdfMatchVisualPosition(info, m); });
+        pageMatches.sort(function(a, b){
+          if(Math.abs(a._pos.top - b._pos.top) > 2) return a._pos.top - b._pos.top;
+          return a._pos.left - b._pos.left;
+        });
+        pageMatches.forEach(function(m){ delete m._pos; _pdfSearchMatches.push(m); });
       });
     }
     _pdfHighlightAllMatches();
@@ -615,11 +648,26 @@
       info._needsSharpen = false;
 
       if(info.renderTask) info.renderTask.cancel();
-      info.canvas.width  = viewport.width;
-      info.canvas.height = viewport.height;
-      var task = info.page.render({ canvasContext: info.canvas.getContext('2d'), viewport: viewport });
+      // Rendu dans un canvas hors-écran, PUIS copie sur le canvas visible
+      // une fois terminé — plutôt que redimensionner le canvas visible
+      // directement AVANT de le redessiner (retour utilisateur : "lorsque
+      // je change de page des éléments clignotent"). Réassigner
+      // canvas.width/height EFFACE immédiatement son contenu (comportement
+      // natif du <canvas>), bien avant que le rendu asynchrone n'ait
+      // produit le moindre pixel — la page affichait donc un flash de fond
+      // blanc à chaque page nouvellement rendue nette pendant un
+      // défilement. Le canvas visible ne change JAMAIS de contenu tant que
+      // le nouveau rendu n'est pas intégralement prêt.
+      var offscreen = document.createElement('canvas');
+      offscreen.width  = viewport.width;
+      offscreen.height = viewport.height;
+      var task = info.page.render({ canvasContext: offscreen.getContext('2d'), viewport: viewport });
       info.renderTask = task;
-      task.promise.catch(function(e){ if(e && e.name !== 'RenderingCancelledException') console.warn('[PDF] re-rendu échoué:', e); });
+      task.promise.then(function(){
+        info.canvas.width  = offscreen.width;
+        info.canvas.height = offscreen.height;
+        info.canvas.getContext('2d').drawImage(offscreen, 0, 0);
+      }).catch(function(e){ if(e && e.name !== 'RenderingCancelledException') console.warn('[PDF] re-rendu échoué:', e); });
     });
   }
 
@@ -748,7 +796,21 @@
       // PDF.js transfère (détache) l'ArrayBuffer passé à getDocument — on lui
       // donne une copie pour que le buffer mis en cache (préchargement au
       // survol du bouton "Voir") reste réutilisable aux ouvertures suivantes.
-      var pdf = await window.pdfjsLib.getDocument({ data: ab.slice(0) }).promise;
+      // cMapUrl/cMapPacked : nécessaire pour toute police intégrée en
+      // encodage Identity-H/V (LE cas standard pour une police TrueType
+      // "sous-ensemble" intégrée par la plupart des générateurs de PDF —
+      // pas seulement les polices asiatiques) — sans ça, PDF.js échoue
+      // silencieusement à charger la police concernée (retour utilisateur,
+      // messages console : "loadFont - translateFont failed [...] The CMap
+      // 'baseUrl' parameter must be specified"). Fichiers vendorisés dans
+      // js/cmaps/ (paquet officiel pdfjs-dist, même version que pdf.min.js/
+      // pdf.worker.min.js — voir leur version commune, 3.11.174) pour rester
+      // utilisable hors-ligne comme le reste de l'app.
+      var pdf = await window.pdfjsLib.getDocument({
+        data: ab.slice(0),
+        cMapUrl: 'js/cmaps/',
+        cMapPacked: true
+      }).promise;
       _pdfCurrentDoc = pdf;
       var containerWidth = ((scrollEl && scrollEl.parentElement) ? scrollEl.parentElement.clientWidth : 800) - 24;
       var dpr = window.devicePixelRatio || 1;
