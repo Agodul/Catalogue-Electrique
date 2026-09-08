@@ -548,6 +548,7 @@
   var _vmMenuTimer = null;
   var _lazyScrollHandler = null;
   var _lazyClickBound = false; // délégation du bouton « Afficher plus », posée une fois
+  var _cardAnimEndBound = false; // libération de will-change après l'entrée en cascade, posée une fois
 
   // fastPath=true : appelé depuis la recherche texte, qui ne change jamais
   // le périmètre des marques/familles/séries → on saute leur reconstruction.
@@ -682,6 +683,30 @@
       contentEl.addEventListener('click', function(e){
         var moreBtn = e.target.closest && e.target.closest('.btn-load-more');
         if(moreBtn && typeof window._loadMoreCards === 'function') window._loadMoreCards();
+      });
+    }
+
+    // Libère le calque GPU (will-change) de chaque carte une fois son
+    // animation d'entrée terminée — retour utilisateur : "chute de FPS"
+    // après F5 + "Voir tout le catalogue". will-change:opacity,transform
+    // (css/styles.css, .card) force le navigateur à promouvoir CHAQUE carte
+    // sur son propre calque de composition dès son insertion dans le DOM ;
+    // rien ne le retirait jamais une fois l'animation finie (,42s + un
+    // décalage progressif par carte). En mode "Voir tout"/recherche, qui
+    // charge des centaines voire des milliers de cartes au fil du défilement
+    // ("Afficher plus"), ça laissait s'accumuler indéfiniment des centaines
+    // de calques GPU vivants — chacun consommant mémoire et temps de
+    // composition à CHAQUE frame, bien après que l'animation qui le
+    // justifiait soit terminée. Un style inline après coup passe devant la
+    // règle CSS (will-change:auto) sans la modifier, donc les PROCHAINES
+    // cartes insérées par un futur render() profitent quand même de l'effet
+    // dès leur propre apparition.
+    if(!_cardAnimEndBound){
+      _cardAnimEndBound = true;
+      contentEl.addEventListener('animationend', function(e){
+        if(e.animationName === 'cardEnter' && e.target.classList.contains('card')){
+          e.target.style.willChange = 'auto';
+        }
       });
     }
 

@@ -219,6 +219,14 @@
       if(locked) el.setAttribute('disabled', 'disabled');
       else el.removeAttribute('disabled');
     });
+    // Le déverrouillage ci-dessus réactive TOUS les champs sans distinction
+    // — réapplique le verrouillage de la référence s'il s'agit de la revue
+    // d'une modification sur un produit existant (voir _openReviewModal,
+    // js/modal-request-review.js), qui doit rester grisée même en mode
+    // "Modifier" de la revue.
+    if(window._reviewMode && typeof window._setFRefLocked === 'function'){
+      window._setFRefLocked(locked || !!window._reviewIsExistingProduct);
+    }
     var btnCancelEl        = document.getElementById('btnCancel');
     var btnSaveEl          = document.getElementById('btnSave');
     var btnReviewRefuseEl  = document.getElementById('btnReviewRefuse');

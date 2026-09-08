@@ -31,6 +31,12 @@
         + (match.name ? ' — « ' + match.name + ' »' : '') + '.';
       refDupTooltipEl.textContent = dupMsg;
       refDupBannerEl.textContent  = dupMsg;
+      // Champ lui-même mis en rouge, pas seulement l'icône/le bandeau —
+      // retour utilisateur : "si une référence existe déjà, que sa case
+      // passe au rouge". Même convention que les champs requis invalides
+      // ailleurs dans l'app (ex. auth.js, REQ_BORDER).
+      fRef.style.border = '1.5px solid #DC2626';
+      fRef.style.background = '#FEF2F2';
       // Le bandeau s'affiche uniquement au tap sur l'icône (mobile)
       btnSave.disabled = true;
       btnSave.style.opacity = '0.4';
@@ -42,6 +48,8 @@
       refDupTooltipEl.textContent = '';
       refDupBannerEl.textContent  = '';
       refDupBannerEl.classList.remove('open');
+      fRef.style.border = '';
+      fRef.style.background = '';
       btnSave.disabled = false;
       btnSave.style.opacity = '';
       btnSave.style.cursor  = '';

@@ -114,6 +114,18 @@
     resetForm();
     fillFormFromProduct(p);
     _formOriginalSnapshot = _formSnapshotNow();
+    // Référence grisée pour la revue d'une MODIFICATION (le produit existe
+    // déjà, la changer casserait les liens vers l'ancienne réf) — pas pour
+    // la revue d'une proposition de NOUVEAU produit, où rien n'existe encore
+    // (retour utilisateur : "est-ce qu'elle est aussi grisée pour les
+    // propositions de modif etc." — étend le verrouillage de openModal(),
+    // js/modal-autocomplete.js, à ce flux de revue qui ne passe pas par
+    // cette fonction). Mémorisé sur window pour que _reviewSetLocked
+    // (js/modal-specs-editor.js) puisse le réappliquer après un
+    // déverrouillage "Modifier", qui sinon réactive TOUS les champs sans
+    // distinction.
+    window._reviewIsExistingProduct = !isNew;
+    if(typeof window._setFRefLocked === 'function') window._setFRefLocked(!isNew);
     modalTitle.textContent = (isNew ? 'Nouveau produit : ' : 'Modification proposée : ') + (p.ref || '');
     modalLeftFoot.textContent = 'Soumis par ' + user + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
     var btnSave = document.getElementById('btnSave');

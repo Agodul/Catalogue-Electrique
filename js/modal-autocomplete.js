@@ -119,6 +119,30 @@
     updatePriceDisplay();
   }
 
+  // Référence grisée (non modifiable) dès que le formulaire porte sur un
+  // produit qui EXISTE déjà — retour utilisateur : "lorsqu'on veut éditer
+  // une fiche produit la référence soit grisée", étendu ensuite à "est-ce
+  // qu'elle est aussi grisée pour les propositions de modif etc." — donc
+  // aussi bien la modification directe (openModal) que la revue d'une
+  // demande de modification par un admin (_openReviewModal,
+  // js/modal-request-review.js), pas seulement l'édition directe.
+  // La changer sur une fiche existante casserait silencieusement tout ce
+  // qui pointe vers l'ancienne réf (historique de prix, documents joints,
+  // suggestions/pièces de rechange d'AUTRES fiches qui la référencent) —
+  // jamais un souci en création (produit ou proposition de nouveau
+  // produit), où rien n'y pointe encore. Exposée globalement (window.) car
+  // appelée aussi bien d'ici que de js/modal-request-review.js.
+  window._setFRefLocked = function(locked){
+    fRef.disabled = !!locked;
+    fRef.style.background = locked ? '#F3F4F6' : '';
+    fRef.style.color      = locked ? 'var(--ink-soft)' : '';
+    fRef.style.cursor     = locked ? 'not-allowed' : '';
+    fRef.title = locked ? 'La référence ne peut plus être modifiée une fois le produit créé.' : '';
+    // Un éventuel encadré rouge resté d'une précédente ouverture (doublon
+    // détecté puis fenêtre refermée sans corriger) ne doit pas persister ici.
+    fRef.style.border = '';
+  };
+
   function openModal(id){
     // Garde-fou supplémentaire (en plus de resetReviewModeUI) : openModal()
     // sert à "Ajouter un produit"/"Modifier le produit", jamais à la revue
@@ -156,6 +180,8 @@
       if(priceDisplayRow) priceDisplayRow.style.display = 'none';
       if(priceCreateRow)  priceCreateRow.style.display  = 'block';
     }
+
+    window._setFRefLocked(!!editingId);
 
     // ── Avertir AVANT la saisie si l'enregistrement ne pourrait pas être
     // synchronisé (plutôt qu'après coup) ────────────────────────────────
