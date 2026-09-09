@@ -248,29 +248,52 @@
       try{ localStorage.setItem(DISMISS_KEY, '1'); }catch(e){}
     }
 
-    var banner       = document.getElementById('pwaInstallBanner');
-    var androidZone  = document.getElementById('pwaAndroidZone');
-    var iosZone      = document.getElementById('pwaIOSZone');
-    var btnInstall   = document.getElementById('pwaInstallBtn');
-    var btnLater     = document.getElementById('pwaInstallLater');
-    var btnClose     = document.getElementById('pwaInstallClose');
-    var btnIOSClose  = document.getElementById('pwaIOSClose');
-    var btnBubble    = document.getElementById('btnFabInstall');
+    var banner        = document.getElementById('pwaInstallBanner');
+    var androidZone   = document.getElementById('pwaAndroidZone');
+    var iosZone       = document.getElementById('pwaIOSZone');
+    var unsupportedZone = document.getElementById('pwaUnsupportedZone');
+    var btnInstall    = document.getElementById('pwaInstallBtn');
+    var btnLater      = document.getElementById('pwaInstallLater');
+    var btnClose      = document.getElementById('pwaInstallClose');
+    var btnIOSClose   = document.getElementById('pwaIOSClose');
+    var btnUnsupportedClose = document.getElementById('pwaUnsupportedClose');
+    var btnBubble     = document.getElementById('btnFabInstall');
     var deferredPrompt = null;
 
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    // Détection de support, PAS juste "pas iOS" : Safari macOS et Firefox
+    // ne déclenchent jamais 'beforeinstallprompt' et n'exposent donc jamais
+    // deferredPrompt — avant, ces navigateurs tombaient quand même dans
+    // pwaAndroidZone (même code que Chrome), avec un bouton "Installer" qui
+    // ne faisait RIEN au clic, sans aucune explication (retour utilisateur :
+    // "la popup pour installer l'app ne fonctionne pas toujours"). Ce test
+    // de fonctionnalité (pas de sniffing d'user-agent) distingue les
+    // navigateurs qui supportent réellement l'API.
+    var supportsInstallPrompt = 'onbeforeinstallprompt' in window;
 
     function showBanner(){
       if(btnBubble) btnBubble.style.display = 'none';
       banner.style.display = 'flex';
+      // Repart d'un état propre à chaque appel (bulle → réouverture) plutôt
+      // que de ne toucher qu'UNE zone sans jamais masquer les autres —
+      // jusqu'ici sans conséquence visible (une seule branche touchée par
+      // appel), mais nécessaire maintenant avec une 3e zone.
+      androidZone.style.display = 'none';
+      iosZone.style.display = 'none';
+      if(unsupportedZone) unsupportedZone.style.display = 'none';
       if(isIOS){
         iosZone.style.display = 'block';
-      } else if(deferredPrompt){
+      } else if(supportsInstallPrompt){
+        // Chrome/Edge/Samsung Internet… : androidZone s'affiche même si
+        // deferredPrompt n'est pas encore arrivé (le navigateur peut le
+        // déclencher après coup, l'écouteur beforeinstallprompt plus bas
+        // réagit alors) — seul le clic sur "Installer" avant qu'il arrive
+        // est maintenant géré explicitement (voir btnInstall plus bas).
         androidZone.style.display = 'block';
-      } else {
-        // Android sans prompt encore disponible : afficher quand même
-        // androidZone s'affichera dès que beforeinstallprompt se déclenche
-        androidZone.style.display = 'block';
+      } else if(unsupportedZone){
+        // Safari macOS, Firefox… : jamais de deferredPrompt à attendre,
+        // autant l'expliquer tout de suite plutôt qu'après un clic mort.
+        unsupportedZone.style.display = 'block';
       }
     }
     function hideBanner(){
@@ -297,6 +320,7 @@
     btnClose.addEventListener('click', function(){ hideBanner(); markDismissed(); showBubble(); });
     if(btnLater)    btnLater.addEventListener('click', function(){ hideBanner(); markDismissed(); showBubble(); });
     if(btnIOSClose) btnIOSClose.addEventListener('click', function(){ hideBanner(); markDismissed(); showBubble(); });
+    if(btnUnsupportedClose) btnUnsupportedClose.addEventListener('click', function(){ hideBanner(); markDismissed(); showBubble(); });
     if(btnBubble)   btnBubble.addEventListener('click', showBanner);
 
     if(btnInstall){
@@ -307,7 +331,17 @@
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
         } else {
+          // Navigateur compatible (supportsInstallPrompt) mais Chrome n'a
+          // pas encore déclenché beforeinstallprompt à cet instant précis
+          // (heuristique d'engagement du navigateur, hors de notre
+          // contrôle) — avant, ce clic ne faisait RIEN de visible à part
+          // rouvrir la bulle, sans explication (retour utilisateur : "la
+          // popup ne fonctionne pas toujours"). Un message explicite plutôt
+          // qu'un échec silencieux.
           showBubble();
+          if(typeof showToast === 'function'){
+            showToast('Installation pas encore proposée par votre navigateur — réessayez dans un instant, ou depuis son menu', 'warn', 4500);
+          }
         }
       });
     }

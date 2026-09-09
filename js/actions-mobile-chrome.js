@@ -345,10 +345,24 @@
     var selFamily=document.getElementById('filterSheetFamily');
     var selSeries=document.getElementById('filterSheetSeries');
     var selSort=document.getElementById('filterSheetSort');
+    // Retour utilisateur : "rajoute les bouton 3d experience et standard
+    // dans les filtre sur mobile et tablette aussi" — filter3DAvailable/
+    // filterEssential (toolbar desktop) restent la vraie source lue par
+    // getFilteredProducts (js/storage.js) ; ces deux-là ne font que la
+    // refléter/l'alimenter, comme selBrand/selFamily/selSeries le font déjà
+    // pour brandFilterEl/familyFilterEl/seriesFilterEl.
+    var sel3D=document.getElementById('filterSheet3D');
+    var selEssential=document.getElementById('filterSheetEssential');
+    var wrap3D=document.getElementById('filterSheet3DWrap');
+    var wrapEssential=document.getElementById('filterSheetEssentialWrap');
     var brandFilterEl=document.getElementById('brandFilter');
     var familyFilterEl=document.getElementById('familyFilter');
     var seriesFilterEl=document.getElementById('seriesFilter');
     var searchInputEl=document.getElementById('searchInput');
+    var filter3DEl=document.getElementById('filter3DAvailable');
+    var filterEssentialEl=document.getElementById('filterEssential');
+    var filter3DWrapEl=document.getElementById('filter3DWrap');
+    var filterEssentialWrapEl=document.getElementById('filterEssentialWrap');
     if(!sheet||!btnOpen) return;
 
     // ── Cascade mobile : recalcule les options en fonction des sélections ──
@@ -387,6 +401,8 @@
         (seriesFilterEl&&seriesFilterEl.value)||''
       );
       if(selSort) selSort.value = window._priceSort || '';
+      if(sel3D && filter3DEl){ sel3D.checked = filter3DEl.checked; if(wrap3D) wrap3D.classList.toggle('active', sel3D.checked); }
+      if(selEssential && filterEssentialEl){ selEssential.checked = filterEssentialEl.checked; if(wrapEssential) wrapEssential.classList.toggle('active', selEssential.checked); }
       overlay.style.display='block';
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
@@ -401,6 +417,13 @@
       if(familyFilterEl&&selFamily) familyFilterEl.value=selFamily.value;
       if(seriesFilterEl&&selSeries) seriesFilterEl.value=selSeries.value;
       if(selSort && typeof window._setPriceSort==='function') window._setPriceSort(selSort.value || null);
+      // .checked= ne déclenche pas non plus "change" (même raison que
+      // .value= sur les selects juste au-dessus) → répercuter à la main sur
+      // filter3DAvailable/filterEssential (la vraie source) ET sur leurs
+      // wraps .active (normalement basculé par le "change" desktop, voir
+      // js/actions-search.js — jamais déclenché ici).
+      if(filter3DEl&&sel3D){ filter3DEl.checked=sel3D.checked; if(filter3DWrapEl) filter3DWrapEl.classList.toggle('active', sel3D.checked); }
+      if(filterEssentialEl&&selEssential){ filterEssentialEl.checked=selEssential.checked; if(filterEssentialWrapEl) filterEssentialWrapEl.classList.toggle('active', selEssential.checked); }
       // .value= ne déclenche pas "change" → resynchroniser le badge de la
       // bottom nav à la main (voir window._syncBnFilterBadge, _initBottomNav).
       if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
@@ -412,10 +435,14 @@
       if(selFamily) selFamily.value='';
       if(selSeries) selSeries.value='';
       if(selSort) selSort.value='';
+      if(sel3D){ sel3D.checked=false; if(wrap3D) wrap3D.classList.remove('active'); }
+      if(selEssential){ selEssential.checked=false; if(wrapEssential) wrapEssential.classList.remove('active'); }
       if(brandFilterEl) brandFilterEl.value='';
       if(familyFilterEl) familyFilterEl.value='';
       if(seriesFilterEl) seriesFilterEl.value='';
       if(searchInputEl) searchInputEl.value='';
+      if(filter3DEl){ filter3DEl.checked=false; if(filter3DWrapEl) filter3DWrapEl.classList.remove('active'); }
+      if(filterEssentialEl){ filterEssentialEl.checked=false; if(filterEssentialWrapEl) filterEssentialWrapEl.classList.remove('active'); }
       if(typeof window._setPriceSort==='function') window._setPriceSort(null);
       if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
       closeSheet();
@@ -431,6 +458,12 @@
     if(selSeries) selSeries.addEventListener('change', function(){
       buildCascadeOptions(selBrand?selBrand.value:'', selFamily?selFamily.value:'', selSeries.value);
     });
+    // Retour visuel immédiat au clic (le chip passe en copper), même si la
+    // vraie synchronisation vers filter3DAvailable/filterEssential n'a lieu
+    // qu'au "Appliquer" — cohérent avec le reste du tiroir (les selects
+    // n'appliquent pas non plus tout de suite).
+    if(sel3D && wrap3D) sel3D.addEventListener('change', function(){ wrap3D.classList.toggle('active', sel3D.checked); });
+    if(selEssential && wrapEssential) selEssential.addEventListener('change', function(){ wrapEssential.classList.toggle('active', selEssential.checked); });
     window._openFilterSheet = openSheet;
     btnOpen.addEventListener('click', openSheet);
     if(btnClose) btnClose.addEventListener('click', closeSheet);

@@ -147,6 +147,21 @@
     font-size:20px; line-height:1; padding:6px 12px;
     letter-spacing:.05em;
   }
+  /* Retour utilisateur : "faire en sorte que le bouton menu passe en bleu
+     lorsqu'on a cliqué dessus pour desktop" — même état actif que .kebab-btn
+     ailleurs dans l'app (configurateur d'armoire, liste des utilisateurs) :
+     bleu copper tant que le menu déroulant est ouvert, pour repérer d'un
+     coup d'œil quel bouton l'a ouvert. Dérivé en CSS pur de #hdrMenu.open
+     (:has() sur le sibling suivant) plutôt que d'une classe .open posée en
+     JS sur le bouton lui-même : #hdrMenu se referme depuis une bonne
+     dizaine d'endroits différents (chaque item du menu, js/actions-compare.js
+     ET js/actions-import-export.js) — dupliquer la bascule du bouton à
+     chacun de ces endroits aurait été fragile (le moindre oublié laisse le
+     bouton bleu alors que le menu est fermé), alors que .open sur #hdrMenu
+     lui-même est déjà correctement posé/retiré partout, sans exception. */
+  #hdrMenuBtn:has(+ #hdrMenu.open){
+    background:#EEF4FF; border-color:var(--copper); color:var(--copper);
+  }
   .hdr-menu{
     position:absolute; top:calc(100% + 8px); right:0;
     background:var(--paper-card); border:1px solid var(--line);
@@ -247,10 +262,19 @@
   .toolbar{
     display:none; gap:10px; align-items:center; flex-wrap:nowrap;
     margin-bottom:22px;
+    transition:gap .22s cubic-bezier(.32,.72,0,1);
   }
+  /* Retour utilisateur : "faut que ça aille jusqu'à la fin de trier par
+     prix" — les listes/boutons se repliaient bien jusqu'à 0, mais le "gap"
+     de la toolbar (10px entre CHAQUE paire d'éléments, y compris deux
+     éléments déjà réduits à 0) restait entier — sur 7 voisins ça laissait
+     ~70px inutilisés que .search-field ne récupérait jamais, elle
+     s'arrêtait donc avant "Trier par prix". */
+  .toolbar:has(#searchInput:focus){ gap:0; }
   .search-field{
     flex:1; min-width:200px;
     position:relative;
+    transition:max-width .22s cubic-bezier(.32,.72,0,1);
   }
   .search-field input{
     width:100%;
@@ -260,11 +284,71 @@
     border-radius:6px;
     background:var(--paper-card);
     color:var(--ink);
+    transition:border-color .16s ease, box-shadow .16s ease;
+  }
+  /* Retour utilisateur : "j'aimerai que lorsqu'on clique sur la zone de
+     recherche il y ait une animation" — rien ne se passait jusqu'ici, à
+     part le contour bleu par défaut du navigateur (incohérent avec le
+     reste du site). Bordure + halo copper, même geste que
+     .filter-sheet-select:focus déjà utilisé côté tiroir Filtres mobile —
+     et pas d'outline natif en double par-dessus. */
+  .search-field input:focus{
+    outline:none;
+    border-color:var(--copper);
+    box-shadow:0 0 0 3px rgba(25,64,147,.12);
   }
   .search-field svg{
     position:absolute; left:12px; top:50%; transform:translateY(-50%);
     width:15px; height:15px; opacity:.5;
+    transition:opacity .16s ease, color .16s ease;
   }
+  .search-field:focus-within svg{ opacity:.9; color:var(--copper); }
+  /* Retour utilisateur : "faudrait que la zone de texte passe au-dessus des
+     autres filtres avec une animation" — au focus de la recherche, les
+     autres champs de la toolbar (listes, chips 3D/Standard, reset, tri) se
+     replient pour lui laisser toute la largeur au lieu de rester figés à
+     côté ; .search-field (flex:1) regagne alors naturellement l'espace
+     libéré, sans règle dédiée à ajouter sur elle. :has() plutôt qu'un
+     écouteur JS focus/blur : ces champs sont des SIBLINGS de .search-field,
+     pas des descendants, un simple :focus-within sur .search-field ne peut
+     donc pas les atteindre — même technique déjà utilisée sur #hdrMenuBtn
+     (voir plus bas dans ce fichier). overflow:hidden nécessaire pour que le
+     contenu (texte/icône) du bouton ne déborde pas visuellement pendant
+     qu'il se réduit à 0. */
+  .toolbar select, .toolbar .filter-toggle-chip, .toolbar #btnResetFilters, .toolbar #sortPriceBtn{
+    overflow:hidden;
+    transition:width .22s cubic-bezier(.32,.72,0,1), min-width .22s cubic-bezier(.32,.72,0,1),
+               flex-grow .22s cubic-bezier(.32,.72,0,1), flex-basis .22s cubic-bezier(.32,.72,0,1),
+               opacity .18s ease, padding .22s ease, margin .22s ease, border-width .22s ease;
+  }
+  .toolbar:has(#searchInput:focus) select,
+  .toolbar:has(#searchInput:focus) .filter-toggle-chip,
+  .toolbar:has(#searchInput:focus) #btnResetFilters,
+  .toolbar:has(#searchInput:focus) #sortPriceBtn{
+    /* flex-grow:0 + flex-basis:0 indispensables ICI, pas juste width:0 —
+       les 3 <select> (marque/famille/série) ont "flex:1 1 0" posé plus bas
+       (palier desktop) : avec un flex-basis EXPLICITE (pas "auto"), la
+       propriété width est totalement ignorée pour le dimensionnement
+       flex, seuls flex-grow/flex-basis comptent. Sans cette ligne,
+       width:0 restait sans aucun effet sur les 3 listes (elles gardaient
+       leur largeur normale, flex-grow oblige) alors que les chips/boutons
+       (qui n'ont qu'un flex-shrink:0, flex-basis:auto implicite) se
+       repliaient bien — d'où le bug remonté : "j'ai juste les filtres qui
+       disparaissent" (seuls les chips/boutons disparaissaient, les 3
+       listes restaient plein format et la recherche ne gagnait jamais
+       vraiment leur place). */
+    flex-grow:0; flex-basis:0;
+    width:0; min-width:0;
+    padding-left:0; padding-right:0; margin-left:0; margin-right:0;
+    border-left-width:0; border-right-width:0;
+    opacity:0; pointer-events:none;
+  }
+  /* .search-field a aussi son propre "max-width:160px" posé plus bas (voir
+     l'autre .search-field{ order:1; ... } dans ce fichier, pensé pour que
+     les 3 listes + les icônes tiennent sans repli à l'écran) — sans cette
+     ligne, elle plafonnait à 160-200px même une fois TOUS ses voisins
+     repliés à 0, et ne prenait jamais vraiment la place libérée. */
+  .toolbar:has(#searchInput:focus) .search-field{ max-width:none; }
   select#brandFilter, select#familyFilter, select#seriesFilter{
     font-size:15px;
     padding:10px 12px;
@@ -275,6 +359,15 @@
     display:none;
     flex-shrink:0;
     box-sizing:border-box;
+    transition:border-color .16s ease, box-shadow .16s ease;
+  }
+  /* Même geste que .search-field input:focus juste au-dessus — ces 3 champs
+     n'avaient jusqu'ici que le contour bleu natif du navigateur, incohérent
+     avec la recherche juste à côté. */
+  select#brandFilter:focus, select#familyFilter:focus, select#seriesFilter:focus{
+    outline:none;
+    border-color:var(--copper);
+    box-shadow:0 0 0 3px rgba(25,64,147,.12);
   }
   select#brandFilter, select#seriesFilter{ display:block; }
   .filters-visible select#brandFilter,
@@ -633,10 +726,17 @@
   }
 
   /* Bouton fermer mobile dans la vue produit */
-  /* Boutons flottants de la fiche produit (✕, ⓘ) — "Proposer une
-     modification" vit désormais DANS le menu du ⓘ (#vmProposeMenuBtn),
-     à la place de "Modifier la fiche" quand canEdit est absent, plutôt
-     que comme bouton circulaire séparé à côté du ⓘ. */
+  /* Boutons flottants de la fiche produit (✕, ⋯) — rond/plein/copper tous
+     les deux, appariés visuellement. "Proposer une modification" vit
+     désormais DANS le menu du ⋯ (#vmProposeMenuBtn), à la place de
+     "Modifier la fiche" quand canEdit est absent, plutôt que comme bouton
+     circulaire séparé à côté. Étaient un temps passés au style fantôme
+     .kebab-btn (identique au configurateur d'armoire/liste utilisateurs) —
+     retour utilisateur : "je te parlais dans le kebab pas le bouton qui
+     l'affiche" — "identique partout" visait le contenu du menu déroulant
+     (.kebab-menu : icônes, rouge #991B1B pour "Supprimer"…), PAS ce bouton
+     ⋯ lui-même, qui redevient rond/plein/copper en permanence, comme le ✕
+     juste à côté. */
   .vm-close-btn, .vm-info-btn{
     position:absolute;
     width:34px; height:34px; border-radius:50%;
@@ -648,29 +748,19 @@
     box-shadow:0 2px 8px rgba(0,0,0,.25);
   }
   .vm-close-btn{ top:12px; left:12px; display:none; }
-  .vm-info-btn{  top:12px; right:12px; font-size:15px; font-weight:700; font-style:normal; line-height:1; letter-spacing:0; user-select:none; }
+  .vm-info-btn{  top:12px; right:12px; font-size:17px; font-weight:700; font-style:normal; line-height:1; letter-spacing:1px; user-select:none; }
   .vm-close-btn svg{ width:16px; height:16px; display:block; }
   .vm-close-btn:hover, .vm-info-btn:hover{ background:#122d7a; }
 
-  /* Menu déroulant du ⓘ */
-  .vm-info-menu{
-    position:absolute; top:54px; right:14px;
-    background:var(--paper-card); border:1px solid var(--line);
-    border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18);
-    overflow:hidden; z-index:60; min-width:190px;
-    display:none;
-  }
-  .vm-info-menu.open{ display:block; }
-  .vm-info-menu button{
-    display:flex; align-items:center; gap:10px;
-    width:100%; text-align:left;
-    padding:11px 16px; background:none; border:none;
-    cursor:pointer; white-space:nowrap; font-size:14px;
-    color:var(--ink);
-  }
-  .vm-info-menu button:hover{ background:var(--paper); }
-  .vm-info-menu button.danger{ color:var(--warn); }
-  .vm-info-menu hr{ border:none; border-top:1px solid var(--line); margin:0; }
+  /* Menu déroulant du ⋯ — juste la position ici (flotte différemment que
+     les autres .kebab-menu, par-dessus la photo plutôt qu'à côté d'une
+     ligne de liste) ; tout le reste (fond, bordure, ombre, items, icônes,
+     rouge "Supprimer"…) vient de .kebab-menu (classe ajoutée en plus de
+     vm-info-menu, voir js/render-view-modal.js) — retour utilisateur : "je
+     parle du contenu [...] faudrait unifier les styles" (tailles/marges/
+     police différentes entre la fiche produit et le configurateur
+     d'armoire malgré les mêmes icônes/couleurs). */
+  .vm-info-menu{ position:absolute; top:54px; right:14px; z-index:60; }
 
   .vm-body{ padding:22px 26px 28px; }
   .vm-ref{
@@ -1269,6 +1359,10 @@
       order:4; flex:1 1 0; min-width:0; font-size:13px;
       padding:8px 6px; height:38px; box-sizing:border-box;
     }
+    /* Retour utilisateur : "faut que l'espacement entre tous les filtres
+       soit identique" — retour à un gap uniforme (celui de .toolbar,
+       aucune marge ajoutée ici) après un essai de regroupement par
+       espacement différencié (10px/22px) qui ne convenait pas. */
     #filter3DWrap{ order:5; font-size:12px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
     #filterEssentialWrap{ order:6; font-size:12px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
     #btnResetFilters{ order:7; font-size:13px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
@@ -2353,6 +2447,13 @@
   }
   .filter-toggle-chip.active{ background:var(--copper); color:#fff; border-color:var(--copper); }
   .filter-toggle-chip:focus-within{ outline:2px solid var(--copper); outline-offset:1px; }
+  /* Retour utilisateur : "faut faire en sorte de mieux intégrer" — le badge
+     3DEXPERIENCE (image officielle, dégradé coloré) tranchait trop au
+     milieu des boutons plats/gris voisins. Gardé intact, juste réduit
+     (18px → 14px) : avec le même padding de bouton autour, ça laisse de
+     l'air et le badge se lit comme un petit repère plutôt que comme
+     l'unique contenu qui déborde. */
+  .badge-3d-icon{ width:14px; height:14px; flex-shrink:0; }
 
   /* ── Safe area iPhone (notch / home bar) ────────────────────── */
   #pwaInstallBanner{ bottom:max(24px,env(safe-area-inset-bottom)); }
@@ -2871,6 +2972,18 @@
   background: var(--paper); color: var(--ink);
   font-size: 15px; font-family: var(--font-sans);
   outline: none; appearance: auto;
+}
+/* 3DEXPERIENCE / Standard — même mécanique .active que .filter-toggle-chip
+   dans la toolbar desktop (icône seule là-bas, ici en pleine largeur avec
+   libellé, la place ne manquant pas dans ce tiroir). */
+.filter-sheet-toggles{ display: flex; gap: 8px; }
+.filter-sheet-toggle{
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 12px 10px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--ink);
+  font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+  cursor: pointer;
 }
 .filter-sheet-select:focus { border-color: var(--copper); }
 .filter-sheet-actions {
@@ -3690,6 +3803,18 @@
     left:0 !important; width:100% !important; max-width:100% !important;
     border-radius:0; box-shadow:none; border-left:none;
   }
+  /* Marge de sécurité contre le bas de la modale collé pile contre le nav
+     (0px d'écart, voir _armoireSyncMobileHeight dans js/armoireConfig.js) —
+     "Enregistrer" se retrouvait caché derrière le nav (dont le z-index est
+     volontairement plus élevé, --z-nav > cette modale) au moindre écart de
+     mesure d'un vrai appareil (arrondi, barre d'outils dynamique…). Un
+     essai précédent avait plutôt reculé TOUTE la modale du nav, mais ça
+     laissait voir le fond assombri (--overlay-scrim) dans l'écart — une
+     bande grise disgracieuse entre la modale et le nav (retour utilisateur,
+     capture à l'appui). La marge vit donc ICI, à l'intérieur (padding du
+     pied de page, même fond que la modale), pour garder l'aspect "collé"
+     tout en donnant de la place au dernier bouton. */
+  .armoire-cfg-footer{ padding-bottom:20px !important; }
 }
 #armoireMobileDraftBadge{
   display:inline-block; margin-left:5px; padding:1px 6px;
@@ -3732,6 +3857,75 @@
 .armoire-qty-input::-webkit-inner-spin-button{
   -webkit-appearance:none; margin:0;
 }
+
+/* ── Menu ⋯ générique (bouton "plus d'actions" + liste déroulante) ────────
+   Retour utilisateur, configurateur d'armoire : "je trouve que les boutons
+   comme ça sont très mal intégrés au site" (rond bleu plein, pastille
+   copper, carrés vert/bleu/rouge — 4 couleurs pour 5 actions, sans
+   hiérarchie), puis "applique aussi ce menu ⋯ au reste du site". Tout le
+   style du BOUTON déclencheur (taille, forme, couleurs, états) vit ici,
+   dans une seule règle .kebab-btn, plutôt qu'en style inline dupliqué à
+   chaque endroit — utilisé par _armoireListItemHtml (js/armoireConfig.js,
+   lignes Blocs/Configurations) et _renderUserList (js/auth.js, liste des
+   utilisateurs). PAS utilisé par #vmInfoBtn (fiche produit,
+   js/render-view-modal.js) : un essai l'y avait ajouté ("fais en sorte que
+   le style du kebab soit identique de partout"), mais retour utilisateur —
+   "je te parlais dans le kebab pas le bouton qui l'affiche" — cette
+   demande visait le contenu du MENU déroulant (.kebab-menu : icônes,
+   rouge #991B1B…), pas le bouton ⋯ lui-même ; #vmInfoBtn est donc resté
+   rond/plein/copper (voir .vm-info-btn plus haut, apparié au ✕ de
+   fermeture). Seules les actions qu'on utilise en parcourant une liste
+   restent des boutons pleins visibles ; le détail, la modification et la
+   suppression rejoignent un menu ⋯ — même principe qu'un menu contextuel
+   standard plutôt qu'une rangée de pastilles colorées. Voir
+   _bindKebabMenuOn/_closeAllKebabMenus dans js/popup.js pour la logique
+   d'ouverture/fermeture partagée (armoireConfig.js/auth.js — #vmInfoBtn
+   gère la sienne à la main, voir js/render-view-modal-close.js). */
+.kebab-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; padding:0; border-radius:7px;
+  font-size:16px; letter-spacing:1px; cursor:pointer; font-family:inherit;
+  /* Repos posé ICI, jamais en style inline sur le <button> : un style
+     inline gagnerait TOUJOURS sur .kebab-btn.open ci-dessous, quelle que
+     soit sa spécificité — repéré en testant en direct l'état actif qui ne
+     changeait jamais de couleur malgré la classe "open" bien posée. */
+  border:1px solid transparent; background:transparent; color:var(--ink-soft);
+}
+.kebab-btn:hover{
+  background:var(--paper); border-color:var(--line); color:var(--ink);
+}
+/* Retour utilisateur : "il faut que lorsqu'on clique sur les 3 petits
+   points il passe en bleu pour montrer qu'on est bien sur ce bouton" — état
+   actif (menu ouvert) distinct du survol, en copper plutôt qu'en gris
+   neutre, pour qu'on voie tout de suite quel bouton a ouvert le menu
+   affiché (même bleu que "Admin complet" dans la liste des utilisateurs). */
+.kebab-btn.open{
+  background:#EEF4FF; border-color:var(--copper); color:var(--copper);
+}
+/* Boîte du menu — posée ici (pas en style inline dupliqué à chaque
+   endroit) pour que la fiche produit (#vmInfoMenu, voir .vm-info-menu plus
+   haut) puisse la réutiliser TELLE QUELLE en ajoutant juste cette classe.
+   min-width:190px plutôt que 150 : assez large pour "Proposer une
+   modification" (le plus long des libellés actuels) sans retour à la
+   ligne (white-space:nowrap sur les items ci-dessous). */
+.kebab-menu{
+  display:none;
+  background:var(--paper-card); border:1px solid var(--line);
+  border-radius:9px; box-shadow:var(--shadow);
+  min-width:190px; padding:5px; overflow:hidden;
+}
+.kebab-menu.open{ display:block; }
+.kebab-menu button{
+  width:100%; text-align:left; display:flex; align-items:center; gap:8px;
+  padding:7px 9px; border:none; background:none; border-radius:6px;
+  font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  font-family:inherit; white-space:nowrap;
+}
+.kebab-menu button:hover{ background:var(--paper); }
+.kebab-menu button.kebab-menu-danger{ color:#991B1B; }
+.kebab-menu button.kebab-menu-danger:hover{ background:#FEF2F2; }
+.kebab-menu button i{ font-size:14px; width:16px; flex-shrink:0; color:var(--ink-soft); }
+.kebab-menu button.kebab-menu-danger i{ color:#991B1B; }
 
 /* ── Liens cliquables dans la visionneuse PDF (js/render-pdf-viewer.js —
    _openPdfCanvas/pdfjsLib.AnnotationLayer) ──────────────────────────────

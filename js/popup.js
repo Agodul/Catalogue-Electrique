@@ -239,6 +239,68 @@ window._showImageLightbox = _showImageLightbox;
 // HTML volontaire.
 
 
+// ── Menu ⋯ générique (bouton "plus d'actions" + liste déroulante) ────────
+// Réutilisé partout où une ligne/carte a plusieurs actions secondaires à
+// regrouper au lieu de les afficher toutes en boutons colorés séparés
+// (retour utilisateur, configurateur d'armoire : "je trouve que les
+// boutons comme ça sont très mal intégrés au site" — 4-5 pastilles
+// colorées par ligne sans hiérarchie ; étendu ensuite à "applique aussi ce
+// menu ⋯ au reste du site"). Utilisé par js/armoireConfig.js (lignes
+// Blocs/Configurations) et js/auth.js (liste des utilisateurs) ; voir
+// .kebab-btn/.kebab-menu dans css/styles.css pour le style.
+//
+// Marquage HTML attendu, un menu par bouton :
+//   <button class="kebab-btn" aria-haspopup="true" aria-expanded="false">⋯</button>
+//   <div class="kebab-menu" role="menu"> ... boutons d'action ... </div>
+// (le menu doit être le nextElementSibling du bouton)
+//
+// IMPORTANT : ne JAMAIS attacher ce listener sur `document` — js/init.js
+// (_initModalEscape, MODALS.forEach) appelle e.stopPropagation() sur
+// CHAQUE clic à l'intérieur de toute fenêtre listée là (pour qu'un clic
+// dans le vide ne ferme jamais la fenêtre par erreur), ce qui empêche tout
+// clic à l'intérieur d'une de ces fenêtres d'atteindre un jour un listener
+// posé sur document (repéré en testant en direct sur le configurateur
+// d'armoire — le même bug existait déjà sur #vmInfoMenu, voir le
+// commentaire équivalent dans js/render-view-modal-close.js). Toujours
+// passer à _bindKebabMenuOn() l'élément réel dans lequel les clics ont
+// lieu (l'overlay de la fenêtre, ou tout conteneur qui n'a PAS ce blocage).
+function _closeAllKebabMenus(except){
+  document.querySelectorAll('.kebab-menu.open').forEach(function(m){
+    if(m === except) return;
+    m.classList.remove('open');
+    m.style.display = 'none';
+    var btn = m.previousElementSibling;
+    if(btn && btn.classList.contains('kebab-btn')){
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+}
+
+var _kebabBoundHosts = [];
+function _bindKebabMenuOn(host){
+  if(!host || _kebabBoundHosts.indexOf(host) !== -1) return;
+  _kebabBoundHosts.push(host);
+  host.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.kebab-btn') : null;
+    if(btn){
+      e.stopPropagation();
+      var menu = btn.nextElementSibling;
+      if(!menu || !menu.classList.contains('kebab-menu')) return;
+      var willOpen = !menu.classList.contains('open');
+      _closeAllKebabMenus(willOpen ? menu : null);
+      menu.classList.toggle('open', willOpen);
+      menu.style.display = willOpen ? 'block' : 'none';
+      btn.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      return;
+    }
+    // Un item DU menu a été cliqué : laisser son propre gestionnaire
+    // délégué s'exécuter, juste refermer le menu ensuite.
+    _closeAllKebabMenus();
+  });
+}
+
 function _popupOverlay(innerHtml){
   var overlay = document.createElement('div');
   // Classe repère (pas seulement pour le style — rien ne l'utilise en CSS)

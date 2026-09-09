@@ -35,12 +35,20 @@ function _productBadgesCompactHtml(p){
       '<button class="vm-close-btn" id="vmCloseBtn" title="Fermer">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
       '</button>' +
-      '<button class="vm-info-btn" id="vmInfoBtn" title="Actions">i</button>' +
-      '<div class="vm-info-menu" id="vmInfoMenu">' +
-        '<button id="vmEditBtn">Modifier la fiche</button>' +
-        '<button id="vmProposeMenuBtn" style="display:none;">Proposer une modification</button>' +
-        '<hr>' +
-        '<button id="vmDeleteBtn" class="danger">Supprimer le produit</button>' +
+      // Retour utilisateur : "applique aussi ce menu ⋯ au reste du site",
+      // puis "je te parlais dans le kebab pas le bouton qui l'affiche" —
+      // le bouton ⋯ (#vmInfoBtn) reste rond/plein/copper à part (voir plus
+      // haut), mais le CONTENU du menu déroulant reprend maintenant
+      // .kebab-menu telle quelle (retour utilisateur : "je parle du
+      // contenu [...] faudrait unifier les styles" — tailles/marges/police
+      // différaient encore malgré les mêmes icônes/couleurs). class
+      // kebab-menu-danger au lieu de danger, et plus de <hr> séparateur
+      // (.kebab-menu n'en a pas ailleurs dans l'app).
+      '<button class="vm-info-btn" id="vmInfoBtn" title="Plus d\'actions">⋯</button>' +
+      '<div class="vm-info-menu kebab-menu" id="vmInfoMenu" role="menu">' +
+        '<button id="vmEditBtn" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier la fiche</button>' +
+        '<button id="vmProposeMenuBtn" role="menuitem" style="display:none;"><i class="ti ti-edit" aria-hidden="true"></i> Proposer une modification</button>' +
+        '<button id="vmDeleteBtn" class="kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer le produit</button>' +
       '</div>' +
       '<div class="vm-scroll">' +
         '<div class="vm-body">' +

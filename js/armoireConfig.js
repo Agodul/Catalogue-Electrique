@@ -471,11 +471,21 @@ function _armoireFetchSavedConfigs(){
 }
 
 function _armoireListItemHtml(entry, kind){
-  var actionLabel = kind === 'block' ? '<i class="ti ti-plus"></i> Insérer' : '<i class="ti ti-eye"></i> Charger';
-  var actionClass = kind === 'block' ? 'armoire-block-insert' : 'armoire-config-load';
-  var delClass = kind === 'block' ? 'armoire-block-del' : 'armoire-config-del';
-  var infoClass = kind === 'block' ? 'armoire-block-info' : 'armoire-config-info';
-  var editClass = kind === 'block' ? 'armoire-block-edit' : 'armoire-config-edit';
+  var isBlock = kind === 'block';
+  // "Insérer"/"Ajouter" : la seule action qu'on utilise vraiment en
+  // parcourant la liste, reste donc seule visible en plein (copper) — les
+  // blocs comme les configurations fusionnent dans le brouillon en cours
+  // sans l'écraser (_armoireMergeItems). Pour les configurations, "Charger"
+  // (qui REMPLACE le brouillon, avec confirmation) reste disponible à côté
+  // en bouton secondaire neutre (retour utilisateur : "faudrai ajouter la
+  // possibilité de pouvoir ajouter plusieurs configuration déjà enregistrée
+  // à une configuration en cours" — Charger seul ne permettait pas de
+  // combiner plusieurs configurations enregistrées).
+  var primaryLabel = isBlock ? 'Insérer' : 'Ajouter';
+  var primaryClass = isBlock ? 'armoire-block-insert' : 'armoire-config-insert';
+  var delClass = isBlock ? 'armoire-block-del' : 'armoire-config-del';
+  var infoClass = isBlock ? 'armoire-block-info' : 'armoire-config-info';
+  var editClass = isBlock ? 'armoire-block-edit' : 'armoire-config-edit';
   // Suppression réservée aux comptes ayant le droit d'édition ou de
   // suppression — le configurateur est ouvert à tout utilisateur connecté,
   // mais pas la suppression des blocs/configs de tout le monde. canDelete
@@ -486,25 +496,39 @@ function _armoireListItemHtml(entry, kind){
   // Modifier : porté par canEdit (pas canDelete) — c'est une action
   // d'édition, distincte de la suppression, avec sa propre permission.
   var canEditEntry = !!(perms.canEdit || perms.isAdmin);
+  // Retour utilisateur : "je trouve que les boutons comme ça sont très mal
+  // intégrés au site" — rond bleu plein, pastille copper, puis 2-3 carrés
+  // vert/bleu/rouge : 4 couleurs pour 5 actions, sans hiérarchie. "Voir le
+  // contenu"/"Modifier"/"Supprimer" (consultées ponctuellement, pas à
+  // chaque ligne) rejoignent désormais un menu ⋯, seules les actions
+  // qu'on utilise en parcourant la liste restent des boutons visibles.
+  var menuItems =
+      '<button type="button" class="' + infoClass + '" role="menuitem"><i class="ti ti-info-circle" aria-hidden="true"></i> Voir le contenu</button>'
+    + (canEditEntry ? '<button type="button" class="' + editClass + '" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier</button>' : '')
+    + (canDeleteEntry ? '<button type="button" class="' + delClass + ' kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>' : '');
   return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
     + '<div style="font-size:11px;color:var(--ink-soft);">' + entry.items.length + ' référence' + (entry.items.length > 1 ? 's' : '') + '</div>'
     + '</div>'
-    + '<button type="button" class="' + infoClass + '" title="Voir le contenu" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border-radius:50%;border:none;background:var(--copper);color:#fff;font-size:11px;font-weight:700;font-style:normal;line-height:1;cursor:pointer;flex-shrink:0;">i</button>'
-    + '<button type="button" class="' + actionClass + '" style="padding:5px 9px;border-radius:7px;border:1px solid var(--copper);background:var(--paper);color:var(--copper-deep);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">' + actionLabel + '</button>'
-    // Retour utilisateur : "faudrai faire en sorte que le bouton edition et
-    // suppression [soient] plus mis en avant" — avant, icône seule sans
-    // fond ni bordure (juste var(--ink-soft), la même couleur que le texte
-    // secondaire des lignes) : difficiles à repérer/toucher à côté du bouton
-    // "Insérer" plein et du rond bleu "i", nettement plus visibles. Même
-    // principe de fond teinté + bordure que le reste de l'app (ex. badges
-    // "Nettoyer descriptions"/danger du menu ⋮) : bleu pour Modifier
-    // (cohérent avec le "i" déjà bleu), rouge pour Supprimer (signale une
-    // action destructrice, cohérent avec customConfirm({danger:true})).
-    + (canEditEntry ? '<button type="button" class="' + editClass + '" title="Modifier" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;background:#EFF6FF;border:1px solid #C7D9F5;border-radius:7px;color:#194093;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>' : '')
-    + (canDeleteEntry ? '<button type="button" class="' + delClass + '" title="Supprimer" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:7px;color:#DC2626;font-size:14px;cursor:pointer;flex-shrink:0;">✕</button>' : '')
+    + '<button type="button" class="' + primaryClass + '" style="padding:6px 12px;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:11.5px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ti ti-plus" aria-hidden="true"></i> ' + primaryLabel + '</button>'
+    + (!isBlock ? '<button type="button" class="armoire-config-load" title="Remplacer la configuration en cours par celle-ci" style="padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">Charger</button>' : '')
+    + '<div style="position:relative;flex-shrink:0;">'
+      + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false">⋯</button>'
+      + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'
+        + menuItems
+      + '</div>'
+    + '</div>'
     + '</div>';
+}
+
+// Le menu ⋯ lui-même (ouverture/fermeture, un seul ouvert à la fois) est
+// géré par le helper générique _bindKebabMenuOn/_closeAllKebabMenus
+// (js/popup.js), partagé avec js/auth.js (liste des utilisateurs). Reste
+// ici uniquement le point d'attache spécifique au configurateur : appelé
+// depuis _armoireOpen(), voir plus bas.
+function _armoireBindRowMenuOnce(){
+  _bindKebabMenuOn(document.getElementById('armoireConfigOverlay'));
 }
 
 // Détail du contenu d'un bloc / d'une configuration (popup au clic sur "i")
@@ -1331,6 +1355,15 @@ function _armoireSyncMobileHeight(){
   var viewportH = vv ? vv.height : window.innerHeight;
   // Hauteur de nav visible dans le viewport actuel (0 si masquée/hors écran).
   var navH = navRect ? Math.max(0, viewportH - navRect.top) : 0;
+  // Collée pile contre le nav (0px d'écart), PAS de marge ici — un essai
+  // précédent reculait le bas de la modale de quelques px pour éviter que
+  // "Enregistrer" passe sous le nav (voir plus bas, .armoire-cfg-footer),
+  // mais ça laissait voir le fond assombri de la fenêtre (--overlay-scrim)
+  // dans l'écart, une bande grise disgracieuse entre la modale et le nav
+  // (retour utilisateur, capture à l'appui) — la marge de sécurité contre
+  // les imprécisions de mesure (arrondi, sous-pixel, barre d'outils
+  // dynamique…) est déplacée à l'INTÉRIEUR de la modale (padding-bottom du
+  // pied de page) plutôt qu'à l'extérieur, pour garder l'aspect "collé".
   var bottomPx = Math.max(240, viewportH - navH);
   var safeTop = _armoireSafeAreaTop();
   modal.style.position = 'fixed';
@@ -1353,6 +1386,7 @@ function _armoireOpen(){
   if(!overlay) return;
   overlay.style.display = 'flex';
   document.body.classList.add('modal-open');
+  _armoireBindRowMenuOnce();
   _armoireBrowseFamily = null;
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.value = '';
@@ -1575,7 +1609,8 @@ function _armoireClose(){
     var id = row.getAttribute('data-id');
     var config = _armoireSavedConfigs.find(function(c){ return c.id === id; });
     if(!config) return;
-    if(e.target.closest('.armoire-config-load')) _armoireLoadSavedConfig(config);
+    if(e.target.closest('.armoire-config-insert')){ _armoireMergeItems(config.items); if(typeof showToast === 'function') showToast('« ' + config.name + ' » ajoutée à la configuration en cours ✓', 'ok', 2000); }
+    else if(e.target.closest('.armoire-config-load')) _armoireLoadSavedConfig(config);
     else if(e.target.closest('.armoire-config-del')) _armoireDeleteSavedConfig(id);
     else if(e.target.closest('.armoire-config-info')) _armoireShowEntryDetails(config);
     else if(e.target.closest('.armoire-config-edit')) _armoireStartEditEntry(config, 'config');

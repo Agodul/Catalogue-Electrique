@@ -924,14 +924,35 @@ function _renderUserList(container, users, isServer) {
           ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">(vous)</span>'
           : (u.username.toLowerCase() === 'admin'
             ? '<span style="font-size:11px;color:var(--ink-soft);padding:4px 8px;">Protégé</span>'
+            // Retour utilisateur : "applique aussi ce menu ⋯ au reste du
+            // site" (suite au même menu déjà posé sur les lignes
+            // Blocs/Configurations du configurateur d'armoire, voir
+            // js/armoireConfig.js). "Modifier"/"Supprimer" rejoignent un
+            // menu ⋯ au lieu de deux boutons séparés — .btnEditUser/
+            // .btnDelUser gardés tels quels, seuls leurs gestionnaires
+            // ci-dessous changent d'emplacement dans le HTML, pas de logique.
             : (isServer
-              ? '<div style="display:flex;gap:6px;flex-shrink:0;">'
-                + '<button data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" style="padding:5px 10px;border-radius:6px;border:1px solid #194093;background:var(--paper-card);color:#194093;font-size:12px;cursor:pointer;font-family:inherit;">Modifier</button>'
-                + '<button data-user="'+u.username+'" class="btnDelUser" style="padding:5px 10px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;">✕</button>'
+              ? '<div style="position:relative;flex-shrink:0;">'
+                + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false">⋯</button>'
+                + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'
+                  + '<button type="button" data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier</button>'
+                  + '<button type="button" data-user="'+u.username+'" class="btnDelUser kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>'
+                + '</div>'
                 + '</div>'
               : '')));
     container.appendChild(div);
   });
+
+  // Le menu ⋯ lui-même (ouverture/fermeture) est géré par le helper
+  // générique _bindKebabMenuOn (js/popup.js), partagé avec le
+  // configurateur d'armoire. Attaché à #settingsOverlay, PAS à document :
+  // js/init.js bloque le clic extérieur des fenêtres modales en appelant
+  // e.stopPropagation() sur chaque clic à l'intérieur (voir MODALS.forEach
+  // dans init.js), ce qui empêcherait tout clic ici d'atteindre un
+  // listener posé sur document.
+  if(typeof _bindKebabMenuOn === 'function'){
+    _bindKebabMenuOn(document.getElementById('settingsOverlay'));
+  }
 
   // Boutons modifier
   container.querySelectorAll('.btnEditUser').forEach(function(btn) {

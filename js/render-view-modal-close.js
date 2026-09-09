@@ -68,7 +68,7 @@
   // appelle stopPropagation() sur TOUT clic (voir _initModalEscape dans
   // js/init.js, pour qu'un clic dans le vide ne ferme jamais la fiche par
   // erreur) — un listener sur document ne recevait donc JAMAIS aucun clic
-  // tant que la fiche produit était ouverte, et le menu du ⓘ ne se
+  // tant que la fiche produit était ouverte, et le menu du ⋯ ne se
   // fermait jamais en cliquant ailleurs sur la fiche (retour utilisateur).
   // Un 2e listener sur le même élément (viewOverlay) continue de
   // s'exécuter normalement, stopPropagation() ne bloquant que la

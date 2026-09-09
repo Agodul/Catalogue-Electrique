@@ -744,9 +744,16 @@
          lecteurs d'écran) mais invisible — c'est l'état :checked qui
          pilote l'apparence via .filter-toggle-chip.active (voir
          js/actions-search.js). -->
+    <!-- Retour utilisateur : "faut faire en sorte de mieux intégrer" — le
+         badge 3DEXPERIENCE (image officielle Dassault Systèmes, dégradé
+         coloré) détonnait au milieu des autres boutons plats/gris, trop
+         gros/sans respiration. Gardé intact (c'est une marque, pas question
+         de le redessiner) mais réduit avec un peu d'air autour — se lit
+         comme un petit repère discret plutôt que comme le seul contenu qui
+         déborde du bouton. Voir css/styles.css. -->
     <label class="sort-price-btn filter-toggle-chip" id="filter3DWrap" title="Afficher uniquement les produits disponibles en 3DEXPERIENCE" aria-label="Afficher uniquement les produits disponibles en 3DEXPERIENCE">
       <input type="checkbox" id="filter3DAvailable">
-      <img src="assets/three-d-badge.png" alt="" aria-hidden="true" style="width:18px;height:18px;flex-shrink:0;">
+      <img src="assets/three-d-badge.png" alt="" aria-hidden="true" class="badge-3d-icon">
     </label>
     <label class="sort-price-btn filter-toggle-chip" id="filterEssentialWrap" title="Afficher uniquement les produits standard" aria-label="Afficher uniquement les produits standard">
       <input type="checkbox" id="filterEssential">
@@ -796,6 +803,30 @@
         <option value="asc">Prix croissant</option>
         <option value="desc">Prix décroissant</option>
       </select>
+      <!-- Retour utilisateur : "rajoute les bouton 3d experience et
+           standard dans les filtre sur mobile et tablette aussi" — ces deux
+           cases n'existaient jusqu'ici que dans la toolbar desktop
+           (#filter3DAvailable/#filterEssential, voir plus bas), invisibles
+           en dessous de 1025px. Reprend .filter-toggle-chip (même mécanique
+           .active pilotée par :checked, voir js/actions-search.js) mais en
+           ligne pleine largeur avec libellé — l'icône seule a du sens dans
+           la toolbar compacte, pas ici où la place ne manque pas. Synchronisées
+           avec filter3DAvailable/filterEssential (la vraie source, lue par
+           getFilteredProducts) à l'ouverture/Appliquer/Réinitialiser — voir
+           _initFilterSheet dans js/actions-mobile-chrome.js. -->
+      <label class="filter-sheet-label">Disponibilité</label>
+      <div class="filter-sheet-toggles">
+        <label class="filter-sheet-toggle filter-toggle-chip" id="filterSheet3DWrap">
+          <input type="checkbox" id="filterSheet3D">
+          <img src="assets/three-d-badge.png" alt="" aria-hidden="true" style="width:18px;height:18px;flex-shrink:0;">
+          <span>3DEXPERIENCE</span>
+        </label>
+        <label class="filter-sheet-toggle filter-toggle-chip" id="filterSheetEssentialWrap">
+          <input type="checkbox" id="filterSheetEssential">
+          <i class="ti ti-star-filled" aria-hidden="true"></i>
+          <span>Standard</span>
+        </label>
+      </div>
       <div class="filter-sheet-actions">
         <button id="filterSheetReset" class="filter-sheet-btn-reset"><i class="ti ti-filter-off"></i> Réinitialiser</button>
         <button id="filterSheetApply" class="filter-sheet-btn-apply">Appliquer</button>
@@ -939,6 +970,23 @@
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px;">
         <button id="pwaIOSClose" style="font-size:13px;padding:8px 14px;border-radius:8px;background:none;border:1px solid var(--line,#ddd);cursor:pointer;color:var(--ink);">
+          Compris
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigateur sans "beforeinstallprompt" (Safari macOS, Firefox…) :
+         instructions manuelles génériques — avant, ces navigateurs
+         tombaient dans pwaAndroidZone comme Chrome, avec un bouton
+         "Installer" qui ne faisait RIEN silencieusement (deferredPrompt
+         jamais disponible sur ces navigateurs, voir js/pwa.js). -->
+    <div id="pwaUnsupportedZone" style="display:none;">
+      <div style="font-size:12px;color:var(--ink-soft,#555);line-height:1.6;background:var(--surface,#f5f5f5);border-radius:10px;padding:10px 12px;">
+        <div style="margin-bottom:4px;font-weight:600;color:var(--ink);">Comment installer :</div>
+        <div>Ouvrez le menu de votre navigateur puis choisissez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong>.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button id="pwaUnsupportedClose" style="font-size:13px;padding:8px 14px;border-radius:8px;background:none;border:1px solid var(--line,#ddd);cursor:pointer;color:var(--ink);">
           Compris
         </button>
       </div>
