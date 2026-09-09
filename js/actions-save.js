@@ -427,6 +427,32 @@
     var savedRef = products.find(function(p){ return p.id === savedId; });
     savedRef = savedRef ? savedRef.ref : null;
 
+    // Documents mis en attente pendant la CRÉATION directe (voir
+    // window._directAttachedFiles, js/modal-autocomplete.js) — envoyés
+    // maintenant que le produit vient d'être créé et poussé au serveur
+    // ci-dessus (save(), quelques lignes plus haut), donc que sa ref est
+    // définitive. En arrière-plan, sans bloquer la fermeture de la fenêtre —
+    // retour utilisateur : "pouvoir ajouter un document lors de la création
+    // d'un produit".
+    if(!editingId && Array.isArray(window._directAttachedFiles) && window._directAttachedFiles.length
+       && savedRef && typeof window._directUploadAttachedFiles === 'function'){
+      (function(refForDocs, filesForDocs){
+        window._directUploadAttachedFiles(refForDocs, filesForDocs).then(function(uploaded){
+          if(!uploaded || !uploaded.length) return;
+          var idx3 = products.findIndex(function(p){ return p.ref === refForDocs; });
+          if(idx3 !== -1){
+            products[idx3].hasDoc = true;
+            products[idx3].docFilename = uploaded.map(function(f){ return f.filename; }).join(', ');
+            products[idx3]._docFiles = uploaded;
+            save(true, [products[idx3]]);
+            if(typeof render === 'function') render();
+          }
+          showToast(uploaded.length + ' document' + (uploaded.length > 1 ? 's' : '') + ' envoyé' + (uploaded.length > 1 ? 's' : '') + ' ✓', 'ok', 2500);
+        });
+      })(savedRef, window._directAttachedFiles);
+    }
+    window._directAttachedFiles = [];
+
     // Fermer après le flash
     setTimeout(function(){
       btnSaveEl.classList.remove('save-anim');

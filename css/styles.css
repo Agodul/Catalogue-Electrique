@@ -1530,31 +1530,35 @@
 
   
 
-  /* 1 — Cartes en cascade */
-  @keyframes cardEnter{
-    from{ opacity:0; transform:translateY(14px) scale(.985); }
-    to{   opacity:1; transform:translateY(0)    scale(1); }
+  /* 1 — Entrée des cartes — UNE seule animation partout (accueil, groupes
+     par marque/famille, ET "Voir tout le catalogue"), voir renderCard()
+     (js/render-card-grid.js) — retour utilisateur : "mais la même
+     animation de par tous" (unifie ce qui était deux animations
+     différentes : la cascade complète opacity+transform d'un côté,
+     n'existait qu'en mode normal, et cette version allégée réservée à
+     "Voir tout" après un problème de FPS — voir git blame/historique de ce
+     bloc). Opacity SEULE (pas de transform combinée : calque GPU moins
+     coûteux à composer), durée courte (.18s), et un décalage progressif
+     capé à 120ms max (au lieu d'une cascade complète pouvant aller jusqu'à
+     600ms) — tout un lot de cartes termine son animation en un peu plus de
+     300ms, quel que soit le nombre de cartes affichées d'un coup.
+     will-change:opacity (une seule propriété) est libéré dès la fin de
+     l'animation de CHAQUE carte par l'écouteur "animationend" dans
+     render() (js/storage.js) — jamais laissé actif après coup, ce qui
+     avait causé la chute de FPS d'origine sur les GPU peu puissants
+     (portables Windows à puce graphique intégrée, mobile Android/iOS). */
+  @keyframes cardFadeIn{
+    from{ opacity:0; }
+    to{   opacity:1; }
   }
   .card{
     opacity:0;
     animation:none;
-    will-change:opacity, transform;
+    will-change:opacity;
   }
-  .card.card-visible{
-    animation:cardEnter .42s cubic-bezier(.22,.68,0,1.2) forwards;
+  .card.card-fade{
+    animation:cardFadeIn .18s ease-out forwards;
   }
-  /* Décalage progressif selon la position dans la grille */
-  .card.card-visible:nth-child(1)  { animation-delay:.00s; }
-  .card.card-visible:nth-child(2)  { animation-delay:.04s; }
-  .card.card-visible:nth-child(3)  { animation-delay:.08s; }
-  .card.card-visible:nth-child(4)  { animation-delay:.12s; }
-  .card.card-visible:nth-child(5)  { animation-delay:.16s; }
-  .card.card-visible:nth-child(6)  { animation-delay:.20s; }
-  .card.card-visible:nth-child(7)  { animation-delay:.24s; }
-  .card.card-visible:nth-child(8)  { animation-delay:.28s; }
-  .card.card-visible:nth-child(9)  { animation-delay:.32s; }
-  .card.card-visible:nth-child(10) { animation-delay:.36s; }
-  .card.card-visible:nth-child(n+11){ animation-delay:.40s; }
 
   /* 2 — Modales glissent depuis le bas */
   @keyframes slideUp{ from{ opacity:0; transform:translateY(40px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
@@ -1630,7 +1634,7 @@
   .filebar .dot.pulsing{ animation:savePulse .9s ease forwards; }
 
   @media(prefers-reduced-motion:reduce){
-    .card, .card.card-visible, #viewOverlay.open, #viewOverlay.open #viewModal,
+    .card, .card.card-fade, #viewOverlay.open, #viewOverlay.open #viewModal,
     .modal-overlay.open, .modal-overlay.open .modal,
     #reqDetailOverlay.open, #reqDetailOverlay.open #reqDetailModal,
     #requestsOverlay.open, #requestsOverlay.open #requestsPanel,

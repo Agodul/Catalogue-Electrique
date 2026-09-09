@@ -705,13 +705,13 @@
     }
 
     // Libère le calque GPU (will-change) de chaque carte une fois son
-    // animation d'entrée terminée — retour utilisateur : "chute de FPS"
-    // après F5 + "Voir tout le catalogue". will-change:opacity,transform
-    // (css/styles.css, .card) force le navigateur à promouvoir CHAQUE carte
-    // sur son propre calque de composition dès son insertion dans le DOM ;
-    // rien ne le retirait jamais une fois l'animation finie (,42s + un
-    // décalage progressif par carte). En mode "Voir tout"/recherche, qui
-    // charge des centaines voire des milliers de cartes au fil du défilement
+    // animation d'entrée (cardFadeIn, voir .card-fade dans css/styles.css)
+    // terminée — retour utilisateur : "chute de FPS" après F5 + "Voir tout
+    // le catalogue". will-change:opacity (css/styles.css, .card) force le
+    // navigateur à promouvoir CHAQUE carte sur son propre calque de
+    // composition dès son insertion dans le DOM ; rien ne le retirait
+    // jamais une fois l'animation finie. Sur une liste qui charge des
+    // centaines voire des milliers de cartes au fil du défilement
     // ("Afficher plus"), ça laissait s'accumuler indéfiniment des centaines
     // de calques GPU vivants — chacun consommant mémoire et temps de
     // composition à CHAQUE frame, bien après que l'animation qui le
@@ -722,7 +722,7 @@
     if(!_cardAnimEndBound){
       _cardAnimEndBound = true;
       contentEl.addEventListener('animationend', function(e){
-        if(e.animationName === 'cardEnter' && e.target.classList.contains('card')){
+        if(e.animationName === 'cardFadeIn' && e.target.classList.contains('card')){
           e.target.style.willChange = 'auto';
         }
       });
@@ -745,8 +745,8 @@
       if(!grid) return;
       var batch = _lazyItems.slice(0, 40);
       _lazyItems = _lazyItems.slice(40);
-      var frag = document.createDocumentFragment();
       var tmp = document.createElement('div');
+      var newCards = []; // uniquement les cartes de CE lot — voir rebind ci-dessous
       // Les items peuvent être des produits directs ou des objets {p, group}
       batch.forEach(function(item){
         var p = item.p || item;
@@ -760,13 +760,24 @@
         tmp.innerHTML = renderCard(p);
         var card = tmp.firstChild;
         targetGrid.appendChild(card);
+        newCards.push(card);
       });
-      // Rebinder les clics sur les nouvelles cartes — un lot peut atterrir dans
-      // PLUSIEURS groupes différents (mode groupement), donc on reparcourt tout
-      // le conteneur plutôt que le seul dernier groupe, sinon les cartes ajoutées
-      // aux autres groupes restent sans clic (_viewBound évite les doublons).
-      contentEl.querySelectorAll('[data-view]').forEach(function(card){
-        if(!card._viewBound){ card._viewBound = true; card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); }); }
+      // Rebinder les clics UNIQUEMENT sur les cartes de CE lot — un lot peut
+      // atterrir dans PLUSIEURS groupes différents (mode groupement), d'où le
+      // besoin de les collecter au fil de la boucle ci-dessus plutôt que de
+      // ne regarder que le dernier groupe. Avant, ce rebind reparcourait
+      // TOUT #content (querySelectorAll('[data-view]') sur l'ensemble des
+      // cartes déjà chargées, pas seulement les nouvelles) à CHAQUE lot — le
+      // filtre _viewBound évitait bien un double clic, mais la recherche
+      // elle-même devenait de plus en plus coûteuse à mesure que "Voir tout
+      // le catalogue" accumulait des lots au fil du défilement (coût
+      // quadratique sur une session de navigation longue) — retour
+      // utilisateur : "j'ai encore des problèmes de FPS lors de l'affichage
+      // du catalogue complet", après un premier correctif qui n'avait
+      // traité que l'accumulation de calques GPU (will-change), pas celui-ci.
+      newCards.forEach(function(card){
+        card._viewBound = true;
+        card.addEventListener('click', function(){ openView(card.getAttribute('data-view')); });
       });
       var moreBtn = document.getElementById('lazyMore');
       if(_lazyItems.length === 0){

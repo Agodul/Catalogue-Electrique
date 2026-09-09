@@ -119,6 +119,39 @@
     updatePriceDisplay();
   }
 
+  // Envoie les fichiers mis en attente pendant la CRÉATION directe d'un
+  // produit (pas via une demande — voir window._directAttachedFiles dans
+  // openModal ci-dessous) — retour utilisateur : "pouvoir ajouter un
+  // document lors de la création d'un produit". Même principe que
+  // window.reqUploadAttachedFiles (js/requests.js) pour le mode "Proposer",
+  // mais directement vers /pushDocs (le produit existe déjà réellement côté
+  // serveur à cet instant, la ref est connue et définitive — pas besoin de
+  // résoudre un requestId). Appelée après un enregistrement direct réussi
+  // (voir js/actions-save.js), donc TOUJOURS après que le produit ait déjà
+  // été poussé au serveur.
+  window._directUploadAttachedFiles = async function(ref, files){
+    var sUrl = localStorage.getItem('cat_server_url');
+    if(!sUrl || !files || !files.length || !ref) return [];
+    var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+    delete h['Content-Type'];
+    var uploaded = [];
+    for(var i = 0; i < files.length; i++){
+      try{
+        var fd = new FormData();
+        fd.append('ref', ref);
+        fd.append('document', files[i], files[i].name);
+        var r = await fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd });
+        if(r.ok){
+          var data = await r.json();
+          uploaded.push({ uuid: data.uuid, filename: data.filename || files[i].name, ref: ref });
+        } else {
+          console.warn('_directUploadAttachedFiles: échec pour', files[i].name, 'HTTP', r.status);
+        }
+      }catch(e){ console.warn('_directUploadAttachedFiles:', e); }
+    }
+    return uploaded;
+  };
+
   // Référence grisée (non modifiable) dès que le formulaire porte sur un
   // produit qui EXISTE déjà — retour utilisateur : "lorsqu'on veut éditer
   // une fiche produit la référence soit grisée", étendu ensuite à "est-ce
@@ -398,6 +431,47 @@
         Array.from(this.files || []).forEach(function(f){ window._proposeAttachedFiles.push(f); });
         this.value = '';
         _proposeRenderFiles();
+      };
+    } else if(canUploadPdf && !editingId){
+      // Création directe d'un produit (pas via une demande — pour ça, voir
+      // la branche _proposeMode ci-dessus) — retour utilisateur : "pouvoir
+      // ajouter un document lors de la création d'un produit". Même
+      // principe d'upload DIFFÉRÉ que le mode "Proposer" (la ref n'existe
+      // pas encore côté serveur tant que "Enregistrer" n'a pas été cliqué) :
+      // les fichiers restent en mémoire ici, puis sont envoyés à /pushDocs
+      // juste après la création réussie du produit (voir js/actions-save.js,
+      // window._directUploadAttachedFiles).
+      if(modalPdfSection) modalPdfSection.style.display = '';
+      window._directAttachedFiles = [];
+
+      function _directRenderFiles(){
+        var L = document.getElementById('modalPdfList');
+        var U = document.getElementById('modalPdfUpload');
+        if(!L) return;
+        if(U) U.style.display = 'flex';
+        L.innerHTML = window._directAttachedFiles.map(function(f, i){
+          var isImg = /^image\//.test(f.type);
+          var icon = isImg
+            ? '<i class="ti ti-photo" style="font-size:18px;color:var(--copper);flex-shrink:0;"></i>'
+            : '<i class="ti ti-file-type-pdf" style="font-size:18px;color:#E53E3E;flex-shrink:0;"></i>';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin-bottom:4px;">'
+            + icon
+            + '<span style="font-size:13px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(f.name) + '</span>'
+            + '<button data-idx="' + i + '" class="direct-file-del-btn" style="padding:3px 9px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#991B1B;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕</button>'
+            + '</div>';
+        }).join('');
+        L.querySelectorAll('.direct-file-del-btn').forEach(function(btn){
+          btn.onclick = function(){
+            window._directAttachedFiles.splice(parseInt(btn.getAttribute('data-idx'), 10), 1);
+            _directRenderFiles();
+          };
+        });
+      }
+      _directRenderFiles();
+      if(modalPdfInput) modalPdfInput.onchange = function(){
+        Array.from(this.files || []).forEach(function(f){ window._directAttachedFiles.push(f); });
+        this.value = '';
+        _directRenderFiles();
       };
     }
     // ── Fin section PDF ──

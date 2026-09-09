@@ -76,7 +76,15 @@
       ? escapeHtml(p.name)
       : '';
 
-    return '<div class="card card-visible" data-view="'+p.id+'" style="animation-delay:'+Math.min(idx*55, 600)+'ms">'+
+    // Animation d'entrée — UNE seule pour tout le site, "Voir tout le
+    // catalogue" compris (retour utilisateur : "mais la même animation de
+    // par tous" — unifie ce qui était deux animations différentes selon le
+    // mode d'affichage). Opacity seule (pas de transform combinée : calque
+    // GPU moins coûteux à composer) et décalage capé à 120ms max, voir
+    // .card-fade dans css/styles.css pour l'historique complet de ce choix
+    // (chute de FPS sur GPU peu puissant avec l'ancienne cascade complète,
+    // opacity+transform+décalage jusqu'à 600ms, un calque par carte).
+    return '<div class="card card-fade" data-view="'+p.id+'" style="animation-delay:'+Math.min(idx*8, 120)+'ms">'+
       '<div class="photo">'+
         photo+
         (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')+
