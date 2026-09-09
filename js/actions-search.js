@@ -12,6 +12,23 @@
   familyFilterEl.addEventListener('change', function(){ render(); });
   seriesFilterEl.addEventListener('change', function(){ render(); });
 
+  // ── Filtres case à cocher : 3DEXPERIENCE / Standard (retour utilisateur)
+  // .active pilote l'apparence (voir css/styles.css, .filter-toggle-chip),
+  // posé sur le <label> plutôt que la case elle-même puisque c'est LUI qui
+  // porte .sort-price-btn.
+  var filter3DEl = document.getElementById('filter3DAvailable');
+  var filterEssentialEl = document.getElementById('filterEssential');
+  if(filter3DEl) filter3DEl.addEventListener('change', function(){
+    document.getElementById('filter3DWrap').classList.toggle('active', filter3DEl.checked);
+    if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
+    render();
+  });
+  if(filterEssentialEl) filterEssentialEl.addEventListener('change', function(){
+    document.getElementById('filterEssentialWrap').classList.toggle('active', filterEssentialEl.checked);
+    if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
+    render();
+  });
+
   // ── Tri par prix ──────────────────────────────────────────────
   window._priceSort = null; // null | 'asc' | 'desc'
   var sortPriceBtn  = document.getElementById('sortPriceBtn');

@@ -240,6 +240,11 @@
     brandFilterEl.value  = '';
     familyFilterEl.value = '';
     seriesFilterEl.value = '';
+    // Réinitialiser aussi les cases 3DEXPERIENCE/Standard (retour utilisateur)
+    var _f3dReset = document.getElementById('filter3DAvailable');
+    var _fEssReset = document.getElementById('filterEssential');
+    if(_f3dReset){ _f3dReset.checked = false; document.getElementById('filter3DWrap').classList.remove('active'); }
+    if(_fEssReset){ _fEssReset.checked = false; document.getElementById('filterEssentialWrap').classList.remove('active'); }
     // Réinitialiser aussi le tri prix
     window._setPriceSort(null);
     // .value= ne déclenche pas "change" → resynchroniser le badge de la

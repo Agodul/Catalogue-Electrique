@@ -734,6 +734,24 @@
     <select id="seriesFilter">
       <option value="">Toutes les séries</option>
     </select>
+    <!-- Filtres case à cocher — retour utilisateur : "ajouter dans les
+         filtres la 3D experience et le standard [...] un principe de case à
+         cocher qui ferait la même hauteur que le bouton reset filtre".
+         Réutilise directement .sort-price-btn (même classe que le bouton
+         reset juste après) pour hériter exactement les mêmes hauteur/
+         padding/rayon à chaque palier responsive, sans dupliquer ces
+         règles. La case à cocher réelle reste dans le DOM (accessibilité,
+         lecteurs d'écran) mais invisible — c'est l'état :checked qui
+         pilote l'apparence via .filter-toggle-chip.active (voir
+         js/actions-search.js). -->
+    <label class="sort-price-btn filter-toggle-chip" id="filter3DWrap" title="Afficher uniquement les produits disponibles en 3DEXPERIENCE" aria-label="Afficher uniquement les produits disponibles en 3DEXPERIENCE">
+      <input type="checkbox" id="filter3DAvailable">
+      <img src="assets/three-d-badge.png" alt="" aria-hidden="true" style="width:18px;height:18px;flex-shrink:0;">
+    </label>
+    <label class="sort-price-btn filter-toggle-chip" id="filterEssentialWrap" title="Afficher uniquement les produits standard" aria-label="Afficher uniquement les produits standard">
+      <input type="checkbox" id="filterEssential">
+      <i class="ti ti-star-filled" aria-hidden="true"></i>
+    </label>
     <button id="btnResetFilters" title="Réinitialiser les filtres" class="sort-price-btn">
       <i class="ti ti-filter-off"></i>
     </button>

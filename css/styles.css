@@ -1269,8 +1269,10 @@
       order:4; flex:1 1 0; min-width:0; font-size:13px;
       padding:8px 6px; height:38px; box-sizing:border-box;
     }
-    #btnResetFilters{ order:5; font-size:13px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
-    #sortPriceBtn{ order:6; font-size:13px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #filter3DWrap{ order:5; font-size:12px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #filterEssentialWrap{ order:6; font-size:12px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #btnResetFilters{ order:7; font-size:13px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #sortPriceBtn{ order:8; font-size:13px; padding:0 8px; height:38px; flex-shrink:0; box-sizing:border-box; }
     select#brandFilter, select#seriesFilter{ display:flex; }
     .filters-visible select#familyFilter{ display:flex; }
   }
@@ -2336,6 +2338,18 @@
   .sort-price-btn.active-desc{ background:var(--copper); color:#fff; border-color:var(--copper); }
   .sort-price-btn .sort-icon{ font-size:14px; transition:transform .2s; }
 
+  /* ── Filtres case à cocher (3DEXPERIENCE / Standard) — même hauteur que
+       .sort-price-btn (classe partagée, voir index.html), coché = même
+       traitement visuel que .active-asc/.active-desc ci-dessus. La case à
+       cocher réelle reste dans le DOM pour l'accessibilité, seulement
+       masquée visuellement (pas display:none, qui l'exclurait aussi de la
+       navigation clavier/lecteur d'écran). ── */
+  .filter-toggle-chip input[type="checkbox"]{
+    position:absolute; width:1px; height:1px; opacity:0; margin:0; pointer-events:none;
+  }
+  .filter-toggle-chip.active{ background:var(--copper); color:#fff; border-color:var(--copper); }
+  .filter-toggle-chip:focus-within{ outline:2px solid var(--copper); outline-offset:1px; }
+
   /* ── Safe area iPhone (notch / home bar) ────────────────────── */
   #pwaInstallBanner{ bottom:max(24px,env(safe-area-inset-bottom)); }
 
@@ -2434,8 +2448,10 @@
     select#brandFilter{ order:2; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
     select#familyFilter{ order:3; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
     select#seriesFilter{ order:4; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
-    #btnResetFilters{ order:5; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
-    #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #filter3DWrap{ order:5; font-size:13px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #filterEssentialWrap{ order:6; font-size:13px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #btnResetFilters{ order:7; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
+    #sortPriceBtn{ order:8; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
   }
 
   @media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
@@ -3375,8 +3391,10 @@
   select#brandFilter{ order:2; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
   select#familyFilter{ order:3; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
   select#seriesFilter{ order:4; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0; }
-  #btnResetFilters{ order:5; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
-  #sortPriceBtn{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #filter3DWrap{ order:5; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #filterEssentialWrap{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #btnResetFilters{ order:7; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #sortPriceBtn{ order:8; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
 
 /* ── Badge essentiel ─────────────────────────────────────── */
 /* Aligné avec le badge 3D (.card .photo .three-d-overlay, voir plus haut

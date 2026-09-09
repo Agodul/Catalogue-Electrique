@@ -311,6 +311,11 @@
       pushToServer(changedProducts).then(function(ok){
         if(!ok && typeof showToast === 'function'){
           showToast('Échec de synchronisation avec le serveur — modification enregistrée localement uniquement', 'warn', 5000);
+        } else if(ok && typeof window._syncCheckAllBaseline === 'function'){
+          // Voir commentaire complet dans _syncCheckAllBaseline
+          // (js/actions-settings-sync.js) — évite qu'on se resynchronise
+          // pour rien quelques secondes après avoir soi-même sauvegardé.
+          window._syncCheckAllBaseline();
         }
       });
     }
@@ -480,12 +485,22 @@
     var brand  = brandFilterEl.value;
     var family = familyFilterEl.value;
     var series = seriesFilterEl.value;
+    // Cases à cocher 3DEXPERIENCE/Standard (retour utilisateur) — éléments
+    // relus à chaque appel plutôt que mis en cache dans une variable
+    // partagée : filter3DEl/filterEssentialEl sont déclarés dans
+    // js/actions-search.js, chargé après ce fichier.
+    var only3D        = document.getElementById('filter3DAvailable');
+    only3D = !!(only3D && only3D.checked);
+    var onlyEssential = document.getElementById('filterEssential');
+    onlyEssential = !!(onlyEssential && onlyEssential.checked);
 
     // Filtrage par sélecteurs
     var filtered = products.filter(function(p){
       if(brand  && p.brand  !== brand)  return false;
       if(family && p.family !== family) return false;
       if(series && p.series !== series) return false;
+      if(only3D && !p.available3DX) return false;
+      if(onlyEssential && !p.essential) return false;
       return true;
     });
 
@@ -590,9 +605,12 @@
     // images) ; le rafraîchissement des <select> juste au-dessus reste
     // systématique, pour toujours refléter une marque/famille/série qui
     // vient d'apparaître ailleurs.
+    var _f3dElForKey = document.getElementById('filter3DAvailable');
+    var _fEssElForKey = document.getElementById('filterEssential');
     var renderKey = JSON.stringify([
       brandFilterEl.value, familyFilterEl.value, seriesFilterEl.value,
-      searchInputEl.value, window._priceSort, viewAll
+      searchInputEl.value, window._priceSort, viewAll,
+      !!(_f3dElForKey && _f3dElForKey.checked), !!(_fEssElForKey && _fEssElForKey.checked)
     ]);
     if(renderKey === _lastRenderKey) return;
     _lastRenderKey = renderKey;

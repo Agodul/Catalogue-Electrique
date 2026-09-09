@@ -295,11 +295,15 @@
         var bbEl=document.getElementById('brandFilter');
         var bsEl=document.getElementById('seriesFilter');
         var siEl=document.getElementById('searchInput');
+        var f3dEl=document.getElementById('filter3DAvailable');
+        var fEssEl=document.getElementById('filterEssential');
         var count=0;
         if(bbEl&&bbEl.value) count++;
         if(bfEl&&bfEl.value) count++;
         if(bsEl&&bsEl.value) count++;
         if(siEl&&siEl.value) count++;
+        if(f3dEl&&f3dEl.checked) count++;
+        if(fEssEl&&fEssEl.checked) count++;
         if(bnFilterBadge){ bnFilterBadge.textContent=count||''; bnFilterBadge.style.display=count>0?'':'none'; }
         if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
       }

@@ -319,6 +319,37 @@
     }
   }
 
+  // Réaligne SILENCIEUSEMENT le repère local de doCheckAllSync (ci-dessus)
+  // sur l'état actuel du serveur, sans jamais déclencher les pulls
+  // (syncFromServer/syncDeletions/etc.) qu'elle lance normalement en cas de
+  // changement — juste après un envoi RÉUSSI de nos propres modifications
+  // (voir save() dans js/storage.js), pour que le prochain cycle de
+  // doCheckAllSync (jusqu'à 15s plus tard) ne se déclenche pas sur un
+  // changement qu'on vient nous-même de faire. Retour utilisateur : "quand
+  // on met à jour un produit, quelques secondes après ça actualise la page
+  // alors que c'est moi qui ai fait la modif, j'ai déjà le produit à jour"
+  // — sans ce repère mis à jour ici, le prochain /checkAll voyait le
+  // catalogue changé (revision/changedAt avancés par NOTRE PROPRE envoi) par
+  // rapport à l'instantané local resté sur l'état d'AVANT cet envoi, et
+  // relançait tout un pull différentiel + suppressions pour rien : on avait
+  // déjà tout, localement, avant même que le serveur ait fini de traiter la
+  // requête. Best-effort : un échec ici ne fait que retarder d'un cycle
+  // normal (jusqu'à 15s) la mise à jour de ce repère, jamais bloquant pour
+  // l'utilisateur.
+  async function _syncCheckAllBaseline(){
+    if(!serverUrl) return;
+    if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
+    try{
+      var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
+      delete h['Content-Type'];
+      var r = await fetch(serverUrl + '/checkAll', { headers: h });
+      if(!r.ok) return;
+      var data = await r.json();
+      localStorage.setItem(CHECKALL_KEY, JSON.stringify(data));
+    }catch(e){ /* best-effort, voir commentaire ci-dessus */ }
+  }
+  window._syncCheckAllBaseline = _syncCheckAllBaseline;
+
   function startSyncPolling(){
     stopSyncPolling();
     if(!serverUrl) return;
