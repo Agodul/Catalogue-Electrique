@@ -12,8 +12,17 @@
     var s = str
       .replace(/<br\s*\/?>/gi, ' ')
       .replace(/<\/?(p|div|li|ul|ol|h[1-6]|strong|b|em|i)[^>]*>/gi, ' ');
-    // Retire toutes les balises restantes
-    s = s.replace(/<[^>]+>/g, '');
+    // Retire toutes les balises restantes — laisser le PARSEUR HTML du
+    // navigateur s'en charger (stripHtmlTags, js/storage.js) plutôt qu'une
+    // regex /<[^>]+>/g (alerte CodeQL "Incomplete multi-character
+    // sanitization" : une regex de ce genre peut être contournée par des
+    // balises malformées/imbriquées, ex. un fragment "<<script>" dont une
+    // seule passe de retrait ne laisse ressortir qu'un "<script>" bien
+    // formé — même correctif déjà appliqué à stripHtmlTags pour la même
+    // raison, voir son commentaire complet dans js/storage.js). Le nœud
+    // n'est jamais inséré dans le document, donc aucun script n'y est
+    // jamais exécuté.
+    s = stripHtmlTags(s);
     // Décode les entités HTML
     s = decodeEntities(s);
     // Nettoie les espaces multiples et sauts de ligne
