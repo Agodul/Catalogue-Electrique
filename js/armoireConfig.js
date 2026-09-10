@@ -347,6 +347,58 @@ function _armoireRenderDraft(){
 
 var _armoireBrowseFamily = null; // famille actuellement ouverte (null = liste des dossiers)
 
+// Retour utilisateur : "ajoute un bouton pour afficher les deux catalogues
+// ou non" — le configurateur d'armoire parcourait jusqu'ici TOUJOURS
+// l'ensemble du catalogue (window.products, sans filtre), utile pour une
+// armoire qui mélange réellement du matériel électrique et pneumatique. Le
+// bouton #armoireSearchScopeBtn (voir _armoireToggleSearchScope/
+// _armoireSyncSearchScopeBtn plus bas) permet de limiter la recherche/le
+// parcours au seul catalogue actuellement affiché (window._getActiveDomain,
+// js/storage.js) quand ce mélange n'est pas voulu. true par défaut : garde
+// le comportement déjà connu tant qu'on ne l'a pas explicitement restreint.
+var _armoireSearchAllDomains = true;
+
+// Liste de produits à parcourir/rechercher dans CE panneau — remplace tous
+// les "window.products || []" utilisés jusqu'ici par les fonctions
+// d'affichage ci-dessous.
+function _armoireScopedProducts(){
+  var all = window.products || [];
+  if(_armoireSearchAllDomains) return all;
+  var domain = typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : 'electrique';
+  return all.filter(function(p){ return productDomain(p) === domain; });
+}
+
+function _armoireSyncSearchScopeBtn(){
+  var btn   = document.getElementById('armoireSearchScopeBtn');
+  var icon  = document.getElementById('armoireSearchScopeIcon');
+  var label = document.getElementById('armoireSearchScopeLabel');
+  if(!btn || !icon || !label) return;
+  if(_armoireSearchAllDomains){
+    btn.style.border = '1px solid var(--copper)';
+    btn.style.background = 'var(--copper)';
+    btn.style.color = '#fff';
+    btn.title = 'Recherche dans les deux catalogues — cliquer pour limiter au catalogue actif';
+    icon.className = 'ti ti-apps';
+    label.textContent = 'Tous';
+  } else {
+    var domain = typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : 'electrique';
+    var isPneu = domain === 'pneumatique';
+    btn.style.border = '1px solid var(--line)';
+    btn.style.background = 'var(--paper)';
+    btn.style.color = 'var(--ink)';
+    btn.title = 'Recherche limitée au catalogue ' + (isPneu ? 'pneumatique' : 'électrique') + ' — cliquer pour chercher dans les deux';
+    icon.className = isPneu ? 'ti ti-wind' : 'ti ti-bolt';
+    label.textContent = isPneu ? 'Pneumatique' : 'Électrique';
+  }
+}
+
+function _armoireToggleSearchScope(){
+  _armoireSearchAllDomains = !_armoireSearchAllDomains;
+  _armoireSyncSearchScopeBtn();
+  var searchInput = document.getElementById('armoireConfigSearch');
+  _armoireRenderSearchResults(searchInput ? searchInput.value : '');
+}
+
 // Même vignette que "Produits suggérés" (.sug-list-photo) — miniature fixe
 // 44×44 avec repli sur une icône si pas de photo ou en erreur de chargement.
 function _armoirePhotoHtml(p){
@@ -369,7 +421,7 @@ function _armoireProductRowHtml(p){
 function _armoireRenderFamilyFolders(){
   var el = document.getElementById('armoireConfigSearchResults');
   if(!el) return;
-  var all = window.products || [];
+  var all = _armoireScopedProducts();
   var counts = {};
   var order = [];
   all.forEach(function(p){
@@ -395,7 +447,7 @@ function _armoireRenderFamilyFolders(){
 function _armoireRenderFamilyProducts(family){
   var el = document.getElementById('armoireConfigSearchResults');
   if(!el) return;
-  var all = window.products || [];
+  var all = _armoireScopedProducts();
   var results = all.filter(function(p){ return (p.family || '(Sans famille)') === family; });
   var backRow = '<div class="armoire-family-back" style="display:flex;align-items:center;gap:6px;padding:8px 6px;margin-bottom:6px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--copper-deep);font-size:12.5px;font-weight:600;">'
     + '<i class="ti ti-chevron-left" style="font-size:14px;"></i> Toutes les familles</div>';
@@ -417,7 +469,7 @@ function _armoireRenderSearchResults(query){
     return;
   }
 
-  var all = window.products || [];
+  var all = _armoireScopedProducts();
   var results = all.filter(function(p){
     // Tags inclus dans la recherche, comme sur le catalogue principal
     // (voir getFilteredProducts/scoreProductMatch, js/storage.js) — retour
@@ -1390,6 +1442,7 @@ function _armoireOpen(){
   _armoireBrowseFamily = null;
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.value = '';
+  _armoireSyncSearchScopeBtn();
   _armoireCloseBlocksDrawer(true); // remise à zéro silencieuse, le tiroir n'a jamais été visible
   _armoireSetMobileView('browse');
   _armoireRenderDraft();
@@ -1478,6 +1531,9 @@ function _armoireClose(){
 
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.addEventListener('input', function(){ _armoireRenderSearchResults(searchInput.value); });
+
+  var searchScopeBtn = document.getElementById('armoireSearchScopeBtn');
+  if(searchScopeBtn) searchScopeBtn.addEventListener('click', _armoireToggleSearchScope);
 
   var searchResultsEl = document.getElementById('armoireConfigSearchResults');
   if(searchResultsEl) searchResultsEl.addEventListener('click', function(e){
@@ -1596,7 +1652,7 @@ function _armoireClose(){
   });
 
   var savedListEl = document.getElementById('armoireConfigSavedList');
-  if(savedListEl) savedListEl.addEventListener('click', function(e){
+  if(savedListEl) savedListEl.addEventListener('click', async function(e){
     var folderHeaderCfg = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
     if(folderHeaderCfg){
       var fKeyCfg = folderHeaderCfg.getAttribute('data-folder');
@@ -1609,7 +1665,23 @@ function _armoireClose(){
     var id = row.getAttribute('data-id');
     var config = _armoireSavedConfigs.find(function(c){ return c.id === id; });
     if(!config) return;
-    if(e.target.closest('.armoire-config-insert')){ _armoireMergeItems(config.items); if(typeof showToast === 'function') showToast('« ' + config.name + ' » ajoutée à la configuration en cours ✓', 'ok', 2000); }
+    if(e.target.closest('.armoire-config-insert')){
+      // Retour utilisateur : "ajouter une fenêtre de confirmation lorsqu'on
+      // souhaite ajouter une configuration à notre configuration en cours"
+      // — contrairement à "Charger" (_armoireLoadSavedConfig), qui REMPLACE
+      // et demandait déjà confirmation, "Ajouter" fusionne silencieusement
+      // (les quantités des références déjà présentes sont cumulées, voir
+      // _armoireAddToDraft) sans qu'on l'ait forcément voulu. Même
+      // convention que "Remplacer" : pas de confirmation si la config en
+      // cours est encore vide (rien à perturber).
+      if(_armoireDraft.length && !(await customConfirm(
+        'Ajouter « ' + escapeHtml(config.name) + ' » ?',
+        'Les ' + config.items.length + ' référence' + (config.items.length > 1 ? 's' : '') + ' de « ' + escapeHtml(config.name) + ' » seront ajoutées à votre configuration en cours (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' actuellement). Les quantités des références déjà présentes seront cumulées.',
+        { okLabel: 'Ajouter' }
+      ))) return;
+      _armoireMergeItems(config.items);
+      if(typeof showToast === 'function') showToast('« ' + config.name + ' » ajoutée à la configuration en cours ✓', 'ok', 2000);
+    }
     else if(e.target.closest('.armoire-config-load')) _armoireLoadSavedConfig(config);
     else if(e.target.closest('.armoire-config-del')) _armoireDeleteSavedConfig(id);
     else if(e.target.closest('.armoire-config-info')) _armoireShowEntryDetails(config);

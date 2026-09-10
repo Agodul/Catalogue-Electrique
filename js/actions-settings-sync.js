@@ -6,6 +6,9 @@
   var settingsFamilyList = document.getElementById('settingsFamilyList');
   var settingsEditingFamily = null; // famille en cours de modif depuis Paramètres
 
+  // Retour utilisateur : les familles sont partagées (même nom, même icône)
+  // entre les deux catalogues Électrique/Pneumatique — pas de scope par
+  // domaine ici, Réglages liste toutes les familles connues.
   function renderSettingsFamilies(){
     refreshKnownFamilies();
     // Compter produits par famille

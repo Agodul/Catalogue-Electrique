@@ -223,7 +223,31 @@
   </div>
   <div class="hdr-spacer"></div>
   <div class="header-actions">
+    <!-- Retour utilisateur : "lorsque je change de catalogue ça bouge" —
+         .header-actions est ancré à DROITE (voir .hdr-spacer, flex:1, juste
+         au-dessus) : la largeur du chip #hdrCountChip change à chaque
+         bascule de domaine (nombre de produits différent, ex. "463
+         produits" ↔ "12 produits"), ce qui décale tout ce qui se trouve
+         AVANT lui dans ce groupe ancré à droite — et c'était justement le
+         cas du sélecteur, en 1ère position, donc le plus déplacé de tous.
+         Le chip passe maintenant AVANT le sélecteur : sa largeur peut
+         toujours varier, mais le sélecteur, lui, ne bouge plus JAMAIS
+         (plus rien à sa droite ne change de largeur) — seul le chip (du
+         texte, pas un bouton qu'on vient de cliquer) se déplace un peu. -->
     <span class="hdr-count-chip" id="hdrCountChip" style="display:none;">0 produit</span>
+    <!-- Bascule Électrique / Pneumatique — retour utilisateur : ajouter le
+         pneumatique au catalogue sans le mélanger à l'électrique. Filtre
+         TOUT en amont (accueil, catalogue, recherche, formulaire d'ajout) —
+         voir window._getActiveDomain/_setActiveDomain (js/storage.js) et le
+         câblage des clics dans js/actions-home.js. -->
+    <div class="domain-toggle" id="domainToggle" role="group" aria-label="Domaine du catalogue">
+      <button type="button" class="domain-toggle-btn" id="domainBtnElectrique" title="Catalogue électrique">
+        <i class="ti ti-bolt" aria-hidden="true"></i><span class="domain-toggle-label">Électrique</span>
+      </button>
+      <button type="button" class="domain-toggle-btn" id="domainBtnPneumatique" title="Catalogue pneumatique">
+        <i class="ti ti-wind" aria-hidden="true"></i><span class="domain-toggle-label">Pneumatique</span>
+      </button>
+    </div>
     <span id="hdrUsername" style="display:none;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;"></span>
     <button id="btnAuthToggle" class="secondary hdr-menu-btn" title="Se connecter"><i class="ti ti-login" aria-hidden="true"></i></button>
 

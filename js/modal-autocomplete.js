@@ -90,6 +90,7 @@
   // d'un produit existant, et pour la révision d'une demande soumise (qui
   // n'existe pas encore dans `products`).
   function fillFormFromProduct(p){
+    if(fDomain) fDomain.value = p.domaine === 'pneumatique' ? 'pneumatique' : 'electrique';
     fBrand.value = p.brand||''; fRef.value = p.ref||''; fUrl.value = p.url||'';
     fFamily.value = p.family||''; fSeries.value = p.series||''; fSupplier.value = p.supplier||'';
     if(fLeadTime) fLeadTime.value = p.leadTime||'';

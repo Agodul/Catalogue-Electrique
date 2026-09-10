@@ -241,6 +241,23 @@
       var raw = localStorage.getItem(FAMILY_ICONS_KEY);
       familyIcons = raw ? JSON.parse(raw) : {};
     }catch(e){ familyIcons = {}; }
+    // Retour utilisateur : une famille de même nom doit finalement partager
+    // le même nom ET la même icône dans les deux catalogues (Électrique/
+    // Pneumatique) — annule la séparation par domaine tentée juste avant
+    // (clé composite "domaine::famille"). Ramène toute clé de ce type déjà
+    // écrite entretemps vers son nom de famille simple, pour ne pas perdre
+    // les choix faits pendant cette courte période.
+    var _reverted = false;
+    Object.keys(familyIcons).forEach(function(k){
+      var sep = k.indexOf('::');
+      if(sep !== -1){
+        var plain = k.slice(sep + 2);
+        if(!(plain in familyIcons)) familyIcons[plain] = familyIcons[k];
+        delete familyIcons[k];
+        _reverted = true;
+      }
+    });
+    if(_reverted) saveFamilyIcons();
     // Enrichir depuis les produits (source de vérité) — uniquement les
     // icônes PNG modernes (FAMILY_ICON_CHOICES). Sans ce filtre, une
     // ancienne valeur "ti-xxx" (police Tabler, d'avant l'introduction des
@@ -333,13 +350,18 @@
   // Cache des listes de filtres — recalculé seulement quand products change
   var _filterCache = { brands:[], families:[], series:[], suppliers:[], version:-1 };
   function refreshFilterCache(){
-    var v = products.length;
+    // Clé incluant le domaine actif : products.length seul ne change pas
+    // quand on bascule Électrique ↔ Pneumatique (même tableau global), mais
+    // les listes marque/famille/série SCOPÉES au domaine, elles, doivent
+    // être recalculées à ce moment-là.
+    var v = products.length + ':' + activeDomain;
     if(v === _filterCache.version) return;
     _filterCache.version   = v;
-    _filterCache.brands    = Array.from(new Set(products.map(function(p){return p.brand||'';}).filter(Boolean))).sort();
-    _filterCache.families  = Array.from(new Set(products.map(function(p){return p.family||'';}).filter(Boolean))).sort();
-    _filterCache.series    = Array.from(new Set(products.map(function(p){return p.series||'';}).filter(Boolean))).sort();
-    _filterCache.suppliers = Array.from(new Set(products.map(function(p){return p.supplier||'';}).filter(Boolean))).sort();
+    var scoped = window._getActiveDomainProducts();
+    _filterCache.brands    = Array.from(new Set(scoped.map(function(p){return p.brand||'';}).filter(Boolean))).sort();
+    _filterCache.families  = Array.from(new Set(scoped.map(function(p){return p.family||'';}).filter(Boolean))).sort();
+    _filterCache.series    = Array.from(new Set(scoped.map(function(p){return p.series||'';}).filter(Boolean))).sort();
+    _filterCache.suppliers = Array.from(new Set(scoped.map(function(p){return p.supplier||'';}).filter(Boolean))).sort();
   }
   // Calcule les listes marque/famille/série disponibles, chacune filtrée par
   // les deux autres sélections actives. Algorithme unique partagé par la
@@ -348,8 +370,13 @@
   // écart de comportement (les familles n'étaient pas filtrées par série
   // côté desktop).
   function computeCascadeOptions(currentBrand, currentFamily, currentSeries){
+    // Scopé au domaine actif : sans ça, une marque/famille/série qui n'existe
+    // QUE côté pneumatique réapparaîtrait dans les listes déroulantes tant
+    // qu'on regarde l'électrique (et inversement) — exactement le mélange
+    // que ce champ doit éviter.
+    var scoped = window._getActiveDomainProducts();
     var brandsInScope = {};
-    products.forEach(function(p){
+    scoped.forEach(function(p){
       var mf = !currentFamily || (p.family||'') === currentFamily;
       var ms = !currentSeries || (p.series||'') === currentSeries;
       if(mf && ms && p.brand) brandsInScope[p.brand] = true;
@@ -358,7 +385,7 @@
     var effectiveBrand = brands.indexOf(currentBrand) !== -1 ? currentBrand : '';
 
     var familiesInScope = {};
-    products.forEach(function(p){
+    scoped.forEach(function(p){
       var mb = !effectiveBrand || (p.brand||'') === effectiveBrand;
       var ms = !currentSeries  || (p.series||'') === currentSeries;
       if(mb && ms && p.family) familiesInScope[p.family] = true;
@@ -367,7 +394,7 @@
     var effectiveFamily = families.indexOf(currentFamily) !== -1 ? currentFamily : '';
 
     var seriesInScope = {};
-    products.forEach(function(p){
+    scoped.forEach(function(p){
       var mb = !effectiveBrand  || (p.brand||'') === effectiveBrand;
       var mf = !effectiveFamily || (p.family||'') === effectiveFamily;
       if(mb && mf && p.series) seriesInScope[p.series] = true;
@@ -390,6 +417,54 @@
   window._setViewAll = function(v){
     viewAll = v;
     sessionStorage.setItem('cat_view_all', v ? '1' : '0');
+  };
+
+  // ---------- Domaine actif : Électrique / Pneumatique ----------
+  // Retour utilisateur : ajouter le pneumatique au catalogue sans le
+  // mélanger à l'électrique. marque/famille/série ne suffisent pas à les
+  // séparer (les deux univers peuvent réutiliser le même nom de famille,
+  // ex. "Raccords") — domaine est donc un axe à part, orthogonal aux trois
+  // autres, qui filtre TOUT en amont (stats accueil, cartes familles,
+  // listes marque/famille/série en cascade, recherche, grille) plutôt que
+  // de s'ajouter comme un filtre de plus parmi d'autres. Persisté (comme le
+  // tri prix ou "voir tout") pour retrouver le même catalogue à la
+  // prochaine visite plutôt que de retomber sur l'électrique par défaut à
+  // chaque rechargement. Bascule dans le header, voir js/actions-home.js.
+  var DOMAIN_KEY = 'cat_domaine_actif';
+  var activeDomain = localStorage.getItem(DOMAIN_KEY) === 'pneumatique' ? 'pneumatique' : 'electrique';
+  // Un produit sans domaine enregistré (créé avant l'ajout de cette
+  // fonctionnalité) est traité comme "Électrique" — c'était déjà, de fait,
+  // le seul domaine existant : aucune migration de données nécessaire.
+  function productDomain(p){ return (p && p.domaine === 'pneumatique') ? 'pneumatique' : 'electrique'; }
+  window._getActiveDomain = function(){ return activeDomain; };
+  window._setActiveDomain = function(d){
+    activeDomain = (d === 'pneumatique') ? 'pneumatique' : 'electrique';
+    try{ localStorage.setItem(DOMAIN_KEY, activeDomain); }catch(e){}
+  };
+  window._getActiveDomainProducts = function(){
+    return products.filter(function(p){ return productDomain(p) === activeDomain; });
+  };
+
+  // Retour utilisateur : "je voudrai pas pouvoir changer de catalogue
+  // lorsque j'ai un filtre actif ou même quand je suis dans une famille" —
+  // vrai tant qu'on est DANS le catalogue (pas l'accueil) avec au moins un
+  // critère qui restreint la liste (marque/famille/série/recherche/3D/
+  // Standard). PAS de cas particulier pour "Voir tout le catalogue" ici :
+  // viewAll ne change QUE l'affichage groupé/plat (voir showCatalogueAll),
+  // jamais le filtrage lui-même — une recherche ou une case 3D reste tout à
+  // fait active EN MÊME TEMPS que "Voir tout" (testé : sans ce retrait, une
+  // recherche tapée en mode "Voir tout" ne verrouillait pas le sélecteur,
+  // alors que la liste affichée était bien restreinte). Utilisé par
+  // js/actions-home.js (window._syncDomainToggleEnabled) pour désactiver
+  // visuellement le sélecteur de domaine, et en garde-fou dans le
+  // gestionnaire de clic lui-même.
+  window._isCatalogueFiltered = function(){
+    var home = document.getElementById('homePage');
+    if(home && !home.classList.contains('hidden')) return false;
+    var f3d = document.getElementById('filter3DAvailable');
+    var fEss = document.getElementById('filterEssential');
+    return !!(brandFilterEl.value || familyFilterEl.value || seriesFilterEl.value || searchInputEl.value
+      || (f3d && f3d.checked) || (fEss && fEss.checked));
   };
 
   function escapeHtml(s){
@@ -494,8 +569,12 @@
     var onlyEssential = document.getElementById('filterEssential');
     onlyEssential = !!(onlyEssential && onlyEssential.checked);
 
-    // Filtrage par sélecteurs
+    // Filtrage par sélecteurs — domaine (Électrique/Pneumatique) en premier,
+    // en amont de tous les autres critères : jamais un résultat de l'autre
+    // domaine, même si une marque/famille/série homonyme y existe.
+    var domain = window._getActiveDomain();
     var filtered = products.filter(function(p){
+      if(productDomain(p) !== domain) return false;
       if(brand  && p.brand  !== brand)  return false;
       if(family && p.family !== family) return false;
       if(series && p.series !== series) return false;
@@ -570,6 +649,11 @@
   function render(fastPath){
     _cardIdx = 0;
     refreshFilterCache();
+    // Réévalue à chaque rendu si le sélecteur de domaine doit être verrouillé
+    // (voir window._isCatalogueFiltered ci-dessus) — couvre en un seul
+    // endroit tous les déclencheurs (selects, cases 3D/Standard, recherche
+    // avec ou sans fastPath, tiroir de filtres mobile Appliquer/Réinitialiser).
+    if(typeof window._syncDomainToggleEnabled === 'function') window._syncDomainToggleEnabled();
 
     if(!fastPath){
       var origBrand  = brandFilterEl.value;
@@ -610,7 +694,12 @@
     var renderKey = JSON.stringify([
       brandFilterEl.value, familyFilterEl.value, seriesFilterEl.value,
       searchInputEl.value, window._priceSort, viewAll,
-      !!(_f3dElForKey && _f3dElForKey.checked), !!(_fEssElForKey && _fEssElForKey.checked)
+      !!(_f3dElForKey && _f3dElForKey.checked), !!(_fEssElForKey && _fEssElForKey.checked),
+      // Domaine actif : sans lui, basculer Électrique ↔ Pneumatique alors
+      // qu'aucun autre filtre n'a changé (cas le plus courant, juste après
+      // avoir cliqué le bouton) produirait la même clé que le rendu
+      // précédent — et serait donc ignoré silencieusement ci-dessous.
+      window._getActiveDomain()
     ]);
     if(renderKey === _lastRenderKey) return;
     _lastRenderKey = renderKey;
@@ -619,8 +708,9 @@
     var hdrChip = document.getElementById('hdrCountChip');
     if(hdrChip) hdrChip.textContent = filtered.length + (filtered.length > 1 ? ' produits' : ' produit');
 
-    if(products.length === 0){
-      contentEl.innerHTML = '<div class="empty-state"><strong>Le catalogue est vide</strong>Ajoutez votre premier produit avec le bouton « Ajouter un produit ».</div>';
+    if(window._getActiveDomainProducts().length === 0){
+      var _domainLabel = window._getActiveDomain() === 'pneumatique' ? 'pneumatique' : 'électrique';
+      contentEl.innerHTML = '<div class="empty-state"><strong>Aucun produit '+_domainLabel+'</strong>Ajoutez votre premier produit avec le bouton « Ajouter un produit ».</div>';
       return;
     }
     if(filtered.length === 0){

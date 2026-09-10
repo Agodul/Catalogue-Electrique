@@ -164,6 +164,11 @@
       newPrice = cataloguePrice;
     }
 
+    // Domaine du formulaire — pour le payload uniquement : les familles
+    // (nom ET icône) sont partagées entre les deux catalogues, voir
+    // familyIcons juste en dessous, sans scope par domaine.
+    var formDomain = (fDomain && fDomain.value === 'pneumatique') ? 'pneumatique' : 'electrique';
+
     // Sauvegarder l'icône si c'est une nouvelle famille
     var familyVal = fFamily.value.trim();
     if(familyVal && familyIconRow.classList.contains('show')){
@@ -174,6 +179,7 @@
     var _specsObjForPayload = typeof window._getSpecsObj === 'function' ? window._getSpecsObj() : {};
 
     var payload = {
+      domaine: formDomain,
       brand: brand,
       ref: ref,
       family: familyVal,

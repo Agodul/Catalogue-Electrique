@@ -1,6 +1,11 @@
 // ---------- Modal ----------
   var overlay = document.getElementById('modalOverlay');
   var modalTitle = document.getElementById('modalTitle');
+  // Domaine (Électrique/Pneumatique) — voir window._getActiveDomain/
+  // _setActiveDomain dans js/storage.js. Lu/écrit ici comme n'importe quel
+  // autre champ du formulaire (resetForm/fillFormFromProduct/payload de
+  // sauvegarde), rien de spécifique au cycle de vie de la modale.
+  var fDomain = document.getElementById('fDomain');
   var fBrand = document.getElementById('fBrand');
   var fRef = document.getElementById('fRef');
   var fFamily = document.getElementById('fFamily');

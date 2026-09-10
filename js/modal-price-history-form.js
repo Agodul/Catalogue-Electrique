@@ -236,6 +236,11 @@
     // js/templates.js/js/modal-core.js) — fHtml reste à vider, c'est
     // toujours un rouage interne du moteur d'extraction générique.
     fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value='';
+    // Une nouvelle fiche démarre dans le domaine actuellement affiché
+    // (bouton Électrique/Pneumatique en haut de page) — évite d'avoir à y
+    // repenser à chaque ajout quand on reste dans le même domaine plusieurs
+    // fiches de suite ; reste bien sûr modifiable avant d'enregistrer.
+    if(fDomain) fDomain.value = (typeof window._getActiveDomain === 'function') ? window._getActiveDomain() : 'electrique';
     familyIconRow.classList.remove('show');
     selectedFamilyIcon = 'svg-generique';
     _setFamilyIconPreview('svg-generique');

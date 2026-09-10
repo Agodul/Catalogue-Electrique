@@ -142,6 +142,35 @@
     white-space:nowrap; flex-shrink:0;
   }
   .header-actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; }
+  /* Bascule Électrique / Pneumatique (retour utilisateur : ajouter le
+     pneumatique sans le mélanger à l'électrique) — même logique visuelle
+     que .filter-toggle-chip.active (copper plein sur le segment actif),
+     regroupée ici en pilule à 2 segments plutôt qu'en 2 chips séparées. */
+  .domain-toggle{
+    display:flex; border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; flex-shrink:0;
+  }
+  .domain-toggle-btn{
+    display:flex; align-items:center; gap:5px;
+    padding:6px 11px; font-size:12.5px; font-weight:600;
+    font-family:inherit; white-space:nowrap;
+    background:var(--paper-card); color:var(--ink-soft);
+    border:none; cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .domain-toggle-btn + .domain-toggle-btn{ border-left:1px solid var(--line); }
+  .domain-toggle-btn:hover{ color:var(--ink); }
+  .domain-toggle-btn.active{ background:var(--copper); color:#fff; }
+  .domain-toggle-btn i{ font-size:14px; }
+  /* Retour utilisateur : "je voudrai pas pouvoir changer de catalogue
+     lorsque j'ai un filtre actif ou même quand je suis dans une famille" —
+     voir window._isCatalogueFiltered/_syncDomainToggleEnabled
+     (js/storage.js, js/actions-home.js). Le segment actif reste lisible
+     (juste un peu estompé) plutôt que de disparaître complètement : on doit
+     encore voir SUR QUEL catalogue on est bloqué. */
+  .domain-toggle-btn:disabled{ cursor:not-allowed; opacity:.5; }
+  .domain-toggle-btn:disabled:hover{ color:var(--ink-soft); }
+  .domain-toggle-btn.active:disabled{ opacity:.7; }
   .hdr-menu-wrap{ position:relative; }
   .hdr-menu-btn{
     font-size:20px; line-height:1; padding:6px 12px;
@@ -351,15 +380,25 @@
   .toolbar:has(#searchInput:focus) .search-field{ max-width:none; }
   select#brandFilter, select#familyFilter, select#seriesFilter{
     font-size:15px;
-    padding:10px 12px;
+    padding:10px 28px 10px 12px;
     border:1px solid var(--line);
     border-radius:6px;
-    background:var(--paper-card);
+    background-color:var(--paper-card);
     color:var(--ink);
     display:none;
     flex-shrink:0;
     box-sizing:border-box;
     transition:border-color .16s ease, box-shadow .16s ease;
+    /* Même correctif que #fDomain/.filter-sheet-select (retour utilisateur :
+       "le sélecteur n'est pas bien intégré") — appearance:auto laissait la
+       flèche native du navigateur à côté de la recherche/des chips juste
+       à côté, personnalisées elles. */
+    -webkit-appearance:none; -moz-appearance:none; appearance:none;
+    cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 8px center;
+    background-size:14px;
   }
   /* Même geste que .search-field input:focus juste au-dessus — ces 3 champs
      n'avaient jusqu'ici que le contour bleu natif du navigateur, incohérent
@@ -991,12 +1030,29 @@
     display:block; font-size:12.5px; letter-spacing:.04em; text-transform:uppercase;
     color:var(--ink-soft); margin-bottom:4px;
   }
-  .field input, .field textarea{
+  .field input, .field textarea, .field select{
     width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:3px;
     background:var(--paper); color:var(--ink);
     box-sizing:border-box;
   }
   .field textarea{ resize:vertical; min-height:60px; max-height:180px; }
+  /* .field select (ex. #fDomain) ne récupérait QUE la couleur/fond ci-dessus
+     — le chrome natif du <select> (flèche, cadre, hauteur) restait, lui,
+     entièrement celui du navigateur, tranchant nettement avec les <input>
+     du même formulaire (retour utilisateur : "le sélecteur n'est pas bien
+     intégré", capture à l'appui). -webkit-appearance:none supprime ce
+     chrome natif ; la flèche est redessinée à la main (même gris que les
+     libellés, --ink-soft) puisqu'une valeur de fond ne peut pas suivre
+     currentColor. */
+  .field select{
+    -webkit-appearance:none; -moz-appearance:none; appearance:none;
+    cursor:pointer;
+    padding-right:30px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 8px center;
+    background-size:16px;
+  }
   .field.field-checkbox .checkbox-row{
     display:flex; align-items:center; gap:10px;
     padding:4px 0;
@@ -1384,6 +1440,11 @@
     /* Sur mobile : certains boutons header masqués */
     #btnProposeProduct{ display:none !important; }
     #hdrUsername{ max-width:80px; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
+    /* Bascule Électrique/Pneumatique : icône seule, largeur trop juste pour
+       garder le libellé à côté de tout le reste du header sur mobile. */
+    .domain-toggle-label{ display:none; }
+    .domain-toggle-btn{ padding:6px 9px; }
+    .domain-toggle-btn i{ font-size:15px; }
 
     .hdr-menu-btn{ padding:5px 8px; font-size:16px; }
 
@@ -1566,6 +1627,8 @@
     .hdr-count-chip{ display:none; }
     .header-actions button#btnAdd{ display:none; }
     .hdr-menu-btn{ padding:4px 7px; }
+    .domain-toggle-btn{ padding:5px 7px; }
+    .domain-toggle-btn i{ font-size:14px; }
 
     /* Contenu */
     .wrap{ padding:8px 8px 90px; }
@@ -2550,9 +2613,12 @@
     /* Ordre : 🔍 | Marques | Familles | Séries | reset | ↕Prix */
     .search-field{ order:1; max-width:160px; flex-shrink:1; }
     .search-field input{ font-size:13px; }
-    select#brandFilter{ order:2; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
-    select#familyFilter{ order:3; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
-    select#seriesFilter{ order:4; font-size:14px; height:38px; padding:6px 4px; flex:1 1 0; min-width:0; max-width:160px; }
+    /* padding-right séparé (pas juste le raccourci "padding") : laisse la
+       place à la flèche personnalisée du sélecteur (voir la règle de base
+       select#brandFilter plus haut) — sans lui, "6px 4px" la recouvrait. */
+    select#brandFilter{ order:2; font-size:14px; height:38px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0; max-width:160px; }
+    select#familyFilter{ order:3; font-size:14px; height:38px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0; max-width:160px; }
+    select#seriesFilter{ order:4; font-size:14px; height:38px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0; max-width:160px; }
     #filter3DWrap{ order:5; font-size:13px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
     #filterEssentialWrap{ order:6; font-size:13px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
     #btnResetFilters{ order:7; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
@@ -2967,11 +3033,23 @@
   letter-spacing: .06em; color: var(--ink-soft); margin-top: 4px;
 }
 .filter-sheet-select {
-  width: 100%; padding: 12px 14px;
+  width: 100%; padding: 12px 34px 12px 14px;
   border: 1.5px solid var(--line); border-radius: 10px;
   background: var(--paper); color: var(--ink);
   font-size: 15px; font-family: var(--font-sans);
-  outline: none; appearance: auto;
+  outline: none;
+  /* Même correctif que #fDomain (retour utilisateur : "le sélecteur n'est
+     pas bien intégré") — le cadre/fond ci-dessus était déjà personnalisé,
+     mais appearance:auto laissait la flèche native du navigateur, qui
+     tranchait avec le reste. -webkit-appearance:none la retire ; la flèche
+     est redessinée à la main (même gris --ink-soft que les libellés du
+     tiroir), une valeur de fond ne pouvant pas suivre currentColor. */
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
 }
 /* 3DEXPERIENCE / Standard — même mécanique .active que .filter-toggle-chip
    dans la toolbar desktop (icône seule là-bas, ici en pleine largeur avec
@@ -3505,9 +3583,11 @@
   #bottomNav { display: none !important; }
 }
   .search-field{ order:1; max-width:160px; flex-shrink:1; }
-  select#brandFilter{ order:2; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
-  select#familyFilter{ order:3; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0;  }
-  select#seriesFilter{ order:4; font-size:14px; height:42px; padding:6px 4px; flex:1 1 0; min-width:0; }
+  /* padding-right séparé : laisse la place à la flèche personnalisée du
+     sélecteur (voir la règle de base select#brandFilter plus haut). */
+  select#brandFilter{ order:2; font-size:14px; height:42px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0;  }
+  select#familyFilter{ order:3; font-size:14px; height:42px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0;  }
+  select#seriesFilter{ order:4; font-size:14px; height:42px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0; }
   #filter3DWrap{ order:5; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
   #filterEssentialWrap{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
   #btnResetFilters{ order:7; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }

@@ -77,6 +77,10 @@
     // (FAMILY_ICON_CHOICES, js/familyIcons.js).
   ];
 
+  // Retour utilisateur : une famille de même nom partage le même nom ET la
+  // même icône dans les deux catalogues (Électrique/Pneumatique) — pas de
+  // scope par domaine ici (annule un essai de séparation par domaine fait
+  // juste avant).
   function getFamilyIcon(name){
     // Priorité 1 : icône stockée dans localStorage (choix session courante)
     if(familyIcons[name]) return familyIcons[name];
@@ -195,13 +199,22 @@
 
   function renderHome(){
     refreshFilterCache();
-    var total  = products.length;
+    // L'accueil n'est jamais concerné par le verrouillage du sélecteur de
+    // domaine (voir window._isCatalogueFiltered, toujours faux ici) — appelé
+    // avant le "return" anticipé plus bas (famille inchangée) pour ne
+    // jamais rater le déverrouillage en arrivant sur l'accueil.
+    if(typeof window._syncDomainToggleEnabled === 'function') window._syncDomainToggleEnabled();
+    // Scopé au domaine actif (Électrique/Pneumatique) — sinon l'accueil
+    // annoncerait un nombre de produits/marques qui inclut l'AUTRE domaine,
+    // exactement le mélange que ce champ doit éviter (retour utilisateur).
+    var domainProducts = window._getActiveDomainProducts();
+    var total  = domainProducts.length;
     var brands = _filterCache.brands.length;
 
     // Stats
     var avgDiscount = 0;
     var countWithDiscount = 0;
-    products.forEach(function(p){
+    domainProducts.forEach(function(p){
       // Prix catalogue = premier élément de priceHistory
       var origRaw = (Array.isArray(p.priceHistory) && p.priceHistory.length > 0)
         ? p.priceHistory[0].price : '';
@@ -222,7 +235,7 @@
 
     // Familles avec compteur
     var familyCounts = {};
-    products.forEach(function(p){
+    domainProducts.forEach(function(p){
       var f = (p.family||'').trim();
       if(!f) return;
       familyCounts[f] = (familyCounts[f]||0) + 1;
@@ -246,7 +259,7 @@
       // dernier, la taille des catégories bouge" au rafraîchissement,
       // beaucoup plus visible sur mobile/tablette que sur desktop). On ne
       // touche donc la grille que si son contenu a réellement changé.
-      var sig = families.map(function(f){ return f+'|'+familyCounts[f]+'|'+getFamilyIcon(f); }).join(';');
+      var sig = window._getActiveDomain() + '::' + families.map(function(f){ return f+'|'+familyCounts[f]+'|'+getFamilyIcon(f); }).join(';');
       if(homeFamilies.dataset.sig === sig) return;
       homeFamilies.dataset.sig = sig;
 
@@ -295,6 +308,68 @@
     if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
   }
   window._clearAllActiveFilters = _clearAllActiveFilters;
+
+  // ---------- Bascule Électrique / Pneumatique (header) ----------
+  // Retour utilisateur : ajouter le pneumatique sans le mélanger à
+  // l'électrique. L'état lui-même (persistance, filtrage) vit dans
+  // js/storage.js (window._getActiveDomain/_setActiveDomain/
+  // _getActiveDomainProducts) — ce bloc ne fait que refléter/piloter ce
+  // state depuis les deux boutons du header.
+  (function(){
+    var btnElec = document.getElementById('domainBtnElectrique');
+    var btnPneu = document.getElementById('domainBtnPneumatique');
+    if(!btnElec || !btnPneu) return;
+
+    function syncDomainToggleUI(){
+      var d = window._getActiveDomain();
+      btnElec.classList.toggle('active', d === 'electrique');
+      btnPneu.classList.toggle('active', d === 'pneumatique');
+    }
+
+    // Retour utilisateur : "je voudrai pas pouvoir changer de catalogue
+    // lorsque j'ai un filtre actif ou même quand je suis dans une famille
+    // électrique" — désactive les deux boutons tant que
+    // window._isCatalogueFiltered() (js/storage.js) répond vrai. Rappelée
+    // depuis render() (storage.js) à chaque changement de filtre/recherche,
+    // et depuis renderHome() ci-dessous (l'accueil ne passe jamais par
+    // render()) — un seul point de vérité, jamais besoin d'appeler ceci
+    // depuis chaque endroit qui touche un filtre.
+    function syncDomainToggleEnabled(){
+      var locked = typeof window._isCatalogueFiltered === 'function' && window._isCatalogueFiltered();
+      [btnElec, btnPneu].forEach(function(btn){
+        if(!btn.dataset.baseTitle) btn.dataset.baseTitle = btn.title;
+        btn.disabled = locked;
+        btn.title = locked
+          ? 'Réinitialisez les filtres (ou revenez à l\'accueil) pour changer de catalogue'
+          : btn.dataset.baseTitle;
+      });
+    }
+    window._syncDomainToggleEnabled = syncDomainToggleEnabled;
+
+    function switchDomain(d){
+      if(window._getActiveDomain() === d) return; // déjà sur ce domaine, rien à faire
+      // Garde-fou : le bouton est censé être disabled dans ce cas (donc déjà
+      // impossible à cliquer), mais on ne présume jamais qu'un état visuel
+      // suffit à empêcher un appel — voir window._isCatalogueFiltered.
+      if(typeof window._isCatalogueFiltered === 'function' && window._isCatalogueFiltered()) return;
+      window._setActiveDomain(d);
+      syncDomainToggleUI();
+      // Une marque/famille/série/recherche/tri/3D-Standard sélectionné dans
+      // l'AUTRE domaine n'a aucun sens une fois basculé — même nettoyage
+      // complet que "Accueil"/logo (voir window._clearAllActiveFilters
+      // au-dessus), pour ne jamais laisser un filtre invisible de l'ancien
+      // domaine continuer à s'appliquer silencieusement.
+      _clearAllActiveFilters();
+      var home = document.getElementById('homePage');
+      if(home && !home.classList.contains('hidden')) renderHome();
+      else render();
+    }
+
+    btnElec.addEventListener('click', function(){ switchDomain('electrique'); });
+    btnPneu.addEventListener('click', function(){ switchDomain('pneumatique'); });
+    syncDomainToggleUI();
+    syncDomainToggleEnabled();
+  })();
 
   document.getElementById('brandmarkLogo').addEventListener('click', function(){
     // Fermer la fiche produit : retirer la classe 'open' sur l'overlay
@@ -358,6 +433,8 @@
 
   var knownFamilies = [];
 
+  // Retour utilisateur : les familles sont partagées (même nom, même icône)
+  // entre les deux catalogues — pas de scope par domaine ici.
   function refreshKnownFamilies(){
     var set = {};
     products.forEach(function(p){ if(p.family) set[p.family] = true; });
@@ -380,7 +457,9 @@
         // Mettre à jour l'aperçu dans le formulaire
         _setFamilyIconPreview(icon);
         _closeIconPicker();
-        // Contexte Paramètres : sauvegarder sur tous les produits de la famille
+        // Contexte Paramètres : sauvegarder sur tous les produits de la
+        // famille — retour utilisateur : une famille de même nom partage la
+        // même icône dans les deux catalogues, pas de scope par domaine ici.
         if(settingsEditingFamily){
           var _editedFamily = settingsEditingFamily;
           familyIcons[_editedFamily] = icon;
