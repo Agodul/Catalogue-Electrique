@@ -269,6 +269,33 @@
     }
   }
 
+  // Retour utilisateur : "corriger la suppression des filtres sur mobile
+  // lorsqu'on clique sur le bouton accueil ou logo" — le logo n'effaçait
+  // que marque/famille/série, et le bouton "Accueil" de la nav mobile
+  // (bnHome, js/actions-mobile-chrome.js) n'effaçait carrément rien : les
+  // puces 3D/Standard et le tri par prix restaient actifs derrière
+  // l'accueil, invisibles (rien à l'écran pour le rappeler), et continuaient
+  // ensuite de filtrer silencieusement dès qu'on revenait au catalogue
+  // (carte famille, "Voir tout"…). Centralisé ici pour que les deux points
+  // d'entrée effacent exactement la même chose, y compris le badge de la
+  // bottom nav qui sinon restait affiché avec un compte périmé.
+  function _clearAllActiveFilters(){
+    familyFilterEl.value = '';
+    brandFilterEl.value  = '';
+    seriesFilterEl.value = '';
+    var siEl = document.getElementById('searchInput');
+    if(siEl) siEl.value = '';
+    var f3dEl = document.getElementById('filter3DAvailable');
+    var f3dWrapEl = document.getElementById('filter3DWrap');
+    if(f3dEl){ f3dEl.checked = false; if(f3dWrapEl) f3dWrapEl.classList.remove('active'); }
+    var fEssEl = document.getElementById('filterEssential');
+    var fEssWrapEl = document.getElementById('filterEssentialWrap');
+    if(fEssEl){ fEssEl.checked = false; if(fEssWrapEl) fEssWrapEl.classList.remove('active'); }
+    if(typeof window._setPriceSort === 'function') window._setPriceSort(null);
+    if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
+  }
+  window._clearAllActiveFilters = _clearAllActiveFilters;
+
   document.getElementById('brandmarkLogo').addEventListener('click', function(){
     // Fermer la fiche produit : retirer la classe 'open' sur l'overlay
     var viewOverlayEl = document.getElementById('viewOverlay');
@@ -297,9 +324,7 @@
     // Fermer le panneau paramètres
     var settingsBoxEl = document.querySelector('.settings-box');
     if(settingsBoxEl) settingsBoxEl.classList.remove('open');
-    familyFilterEl.value = '';
-    brandFilterEl.value  = '';
-    seriesFilterEl.value = '';
+    _clearAllActiveFilters();
     document.querySelector('.toolbar').classList.remove('filters-visible');
     document.body.classList.remove('modal-open');
     showHome();

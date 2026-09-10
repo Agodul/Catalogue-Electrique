@@ -110,6 +110,11 @@
         closeFilterSheetNow();
         closeAllOverlaysNow();
         closeViewOverlayNow();
+        // Retour utilisateur : "Accueil" ne touchait à aucun filtre — 3D/
+        // Standard/tri restaient actifs en coulisses (voir
+        // window._clearAllActiveFilters, js/actions-home.js) et se
+        // réappliquaient silencieusement à la prochaine visite du catalogue.
+        if(typeof window._clearAllActiveFilters === 'function') window._clearAllActiveFilters();
         showHome();
         setActive(bnHome);
         // Remonter en haut de page
@@ -119,6 +124,16 @@
       });
 
       bnSearch.addEventListener('click', function(){
+        // Retour utilisateur : même bascule que "Menu" — recliquer sur
+        // "Recherche" pendant qu'elle est déjà ouverte doit la refermer,
+        // pas la rouvrir sans effet visible. Comme le bouton "Annuler" de
+        // cette même barre (_mobileSearchCancel juste plus bas), on ferme
+        // sans vider la saisie.
+        if(_mobileSearchBar && _mobileSearchBar.style.display === 'block'){
+          _closeMobileSearchBar(false);
+          bnSearch.classList.remove('active');
+          return;
+        }
         closeMenuSheet();
         closeFilterSheetNow();
         closeAllOverlaysNow();
@@ -131,6 +146,18 @@
       });
 
       bnFilter.addEventListener('click', function(){
+        // Retour utilisateur : même bascule que "Menu"/"Recherche" —
+        // recliquer sur "Filtres" pendant qu'il est déjà ouvert doit le
+        // refermer. On repasse par le vrai bouton ✕ du tiroir
+        // (filterSheetClose, voir _initFilterSheet) plutôt que de dupliquer
+        // sa logique de fermeture ici.
+        var fs = document.getElementById('filterSheet');
+        if(fs && fs.classList.contains('open')){
+          var closeBtn = document.getElementById('filterSheetClose');
+          if(closeBtn) closeBtn.click();
+          else closeFilterSheetNow();
+          return;
+        }
         closeMenuSheet();
         closeFloatingSearchNow();
         closeAllOverlaysNow();
@@ -150,6 +177,19 @@
       });
 
       bnMenu.addEventListener('click', function(){
+        // Retour utilisateur : recliquer sur "Menu" pendant qu'il est déjà
+        // ouvert doit le refermer (comme un bouton bascule), pas le
+        // rouvrir/rafraîchir sans effet visible. On repasse par le vrai
+        // bouton ✕ (menuSheetClose, voir _initMenuSheet) plutôt que de
+        // dupliquer sa logique de fermeture (retire aussi l'état actif de
+        // bnMenu) ici.
+        var ms = document.getElementById('menuSheet');
+        if(ms && ms.classList.contains('open')){
+          var closeBtn = document.getElementById('menuSheetClose');
+          if(closeBtn) closeBtn.click();
+          else if(typeof window._closeAllSheets === 'function') window._closeAllSheets();
+          return;
+        }
         closeFloatingSearchNow();
         closeFilterSheetNow();
         closeAllOverlaysNow();
