@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260910111203";
+const CACHE = "spi-catalogue-v20260910113537";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -340,6 +340,31 @@ const FILES_DEFERRED = [
 // les reconnaître dans le gestionnaire fetch ci-dessous.
 const LIB_URLS = new Set(FILES_DEFERRED.map(f => new URL(f, self.location.href).href));
 
+// Retour utilisateur : "sur mobile après une mise à jour le code est bien
+// chargé mais pas le CSS". Cause trouvée : le précache ci-dessous lançait
+// tous les fichiers de FILES en parallèle avec un seul essai chacun — un
+// simple aléa réseau (courant sur mobile) faisant échouer UNE requête ne
+// mettait jamais cette entrée en cache, silencieusement (.catch(() => null)),
+// sans aucune retentative. css/styles.css est de loin le plus gros fichier
+// de la coque (un seul bloc, contre des dizaines de petits fichiers JS) : à
+// bande passante mobile égale et sous contention (~110 requêtes lancées
+// d'un coup), c'est statistiquement le plus exposé à un abandon/timeout —
+// d'où "le JS passe, pas le CSS". Une fois manquant du cache, la requête
+// suivante (voir le gestionnaire "fetch" plus bas) retombe sur un fetch()
+// normal, qui respecte le cache HTTP du navigateur (max-age=600 sur GitHub
+// Pages) : le visiteur pouvait alors se retrouver à consommer, via ce
+// cache HTTP, une copie de la CSS vieille de plusieurs minutes, malgré un
+// Service Worker fraîchement activé. Deux filets de sécurité ajoutés :
+// quelques retentatives ici, et un contournement du cache HTTP sur le
+// repli réseau du gestionnaire "fetch" (voir plus bas).
+function fetchAvecRetentatives(url, options, tentatives){
+  return fetch(url, options).catch(err => {
+    if(tentatives <= 1) throw err;
+    return new Promise(resolve => setTimeout(resolve, 400))
+      .then(() => fetchAvecRetentatives(url, options, tentatives - 1));
+  });
+}
+
 self.addEventListener("install", event => {
   // Précharger les fichiers statiques en parallèle
   event.waitUntil(
@@ -360,7 +385,7 @@ self.addEventListener("install", event => {
       // comme pour une vraie app"). { cache: 'reload' } force un fetch
       // réseau réel pour chaque fichier, en ignorant ce cache HTTP.
       const cacheOthers = Promise.allSettled(otherFiles.map(f =>
-        fetch(f, { cache: 'reload' })
+        fetchAvecRetentatives(f, { cache: 'reload' }, 3)
           .then(res => { if(res.ok) return cache.put(f, res); })
           .catch(() => null)
       ));
@@ -507,7 +532,20 @@ self.addEventListener("fetch", event => {
   event.respondWith(
     caches.open(CACHE).then(cache => {
       return cache.match(event.request).then(cached => {
-        const fetchPromise = fetch(event.request).then(network => {
+        // Si RIEN n'est en cache pour cette requête (précache manquant — voir
+        // fetchAvecRetentatives ci-dessus, ou fichier ajouté après coup), la
+        // réponse envoyée à l'utilisateur est celle-ci, pas une simple
+        // revalidation en arrière-plan : un fetch() normal respecterait le
+        // cache HTTP du navigateur (jusqu'à 10 min de contenu périmé sur
+        // GitHub Pages, voir install() plus haut) et pourrait resservir
+        // indéfiniment une CSS/JS d'avant la mise à jour tant que ce cache
+        // HTTP n'expire pas tout seul. { cache:'reload' } force ici une
+        // vraie requête réseau, comme au précache — sans ça, un simple aléa
+        // réseau au précache (retour utilisateur : "sur mobile après une
+        // mise à jour le code est bien chargé mais pas le CSS") pouvait
+        // laisser une CSS périmée s'installer durablement.
+        const options = cached ? undefined : { cache: 'reload' };
+        const fetchPromise = fetch(event.request, options).then(network => {
           // Mettre en cache uniquement les réponses valides de même origine
           if(network && network.status === 200 && event.request.method === 'GET'){
             cache.put(event.request, network.clone());

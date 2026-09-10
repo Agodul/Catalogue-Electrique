@@ -60,12 +60,21 @@ function makeCaches() {
 
 // ── Réseau simulé ────────────────────────────────────────────────────────
 // Sert les vrais fichiers du dépôt. `offline` coupe tout, comme un appareil
-// sans connexion.
+// sans connexion. `panneReseau` (Map url → nombre d'échecs restants) simule
+// un aléa réseau transitoire (mobile) sur une URL précise, consommé à
+// chaque appel — utilisé pour vérifier que le précache retente au lieu
+// d'abandonner silencieusement (voir fetchAvecRetentatives dans sw.js).
 function makeFetch(state) {
-  return async function fetchStub(input) {
+  return async function fetchStub(input, init) {
     const url = typeof input === 'string' ? new URL(input, SCOPE).href : input.url;
     state.requests.push(url);
+    state.fetchInits.push({ url, cache: init && init.cache });
     if (state.offline) throw new TypeError('Failed to fetch');
+    const restantes = state.panneReseau && state.panneReseau.get(url);
+    if (restantes) {
+      state.panneReseau.set(url, restantes - 1);
+      throw new TypeError('Failed to fetch');
+    }
     if (!url.startsWith(SCOPE)) return new Response('distant', { status: 200 });
     let rel = decodeURIComponent(url.slice(SCOPE.length)) || 'index.html';
     if (rel.endsWith('/')) rel += 'index.html';
@@ -149,7 +158,7 @@ function assertEqual(a, b, msg) {
 
 // ── Scénario commun : un service worker installé et activé ───────────────
 async function bootServiceWorker() {
-  const state = { caches: makeCaches(), requests: [], offline: false };
+  const state = { caches: makeCaches(), requests: [], offline: false, fetchInits: [], panneReseau: new Map() };
   const sw = loadServiceWorker(state);
   await sw.dispatch('install', {});
   await sw.dispatch('activate', {});
@@ -186,7 +195,7 @@ await test("Les bibliothèques lourdes vont dans leur cache dédié, pas dans la
 
 await test("Une nouvelle version de l'application ne retélécharge pas les bibliothèques", async () => {
   // Premier déploiement
-  const state = { caches: makeCaches(), requests: [], offline: false };
+  const state = { caches: makeCaches(), requests: [], offline: false, fetchInits: [], panneReseau: new Map() };
   const sw1 = loadServiceWorker(state);
   await sw1.dispatch('install', {});
   await sw1.dispatch('activate', {});
@@ -204,7 +213,7 @@ await test("Une nouvelle version de l'application ne retélécharge pas les bibl
 });
 
 await test("Le vieux cache est purgé, celui des bibliothèques est conservé", async () => {
-  const state = { caches: makeCaches(), requests: [], offline: false };
+  const state = { caches: makeCaches(), requests: [], offline: false, fetchInits: [], panneReseau: new Map() };
   const sw1 = loadServiceWorker(state);
   await sw1.dispatch('install', {});
   await sw1.dispatch('activate', {});
@@ -271,6 +280,42 @@ await test("Les requêtes vers l'API métier ne passent jamais par le cache", as
       assert(!cle.includes('api.exemple.test'), `une réponse de l'API a été mise en cache : ${cle}`);
     }
   }
+});
+
+// Ces deux tests couvrent BUG-04 : "sur mobile après une mise à jour le
+// code est bien chargé mais pas le CSS" — un aléa réseau transitoire au
+// précache (plus probable sur mobile, et plus probable pour css/styles.css,
+// de loin le plus gros fichier de la coque) faisait silencieusement
+// disparaître cette entrée du cache, sans retentative ; la requête suivante
+// retombait alors sur un fetch() qui pouvait resservir une copie périmée
+// depuis le cache HTTP du navigateur (max-age=600 sur GitHub Pages).
+await test("Le précache retente en cas d'aléa réseau transitoire (mobile)", async () => {
+  const state = { caches: makeCaches(), requests: [], offline: false, fetchInits: [], panneReseau: new Map() };
+  const cssUrl = new URL('./css/styles.css', SCOPE).href;
+  // Échoue deux fois puis réussit — exactement ce que produit un aléa
+  // réseau mobile transitoire, pas une vraie coupure.
+  state.panneReseau.set(cssUrl, 2);
+  const sw = loadServiceWorker(state);
+  await sw.dispatch('install', {});
+  await sw.dispatch('activate', {});
+  const coque = await state.caches.open(sw.CACHE);
+  assert(await coque.match('./css/styles.css'),
+    'styles.css absent du cache après un aléa réseau transitoire — le précache n\'a pas retenté');
+});
+
+await test('Une requête absente du cache force un fetch réseau frais (contourne le cache HTTP)', async () => {
+  const { state, sw } = await bootServiceWorker();
+  // Simule un précache manquant pour ce fichier (ex. les 3 tentatives ont
+  // toutes échoué) en vidant son entrée après coup, pour isoler le
+  // comportement du gestionnaire "fetch" lui-même.
+  const coque = await state.caches.open(sw.CACHE);
+  coque._store.delete(new URL('./css/styles.css', SCOPE).href);
+  state.fetchInits = [];
+  await sw.dispatch('fetch', { request: request('./css/styles.css') });
+  const derniere = state.fetchInits[state.fetchInits.length - 1];
+  assert(derniere, 'aucune requête réseau déclenchée alors que le cache était vide');
+  assertEqual(derniere.cache, 'reload',
+    'la requête de repli n\'a pas contourné le cache HTTP du navigateur (option cache:"reload" absente) — risque de resservir une CSS/JS périmée');
 });
 
 console.log('');
