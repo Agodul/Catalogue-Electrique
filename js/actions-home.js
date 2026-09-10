@@ -292,10 +292,15 @@
       // l'animation ne rejoue jamais sans raison (pas à chaque sync
       // serveur en arrière-plan) — seulement sur un vrai changement de
       // contenu, domaine compris.
+      // idx*4 plafonné à 160ms (pas idx*8/120ms) : même correctif que
+      // renderCard() (js/render-card-grid.js) — un catalogue avec beaucoup
+      // de familles (ex. 40+, cas réel avec un gros catalogue) faisait
+      // plafonner le délai de la plupart des cartes au même instant,
+      // donnant l'impression d'un "tout ou rien" plutôt qu'une cascade.
       homeFamilies.innerHTML = families.map(function(f, idx){
         var icon = getFamilyIcon(f);
         var count = familyCounts[f];
-        return '<div class="home-family-card card-fade" data-family="'+escapeHtml(f)+'" style="animation-delay:'+Math.min(idx*8, 120)+'ms">'
+        return '<div class="home-family-card card-fade" data-family="'+escapeHtml(f)+'" style="animation-delay:'+Math.min(idx*4, 160)+'ms">'
           + '<div class="home-family-icon">'+renderFamilyIconHtml(icon)+'</div>'
           + '<div class="home-family-name">'+escapeHtml(f)+'</div>'
           + '<div class="home-family-count">'+count+(count>1?' références':' référence')+'</div>'

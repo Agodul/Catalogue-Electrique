@@ -80,11 +80,26 @@
     // catalogue" compris (retour utilisateur : "mais la même animation de
     // par tous" — unifie ce qui était deux animations différentes selon le
     // mode d'affichage). Opacity seule (pas de transform combinée : calque
-    // GPU moins coûteux à composer) et décalage capé à 120ms max, voir
-    // .card-fade dans css/styles.css pour l'historique complet de ce choix
-    // (chute de FPS sur GPU peu puissant avec l'ancienne cascade complète,
-    // opacity+transform+décalage jusqu'à 600ms, un calque par carte).
-    return '<div class="card card-fade" data-view="'+p.id+'" style="animation-delay:'+Math.min(idx*8, 120)+'ms">'+
+    // GPU moins coûteux à composer), voir .card-fade dans css/styles.css
+    // pour l'historique complet de ce choix (chute de FPS sur GPU peu
+    // puissant avec l'ancienne cascade complète, opacity+transform+décalage
+    // jusqu'à 600ms, un calque par carte).
+    //
+    // Retour utilisateur (vidéo à l'appui) : "chargement du catalogue
+    // complet" qui semble sauter d'une seule carte à la grille entière d'un
+    // coup, avec une grande zone vide entre les deux — le lot initial de
+    // "Voir tout" fait justement 40 cartes (voir render(), js/storage.js),
+    // et à idx*8 plafonné à 120ms, TOUTES les cartes à partir de la 16e
+    // (15*8=120) partageaient exactement le même délai : les 25 cartes
+    // restantes du lot démarraient donc leur fondu au même instant, pile
+    // le "tout ou rien" observé après la 1re carte (qui, elle, démarre
+    // sans délai). Un pas plus fin (4ms) et un plafond relevé à 160ms
+    // suffisent à donner un délai distinct à chacune des 40 cartes du lot
+    // (39×4=156 < 160, jamais plafonné dans ce cas précis) sans allonger
+    // sensiblement la fin de cascade (156+180=336ms contre 120+180=300ms
+    // avant) ni réintroduire le coût GPU de l'ancienne version (toujours
+    // opacity seule, will-change libéré à la fin, voir plus haut).
+    return '<div class="card card-fade" data-view="'+p.id+'" style="animation-delay:'+Math.min(idx*4, 160)+'ms">'+
       '<div class="photo">'+
         photo+
         (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')+
