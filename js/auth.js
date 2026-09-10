@@ -801,11 +801,56 @@ function updateAuthHeaderBtn(loggedIn, user) {
 
 // ── Modale login ─────────────────────────────────────────────────────────
 
+// Safari iOS positionne position:fixed par rapport au viewport de mise en
+// page (fixe), pas par rapport à la zone réellement visible — un clavier qui
+// s'ouvre ne réduit donc jamais la hauteur que #authOverlay utilise pour
+// centrer sa carte (align-items:center, css/styles.css), qui reste alors
+// centrée sur une hauteur périmée. Sous cette carte trop haute, une bande
+// n'est plus couverte par le fond assombri : la bottom nav (volontairement
+// au-dessus en z-index, voir css/styles.css — une échappatoire cliquable
+// par-dessus la plupart des fenêtres) y devient visible, comme détachée du
+// bas de l'écran (retour utilisateur : "la barre de navigation monte/sort
+// de la connexion"). Cacher la bottom nav aurait supprimé cette
+// échappatoire (retour utilisateur : "il ne faut pas cacher la barre") —
+// on fait donc suivre #authOverlay à window.visualViewport à la place,
+// même remède déjà utilisé pour le configurateur d'armoire
+// (_armoireSyncMobileHeight, js/armoireConfig.js) : la carte reste centrée
+// dans la zone RÉELLEMENT visible, le fond assombri va bien jusqu'en bas
+// (jusqu'à la bottom nav, qui elle suit déjà correctement cette même zone),
+// plus de bande découverte.
+var _authViewportHandler = null;
+function _authSyncViewportHeight(){
+  var overlay = document.getElementById('authOverlay');
+  if(!overlay || !overlay.classList.contains('show')) return;
+  // Desktop/tablette large : pas de clavier logiciel à suivre, laisser le
+  // CSS gérer plutôt que polluer avec du inline.
+  if(window.innerWidth > 768 || !window.visualViewport){
+    overlay.style.position = '';
+    overlay.style.top = '';
+    overlay.style.left = '';
+    overlay.style.width = '';
+    overlay.style.height = '';
+    return;
+  }
+  var vv = window.visualViewport;
+  overlay.style.position = 'fixed';
+  overlay.style.top = vv.offsetTop + 'px';
+  overlay.style.left = vv.offsetLeft + 'px';
+  overlay.style.width = vv.width + 'px';
+  overlay.style.height = vv.height + 'px';
+}
+
 function openAuthModal() {
   var overlay = document.getElementById('authOverlay');
   if (overlay) {
     overlay.classList.add('show');
     document.body.classList.add('modal-open');
+    _authSyncViewportHeight();
+    if(window.visualViewport && !_authViewportHandler){
+      _authViewportHandler = function(){ _authSyncViewportHeight(); };
+      window.visualViewport.addEventListener('resize', _authViewportHandler);
+      window.visualViewport.addEventListener('scroll', _authViewportHandler);
+    }
     setTimeout(function() {
       var inp = document.getElementById('authUsername');
       if (inp) inp.focus();
@@ -815,6 +860,18 @@ function openAuthModal() {
 
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
+  if(_authViewportHandler && window.visualViewport){
+    window.visualViewport.removeEventListener('resize', _authViewportHandler);
+    window.visualViewport.removeEventListener('scroll', _authViewportHandler);
+    _authViewportHandler = null;
+  }
+  if(overlay){
+    overlay.style.position = '';
+    overlay.style.top = '';
+    overlay.style.left = '';
+    overlay.style.width = '';
+    overlay.style.height = '';
+  }
   // Sur mobile, si la connexion a été ouverte DEPUIS le tiroir menu (voir
   // msAuth dans js/actions-mobile-chrome.js), la croix (ou une connexion réussie — les
   // deux passent par ici) doit "revenir" au menu plutôt que de retomber sur

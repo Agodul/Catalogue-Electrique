@@ -34,6 +34,20 @@
   var homeFamilies   = document.getElementById('homeFamilies');
   var homeAllBtn     = document.getElementById('homeAllBtn');
 
+  // Libère le calque GPU (will-change) des stats/cartes famille une fois
+  // leur fondu d'entrée terminé — même geste et même raison que pour la
+  // grille catalogue (voir le commentaire complet sur l'écouteur analogue
+  // dans render(), js/storage.js) : jamais laisser un will-change actif une
+  // fois l'animation qui le justifiait terminée.
+  if(homePage){
+    homePage.addEventListener('animationend', function(e){
+      if(e.animationName === 'cardFadeIn'
+         && (e.target.classList.contains('home-stat') || e.target.classList.contains('home-family-card'))){
+        e.target.style.willChange = 'auto';
+      }
+    });
+  }
+
   // Icônes par famille (mots-clés → icône Tabler)
   // Fallback approximatif pour une famille jamais vue (pas dans
   // FAMILY_NAME_TO_ICON — voir js/familyIcons.js) : détection par mots-clés,
@@ -228,10 +242,17 @@
     var avgDisp  = countWithDiscount > 0 ? '-'+Math.round(avgDiscount/countWithDiscount)+'%' : '--';
     var discTitle = countWithDiscount > 0 ? '' : ' title="Aucun produit avec remise actuellement"';
 
+    // class="card-fade" + même fondu d'entrée que la grille catalogue
+    // (.card-fade, css/styles.css) — retour utilisateur : "améliore
+    // l'affichage du passage du catalogue électrique vers pneumatique pour
+    // le rendre plus fluide". homeStats.innerHTML est reconstruit à chaque
+    // appel (contrairement à homeFamilies, pas de garde par signature —
+    // 3 éléments fixes, coût de reconstruction négligeable), donc la
+    // bascule de domaine rejoue bien ce fondu à chaque fois.
     homeStats.innerHTML =
-      '<div class="home-stat"><div class="home-stat-val">'+total+'</div><div class="home-stat-lbl">Produits</div></div>' +
-      '<div class="home-stat"><div class="home-stat-val">'+brands+'</div><div class="home-stat-lbl">Marques</div></div>' +
-      '<div class="home-stat"'+discTitle+'><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
+      '<div class="home-stat card-fade"><div class="home-stat-val">'+total+'</div><div class="home-stat-lbl">Produits</div></div>' +
+      '<div class="home-stat card-fade" style="animation-delay:30ms"><div class="home-stat-val">'+brands+'</div><div class="home-stat-lbl">Marques</div></div>' +
+      '<div class="home-stat card-fade" style="animation-delay:60ms"'+discTitle+'><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
 
     // Familles avec compteur
     var familyCounts = {};
@@ -263,10 +284,18 @@
       if(homeFamilies.dataset.sig === sig) return;
       homeFamilies.dataset.sig = sig;
 
-      homeFamilies.innerHTML = families.map(function(f){
+      // class="card-fade" + délai échelonné : même geste que renderCard()
+      // (js/render-card-grid.js) pour la grille catalogue — retour
+      // utilisateur : "améliore l'affichage du passage du catalogue
+      // électrique vers pneumatique pour le rendre plus fluide". Ce bloc
+      // n'est reconstruit QUE si "sig" a changé (garde ci-dessus), donc
+      // l'animation ne rejoue jamais sans raison (pas à chaque sync
+      // serveur en arrière-plan) — seulement sur un vrai changement de
+      // contenu, domaine compris.
+      homeFamilies.innerHTML = families.map(function(f, idx){
         var icon = getFamilyIcon(f);
         var count = familyCounts[f];
-        return '<div class="home-family-card" data-family="'+escapeHtml(f)+'">'
+        return '<div class="home-family-card card-fade" data-family="'+escapeHtml(f)+'" style="animation-delay:'+Math.min(idx*8, 120)+'ms">'
           + '<div class="home-family-icon">'+renderFamilyIconHtml(icon)+'</div>'
           + '<div class="home-family-name">'+escapeHtml(f)+'</div>'
           + '<div class="home-family-count">'+count+(count>1?' références':' référence')+'</div>'
