@@ -112,10 +112,25 @@
     // ne garantit que 'controllerchange' soit déjà passé au moment du clic).
     // reg.update() relance une vraie vérification ; sw.js applique déjà
     // self.skipWaiting()/clients.claim() sans confirmation nécessaire, donc
-    // la bascule suit normalement en quelques centaines de ms — le
-    // setTimeout n'est qu'un filet de sécurité pour ne jamais bloquer
-    // indéfiniment si l'événement, pour une raison quelconque, n'arrivait
-    // pas (SW déjà à jour, navigateur qui ne le déclenche pas, etc.).
+    // la bascule suit normalement en quelques centaines de ms.
+    //
+    // Retour utilisateur : "corrige moi ce bug lorsque je clique sur mise à
+    // jour sur mobile" (capture à l'appui : page rechargée mais CSS visible-
+    // ment ancien, boutons Électrique/Pneumatique debordant sans leur mise
+    // en forme mobile). Le filet de sécurité ci-dessous était un setTimeout
+    // FIXE de 4s — trop court depuis l'ajout des retentatives réseau au
+    // précache (sw.js, fetchAvecRetentatives, jusqu'à 3 essais séparés d'un
+    // court délai) : sur une connexion mobile capricieuse, l'installation
+    // du nouveau SW peut légitimement dépasser 4s, et ce délai fixe
+    // déclenchait alors le rechargement AVANT que le nouveau Service Worker
+    // n'ait réellement pris la main — le rechargement retombait sur
+    // l'ancien SW, encore aux commandes, qui servait sa propre version
+    // (dont un CSS plus ancien que le reste). Remplacé par une vraie
+    // attente active : revérifie l'état réel toutes les 500ms au lieu de
+    // parier sur un délai unique — couvre aussi le cas où 'controllerchange'
+    // se déclencherait entre reg.update() et la pose de l'écouteur (raté
+    // sinon). Plafond large (20s) pour ne jamais bloquer indéfiniment si la
+    // bascule n'arrive vraiment pas.
     if('serviceWorker' in navigator){
       try{
         var reg = await navigator.serviceWorker.getRegistration();
@@ -125,9 +140,14 @@
           if(!alreadyCurrent){
             await new Promise(function(resolve){
               var settled = false;
-              function finish(){ if(!settled){ settled = true; resolve(); } }
+              function finish(){ if(!settled){ settled = true; clearInterval(poll); resolve(); } }
               navigator.serviceWorker.addEventListener('controllerchange', finish, { once:true });
-              setTimeout(finish, 4000);
+              var elapsed = 0;
+              var poll = setInterval(function(){
+                elapsed += 500;
+                var ready = navigator.serviceWorker.controller && !reg.waiting && !reg.installing;
+                if(ready || elapsed >= 20000) finish();
+              }, 500);
             });
           }
         }

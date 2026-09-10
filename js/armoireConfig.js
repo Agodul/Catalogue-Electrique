@@ -1632,7 +1632,7 @@ function _armoireClose(){
   });
 
   var blocksListEl = document.getElementById('armoireConfigBlocksList');
-  if(blocksListEl) blocksListEl.addEventListener('click', function(e){
+  if(blocksListEl) blocksListEl.addEventListener('click', async function(e){
     var folderHeader = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
     if(folderHeader){
       var fKey = folderHeader.getAttribute('data-folder');
@@ -1645,7 +1645,30 @@ function _armoireClose(){
     var id = row.getAttribute('data-id');
     var block = _armoireBlocks.find(function(b){ return b.id === id; });
     if(!block) return;
-    if(e.target.closest('.armoire-block-insert')) _armoireMergeItems(block.items);
+    if(e.target.closest('.armoire-block-insert')){
+      // Retour utilisateur : "Insérer" un bloc fusionne exactement comme
+      // "Ajouter" une configuration (même confirmation ci-dessous) — testé
+      // exprès, même souci de fusion silencieuse. Un bloc étant pensé comme
+      // un kit réutilisable, on demande EN PLUS combien d'exemplaires
+      // ajouter (multiplie chaque quantité du bloc) plutôt que de forcer à
+      // cliquer "Insérer" N fois de suite pour N kits identiques.
+      var qtyStr = await customPrompt('Ajouter « ' + block.name + ' »', 'Combien d\'exemplaires de ce bloc voulez-vous ajouter ?', '1');
+      if(qtyStr === null) return; // annulé
+      var qtyTrimmed = qtyStr.trim();
+      if(!/^\d+$/.test(qtyTrimmed) || parseInt(qtyTrimmed, 10) < 1){
+        if(typeof showToast === 'function') showToast('Quantité invalide — entrez un nombre entier positif', 'err', 3500);
+        return;
+      }
+      var multiplier = parseInt(qtyTrimmed, 10);
+      var scaledItems = block.items.map(function(it){ return { ref: it.ref, qty: (it.qty || 1) * multiplier }; });
+      if(_armoireDraft.length && !(await customConfirm(
+        'Ajouter « ' + escapeHtml(block.name) + ' » ?',
+        'Les ' + scaledItems.length + ' référence' + (scaledItems.length > 1 ? 's' : '') + ' de « ' + escapeHtml(block.name) + ' »' + (multiplier > 1 ? ' (×' + multiplier + ')' : '') + ' seront ajoutées à votre configuration en cours (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' actuellement). Les quantités des références déjà présentes seront cumulées.',
+        { okLabel: 'Ajouter' }
+      ))) return;
+      _armoireMergeItems(scaledItems);
+      if(typeof showToast === 'function') showToast('« ' + block.name + ' » ajouté' + (multiplier > 1 ? ' (×' + multiplier + ')' : '') + ' à la configuration en cours ✓', 'ok', 2000);
+    }
     else if(e.target.closest('.armoire-block-del')) _armoireDeleteBlock(id);
     else if(e.target.closest('.armoire-block-info')) _armoireShowEntryDetails(block);
     else if(e.target.closest('.armoire-block-edit')) _armoireStartEditEntry(block, 'block');
