@@ -2984,7 +2984,7 @@
   #authOverlay{
     position:fixed; inset:0; z-index:var(--z-modal-top);
     background:var(--overlay-scrim);
-    display:none; align-items:center; justify-content:center;
+    display:none;
     padding:20px; box-sizing:border-box;
     /* Retour utilisateur : "la fenêtre de connexion sur mobile qui reste
        fixe" — capture à l'appui montrant la fenêtre à moitié cachée sous
@@ -2995,15 +2995,29 @@
        purement CSS, indépendant de cette mesure : dès que le contenu ne
        tient plus dans l'espace visible, on peut faire défiler LA FENÊTRE
        ELLE-MÊME pour atteindre les champs masqués, plutôt que de rester
-       bloqué derrière le clavier sans aucun moyen d'y accéder. */
+       bloqué derrière le clavier sans aucun moyen d'y accéder.
+       PAS de align-items/justify-content ici (volontairement) — "flexbox
+       scroll trap" bien documenté : un conteneur flex qui centre son
+       contenu via align-items/justify-content calcule le débordement de
+       façon à ce que la moitié qui dépasse EN HAUT devienne inatteignable
+       au défilement (le haut est traité comme une limite dure), même avec
+       overflow-y:auto. Rien de tout ça ne remontait jamais malgré nos
+       essais (_authSyncViewportHeight/_authScrollFieldToTop, js/auth.js) —
+       ce blocage empêchait TOUT défilement, quel que soit le scrollTop
+       qu'on lui imposait par JS. Centrage repris entièrement par le
+       margin:auto de .auth-box ci-dessous ("safe alignment", jamais
+       bloquant), le parent ne fait plus que défiler. */
     overflow-y:auto; -webkit-overflow-scrolling:touch;
+    /* Retour utilisateur : "la fenetre monte directe alors que le clavier
+       n'est pas sortie" — _authReserveKeyboardSpace (js/auth.js) impose un
+       padding-bottom du jour au lendemain sans transition, donc la carte
+       sautait d'un coup au focus, perceptiblement avant même que le
+       clavier ait commencé à s'animer. Cette transition fait monter la
+       carte progressivement, à peu près en même temps que l'animation du
+       clavier (~250-350ms) plutôt qu'en un saut instantané qui la précède. */
+    transition: padding-bottom .25s ease;
   }
   #authOverlay.show{ display:flex; }
-  /* Centre verticalement quand tout tient, mais ne bloque jamais le défilement
-     vers le haut de la fenêtre quand ça ne tient pas (voir commentaire
-     ci-dessus) — une marge automatique se comprime naturellement au lieu de
-     clipper le contenu comme le ferait align-items:center seul sur certains
-     moteurs de rendu mobiles. */
   #authOverlay .auth-box{ margin:auto; }
 
   #authCloseBtn{
@@ -3671,13 +3685,26 @@
      restant) d'atteindre le bord réel de l'écran (retour utilisateur,
      capture à l'appui : "sur mobile la fenêtre ne prend pas toute la
      largeur"). */
+  /* Retour utilisateur : "la fenetre de connection qui suis pas le
+     clavier" — le vrai coupable, trouvé après plusieurs essais côté JS
+     (js/auth.js, _authSyncViewportHeight/_authScrollFieldToTop) restés
+     sans le moindre effet visible : "flexbox scroll trap" bien documenté.
+     align-items:flex-end ancre la boîte en bas, mais dès que son contenu
+     dépasse la hauteur disponible (clavier ouvert), l'EXCÉDENT déborde
+     par le HAUT — un bord que le navigateur traite comme une limite dure,
+     rendant cet excédent inatteignable au défilement quel que soit le
+     scrollTop qu'on lui impose par JS. Remplacé par align-items:flex-start
+     (jamais de piège : le contenu part du haut, tout excédent déborde par
+     le BAS, normalement atteignable) + margin-top:auto sur la boîte
+     elle-même juste en dessous, qui absorbe l'espace en trop pour
+     recréer VISUELLEMENT le même ancrage en bas tant que tout tient. */
   #requestsOverlay, #docOverlay, #priceModalOverlay, #specsOverlay,
   #sugOverlay, #sugPickerOverlay, #conflictOverlay, #reqDetailOverlay, #xlsxImportOverlay,
   #authOverlay, #iconPickerModal, #settingsOverlay{
-    align-items: flex-end !important;
+    align-items: flex-start !important;
     padding: 0 !important;
   }
-  #compareOverlay{ align-items: flex-end; padding: 0; }
+  #compareOverlay{ align-items: flex-start; padding: 0; }
 
   #requestsPanel, #docModal, #priceModalOverlay > div, #specsModal,
   #sugModal, #sugPickerModal, #conflictModal, #reqDetailModal, #xlsxImportOverlay > div,
@@ -3688,6 +3715,7 @@
     max-height: 85dvh !important;
     padding-bottom: var(--nav-h, 56px) !important;
     margin: 0 !important;
+    margin-top: auto !important;
   }
   /* #requestsPanel seul (pas les autres modales de la liste ci-dessus) :
      hauteur FIXE plutôt que simple max-height — sinon la fenêtre change de
