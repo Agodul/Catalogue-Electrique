@@ -603,7 +603,19 @@
       <div class="settings-body">
         <div style="margin-bottom:16px;">
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);display:block;margin-bottom:6px;">URL du serveur json-server</label>
-          <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000" style="width:100%;padding:9px 12px;margin: 0px 0px 22px 0px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--paper);color:var(--ink);">
+          <!-- Bouton copier : même classes .vm-copy-btn/.copied que la
+               référence produit (voir js/render-view-modal.js et son CSS) —
+               retour utilisateur : "un bouton pour copier plus facilement
+               l'URL du serveur", puis "je veux que le bouton copier sois
+               dans la zone de saisie" — .server-url-field porte la
+               bordure/le fond du champ, l'input et le bouton sont
+               transparents à l'intérieur (même principe que
+               #mobileSearchBar/#mobileSearchClear) pour que le bouton
+               semble posé DANS le champ plutôt qu'à côté. -->
+          <div class="server-url-field" style="margin:0 0 22px 0;">
+            <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000">
+            <button type="button" class="vm-copy-btn" id="btnCopyServerUrl" title="Copier l'URL du serveur" aria-label="Copier l'URL du serveur"><i class="ti ti-copy" aria-hidden="true"></i><i class="ti ti-check" aria-hidden="true"></i></button>
+          </div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
           <button id="btnTestServer" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);">
@@ -1081,7 +1093,17 @@
       </div>
       <div class="auth-field-wrap">
         <label for="authPassword">Mot de passe</label>
-        <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+        <!-- Bouton œil : retour utilisateur — "ajoute le moyen de voir le
+             mot de passe écrit en ajoutant un œil", puis précisé : maintien
+             enfoncé pour afficher, relâchement pour remasquer (pas un
+             bouton à bascule classique). .auth-password-wrap
+             (position:relative) + bouton en position:absolute, même
+             principe que .search-field/.search-field svg — voir js/auth.js
+             pour la logique mousedown/mouseup/touchstart/touchend. -->
+        <div class="auth-password-wrap">
+          <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+          <button type="button" id="authPasswordToggle" class="auth-password-toggle" tabindex="-1" title="Maintenir pour afficher" aria-label="Maintenir pour afficher"><i class="ti ti-eye" aria-hidden="true"></i></button>
+        </div>
       </div>
     </div>
     <p class="auth-error" id="authError"></p>

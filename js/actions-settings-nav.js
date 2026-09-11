@@ -10,6 +10,28 @@
   var serverUrlInput      = document.getElementById('serverUrlInput');
   var serverTestResult    = document.getElementById('serverTestResult');
 
+  // Retour utilisateur : "un bouton pour copier plus facilement l'URL du
+  // serveur" — même geste que copier une référence produit (copyToClipboard/
+  // .vm-copy-btn, voir js/render-view-modal.js). Rien à copier si le champ
+  // est vide (utilisateur qui n'a jamais configuré de serveur).
+  var btnCopyServerUrl = document.getElementById('btnCopyServerUrl');
+  if(btnCopyServerUrl){
+    btnCopyServerUrl.addEventListener('click', function(){
+      var url = serverUrlInput.value.trim();
+      if(!url){
+        showToast('Aucune URL à copier', 'warn', 2000);
+        return;
+      }
+      copyToClipboard(url).then(function(){
+        showToast('URL du serveur copiée ✓', 'ok', 1800);
+        btnCopyServerUrl.classList.add('copied');
+        setTimeout(function(){ btnCopyServerUrl.classList.remove('copied'); }, 1200);
+      }).catch(function(){
+        showToast('Impossible de copier l\'URL', 'err', 2500);
+      });
+    });
+  }
+
   // .settings-header (titre "Paramètres" + croix/flèche de fermeture) est un
   // frère de .settings-body ET de chaque sous-page — jamais masqué par les
   // fonctions show* ci-dessous à l'origine, donc affiché EN PERMANENCE

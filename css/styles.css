@@ -858,6 +858,31 @@
   }
 
   .vm-ref-copy{ display:flex; align-items:center; gap:6px; }
+  /* Champ "URL du serveur" (Réglages → Serveur de données) : retour
+     utilisateur : "je veux que le bouton copier sois dans la zone de
+     saisie" — contrairement à .vm-ref-copy (input + bouton séparés côte à
+     côte), c'est ici le CONTENEUR qui porte la bordure/le fond du champ ;
+     l'input et le bouton sont transparents/sans bordure à l'intérieur
+     (même principe que #mobileSearchBar/#mobileSearchClear plus bas dans ce
+     fichier), donc le bouton copier apparaît visuellement DANS la zone de
+     saisie plutôt qu'à côté. */
+  .server-url-field{
+    display:flex; align-items:center; gap:4px;
+    padding:9px 6px 9px 12px;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--paper);
+    transition:border-color .16s ease, box-shadow .16s ease;
+  }
+  .server-url-field:focus-within{
+    border-color:var(--copper);
+    box-shadow:0 0 0 3px rgba(25,64,147,.12);
+  }
+  .server-url-field input{
+    flex:1; min-width:0; border:none; background:transparent;
+    font-size:14px; color:var(--ink); padding:0; outline:none;
+  }
+  .server-url-field .vm-copy-btn{ border:none; background:transparent; }
+  .server-url-field .vm-copy-btn:hover{ background:var(--paper-card); }
   .vm-copy-btn{
     display:inline-flex; align-items:center; justify-content:center;
     width:26px; height:26px; flex-shrink:0; padding:0;
@@ -2755,6 +2780,30 @@
     font-family:inherit; -webkit-appearance:none;
   }
   .auth-field-wrap input:focus{ border-color:#194093; background:#fff; }
+  /* Bouton œil "afficher le mot de passe" — retour utilisateur. Même
+     principe que .search-field/.search-field svg (icône en position:absolute
+     dans un conteneur position:relative) : le bouton n'a pas de fond/bordure
+     propre pour rester visuellement DANS le champ, padding-right de l'input
+     augmenté pour lui laisser la place. */
+  .auth-password-wrap{ position:relative; }
+  .auth-password-wrap input{ padding-right:40px; }
+  .auth-password-toggle{
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    background:none; border:none; padding:0; cursor:pointer;
+    color:#9CA3AF; font-size:17px;
+    transition:color .15s ease;
+  }
+  /* transform:translateY(-50%) répété ici (pas juste color) : le bouton
+     règle son centrage vertical via ce transform (voir .auth-password-toggle
+     plus haut) — sans le répéter au hover, la règle globale
+     "button:hover{transform:translateY(-1px)}" (plus haut dans ce fichier)
+     l'emporte (spécificité élément+pseudo-classe > classe seule) et
+     remplace -50% par -1px : l'œil "saute" hors du centre du champ au
+     survol au lieu de juste changer de couleur (retour utilisateur : "le
+     hover de l'œil est buggé"). Même cause que le bug de hauteur du
+     bouton toggle domaine, déjà rencontré et corrigé plus haut. */
+  .auth-password-toggle:hover{ color:#194093; transform:translateY(-50%); }
   /* Autoremplissage navigateur (identifiants enregistrés) : Chrome/Safari
      imposent de force un fond jaune/bleu sur les champs pré-remplis,
      rompant avec le fond gris clair (#F9FAFB) du reste du formulaire —

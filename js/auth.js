@@ -851,6 +851,20 @@ function openAuthModal() {
       window.visualViewport.addEventListener('resize', _authViewportHandler);
       window.visualViewport.addEventListener('scroll', _authViewportHandler);
     }
+    // Repart toujours masqué à l'ouverture (le bouton œil #authPasswordToggle
+    // plus bas dans ce fichier ne révèle que tant qu'on le maintient
+    // enfoncé, donc un relâchement — fermeture de la modale comprise —
+    // remasque déjà normalement, mais on force ici au cas où, ex. la modale
+    // se referme pendant que le clic est encore maintenu).
+    var pwInput = document.getElementById('authPassword');
+    var pwToggle = document.getElementById('authPasswordToggle');
+    if (pwInput) pwInput.type = 'password';
+    if (pwToggle) {
+      var pwToggleIcon = pwToggle.querySelector('i');
+      if (pwToggleIcon) pwToggleIcon.className = 'ti ti-eye';
+      pwToggle.title = 'Maintenir pour afficher';
+      pwToggle.setAttribute('aria-label', pwToggle.title);
+    }
     setTimeout(function() {
       var inp = document.getElementById('authUsername');
       if (inp) inp.focus();
@@ -1400,6 +1414,38 @@ function initAuth() {
 
   var closeBtn = document.getElementById('authCloseBtn');
   if (closeBtn) closeBtn.addEventListener('click', closeAuthModal);
+
+  // Bouton œil "afficher le mot de passe" — retour utilisateur : "ajoute le
+  // moyen de voir le mot de passe écrit en ajoutant un œil", puis précisé :
+  // "je veux que le mot de passe ne reste visible que tant que je maintiens
+  // le clic/appui enfoncé, et redevient masqué dès que je relâche" —
+  // maintien enfoncé (mousedown/touchstart → texte visible ; mouseup/
+  // mouseleave/touchend/touchcancel → remasqué), PAS un bouton à bascule
+  // "click" classique. mouseleave couvre le cas où le pointeur quitte le
+  // bouton pendant que le clic est toujours maintenu (sinon le mot de passe
+  // resterait visible même après relâchement ailleurs sur la page).
+  // preventDefault sur mousedown : évite que le clic ne vole le focus du
+  // champ mot de passe (curseur/sélection) au moment d'appuyer. tabindex
+  // "-1" sur le bouton (voir index.html) pour ne pas casser l'ordre de
+  // tabulation Identifiant → Mot de passe → Se connecter.
+  var authPwToggle = document.getElementById('authPasswordToggle');
+  if (authPwToggle) {
+    var authPwReveal = function(show) {
+      var pwInput = document.getElementById('authPassword');
+      if (!pwInput) return;
+      var icon = authPwToggle.querySelector('i');
+      pwInput.type = show ? 'text' : 'password';
+      if (icon) icon.className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+      authPwToggle.title = show ? 'Relâcher pour masquer' : 'Maintenir pour afficher';
+      authPwToggle.setAttribute('aria-label', authPwToggle.title);
+    };
+    authPwToggle.addEventListener('mousedown', function(e) { e.preventDefault(); authPwReveal(true); });
+    authPwToggle.addEventListener('mouseup', function() { authPwReveal(false); });
+    authPwToggle.addEventListener('mouseleave', function() { authPwReveal(false); });
+    authPwToggle.addEventListener('touchstart', function(e) { e.preventDefault(); authPwReveal(true); }, { passive: false });
+    authPwToggle.addEventListener('touchend', function() { authPwReveal(false); });
+    authPwToggle.addEventListener('touchcancel', function() { authPwReveal(false); });
+  }
 
   // Navigation gérée dans actions.js
   // Bouton Mon compte → ouvre directement la modale changement mot de passe
