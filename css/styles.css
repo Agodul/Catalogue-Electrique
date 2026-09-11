@@ -1623,6 +1623,17 @@
      visible au-dessus du contenu de page) — le masquer explicitement dès
      qu'une modale est ouverte pour éviter qu'il ne la recouvre. */
   body.modal-open .fab-stack{ display:none !important; }
+  /* Retour utilisateur (capture à l'appui, compte réel avec un gros
+     catalogue) : les FAB restaient visibles PAR-DESSUS le tiroir Filtres,
+     alors qu'ils auraient dû disparaître comme pour les autres fenêtres
+     (règle juste au-dessus). .modal-open sur <body> est ajoutée/retirée à
+     plus de 30 endroits différents du code (une par fenêtre) sans tenir
+     compte des UNES DES AUTRES — si une autre fenêtre se ferme pendant que
+     Filtres reste ouvert, son "remove('modal-open')" peut retirer la classe
+     alors que Filtres est toujours affiché. Filet de sécurité indépendant
+     de cet état partagé et fragile : se base directement sur la classe
+     .open du tiroir lui-même plutôt que sur .modal-open. */
+  body:has(#filterSheet.open) .fab-stack{ display:none !important; }
   .fab{
     width:46px; height:46px;
     padding:0;
@@ -3504,11 +3515,23 @@
     padding-bottom: env(safe-area-inset-bottom);
     box-shadow: 0 -2px 16px rgba(0,0,0,.08);
     align-items: stretch;
-    /* iOS PWA : rester en bas même quand le clavier est ouvert */
-    bottom: env(keyboard-inset-height, 0px);
+    /* Retour utilisateur explicite : "je ne veux pas qu'elle remonte avec le
+       clavier" — reste ancrée au vrai bas de la page (bottom:0 ci-dessus),
+       aucune règle ici ne la fait suivre le clavier (un essai précédent la
+       faisait suivre via env(keyboard-inset-height)/JS, retiré). MAIS
+       bottom:0 seul ne suffit pas à la garder invisible sous le clavier :
+       Safari repositionne lui-même tout élément position:fixed par rapport
+       à la zone réellement visible dès qu'un clavier logiciel s'affiche —
+       constaté en direct, capture à l'appui, la barre restait visible
+       coincée juste au-dessus du clavier malgré cette règle. D'où
+       .bottom-nav-kb-hidden juste en dessous : masquée EXPLICITEMENT
+       (display:none) tant qu'un champ de saisie a le focus (voir
+       js/actions-mobile-chrome.js, _navHideOnKeyboardCheck) — la seule
+       façon de contrer ce comportement natif de Safari. */
     /* Empêche le double-tap de déclencher un zoom sur la barre de nav */
     touch-action: manipulation;
   }
+  .bottom-nav.bottom-nav-kb-hidden { display: none; }
 
   .bottom-nav-item {
     flex: 1;

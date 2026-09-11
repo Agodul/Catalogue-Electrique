@@ -843,6 +843,26 @@ function _authSyncViewportHeight(){
   overlay.style.left = vv.offsetLeft + 'px';
   overlay.style.width = vv.width + 'px';
   overlay.style.height = vv.height + 'px';
+  // Retour utilisateur : "la fenetre de connection qui suis pas le
+  // clavier" — même avec la hauteur ci-dessus recalée sur
+  // window.visualViewport, iOS Safari ajoute par-dessus le clavier sa
+  // propre barre de suggestion "Mots de passe" (accessoire natif du
+  // navigateur, pas du contenu web), qui n'est PAS toujours comptée dans
+  // visualViewport.height — la mesure ci-dessus peut donc rester trop
+  // généreuse de quelques dizaines de pixels, et le champ actif (ou le
+  // bouton "Se connecter" plus bas dans la carte) reste caché derrière
+  // cette barre malgré le recalcul. Filet de sécurité indépendant de cette
+  // mesure imprécise : fait défiler explicitement le CHAMP QUI A LE FOCUS
+  // dans la zone réellement visible (#authOverlay reste overflow-y:auto,
+  // voir css/styles.css) plutôt que de se fier uniquement au calcul de
+  // hauteur. rAF : laisse le navigateur appliquer la nouvelle hauteur/
+  // position ci-dessus avant de calculer où défiler.
+  requestAnimationFrame(function(){
+    var active = document.activeElement;
+    if(active && overlay.contains(active) && typeof active.scrollIntoView === 'function'){
+      active.scrollIntoView({ block: 'center' });
+    }
+  });
 }
 
 // Génère le HTML d'un champ mot de passe avec bouton œil "maintenir pour
@@ -1494,6 +1514,15 @@ function initAuth() {
     var el = document.getElementById(id);
     if (el) el.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') doLogin();
+    });
+    // Retour utilisateur : "la fenetre de connection qui suis pas le
+    // clavier" — la prise de focus (donc l'ouverture du clavier) ne
+    // déclenche pas toujours à temps l'évènement visualViewport 'resize'
+    // dont dépend _authSyncViewportHeight (ex. clavier déjà ouvert en
+    // passant d'un champ à l'autre). Rappel direct sur 'focus' en plus,
+    // pour ne pas dépendre uniquement de cet évènement.
+    if (el) el.addEventListener('focus', function(){
+      if (typeof _authSyncViewportHeight === 'function') _authSyncViewportHeight();
     });
   });
 

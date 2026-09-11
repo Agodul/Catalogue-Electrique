@@ -1,3 +1,31 @@
+  // ── Barre de navigation mobile : masquée pendant la saisie ──────────
+  // Retour utilisateur : "je ne veux pas qu'elle remonte avec le clavier" —
+  // mais même sans AUCUN code JS/CSS pilotant sa position (voir
+  // css/styles.css, .bottom-nav), Safari repositionne lui-même tout élément
+  // position:fixed par rapport à la zone réellement visible dès qu'un
+  // clavier logiciel est affiché — capture à l'appui, la barre restait
+  // visible coincée juste au-dessus du clavier, comportement natif de
+  // Safari indépendant de notre CSS. Impossible à empêcher en contrôlant sa
+  // position ; la seule solution fiable est de la masquer activement tant
+  // qu'un champ de saisie a le focus, plutôt que de la laisser à sa merci.
+  // Un léger délai sur le blur laisse le temps à un focus qui rebondit vers
+  // un AUTRE champ de saisie (ex. Tab entre deux champs) de s'appliquer
+  // avant de réafficher la barre, pour ne pas la faire clignoter entre deux
+  // champs consécutifs.
+  var _navHideOnKeyboardTimer = null;
+  function _navHideOnKeyboardCheck(){
+    var nav = document.getElementById('bottomNav');
+    if(!nav) return;
+    clearTimeout(_navHideOnKeyboardTimer);
+    _navHideOnKeyboardTimer = setTimeout(function(){
+      var ae = document.activeElement;
+      var fieldFocused = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && !ae.readOnly && !ae.disabled;
+      nav.classList.toggle('bottom-nav-kb-hidden', !!fieldFocused);
+    }, 30);
+  }
+  document.addEventListener('focusin', _navHideOnKeyboardCheck);
+  document.addEventListener('focusout', _navHideOnKeyboardCheck);
+
   // ── Fermeture mutuelle des sheets ────────────────────────────
   // Ouvre le tiroir menu mobile/tablette — extrait du click handler de
   // bnMenu (bottom nav) pour être réutilisable, notamment pour rouvrir le
