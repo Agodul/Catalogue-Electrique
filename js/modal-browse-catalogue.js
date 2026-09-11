@@ -97,6 +97,7 @@
       return '<div class="sug-picker-group'+(open?' open':'')+'" data-fam="'+escapeHtml(fam)+'">'
         + '<div class="sug-picker-group-title">'
         +   '<i class="ti ti-chevron-right sug-picker-group-chevron"></i>'
+        +   '<i class="ti ti-folder" style="color:var(--copper);flex-shrink:0;"></i>'
         +   escapeHtml(fam)+' <span class="sug-picker-group-count">('+items.length+')</span>'
         + '</div>'
         + '<div class="sug-picker-grid">'

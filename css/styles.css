@@ -140,6 +140,20 @@
     background:#f0f2f8; border:1px solid #e2e6f0;
     border-radius:20px; padding:3px 12px;
     white-space:nowrap; flex-shrink:0;
+    /* Retour utilisateur : "elle change à chaque fois que le compteur
+       change" — un précédent correctif (voir commentaire sur
+       #hdrCountChip, index.html) empêchait déjà le RESTE du groupe de
+       bouger à cause de cette largeur variable, mais le chip lui-même
+       continuait de changer de taille visuellement à chaque bascule de
+       catalogue. min-width en "ch" (relatif à la police, donc valable à
+       chaque taille de police définie par les media queries ci-dessous) :
+       assez large pour "9999 produits" sans jamais rétrécir sous ce
+       nombre de caractères ; tabular-nums pour que les chiffres eux-mêmes
+       gardent une largeur fixe d'un compte à l'autre (462 vs 12 vs 5...).
+       text-align:center : au repos (peu de produits), le texte reste centré
+       dans la pilule plutôt que collé à gauche. */
+    min-width:13ch; text-align:center;
+    font-variant-numeric:tabular-nums;
   }
   .header-actions{ display:flex; gap:8px; align-items:center; flex-shrink:0; }
   /* Bascule Électrique / Pneumatique (retour utilisateur : ajouter le
@@ -176,6 +190,10 @@
   .domain-toggle-btn:hover{ color:var(--copper); background:var(--paper); transform:none; }
   .domain-toggle-btn.active{ background:var(--copper); color:#fff; }
   .domain-toggle-btn.active:hover{ background:var(--copper-deep); color:#fff; transform:none; }
+  /* Même raison que ci-dessus, mais pour l'affaissement au clic (button:active
+     transform:scale(.96) global) : un seul segment qui rétrécit se détache
+     visuellement de la pilule. Neutralisé ici aussi. */
+  .domain-toggle-btn:active{ transform:none; }
   .domain-toggle-btn i{ font-size:14px; }
   /* Retour utilisateur : "je voudrai pas pouvoir changer de catalogue
      lorsque j'ai un filtre actif ou même quand je suis dans une famille" —
@@ -193,6 +211,17 @@
   .hdr-menu-btn{
     font-size:20px; line-height:1; padding:6px 12px;
     letter-spacing:.05em;
+  }
+  /* Retour utilisateur : "ajuster la taille du bouton bleu pour être à la
+     même hauteur que les autres" — #btnAdd hérite du <button> de base
+     (padding:10px 16px, font-size:15px, voir plus haut dans ce fichier),
+     ce qui lui donnait 39px de haut contre 34px pour #btnAuthToggle/
+     #hdrMenuBtn (.hdr-menu-btn ci-dessus) juste à côté dans le header —
+     hauteur fixée explicitement plutôt que de retoucher le padding (moins
+     fragile si la police de base change un jour). */
+  #btnAdd{
+    height:34px; padding:0 16px; box-sizing:border-box;
+    display:inline-flex; align-items:center; justify-content:center;
   }
   /* Retour utilisateur : "faire en sorte que le bouton menu passe en bleu
      lorsqu'on a cliqué dessus pour desktop" — même état actif que .kebab-btn
@@ -279,21 +308,74 @@
     padding:10px 16px;
     font-size:15px;
     letter-spacing:.02em;
-    transition:transform .12s ease, background .12s ease;
+    transition:transform .08s ease, background .12s ease, background-size .25s cubic-bezier(.4,0,.2,1), box-shadow .18s ease;
   }
-  button:hover{ transform:translateY(-1px); }
+  /* Retour utilisateur : "la souris qui bug lorsque je suis entre un
+     bouton et le vide" — l'ancien button:hover{transform:translateY(-1px)}
+     déplaçait la boîte du bouton AU SURVOL : pile à la limite inférieure
+     du bouton, ce déplacement fait sortir le curseur de la zone hover, qui
+     redescend, qui re-rentre dans le hover, qui remonte... une boucle
+     d'oscillation infinie tant que le curseur reste immobile sur cette
+     limite d'1px. Remplacé par un tassement UNIQUEMENT au clic réel
+     (:active) — un mouvement qui ne dure qu'un instant ne peut pas
+     boucler, contrairement à un mouvement déclenché par le survol
+     lui-même. Voir l'artifact "Boutons en Mouvement" (piste 07) pour les
+     essais qui ont mené à ce choix. */
+  button:active{ transform:scale(.96); }
+  /* Retour utilisateur : "les bouton blanc avec a contour bug" — tous les
+     boutons SANS traitement dédié (juste un fond/contour hérité ou en ligne
+     — "Annuler"/"Fermer"/"Plus tard"/"Tester la connexion"... beaucoup
+     n'ont même pas de classe) ne réagissaient plus DU TOUT au survol une
+     fois "translateY" supprimé ci-dessus : à part .secondary/.copper
+     (juste en dessous), rien ne les couvrait. Un voile sombre translucide
+     EN INSET redonne un retour visuel à TOUS les boutons quelle que soit
+     leur couleur de fond (un ::before ou un fond de couleur fixe demande de
+     connaître la couleur de départ ; un inset s'applique par-dessus
+     n'importe laquelle). Toujours en INSET (jamais de débordement) : pas de
+     risque de faire "décoller" un bouton soudé à un autre comme
+     .domain-toggle-btn. Exclu de .secondary/.copper, qui ont leur propre
+     balayage animé juste après. */
+  button:hover:not(.secondary):not(.copper){ box-shadow:inset 0 0 0 999px rgba(0,0,0,.05); }
   button.secondary{
-    background:transparent;
+    background-color:transparent;
+    background-image:linear-gradient(var(--copper), var(--copper));
+    background-repeat:no-repeat;
+    background-position:left center;
+    background-size:0% 100%;
     color:var(--ink-soft);
     border:1px solid var(--line);
     border-radius:6px;
   }
-  button.secondary:hover{ border-color:var(--ink); }
+  /* Retour utilisateur : "les bouton blanc avec a contour bug" — le
+     remplissage progressif au survol était fait via un ::before empilé en
+     z-index négatif (position:relative;z-index:0 sur le bouton, ::before en
+     z-index:-1) : correct sur le papier, mais en pratique ce calque ne
+     s'affichait JAMAIS (testé en forçant son état, y compris avec un fond
+     rouge vif et un z-index positif pour éliminer toute question
+     d'empilement — toujours invisible). Remplacé par un dégradé appliqué
+     directement en arrière-plan du bouton lui-même (background-image
+     fixe + background-size animé de 0% à 100%) : aucun calque séparé,
+     aucune histoire d'empilement, juste une propriété native qui s'anime
+     normalement. Plus simple et plus fiable. */
+  button.secondary:hover{
+    background-size:100% 100%;
+    border-color:var(--copper);
+    color:#fff;
+  }
   button.copper{
-    background:var(--copper);
+    background-color:var(--copper);
+    background-image:linear-gradient(var(--copper-deep), var(--copper-deep));
+    background-repeat:no-repeat;
+    background-position:left center;
+    background-size:0% 100%;
     border-color:var(--copper);
   }
-  button.copper:hover{ background:var(--copper-deep); }
+  /* Retour utilisateur : "les bouton bleu non pas l'animation" — un simple
+     assombrissement instantané de fond passait inaperçu. Même technique de
+     balayage animé que .secondary ci-dessus (dégradé + background-size),
+     juste avec une teinte plus sombre du même bleu plutôt qu'une couleur
+     différente. */
+  button.copper:hover{ background-size:100% 100%; }
   button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
     outline:2px solid var(--copper);
     outline-offset:2px;
@@ -995,7 +1077,12 @@
   }
   .modal-head{
     padding:18px 24px;
-    border-bottom:1px solid var(--line);
+    /* Ombre plutôt qu'un simple trait — retour utilisateur (maquette
+       "Atelier Fiche Produit") : rend la séparation avec le contenu qui
+       défile en dessous plus nette qu'une bordure plate, surtout quand une
+       ligne de champ arrive juste au ras de la limite. */
+    box-shadow:0 4px 10px -6px rgba(17,24,39,.16);
+    position:relative; z-index:1;
     display:flex; align-items:center; justify-content:space-between;
     flex-shrink:0;
   }
@@ -1077,6 +1164,15 @@
     width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:3px;
     background:var(--paper); color:var(--ink);
     box-sizing:border-box;
+    /* Retour utilisateur : "corrige la police d'écriture de la
+       description" — les champs de formulaire n'héritent JAMAIS la police
+       de la page par défaut (feuille de style interne du navigateur),
+       chacun retombant sur son propre réglage : "Arial" pour un <input>
+       (déjà un décalage discret avec la police de l'appli), mais carrément
+       "monospace" pour un <textarea> (#fDesc notamment) — nettement plus
+       visible, formes de lettres et chasse fixe très différentes du reste
+       du formulaire. */
+    font-family:inherit;
   }
   .field textarea{ resize:vertical; min-height:60px; max-height:180px; }
   /* .field select (ex. #fDomain) ne récupérait QUE la couleur/fond ci-dessus
@@ -1107,10 +1203,124 @@
     font-size: 12.5px;
     letter-spacing: .04em;
   }
-  .field.field-checkbox input[type="checkbox"]{
+  /* :not(.toggle-switch) obligatoire — retour utilisateur : "corrige les
+     slider de 3D et Standard" (interrupteurs f3dAvailable/fEssential
+     inertes au clic). Sans cette exclusion, cette règle (3 sélecteurs de
+     classe/attribut) l'emportait quand même sur .toggle-switch ci-dessous
+     (2 seulement) pour width/height malgré le commentaire qui prétendait
+     l'avoir retiré d'ici — jamais réellement fait. L'interrupteur se
+     retrouvait écrasé à 16x16px alors que sa zone visuelle (::after)
+     restait dessinée à sa taille normale : le clic visait le rendu visuel,
+     pas la zone réellement cliquable de l'input, donc ne togglait rien. */
+  .field.field-checkbox input[type="checkbox"]:not(.toggle-switch){
     width:16px; height:16px; margin:0;
     accent-color:var(--copper);
   }
+  /* Interrupteur à bascule — retour utilisateur (maquette "Atelier Fiche
+     Produit") : remplace visuellement une case à cocher pour un réglage
+     "activé pour ce catalogue" (3DEXPERIENCE/Essentiel), sans rien changer
+     à l'élément lui-même — c'est toujours un <input type="checkbox">, avec
+     juste cette classe en plus. .checked, les listeners existants, la
+     lecture JS (f3dAvailable.checked) restent identiques. Classe globale
+     (pas scopée à la fenêtre produit) : réutilisable partout où un réglage
+     binaire remplace une case à cocher classique. */
+  input.toggle-switch{
+    -webkit-appearance:none; appearance:none;
+    width:38px; height:22px; border-radius:20px;
+    background:var(--line); position:relative;
+    cursor:pointer; flex-shrink:0; margin:0;
+    vertical-align:middle;
+    transition:background .15s ease;
+    /* !important sur ces 3 : retour utilisateur : "le rond n'est pas
+       centré" — .field input (ci-dessus, css/styles.css) impose à TOUT
+       <input> placé dans un .field un padding:8px 10px et une bordure de
+       1px avec box-sizing:border-box, y compris ce toggle (les cases
+       3DEXPERIENCE/Essentiel sont dans un .field.field-checkbox) : sur les
+       22px de hauteur déclarés, le curseur (::after, top:2px) se
+       positionnait alors par rapport au bord du padding, décalé de 9px
+       (8px de padding + 1px de bordure) plus bas que prévu au lieu de 2px
+       — visuellement collé en bas du rail plutôt que centré. Un
+       interrupteur doit s'affranchir de tout style hérité d'un <input> de
+       formulaire classique, quel que soit le conteneur qui l'entoure. */
+    padding:0 !important;
+    border:none !important;
+    box-sizing:content-box !important;
+  }
+  input.toggle-switch::after{
+    content:''; position:absolute; top:2px; left:2px;
+    width:18px; height:18px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25);
+    transition:transform .15s ease;
+  }
+  input.toggle-switch:checked{ background:var(--copper); }
+  input.toggle-switch:checked::after{ transform:translateX(16px); }
+
+  /* Variante compacte — retour utilisateur : "dupliquer ce nouveau à toute
+     les fenêtre et ce qui est case à coche passe en slider" — pour les
+     contextes trop serrés pour la taille normale (38x22px), ex. la case
+     "afficher sur cette fiche" au bout d'une ligne de produit lié
+     (.sug-chip-visible, déjà accompagnée d'une vignette 34px + texte +
+     bouton supprimer sur une seule ligne compacte). */
+  /* flex/min-width/max-width en plus de width — retour utilisateur : "le
+     rond n'est pas centré"/"corrige moi les slider" — .sug-chip-visible
+     (css, plus haut dans ce fichier) fixe flex:0 0 15px + min/max-width:
+     15px sur ce même <input> ; dans un parent flex (.sug-linked-item),
+     flex-basis (ici 15px) prime sur la propriété width pour la taille
+     réellement rendue, donc width:28px seul ne suffisait pas — l'interrupteur
+     restait visuellement écrasé à 15px de large pendant que le curseur
+     (::after, sous ce bloc) se dessinait à sa vraie taille, débordant du
+     rail au lieu d'être centré dedans. */
+  input.toggle-switch.toggle-switch-sm{
+    width:28px !important; height:16px !important;
+    flex:0 0 28px !important; min-width:28px !important; max-width:28px !important;
+  }
+  input.toggle-switch.toggle-switch-sm::after{ width:12px; height:12px; }
+  input.toggle-switch.toggle-switch-sm:checked::after{ transform:translateX(12px); }
+  /* Permission héritée désactivée (ex: "Exporter le catalogue (obsolète)",
+     js/auth.js) — un <input disabled> perd son ::after natif dans certains
+     navigateurs une fois appearance:none appliqué ; grisé explicitement
+     plutôt que de compter dessus. */
+  input.toggle-switch:disabled{ opacity:.5; cursor:not-allowed; }
+
+  /* En-tête de section avec pastille d'icône — retour utilisateur (même
+     maquette) : repère visuel immédiat pour les groupes de champs d'une
+     fenêtre, avec un indice contextuel aligné à droite quand utile.
+     Classe globale, réutilisable dans n'importe quelle fenêtre du même
+     système .modal/.modal-overlay (et au-delà, voir js/auth.js). */
+  .sec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin:22px 0 12px; }
+  .sec-head:first-child{ margin-top:0; }
+  .sec-head .sec-head-left{ display:flex; align-items:center; gap:9px; }
+  .sec-icon{ width:24px; height:24px; border-radius:7px; background:rgba(25,64,147,.1); color:var(--copper); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sec-icon svg{ width:13px; height:13px; display:block; }
+  .sec-head h4{ margin:0; font-size:13px; font-weight:700; color:var(--ink); }
+  .sec-hint{ font-size:11.5px; color:var(--ink-soft); text-align:right; }
+  /* Bouton d'action dans un en-tête de section (ex: "Ajouter des
+     caractéristiques" à côté de "Caractéristiques techniques") — même
+     maquette. */
+  /* Retour utilisateur : "le bouton [...] ne suis pas le style des
+     boutons" — remplace le remplissage teinté sans bordure (propre à cette
+     classe) par le même bouton secondaire bordé que le reste de l'appli
+     (.family-icon-picker-btn "Choisir une icône" notamment, même fenêtre) :
+     fond neutre, bordure fine, qui vire copper au survol — plutôt qu'un
+     nouveau style de bouton de plus. */
+  .sec-action{
+    font-size:12px; font-weight:600; color:var(--ink);
+    background:var(--paper-card); border:1px solid var(--line); border-radius:6px;
+    padding:6px 12px; cursor:pointer; flex-shrink:0; white-space:nowrap; font-family:var(--font-sans);
+  }
+  .sec-action:hover{ border-color:var(--copper); color:var(--copper); }
+
+  /* Tableau récapitulatif des caractéristiques techniques, affiché
+     directement dans le formulaire — retour utilisateur (maquette "Atelier
+     Fiche Produit") : remplace le simple bouton opaque par un aperçu
+     Propriété/Valeur ; "⋯" ouvre toujours la fenêtre d'édition dédiée
+     (#specsOverlay, js/modal-specs-editor.js), inchangée. */
+  .specs-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .specs-table th{ text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); padding:0 10px 7px; border-bottom:1px solid var(--line); }
+  .specs-table td{ padding:9px 10px; border-bottom:1px solid var(--line); color:var(--ink); }
+  .specs-table tr:last-child td{ border-bottom:none; }
+  .specs-table td.more{ text-align:right; color:var(--ink-soft); cursor:pointer; width:20px; }
+
   .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .hint{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; line-height:1.4; }
   .hint a{ color:var(--copper-deep); }
@@ -1231,7 +1441,12 @@
   .extract-status.warn{ background:#FEE2E2; color:var(--warn); border:1px solid #FECACA; }
 
   .modal-foot{
-    padding:16px 24px; border-top:1px solid var(--line);
+    padding:16px 24px;
+    /* Même raison que .modal-head ci-dessus : ombre plutôt que bordure
+       plate pour une séparation plus nette avec le contenu qui défile
+       au-dessus. */
+    box-shadow:0 -4px 10px -6px rgba(17,24,39,.16);
+    position:relative; z-index:1;
     display:flex; justify-content:space-between; align-items:center; gap:10px;
     flex-shrink:0;
   }
@@ -2204,6 +2419,17 @@
     font-size:11px; display:flex; align-items:center; justify-content:center;
   }
 
+  /* Contenu d'un dossier famille du Configurateur d'armoire — même coquille
+     accordéon (.sug-picker-group/-title/-chevron/-count) que "Parcourir le
+     catalogue" ci-dessus, retour utilisateur : "unifie le comportement
+     [...] et configurateur d'armoire" (ouverture/fermeture des dossiers).
+     Liste compacte plutôt qu'une grille de cartes : la colonne "Parcourir"
+     du configurateur est plus étroite que la fenêtre dédiée, et l'ajout au
+     clic sur "+" (.armoire-search-add, js/armoireConfig.js) reste
+     volontairement immédiat — inchangé, ce n'est pas ce qui a été demandé. */
+  .armoire-family-list{ display:none; padding-top:6px; }
+  .sug-picker-group.open .armoire-family-list{ display:block; }
+
   /* ── Picker icône famille ── */
   .family-icon-row{
     display:none; align-items:center; gap:8px;
@@ -2732,8 +2958,25 @@
     background:var(--overlay-scrim);
     display:none; align-items:center; justify-content:center;
     padding:20px; box-sizing:border-box;
+    /* Retour utilisateur : "la fenêtre de connexion sur mobile qui reste
+       fixe" — capture à l'appui montrant la fenêtre à moitié cachée sous
+       le clavier ET la barre de suggestion "Mots de passe" du navigateur
+       (iOS), qui s'ajoute AU-DESSUS du clavier sans forcément être reflétée
+       à temps dans window.visualViewport (voir _authSyncViewportHeight,
+       js/auth.js, qui gère déjà le cas général). Filet de sécurité
+       purement CSS, indépendant de cette mesure : dès que le contenu ne
+       tient plus dans l'espace visible, on peut faire défiler LA FENÊTRE
+       ELLE-MÊME pour atteindre les champs masqués, plutôt que de rester
+       bloqué derrière le clavier sans aucun moyen d'y accéder. */
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
   }
   #authOverlay.show{ display:flex; }
+  /* Centre verticalement quand tout tient, mais ne bloque jamais le défilement
+     vers le haut de la fenêtre quand ça ne tient pas (voir commentaire
+     ci-dessus) — une marge automatique se comprime naturellement au lieu de
+     clipper le contenu comme le ferait align-items:center seul sur certains
+     moteurs de rendu mobiles. */
+  #authOverlay .auth-box{ margin:auto; }
 
   #authCloseBtn{
     position:absolute; top:12px; right:12px;

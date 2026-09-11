@@ -18,7 +18,7 @@
         +   '<div class="sug-drop-ref">'+escapeHtml(ref)+'</div>'
         +   (p && p.name ? '<div class="sug-drop-name">'+escapeHtml(p.name.substring(0,45))+'</div>' : '')
         + '</div>'
-        + (canEdit ? '<input type="checkbox" class="sug-chip-visible" data-ref="'+escapeHtml(ref)+'" title="Afficher sur cette fiche"'+(visible?' checked':'')+'>' : '')
+        + (canEdit ? '<input type="checkbox" class="sug-chip-visible toggle-switch toggle-switch-sm" data-ref="'+escapeHtml(ref)+'" title="Afficher sur cette fiche"'+(visible?' checked':'')+'>' : '')
         + (canEdit ? '<button class="sug-chip-del" data-ref="'+escapeHtml(ref)+'" title="Retirer le lien">✕</button>' : '')
         + '</div>';
     }).join('');

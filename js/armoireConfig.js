@@ -342,10 +342,15 @@ function _armoireRenderDraft(){
 
 // ── Recherche produits, rangée en dossiers famille ───────────────────────
 // Sans recherche active : dossiers par famille (comme la page d'accueil),
-// on clique pour voir les produits de cette famille. Dès qu'on tape dans la
-// recherche, elle porte sur tout le catalogue, toutes familles confondues.
+// repliés/dépliés SUR PLACE façon accordéon — retour utilisateur : "unifie
+// le comportement [...] et configurateur d'armoire" — même mécanique que
+// "Parcourir le catalogue" (_sugPickerOpenGroups, js/modal-browse-catalogue.js)
+// plutôt que l'ancienne navigation "on entre dans le dossier, la liste des
+// familles est remplacée, un lien retour revient en arrière". Dès qu'on tape
+// dans la recherche, elle porte sur tout le catalogue, toutes familles
+// confondues (liste plate, pas de dossiers).
 
-var _armoireBrowseFamily = null; // famille actuellement ouverte (null = liste des dossiers)
+var _armoireOpenFamilies = {}; // { famille: true } — dossiers actuellement dépliés, plusieurs à la fois
 
 // Retour utilisateur : "ajoute un bouton pour afficher les deux catalogues
 // ou non" — le configurateur d'armoire parcourait jusqu'ici TOUJOURS
@@ -422,40 +427,44 @@ function _armoireRenderFamilyFolders(){
   var el = document.getElementById('armoireConfigSearchResults');
   if(!el) return;
   var all = _armoireScopedProducts();
-  var counts = {};
+  var grouped = {};
   var order = [];
   all.forEach(function(p){
     var f = p.family || '(Sans famille)';
-    if(!counts[f]){ counts[f] = 0; order.push(f); }
-    counts[f]++;
+    if(!grouped[f]){ grouped[f] = []; order.push(f); }
+    grouped[f].push(p);
   });
   order.sort(function(a, b){ return a.localeCompare(b, 'fr'); });
   if(!order.length){
     el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:16px 8px;">Aucun produit dans le catalogue.</div>';
     return;
   }
+  // Groupe accordéon (.sug-picker-group/-title/-chevron/-count) — mêmes
+  // classes que "Parcourir le catalogue" (js/modal-browse-catalogue.js),
+  // seul le contenu diffère (liste compacte .armoire-family-list ici, une
+  // grille de cartes à sélection multiple là-bas — l'ajout à la config
+  // reste au clic sur "+", inchangé).
   el.innerHTML = order.map(function(f){
-    return '<div class="armoire-family-row" data-family="' + escapeHtml(f) + '" style="display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;">'
-      + '<i class="ti ti-folder" style="font-size:16px;color:var(--copper);flex-shrink:0;"></i>'
-      + '<div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(f) + '</div>'
-      + '<span style="font-size:11px;color:var(--ink-soft);flex-shrink:0;">' + counts[f] + '</span>'
-      + '<i class="ti ti-chevron-right" style="font-size:14px;color:var(--ink-soft);flex-shrink:0;"></i>'
+    var items = grouped[f];
+    var open = !!_armoireOpenFamilies[f];
+    return '<div class="sug-picker-group'+(open?' open':'')+'" data-family="' + escapeHtml(f) + '">'
+      + '<div class="sug-picker-group-title">'
+      +   '<i class="ti ti-chevron-right sug-picker-group-chevron"></i>'
+      +   '<i class="ti ti-folder" style="color:var(--copper);flex-shrink:0;"></i>'
+      +   escapeHtml(f) + ' <span class="sug-picker-group-count">(' + items.length + ')</span>'
+      + '</div>'
+      + '<div class="armoire-family-list">' + items.map(_armoireProductRowHtml).join('') + '</div>'
       + '</div>';
   }).join('');
-}
-
-function _armoireRenderFamilyProducts(family){
-  var el = document.getElementById('armoireConfigSearchResults');
-  if(!el) return;
-  var all = _armoireScopedProducts();
-  var results = all.filter(function(p){ return (p.family || '(Sans famille)') === family; });
-  var backRow = '<div class="armoire-family-back" style="display:flex;align-items:center;gap:6px;padding:8px 6px;margin-bottom:6px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--copper-deep);font-size:12.5px;font-weight:600;">'
-    + '<i class="ti ti-chevron-left" style="font-size:14px;"></i> Toutes les familles</div>';
-  if(!results.length){
-    el.innerHTML = backRow + '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:16px 8px;">Aucun produit dans cette famille.</div>';
-    return;
-  }
-  el.innerHTML = backRow + results.map(_armoireProductRowHtml).join('');
+  el.querySelectorAll('.sug-picker-group-title').forEach(function(titleEl){
+    titleEl.addEventListener('click', function(){
+      var groupEl = titleEl.parentNode;
+      var fam = groupEl.getAttribute('data-family');
+      var nowOpen = !groupEl.classList.contains('open');
+      groupEl.classList.toggle('open', nowOpen);
+      _armoireOpenFamilies[fam] = nowOpen;
+    });
+  });
 }
 
 function _armoireRenderSearchResults(query){
@@ -464,8 +473,7 @@ function _armoireRenderSearchResults(query){
   var norm = normalizeSearch(query || '');
 
   if(!norm){
-    if(_armoireBrowseFamily) _armoireRenderFamilyProducts(_armoireBrowseFamily);
-    else _armoireRenderFamilyFolders();
+    _armoireRenderFamilyFolders();
     return;
   }
 
@@ -1439,7 +1447,7 @@ function _armoireOpen(){
   overlay.style.display = 'flex';
   document.body.classList.add('modal-open');
   _armoireBindRowMenuOnce();
-  _armoireBrowseFamily = null;
+  _armoireOpenFamilies = {}; // dossiers repliés à chaque (ré)ouverture, comme "Parcourir le catalogue"
   var searchInput = document.getElementById('armoireConfigSearch');
   if(searchInput) searchInput.value = '';
   _armoireSyncSearchScopeBtn();
@@ -1541,19 +1549,11 @@ function _armoireClose(){
     if(addBtn){
       var row = addBtn.closest('.armoire-search-row');
       if(row) _armoireAddToDraft(row.getAttribute('data-ref'), 1);
-      return;
     }
-    var folderRow = e.target.closest ? e.target.closest('.armoire-family-row') : null;
-    if(folderRow){
-      _armoireBrowseFamily = folderRow.getAttribute('data-family');
-      _armoireRenderSearchResults(document.getElementById('armoireConfigSearch').value);
-      return;
-    }
-    var backRow = e.target.closest ? e.target.closest('.armoire-family-back') : null;
-    if(backRow){
-      _armoireBrowseFamily = null;
-      _armoireRenderSearchResults(document.getElementById('armoireConfigSearch').value);
-    }
+    // L'ouverture/fermeture des dossiers famille (.sug-picker-group-title)
+    // est câblée directement dans _armoireRenderFamilyFolders() ci-dessus —
+    // même mécanique que "Parcourir le catalogue" (un addEventListener par
+    // titre à chaque rendu, pas de délégation ici).
   });
 
   var draftEl = document.getElementById('armoireConfigDraftList');

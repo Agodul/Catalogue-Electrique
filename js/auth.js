@@ -648,6 +648,11 @@ function applyAuthUI() {
   if(fSuggestionsRow) fSuggestionsRow.style.display = canEdit ? '' : 'none';
   var fSparePartsRow = document.getElementById('fSparePartsRow');
   if(fSparePartsRow) fSparePartsRow.style.display = canEdit ? '' : 'none';
+  // En-tête "Relations produit" (voir js/templates.js) : même condition
+  // que les deux champs qu'il coiffe, sinon il reste affiché seul, sans
+  // aucun champ dessous, pour les comptes sans droit d'édition.
+  var fRelationsSecHead = document.getElementById('fRelationsSecHead');
+  if(fRelationsSecHead) fRelationsSecHead.style.display = canEdit ? '' : 'none';
 
   // "Proposer une modification" sur la fiche produit — DANS le menu ⓘ, à la
   // place de "Modifier la fiche" (jamais les deux en même temps : canPropose
@@ -1128,30 +1133,45 @@ function openAddUserModal() {
     var disabled = isLegacy ? ' disabled' : '';
     var labelColor = isLegacy ? 'var(--ink-soft)' : 'var(--ink)';
     var cursor = isLegacy ? 'default' : 'pointer';
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:2px 0;">'
-      + '<input type="checkbox" class="_nuPerm" data-perm="'+p[0]+'"'+checked+disabled+'> '+p[1]+'</label>';
+    return '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:5px 0;">'
+      + '<span>'+p[1]+'</span><input type="checkbox" class="_nuPerm toggle-switch toggle-switch-sm" data-perm="'+p[0]+'"'+checked+disabled+'></label>';
   }).join('');
 
+  // Repris de la maquette "Atelier Fiche Produit" (retour utilisateur :
+  // "faudra aussi faire pour les autres fen\u00eatre pour avoir une meilleur
+  // coh\u00e9rence") \u2014 m\u00eame structure .modal/.modal-head/.modal-body/.modal-foot
+  // que la fen\u00eatre produit (js/templates.js) plut\u00f4t qu'une bo\u00eete ad hoc,
+  // m\u00eames en-t\u00eates de section \u00e0 pastille d'ic\u00f4ne (.sec-head/.sec-icon,
+  // css/styles.css), m\u00eame interrupteur \u00e0 bascule (.toggle-switch) pour le
+  // r\u00e9glage Administrateur, m\u00eames classes de bouton (.secondary/.copper)
+  // que "Annuler"/"Enregistrer le produit". max-width r\u00e9duit par rapport
+  // au .modal par d\u00e9faut (660px) : ce formulaire n'a que 3 champs, pas
+  // besoin de la m\u00eame largeur qu'une fiche produit.
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
-  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Ajouter un utilisateur</div>'
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div class="modal" style="max-width:420px;">'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Ajouter un utilisateur</h3></div>'
+    + '<div class="modal-body">'
+    + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_nuUsername" type="text" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_nuDisplay" type="text" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + _authPasswordFieldHtml('_nuPassword', 'Mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
-    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:6px 0;border-top:1px solid var(--line);margin-top:4px;">'
-    + '<input type="checkbox" id="_nuAdmin"> <strong>Administrateur</strong> (acc\u00e8s complet)</label>'
+    + '</div>'
+    + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg></span><h4>Acc\u00e8s et permissions</h4></div></div>'
+    + '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 12px;cursor:pointer;">'
+    + '<span style="font-size:13px;color:var(--ink);"><strong>Administrateur</strong> <span style="color:var(--ink-soft);font-weight:400;">(acc\u00e8s complet)</span></span>'
+    + '<input type="checkbox" id="_nuAdmin" class="toggle-switch"></label>'
     + '<div id="_nuPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);">'
     + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Permissions individuelles</div>'
     + permCheckboxes
     + '</div>'
-    + '</div>'
     + '<div id="_nuError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
-    + '<div style="display:flex;gap:8px;margin-top:16px;">'
-    + '<button id="_nuCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cr\u00e9er l&#39;utilisateur</button>'
-    + '</div></div>';
+    + '</div>'
+    + '<div class="modal-foot"><div class="left-foot"></div><div style="display:flex;gap:8px;">'
+    + '<button id="_nuCancel" class="secondary" type="button">Annuler</button>'
+    + '<button id="_nuSubmit" class="copper" type="button">Cr\u00e9er l&#39;utilisateur</button>'
+    + '</div></div></div>';
   document.body.appendChild(ov);
   _authWirePasswordToggles(ov);
 
@@ -1258,29 +1278,37 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     var cursor    = isLegacy ? 'default' : 'pointer';
     var permKey   = _escapeHtml(p[0]);
     var permLabel = _escapeHtml(p[1]);
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:3px 0;">'
-      + '<input type="checkbox" class="_euPerm" data-perm="'+permKey+'"'+checked+disabled+'> '+permLabel+'</label>';
+    return '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:'+labelColor+';cursor:'+cursor+';padding:5px 0;">'
+      + '<span>'+permLabel+'</span><input type="checkbox" class="_euPerm toggle-switch toggle-switch-sm" data-perm="'+permKey+'"'+checked+disabled+'></label>';
   }).join('');
 
+  // Même structure/traitement que openAddUserModal() juste au-dessus dans
+  // ce fichier — voir son commentaire pour le détail (retour utilisateur :
+  // cohérence entre fenêtres).
   var ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
-  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div class="modal" style="max-width:420px;">'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Modifier — ' + safeTitleName + '</h3></div>'
+    + '<div class="modal-body">'
+    + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_euDisplay" type="text" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + _authPasswordFieldHtml('_euPassword', 'Nouveau mot de passe (vide = inchangé)', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
-    + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
-    + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'
+    + '</div>'
+    + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg></span><h4>Accès et permissions</h4></div></div>'
+    + '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 12px;cursor:pointer;">'
+    + '<span style="font-size:13px;color:var(--ink);"><strong>Administrateur</strong> <span style="color:var(--ink-soft);font-weight:400;">(accès complet)</span></span>'
+    + '<input type="checkbox" id="_euAdmin" class="toggle-switch"' + (isAdminUser ? ' checked' : '') + '></label>'
     + '<div id="_euPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;'+(isAdminUser?'display:none;':'')+'background:var(--paper);">'
     + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Permissions individuelles</div>'
     + permCheckboxes
     + '</div>'
-    + '</div>'
     + '<div id="_euError" style="color:#991B1B;font-size:12px;margin-top:8px;display:none;"></div>'
-    + '<div style="display:flex;gap:8px;margin-top:16px;">'
-    + '<button id="_euCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_euSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
-    + '</div></div>';
+    + '</div>'
+    + '<div class="modal-foot"><div class="left-foot"></div><div style="display:flex;gap:8px;">'
+    + '<button id="_euCancel" class="secondary" type="button">Annuler</button>'
+    + '<button id="_euSubmit" class="copper" type="button">Enregistrer</button>'
+    + '</div></div></div>';
   document.body.appendChild(ov);
   _authWirePasswordToggles(ov);
 
@@ -1337,20 +1365,25 @@ function openChangePasswordModal() {
   var sUrl = localStorage.getItem(AUTH_SERVER_KEY);
   if (!user || !sUrl) return;
 
+  // Même structure/traitement que openAddUserModal() plus haut dans ce
+  // fichier — voir son commentaire pour le détail (retour utilisateur :
+  // cohérence entre fenêtres).
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
-    + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Changer mon mot de passe</div>'
+  ov.innerHTML = '<div class="modal" style="max-width:380px;">'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Changer mon mot de passe</h3></div>'
+    + '<div class="modal-body">'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + _authPasswordFieldHtml('_cpCurrent', 'Mot de passe actuel', 'current-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + _authPasswordFieldHtml('_cpNew', 'Nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + _authPasswordFieldHtml('_cpConfirm', 'Confirmer le nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '</div>'
     + '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>'
-    + '<div style="display:flex;gap:8px;margin-top:16px;">'
-    + '<button id="_cpCancel" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>'
-    + '<button id="_cpSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
-    + '</div></div>';
+    + '</div>'
+    + '<div class="modal-foot"><div class="left-foot"></div><div style="display:flex;gap:8px;">'
+    + '<button id="_cpCancel" class="secondary" type="button">Annuler</button>'
+    + '<button id="_cpSubmit" class="copper" type="button">Enregistrer</button>'
+    + '</div></div></div>';
   document.body.appendChild(ov);
   _authWirePasswordToggles(ov);
 

@@ -12,6 +12,31 @@
       var count = _specsRows.filter(function(r){ return (r.key||'').trim(); }).length;
       btnOpenSpecsLabel.textContent = count ? ('Caractéristiques (' + count + ')') : 'Ajouter des caractéristiques';
     }
+    // Aperçu Propriété/Valeur affiché directement dans le formulaire (voir
+    // #specsSummaryTable, js/templates.js) — retour utilisateur (maquette
+    // "Atelier Fiche Produit") : remplace le simple bouton opaque par un
+    // vrai aperçu du contenu. "⋯" par ligne ouvre la même fenêtre d'édition
+    // que le bouton d'en-tête (#btnOpenSpecs) plutôt que de dupliquer la
+    // logique d'édition ligne par ligne ici.
+    var summaryTable = document.getElementById('specsSummaryTable');
+    var emptyHint = document.getElementById('specsEmptyHint');
+    if(summaryTable && emptyHint){
+      var filledRows = _specsRows.filter(function(r){ return (r.key||'').trim(); });
+      if(filledRows.length){
+        summaryTable.style.display = '';
+        emptyHint.style.display = 'none';
+        summaryTable.innerHTML = '<tr><th>Propriété</th><th>Valeur</th><th></th></tr>'
+          + filledRows.map(function(row){
+              return '<tr><td>'+escapeHtml(row.key||'')+'</td><td>'+escapeHtml(row.value||'')+'</td><td class="more">⋯</td></tr>';
+            }).join('');
+        summaryTable.querySelectorAll('td.more').forEach(function(cell){
+          cell.addEventListener('click', function(){ if(btnOpenSpecs) btnOpenSpecs.click(); });
+        });
+      } else {
+        summaryTable.style.display = 'none';
+        emptyHint.style.display = '';
+      }
+    }
     if(!specsRowsEl) return;
     // Grille (minmax(0,1fr) sur les 2 colonnes texte + 32px fixe pour le
     // bouton supprimer) au lieu de flex:1 sur des <input> — sans le
