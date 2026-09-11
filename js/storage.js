@@ -448,23 +448,32 @@
   // Retour utilisateur : "je voudrai pas pouvoir changer de catalogue
   // lorsque j'ai un filtre actif ou même quand je suis dans une famille" —
   // vrai tant qu'on est DANS le catalogue (pas l'accueil) avec au moins un
-  // critère qui restreint la liste (marque/famille/série/recherche/3D/
-  // Standard). PAS de cas particulier pour "Voir tout le catalogue" ici :
-  // viewAll ne change QUE l'affichage groupé/plat (voir showCatalogueAll),
-  // jamais le filtrage lui-même — une recherche ou une case 3D reste tout à
-  // fait active EN MÊME TEMPS que "Voir tout" (testé : sans ce retrait, une
-  // recherche tapée en mode "Voir tout" ne verrouillait pas le sélecteur,
-  // alors que la liste affichée était bien restreinte). Utilisé par
-  // js/actions-home.js (window._syncDomainToggleEnabled) pour désactiver
-  // visuellement le sélecteur de domaine, et en garde-fou dans le
-  // gestionnaire de clic lui-même.
+  // critère qui restreint la liste (marque/famille/série/recherche). PAS de
+  // cas particulier pour "Voir tout le catalogue" ici : viewAll ne change
+  // QUE l'affichage groupé/plat (voir showCatalogueAll), jamais le filtrage
+  // lui-même — une recherche reste tout à fait active EN MÊME TEMPS que
+  // "Voir tout" (testé : sans ce retrait, une recherche tapée en mode "Voir
+  // tout" ne verrouillait pas le sélecteur, alors que la liste affichée
+  // était bien restreinte). Utilisé par js/actions-home.js
+  // (window._syncDomainToggleEnabled) pour désactiver visuellement le
+  // sélecteur de domaine, et en garde-fou dans le gestionnaire de clic
+  // lui-même.
+  //
+  // 3D-EXPERIENCE/Standard volontairement PAS pris en compte ici (retour
+  // utilisateur : "lorsqu'on a seulement 3DEXPERIENCE et standard actif on
+  // peut changer de catalogue") — contrairement à marque/famille/série/
+  // recherche, ces deux puces ont un sens identique dans les deux domaines
+  // (un produit "Standard" ou disponible en 3DEXPERIENCE existe aussi bien
+  // côté électrique que pneumatique), donc les garder actives en changeant
+  // de catalogue n'a rien d'incohérent. switchDomain() (js/actions-home.js)
+  // les réinitialise de toute façon au moment du changement, comme tous les
+  // autres filtres (voir window._clearAllActiveFilters) — elles ne
+  // "fuient" donc jamais d'un domaine à l'autre, seul le VERROUILLAGE du
+  // sélecteur ignore désormais leur état.
   window._isCatalogueFiltered = function(){
     var home = document.getElementById('homePage');
     if(home && !home.classList.contains('hidden')) return false;
-    var f3d = document.getElementById('filter3DAvailable');
-    var fEss = document.getElementById('filterEssential');
-    return !!(brandFilterEl.value || familyFilterEl.value || seriesFilterEl.value || searchInputEl.value
-      || (f3d && f3d.checked) || (fEss && fEss.checked));
+    return !!(brandFilterEl.value || familyFilterEl.value || seriesFilterEl.value || searchInputEl.value);
   };
 
   function escapeHtml(s){

@@ -840,6 +840,55 @@ function _authSyncViewportHeight(){
   overlay.style.height = vv.height + 'px';
 }
 
+// Génère le HTML d'un champ mot de passe avec bouton œil "maintenir pour
+// afficher" — retour utilisateur : après la connexion, étendu à "modifier
+// mot de passe" et "création de mot de passe dans ajouter un utilisateur".
+// Réutilisé par openChangePasswordModal()/openAddUserModal() plus bas dans
+// ce fichier plutôt que de dupliquer le balisage à chaque champ.
+// inputStyle DOIT réserver au moins 40px de padding-right pour laisser la
+// place au bouton : un style inline (comme ici) est plus prioritaire que la
+// règle CSS .auth-password-wrap input{padding-right:40px} (voir
+// css/styles.css) qui suffit pour le champ statique de la connexion, mais
+// pas pour ces champs générés en JS avec leur propre padding inline.
+function _authPasswordFieldHtml(id, placeholder, autocomplete, inputStyle) {
+  return '<div class="auth-password-wrap">'
+    + '<input id="' + id + '" type="password" placeholder="' + placeholder + '" autocomplete="' + autocomplete + '" style="' + inputStyle + '">'
+    + '<button type="button" class="auth-password-toggle" tabindex="-1" title="Maintenir pour afficher" aria-label="Maintenir pour afficher"><i class="ti ti-eye" aria-hidden="true"></i></button>'
+    + '</div>';
+}
+
+// Attache le comportement "maintenir enfoncé pour afficher, relâcher pour
+// remasquer" à tous les boutons .auth-password-toggle trouvés sous root
+// (le document entier pour le champ statique de la connexion, ou une
+// modale nouvellement créée pour ses champs à elle) — un seul mécanisme
+// partagé, voir le retour utilisateur détaillé dans l'appel depuis
+// l'initialisation de la connexion plus bas dans ce fichier. mouseleave
+// couvre le cas où le pointeur quitte le bouton pendant que le clic est
+// toujours maintenu (sinon le mot de passe resterait visible même après
+// relâchement ailleurs sur la page). preventDefault sur mousedown/
+// touchstart : évite que l'appui ne vole le focus/la sélection du champ.
+function _authWirePasswordToggles(root) {
+  var toggles = root.querySelectorAll('.auth-password-toggle');
+  toggles.forEach(function(toggle) {
+    var wrap = toggle.closest('.auth-password-wrap');
+    var input = wrap ? wrap.querySelector('input') : null;
+    if (!input) return;
+    var reveal = function(show) {
+      var icon = toggle.querySelector('i');
+      input.type = show ? 'text' : 'password';
+      if (icon) icon.className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+      toggle.title = show ? 'Relâcher pour masquer' : 'Maintenir pour afficher';
+      toggle.setAttribute('aria-label', toggle.title);
+    };
+    toggle.addEventListener('mousedown', function(e) { e.preventDefault(); reveal(true); });
+    toggle.addEventListener('mouseup', function() { reveal(false); });
+    toggle.addEventListener('mouseleave', function() { reveal(false); });
+    toggle.addEventListener('touchstart', function(e) { e.preventDefault(); reveal(true); }, { passive: false });
+    toggle.addEventListener('touchend', function() { reveal(false); });
+    toggle.addEventListener('touchcancel', function() { reveal(false); });
+  });
+}
+
 function openAuthModal() {
   var overlay = document.getElementById('authOverlay');
   if (overlay) {
@@ -1090,7 +1139,7 @@ function openAddUserModal() {
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_nuUsername" type="text" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + '<input id="_nuDisplay" type="text" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_nuPassword" type="password" placeholder="Mot de passe" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + _authPasswordFieldHtml('_nuPassword', 'Mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:6px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_nuAdmin"> <strong>Administrateur</strong> (acc\u00e8s complet)</label>'
     + '<div id="_nuPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);">'
@@ -1104,6 +1153,7 @@ function openAddUserModal() {
     + '<button id="_nuSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cr\u00e9er l&#39;utilisateur</button>'
     + '</div></div>';
   document.body.appendChild(ov);
+  _authWirePasswordToggles(ov);
 
   ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
 
@@ -1218,7 +1268,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Modifier — ' + safeTitleName + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + '<input id="_euDisplay" type="text" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_euPassword" type="password" placeholder="Nouveau mot de passe (vide = inchangé)" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + _authPasswordFieldHtml('_euPassword', 'Nouveau mot de passe (vide = inchangé)', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;padding:4px 0;border-top:1px solid var(--line);margin-top:4px;">'
     + '<input type="checkbox" id="_euAdmin"' + (isAdminUser ? ' checked' : '') + '> <strong>Administrateur</strong> (accès complet)</label>'
     + '<div id="_euPermsSection" style="border:1px solid var(--line);border-radius:8px;padding:12px;'+(isAdminUser?'display:none;':'')+'background:var(--paper);">'
@@ -1232,6 +1282,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     + '<button id="_euSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
     + '</div></div>';
   document.body.appendChild(ov);
+  _authWirePasswordToggles(ov);
 
   // Toggle section permissions
   ov.querySelector('#_euAdmin').addEventListener('change', function() {
@@ -1291,9 +1342,9 @@ function openChangePasswordModal() {
   ov.innerHTML = '<div style="background:var(--paper-card);border-radius:12px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">'
     + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;">Changer mon mot de passe</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_cpCurrent" type="password" placeholder="Mot de passe actuel" autocomplete="current-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_cpNew" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_cpConfirm" type="password" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + _authPasswordFieldHtml('_cpCurrent', 'Mot de passe actuel', 'current-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
+    + _authPasswordFieldHtml('_cpNew', 'Nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
+    + _authPasswordFieldHtml('_cpConfirm', 'Confirmer le nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '</div>'
     + '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
@@ -1301,6 +1352,7 @@ function openChangePasswordModal() {
     + '<button id="_cpSubmit" style="flex:2;padding:9px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enregistrer</button>'
     + '</div></div>';
   document.body.appendChild(ov);
+  _authWirePasswordToggles(ov);
 
   // Même comportement que la modale "Ajouter un utilisateur" (openAddUserModal) :
   // bordure rouge sur le champ fautif en plus du message d'erreur, qui repasse
@@ -1418,34 +1470,13 @@ function initAuth() {
   // Bouton œil "afficher le mot de passe" — retour utilisateur : "ajoute le
   // moyen de voir le mot de passe écrit en ajoutant un œil", puis précisé :
   // "je veux que le mot de passe ne reste visible que tant que je maintiens
-  // le clic/appui enfoncé, et redevient masqué dès que je relâche" —
-  // maintien enfoncé (mousedown/touchstart → texte visible ; mouseup/
-  // mouseleave/touchend/touchcancel → remasqué), PAS un bouton à bascule
-  // "click" classique. mouseleave couvre le cas où le pointeur quitte le
-  // bouton pendant que le clic est toujours maintenu (sinon le mot de passe
-  // resterait visible même après relâchement ailleurs sur la page).
-  // preventDefault sur mousedown : évite que le clic ne vole le focus du
-  // champ mot de passe (curseur/sélection) au moment d'appuyer. tabindex
-  // "-1" sur le bouton (voir index.html) pour ne pas casser l'ordre de
-  // tabulation Identifiant → Mot de passe → Se connecter.
-  var authPwToggle = document.getElementById('authPasswordToggle');
-  if (authPwToggle) {
-    var authPwReveal = function(show) {
-      var pwInput = document.getElementById('authPassword');
-      if (!pwInput) return;
-      var icon = authPwToggle.querySelector('i');
-      pwInput.type = show ? 'text' : 'password';
-      if (icon) icon.className = show ? 'ti ti-eye-off' : 'ti ti-eye';
-      authPwToggle.title = show ? 'Relâcher pour masquer' : 'Maintenir pour afficher';
-      authPwToggle.setAttribute('aria-label', authPwToggle.title);
-    };
-    authPwToggle.addEventListener('mousedown', function(e) { e.preventDefault(); authPwReveal(true); });
-    authPwToggle.addEventListener('mouseup', function() { authPwReveal(false); });
-    authPwToggle.addEventListener('mouseleave', function() { authPwReveal(false); });
-    authPwToggle.addEventListener('touchstart', function(e) { e.preventDefault(); authPwReveal(true); }, { passive: false });
-    authPwToggle.addEventListener('touchend', function() { authPwReveal(false); });
-    authPwToggle.addEventListener('touchcancel', function() { authPwReveal(false); });
-  }
+  // le clic/appui enfoncé, et redevient masqué dès que je relâche", puis
+  // étendu à "modifier mot de passe" et "ajouter un utilisateur" — voir
+  // _authWirePasswordToggles() plus haut dans ce fichier (mécanisme
+  // partagé, appelé ici pour le champ statique du formulaire de connexion,
+  // et depuis openChangePasswordModal()/openAddUserModal() pour leurs
+  // champs générés dynamiquement).
+  _authWirePasswordToggles(document);
 
   // Navigation gérée dans actions.js
   // Bouton Mon compte → ouvre directement la modale changement mot de passe

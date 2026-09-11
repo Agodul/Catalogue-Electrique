@@ -326,18 +326,29 @@
   // (carte famille, "Voir tout"…). Centralisé ici pour que les deux points
   // d'entrée effacent exactement la même chose, y compris le badge de la
   // bottom nav qui sinon restait affiché avec un compte périmé.
-  function _clearAllActiveFilters(){
+  // keep3DStandard (optionnel) : n'efface PAS les puces 3D-EXPERIENCE/
+  // Standard — retour utilisateur, suite du changement ci-dessus qui
+  // n'empêche plus de changer de catalogue avec seulement ces deux puces
+  // actives : "le filtre n'est pas resté lors du changement" — passé à
+  // true uniquement par switchDomain() ci-dessous (ces deux puces ont le
+  // même sens dans les deux domaines, voir window._isCatalogueFiltered
+  // dans js/storage.js). Les autres points d'entrée (logo, bouton Accueil)
+  // continuent d'effacer TOUT, y compris 3D/Standard — un vrai retour à
+  // l'accueil doit repartir de zéro.
+  function _clearAllActiveFilters(keep3DStandard){
     familyFilterEl.value = '';
     brandFilterEl.value  = '';
     seriesFilterEl.value = '';
     var siEl = document.getElementById('searchInput');
     if(siEl) siEl.value = '';
-    var f3dEl = document.getElementById('filter3DAvailable');
-    var f3dWrapEl = document.getElementById('filter3DWrap');
-    if(f3dEl){ f3dEl.checked = false; if(f3dWrapEl) f3dWrapEl.classList.remove('active'); }
-    var fEssEl = document.getElementById('filterEssential');
-    var fEssWrapEl = document.getElementById('filterEssentialWrap');
-    if(fEssEl){ fEssEl.checked = false; if(fEssWrapEl) fEssWrapEl.classList.remove('active'); }
+    if(!keep3DStandard){
+      var f3dEl = document.getElementById('filter3DAvailable');
+      var f3dWrapEl = document.getElementById('filter3DWrap');
+      if(f3dEl){ f3dEl.checked = false; if(f3dWrapEl) f3dWrapEl.classList.remove('active'); }
+      var fEssEl = document.getElementById('filterEssential');
+      var fEssWrapEl = document.getElementById('filterEssentialWrap');
+      if(fEssEl){ fEssEl.checked = false; if(fEssWrapEl) fEssWrapEl.classList.remove('active'); }
+    }
     if(typeof window._setPriceSort === 'function') window._setPriceSort(null);
     if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
   }
@@ -388,12 +399,17 @@
       if(typeof window._isCatalogueFiltered === 'function' && window._isCatalogueFiltered()) return;
       window._setActiveDomain(d);
       syncDomainToggleUI();
-      // Une marque/famille/série/recherche/tri/3D-Standard sélectionné dans
-      // l'AUTRE domaine n'a aucun sens une fois basculé — même nettoyage
-      // complet que "Accueil"/logo (voir window._clearAllActiveFilters
-      // au-dessus), pour ne jamais laisser un filtre invisible de l'ancien
-      // domaine continuer à s'appliquer silencieusement.
-      _clearAllActiveFilters();
+      // Une marque/famille/série/recherche/tri sélectionné dans l'AUTRE
+      // domaine n'a aucun sens une fois basculé — nettoyage (voir
+      // window._clearAllActiveFilters au-dessus), pour ne jamais laisser un
+      // filtre invisible de l'ancien domaine continuer à s'appliquer
+      // silencieusement. 3D-EXPERIENCE/Standard exclus de ce nettoyage
+      // (true) — retour utilisateur : "le filtre n'est pas resté lors du
+      // changement" — ces deux puces ont le même sens dans les deux
+      // domaines (voir window._isCatalogueFiltered, js/storage.js, qui les
+      // ignore déjà pour le verrouillage du sélecteur), donc les garder
+      // actives en changeant de catalogue est cohérent plutôt qu'un oubli.
+      _clearAllActiveFilters(true);
       var home = document.getElementById('homePage');
       if(home && !home.classList.contains('hidden')) renderHome();
       else render();
