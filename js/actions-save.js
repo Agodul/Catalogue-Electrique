@@ -126,8 +126,15 @@
     }
     var brand = canonicalizeBrand(fBrand.value.trim());
     var ref = fRef.value.trim();
+    // Retour utilisateur : "faudrai mettre en rouge les zone a remplir
+    // obligatoirement" — en plus du toast déjà existant, contour rouge
+    // directement sur le(s) champ(s) fautif(s) (voir _markFieldInvalid,
+    // js/modal-core.js) et focus posé dessus.
+    if(!brand) _markFieldInvalid(fBrand); else _clearFieldInvalid(fBrand);
+    if(!ref) _markFieldInvalid(fRef); else _clearFieldInvalid(fRef);
     if(!brand || !ref){
       showToast('La marque et la référence sont obligatoires.', 'err', 3000);
+      (!brand ? fBrand : fRef).focus();
       return;
     }
     if(!_isSafeHttpUrl(fUrl.value.trim())){

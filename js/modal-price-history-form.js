@@ -236,6 +236,7 @@
     // js/templates.js/js/modal-core.js) — fHtml reste à vider, c'est
     // toujours un rouage interne du moteur d'extraction générique.
     fBrand.value=''; fRef.value=''; fFamily.value=''; fSeries.value=''; fSupplier.value=''; if(fLeadTime) fLeadTime.value=''; fUrl.value=''; fHtml.value='';
+    _clearFieldInvalid(fBrand); _clearFieldInvalid(fRef);
     // Une nouvelle fiche démarre dans le domaine actuellement affiché
     // (bouton Électrique/Pneumatique en haut de page) — évite d'avoir à y
     // repenser à chaque ajout quand on reste dans le même domaine plusieurs

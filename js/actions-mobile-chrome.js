@@ -1,30 +1,3 @@
-  // ── Barre de navigation mobile : suivre le clavier via visualViewport ──
-  // Retour utilisateur : "si tu peux mettre le fixe sur la barre de
-  // navigation" — le CSS seul (bottom: env(keyboard-inset-height, 0px),
-  // voir .bottom-nav dans css/styles.css) ne suffit pas partout : cette
-  // fonctionnalité récente n'est pas fiable sur tous les navigateurs
-  // (retombe alors sur 0px), laissant la barre collée au bas de la page
-  // ENTIÈRE, donc invisible sous le clavier. Même technique que
-  // #authOverlay/le configurateur d'armoire (_authSyncViewportHeight dans
-  // js/auth.js, _armoireSyncMobileHeight dans js/armoireConfig.js) :
-  // mesurer directement, via window.visualViewport, l'espace réellement
-  // recouvert en bas de l'écran plutôt que de compter sur une
-  // fonctionnalité CSS pas encore fiable partout.
-  function _navSyncViewportPosition(){
-    var nav = document.getElementById('bottomNav');
-    if(!nav || !window.visualViewport) return;
-    if(getComputedStyle(nav).display === 'none') return; // desktop, ou nav non affichée ici
-    var vv = window.visualViewport;
-    var hidden = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-    nav.style.bottom = hidden + 'px';
-  }
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', _navSyncViewportPosition);
-    window.visualViewport.addEventListener('scroll', _navSyncViewportPosition);
-  }
-  window.addEventListener('orientationchange', function(){ setTimeout(_navSyncViewportPosition, 250); });
-  _navSyncViewportPosition();
-
   // ── Fermeture mutuelle des sheets ────────────────────────────
   // Ouvre le tiroir menu mobile/tablette — extrait du click handler de
   // bnMenu (bottom nav) pour être réutilisable, notamment pour rouvrir le

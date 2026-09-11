@@ -1192,6 +1192,23 @@
     background-position:right 8px center;
     background-size:16px;
   }
+  /* Retour utilisateur : "faudrai mettre en rouge les zone a remplir
+     obligatoirement" — appliqué par _markFieldInvalid (js/modal-core.js) sur
+     Marque/Référence quand "Enregistrer le produit" est cliqué avec l'un des
+     deux vide (seuls champs bloquants, voir la validation dans
+     js/actions-save.js). Sélecteur .field input.field-invalid (pas juste
+     input.field-invalid) : même spécificité que ".field input" ci-dessus
+     mais avec une classe en plus, donc l'emporte à coup sûr peu importe
+     l'ordre dans le fichier. Repasse au contour normal dès que
+     l'utilisateur retape dans le champ (voir le listener "input" posé juste
+     à côté de _markFieldInvalid), pas seulement à la réouverture de la
+     fenêtre. */
+  .field input.field-invalid,
+  .field select.field-invalid,
+  .field textarea.field-invalid{
+    border-color:var(--warn);
+    background:#FEF2F2;
+  }
   .field.field-checkbox .checkbox-row{
     display:flex; align-items:center; gap:10px;
     padding:4px 0;

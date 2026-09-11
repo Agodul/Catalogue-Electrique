@@ -8,6 +8,19 @@
   var fDomain = document.getElementById('fDomain');
   var fBrand = document.getElementById('fBrand');
   var fRef = document.getElementById('fRef');
+  // Retour utilisateur : "faudrai mettre en rouge les zone a remplir
+  // obligatoirement" — Marque et Référence sont les deux seuls champs
+  // bloquants à l'enregistrement (voir la validation dans
+  // js/actions-save.js, qui appelle _markFieldInvalid). Le contour rouge
+  // (.field-invalid, voir css/styles.css) repart dès que l'utilisateur
+  // retape dans le champ fautif, pas seulement à la réouverture de la
+  // fenêtre — sinon il resterait rouge même une fois corrigé tant qu'on n'a
+  // pas re-cliqué "Enregistrer".
+  function _markFieldInvalid(el){ if(el) el.classList.add('field-invalid'); }
+  function _clearFieldInvalid(el){ if(el) el.classList.remove('field-invalid'); }
+  [fBrand, fRef].forEach(function(el){
+    if(el) el.addEventListener('input', function(){ _clearFieldInvalid(el); });
+  });
   var fFamily = document.getElementById('fFamily');
   var fSeries = document.getElementById('fSeries');
   var fSupplier  = document.getElementById('fSupplier');
