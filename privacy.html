@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Politique de confidentialité — SPI Catalogue Électrique</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a2e; }
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.15em; margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: .3em; }
+  code { background: #f0f0f4; padding: .1em .4em; border-radius: 4px; font-size: .92em; }
+  .maj { color: #555; font-size: .9em; }
+</style>
+</head>
+<body>
+
+<h1>Politique de confidentialité — SPI Catalogue Électrique</h1>
+<p class="maj">Dernière mise à jour : 11 septembre 2026</p>
+
+<h2>Ce que fait l'extension</h2>
+<p>
+  « SPI Catalogue Électrique » est une extension Chrome à usage interne qui aide à
+  alimenter le <a href="https://agodul.github.io/Catalogue-Electrique/">Catalogue Électrique SPI</a>
+  à partir de fiches produit consultées sur des sites de fournisseurs électriques
+  (Schneider Electric, Harting, Rexel, Misumi, Sonepar, Weidmüller, Phoenix Contact, etc.).
+</p>
+<p>
+  Toutes les actions de l'extension sont déclenchées explicitement par l'utilisateur : clic droit
+  sur une page (« Ajouter au Catalogue SPI », « Récupérer les caractéristiques techniques »,
+  « Récupérer pièces Schneider ») ou raccourci clavier associé. L'extension n'exécute aucun
+  code et ne lit aucune page en arrière-plan sans action de l'utilisateur.
+</p>
+
+<h2>Quelles données sont lues</h2>
+<p>
+  Lorsque l'utilisateur déclenche une de ces actions sur une fiche produit, l'extension lit le
+  contenu HTML de la page actuellement ouverte (nom, référence, prix, photo, description,
+  caractéristiques techniques du produit affiché) afin de pré-remplir automatiquement une fiche
+  dans le Catalogue.
+</p>
+<p>
+  L'extension ne lit et ne surveille jamais l'historique de navigation, les mots de passe, les
+  formulaires, les cookies ou toute autre donnée personnelle de l'utilisateur ou de tiers. Elle ne
+  collecte aucune donnée à des fins statistiques, publicitaires ou d'analyse d'usage.
+</p>
+
+<h2>Où vont ces données</h2>
+<p>Les données extraites restent <strong>entièrement locales</strong> :</p>
+<ul>
+  <li>Elles sont transmises uniquement à l'onglet du Catalogue Électrique SPI
+    (<code>agodul.github.io/Catalogue-Electrique</code>), déjà ouvert par l'utilisateur ou ouvert
+    automatiquement par l'extension à cet effet, via le <code>localStorage</code> du navigateur.</li>
+  <li>Les préférences de l'extension (réglages, liste des fournisseurs personnalisés ajoutés par
+    l'utilisateur) sont stockées localement via <code>chrome.storage</code> (local à l'appareil, ou
+    synchronisé entre les appareils de l'utilisateur connectés au même compte Chrome).</li>
+</ul>
+<p>
+  <strong>Aucune donnée n'est envoyée à un serveur tiers, à l'éditeur de l'extension, ni à aucun
+  service d'analyse ou de publicité.</strong> L'extension ne contacte aucun domaine autre que celui
+  du Catalogue Électrique SPI lui-même — vérifiable dans le code source, entièrement disponible et
+  lisible (aucun code minifié ou distant).
+</p>
+
+<h2>Pourquoi l'extension demande un accès large aux sites web</h2>
+<p>L'extension demande la permission d'accéder à toutes les pages (<code>&lt;all_urls&gt;</code>) car :</p>
+<ol>
+  <li>Elle doit fonctionner sur un nombre ouvert de sites fournisseurs, librement extensible par
+    l'utilisateur lui-même (fonction « Ajouter un fournisseur… ») — impossible de prédire à
+    l'avance la liste complète des domaines.</li>
+  <li>La fonction « Extraire depuis un lien » (déclenchée depuis le Catalogue) ouvre un onglet en
+    arrière-plan vers une URL arbitraire collée par l'utilisateur, en lit le contenu, puis ferme
+    l'onglet — ce domaine n'est pas connu à l'avance et ne peut donc pas être restreint dans le
+    manifest.</li>
+</ol>
+<p>
+  Dans tous les cas, cet accès n'est utilisé qu'au moment où l'utilisateur déclenche explicitement
+  une action de l'extension — jamais en arrière-plan de façon continue.
+</p>
+
+<h2>Contact</h2>
+<p>Pour toute question sur cette politique de confidentialité : <code>lglandut@spigroup.fr</code></p>
+
+</body>
+</html>
