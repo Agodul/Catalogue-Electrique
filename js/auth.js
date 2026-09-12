@@ -895,16 +895,28 @@ function _authIsMobileKeyboardDevice(){
 // direct alors que le clavier n'est pas sorti" — l'identifiant se
 // focalise tout SEUL à l'ouverture de la fenêtre (openAuthModal plus bas
 // dans ce fichier, focus programmatique, aucun vrai geste de
-// l'utilisateur sur le champ), donc TOUTE prise de focus déclenchait la
-// réserve, y compris celle-ci — la carte montait dès l'OUVERTURE de la
-// fenêtre, jamais synchronisée avec un clavier qui n'a même pas
-// commencé à s'ouvrir. On ne réserve plus désormais qu'après un VRAI
-// contact tactile récent sur le champ lui-même (un focus programmatique
-// n'est précédé d'aucun touchstart).
-var _authLastTouchAt = 0;
-document.addEventListener('touchstart', function(e){
-  if(e.target && e.target.closest && e.target.closest('#authOverlay')) _authLastTouchAt = Date.now();
-}, { passive: true });
+// l'utilisateur sur le champ). Un focus programmatique déclenche pourtant
+// un vrai événement 'focus' (indiscernable d'un focus obtenu par un tap
+// réel via cet événement seul) — d'où un premier remède ici basé sur "un
+// touchstart récent sur le champ" avant de faire confiance à ce focus.
+// Retour utilisateur (persistant, "de pire en pire") : ce remède a un
+// défaut de fond bien plus gênant que le cas qu'il traitait. Le VRAI
+// souci n'a jamais été de distinguer focus programmatique et focus réel :
+// c'est qu'un événement 'focus' NE SE REDÉCLENCHE PAS quand on tape sur
+// un champ qui a DÉJÀ le focus (cas constant ici, puisque l'identifiant
+// est auto-focalisé à l'ouverture) — donc le tout premier vrai tap de
+// l'utilisateur sur ce champ ne déclenchait JAMAIS la réserve/le défilement
+// (clavier réel affiché, fenêtre immobile), pendant qu'un focus
+// programmatique ultérieur (ex. le ré-auto-focus à la réouverture après
+// fermeture) pouvait lui, à l'inverse, passer à tort le filtre "touche
+// récente" si l'utilisateur avait touché autre chose dans #authOverlay
+// (ex. la croix de fermeture) dans les 800ms précédentes — carte remontée
+// en trop, sur une mise en page pas encore stabilisée ("sa monte
+// beaucoup trop haut"). Un événement 'focus' n'est tout simplement pas le
+// bon signal : remplacé plus bas par un vrai geste directement sur le
+// champ ('click', qui se déclenche à CHAQUE tap réel, focus ou non, et
+// jamais pour un .focus() scripté) — plus besoin de mesurer un délai
+// depuis un touchstart ailleurs dans la fenêtre.
 function _authScrollFieldToTop(el){
   var overlay = document.getElementById('authOverlay');
   if(!overlay || !el || !_authIsMobileKeyboardDevice()) return;
@@ -1058,10 +1070,25 @@ function openAuthModal() {
       pwToggle.title = 'Maintenir pour afficher';
       pwToggle.setAttribute('aria-label', pwToggle.title);
     }
-    setTimeout(function() {
-      var inp = document.getElementById('authUsername');
-      if (inp) inp.focus();
-    }, 100);
+    // Retour utilisateur : "quand je clique sur connexion la barre de
+    // navigation disparait directement" — cet auto-focus programmatique
+    // ne fait apparaître AUCUN clavier sur mobile (Safari n'affiche le
+    // clavier logiciel qu'après un vrai geste utilisateur sur le champ,
+    // jamais pour un .focus() scripté), mais déclenche quand même
+    // l'événement 'focus'/'focusin' — et la bottom nav se masque sur
+    // TOUT focusin d'un champ de saisie (voir _navHideOnKeyboardCheck,
+    // js/actions-mobile-chrome.js), keyboard réellement affiché ou pas.
+    // Résultat : la barre disparaissait dès l'OUVERTURE de la fenêtre,
+    // avant le moindre geste. Sur mobile/tactile, cet auto-focus n'a de
+    // toute façon aucun intérêt puisqu'il ne sort pas le clavier — inutile
+    // d'en payer l'effet de bord. Gardé uniquement sur desktop (navigation
+    // clavier), où le focus au clavier physique reste utile.
+    if (!_authIsMobileKeyboardDevice()) {
+      setTimeout(function() {
+        var inp = document.getElementById('authUsername');
+        if (inp) inp.focus();
+      }, 100);
+    }
   }
 }
 
@@ -1078,6 +1105,22 @@ function closeAuthModal() {
     overlay.style.left = '';
     overlay.style.width = '';
     overlay.style.height = '';
+    // Retour utilisateur : "sa monte beaucoup trop haut" (au deuxième
+    // clic connexion après une fermeture) — la réserve de hauteur pour le
+    // clavier (voir _authReserveKeyboardSpace) et le défilement interne de
+    // la carte (overlay.scrollTop, voir _authScrollFieldToTop) restaient
+    // posés d'une ouverture à l'autre : la réouverture repartait donc
+    // d'une mise en page déjà décalée, sur laquelle le recalage suivant se
+    // rajoutait. Remis à plat explicitement à la fermeture plutôt que de
+    // compter sur l'événement 'blur' du champ (qui, lui, ne part QUE
+    // lorsque le champ perd réellement le focus — jamais garanti pendant
+    // l'animation de fermeture).
+    overlay.style.removeProperty('padding-bottom');
+    overlay.scrollTop = 0;
+    var activeInOverlay = document.activeElement;
+    if (activeInOverlay && overlay.contains(activeInOverlay) && typeof activeInOverlay.blur === 'function') {
+      activeInOverlay.blur();
+    }
   }
   // Sur mobile, si la connexion a été ouverte DEPUIS le tiroir menu (voir
   // msAuth dans js/actions-mobile-chrome.js), la croix (ou une connexion réussie — les
@@ -1639,48 +1682,54 @@ function initAuth() {
     // appareil quand le clavier s'ouvre, donc la carte ne déborde jamais
     // réellement d'#authOverlay du point de vue du DOM (rien à faire
     // défiler tant qu'on ne force pas ce débordement — voir
-    // _authReserveKeyboardSpace). Puis, une fois ce point réglé, NOUVEAU
-    // retour utilisateur (deux fois) : "la fenetre monte directe alors que
-    // le clavier n'est pas sortie" — un délai + une transition CSS ne
-    // suffisaient pas : le VRAI souci est que ce focus se déclenche aussi
-    // pour l'auto-focus programmatique à l'OUVERTURE de la fenêtre
-    // (openAuthModal plus bas), bien avant qu'un clavier n'ait la moindre
-    // raison d'apparaître. Voir _authLastTouchAt ci-dessus : ne réserve
-    // désormais que si CE focus fait suite à un vrai contact tactile
-    // récent sur le champ, jamais pour un focus programmatique seul.
-    if (el) el.addEventListener('focus', function(){
+    // _authReserveKeyboardSpace).
+    // Retour utilisateur (persistant, "de pire en pire") : le focus était
+    // le mauvais signal pour déclencher tout ça — voir le commentaire
+    // au-dessus de _authScrollFieldToTop plus haut dans ce fichier pour
+    // l'historique complet. Deux symptômes distincts en découlaient :
+    // 1) le tout premier tap réel sur l'identifiant (déjà auto-focalisé à
+    //    l'ouverture) ne déclenchait RIEN, puisqu'un 'focus' ne se
+    //    redéclenche pas sur un champ qui a déjà le focus — clavier
+    //    affiché, fenêtre immobile ("le clavier apparait mais la fenetre
+    //    monte pas").
+    // 2) le ré-auto-focus programmatique à la RÉOUVERTURE (après une
+    //    fermeture) pouvait lui, à l'inverse, passer à tort le filtre "un
+    //    vrai contact tactile dans les 800ms" si l'utilisateur avait
+    //    touché autre chose dans #authOverlay juste avant (typiquement la
+    //    croix de fermeture) — carte remontée en trop sur une mise en
+    //    page pas encore stabilisée ("sa monte beaucoup trop haut").
+    // Corrigé en écoutant 'click' directement sur le champ plutôt que
+    // 'focus' sur le champ : un click se déclenche à CHAQUE tap réel de
+    // l'utilisateur (focus ou non — donc y compris quand le champ avait
+    // déjà le focus) et jamais pour un .focus() scripté seul — plus
+    // besoin de mesurer un délai depuis un touchstart ailleurs.
+    var pollId = null;
+    function stopPoll(){ if (pollId) { clearInterval(pollId); pollId = null; } }
+    if (el) el.addEventListener('click', function(){
       if (typeof _authSyncViewportHeight === 'function') _authSyncViewportHeight();
-      if (Date.now() - _authLastTouchAt > 800) return; // pas un vrai geste récent
       // Réserve une hauteur fixe (voir _authReserveKeyboardSpace) tout de
       // suite : le débordement doit exister AVANT de pouvoir défiler
       // dedans.
       if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(true);
       // Retour utilisateur : "a la premiere ouverture du clavier sa
-      // fonctionne pas" — ça, en revanche, fonctionne dès la deuxième
-      // fois. Deux essais à délai fixe (120ms/420ms, l'ancienne version)
-      // supposaient que le clavier iOS met toujours le même temps à
-      // apparaître — faux à la toute première apparition d'une session
-      // Safari : iOS y charge alors le clavier logiciel lui-même
-      // (dictionnaire, correction automatique, claviers tiers…), ce qui
-      // peut prendre largement plus de 420ms la première fois seulement —
-      // les fois suivantes, le clavier déjà "chaud" s'anime bien plus
-      // vite et les deux essais fixes suffisaient, d'où le symptôme
-      // "seulement la première fois". Remplacé par une correction répétée
-      // (sondage), qui s'adapte donc à un clavier lent à sortir la
-      // première fois comme à un clavier déjà chargé : on continue à
-      // recaler le champ pendant 1,2s après le focus plutôt de parier sur
-      // un délai fixe, et on s'arrête dès que le champ quitte le focus.
+      // fonctionne pas" — à la toute première apparition du clavier dans
+      // une session Safari, iOS peut mettre nettement plus longtemps à
+      // l'afficher (chargement du clavier logiciel, dictionnaire,
+      // correction automatique) qu'aux ouvertures suivantes (clavier déjà
+      // "chaud"). Un recalage répété (toutes les 120ms pendant 1,2s max,
+      // arrêté dès que le champ perd le focus ou qu'un nouveau click
+      // relance le sondage) s'adapte aux deux cas plutôt que de parier sur
+      // un délai fixe.
+      stopPoll();
       var pollCount = 0;
-      var pollId = setInterval(function(){
+      pollId = setInterval(function(){
         pollCount++;
-        if (document.activeElement !== el || pollCount > 10) {
-          clearInterval(pollId);
-          return;
-        }
+        if (document.activeElement !== el || pollCount > 10) { stopPoll(); return; }
         if (typeof _authScrollFieldToTop === 'function') _authScrollFieldToTop(el);
       }, 120);
     });
     if (el) el.addEventListener('blur', function(){
+      stopPoll();
       if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(false);
     });
   });
