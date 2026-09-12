@@ -1651,20 +1651,34 @@ function initAuth() {
     if (el) el.addEventListener('focus', function(){
       if (typeof _authSyncViewportHeight === 'function') _authSyncViewportHeight();
       if (Date.now() - _authLastTouchAt > 800) return; // pas un vrai geste récent
-      setTimeout(function(){
-        if (document.activeElement !== el) return;
-        // Réserve une hauteur fixe (voir _authReserveKeyboardSpace) puis
-        // fait défiler le champ — dans cet ordre : le débordement doit
-        // exister AVANT de pouvoir défiler dedans.
-        if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(true);
+      // Réserve une hauteur fixe (voir _authReserveKeyboardSpace) tout de
+      // suite : le débordement doit exister AVANT de pouvoir défiler
+      // dedans.
+      if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(true);
+      // Retour utilisateur : "a la premiere ouverture du clavier sa
+      // fonctionne pas" — ça, en revanche, fonctionne dès la deuxième
+      // fois. Deux essais à délai fixe (120ms/420ms, l'ancienne version)
+      // supposaient que le clavier iOS met toujours le même temps à
+      // apparaître — faux à la toute première apparition d'une session
+      // Safari : iOS y charge alors le clavier logiciel lui-même
+      // (dictionnaire, correction automatique, claviers tiers…), ce qui
+      // peut prendre largement plus de 420ms la première fois seulement —
+      // les fois suivantes, le clavier déjà "chaud" s'anime bien plus
+      // vite et les deux essais fixes suffisaient, d'où le symptôme
+      // "seulement la première fois". Remplacé par une correction répétée
+      // (sondage), qui s'adapte donc à un clavier lent à sortir la
+      // première fois comme à un clavier déjà chargé : on continue à
+      // recaler le champ pendant 1,2s après le focus plutôt de parier sur
+      // un délai fixe, et on s'arrête dès que le champ quitte le focus.
+      var pollCount = 0;
+      var pollId = setInterval(function(){
+        pollCount++;
+        if (document.activeElement !== el || pollCount > 10) {
+          clearInterval(pollId);
+          return;
+        }
         if (typeof _authScrollFieldToTop === 'function') _authScrollFieldToTop(el);
       }, 120);
-      // Second passage un peu plus tard, une fois la transition terminée,
-      // pour rattraper le temps que la mise en page se stabilise.
-      setTimeout(function(){
-        if (document.activeElement !== el) return;
-        if (typeof _authScrollFieldToTop === 'function') _authScrollFieldToTop(el);
-      }, 420);
     });
     if (el) el.addEventListener('blur', function(){
       if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(false);
