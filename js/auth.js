@@ -939,7 +939,18 @@ function _authScrollFieldToTop(el){
 // grande, plus la carte monte, même quand ce n'est pas nécessaire. Valeur
 // réduite à une estimation plus réaliste (clavier iOS standard, sans
 // marge superflue).
-var AUTH_KEYBOARD_RESERVE_PX = 260;
+// Retour utilisateur (persistant) : "la fenetre de connection qui suis pas
+// le clavier" — reproduit en conditions réelles (simulateur iOS, Safari) :
+// 260px suffit pour le clavier nu, mais dès qu'iOS propose son propre
+// panneau natif de suggestion d'identifiants enregistrés ("Se connecter à
+// « … » avec le mot de passe utilisé pour « … » ?"), ce panneau est
+// nettement plus haut qu'un clavier (jusqu'à ~40-45% de la hauteur
+// d'écran sur un iPhone) et vient s'ajouter AU-DESSUS du clavier — 260px
+// de réserve laisse alors le champ mot de passe et le bouton "Se
+// connecter" cachés dessous. Relevé à une valeur qui couvre aussi ce
+// panneau dans le pire cas (mesuré ~390px sur iPhone 17 Pro/iOS 26,
+// marge incluse) plutôt que le seul clavier nu.
+var AUTH_KEYBOARD_RESERVE_PX = 420;
 function _authReserveKeyboardSpace(reserve){
   var overlay = document.getElementById('authOverlay');
   if(!overlay || !_authIsMobileKeyboardDevice()) return;
@@ -1013,7 +1024,23 @@ function openAuthModal() {
     document.body.classList.add('modal-open');
     _authSyncViewportHeight();
     if(window.visualViewport && !_authViewportHandler){
-      _authViewportHandler = function(){ _authSyncViewportHeight(); };
+      // Retour utilisateur : "la fenetre de connection qui suis pas le
+      // clavier" — le panneau natif de suggestion d'identifiants
+      // enregistrés d'iOS peut s'ouvrir APRÈS coup (une fois le clavier
+      // déjà affiché, dès qu'on tape un identifiant qu'iOS reconnaît),
+      // réduisant encore la zone visible. _authScrollFieldToTop n'était
+      // jusqu'ici rappelé qu'au focus initial du champ (voir plus bas) —
+      // ce resize ultérieur passait inaperçu et le champ actif pouvait se
+      // retrouver de nouveau caché sous ce panneau. On re-cale donc aussi
+      // le champ actif à chaque redimensionnement du visualViewport, pas
+      // seulement à la prise de focus.
+      _authViewportHandler = function(){
+        _authSyncViewportHeight();
+        var active = document.activeElement;
+        if(active && overlay.contains(active) && typeof _authScrollFieldToTop === 'function'){
+          _authScrollFieldToTop(active);
+        }
+      };
       window.visualViewport.addEventListener('resize', _authViewportHandler);
       window.visualViewport.addEventListener('scroll', _authViewportHandler);
     }
