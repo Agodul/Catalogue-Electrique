@@ -103,7 +103,26 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" integrity="sha384-enQOo0dFaqOuACimJrhDH3XtzLk5jDIo5gfCGUvfZWLoiAyi/Jf+Ny5+etklU279" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5.3.0/index.css" integrity="sha384-CriTXMxa9KSWUY4RPeIP7Xe+CI39CEWYo20uac1eZ4erQw31mZTTxvq6xZdWgidR" crossorigin="anonymous">
 <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
+<!-- interactive-widget=resizes-content (au lieu de resizes-visual) : retour
+     utilisateur "de pire en pire" sur la fenêtre de connexion mobile — voir
+     js/auth.js pour tout l'historique des rustines JS tentées (visualViewport,
+     réserve de hauteur fixe, sondage de scroll…), chacune corrigeant un cas
+     pour en casser un autre selon l'appareil/iOS. Cause de fond : en mode
+     resizes-visual (par défaut), le VIEWPORT DE MISE EN PAGE ne rétrécit
+     jamais quand le clavier s'ouvre — seul le viewport VISUEL le fait, via
+     une API (window.visualViewport) dont le comportement s'est avéré trop
+     incohérent d'un appareil/d'une version d'iOS à l'autre pour être fiable
+     (constaté en conditions réelles, pas seulement en théorie). resizes-content
+     fait rétrécir le viewport de mise en page LUI-MÊME : #authOverlay
+     (position:fixed; inset:0, voir css/styles.css) suit alors nativement la
+     zone réellement visible, sans une seule ligne de JS — et Safari
+     fait défiler tout seul le champ actif au-dessus du clavier au focus,
+     comportement natif bien plus ancien et éprouvé que window.visualViewport
+     (qui n'a été introduit que pour donner un ÉCHAPPATOIRE à ce
+     comportement natif — on le restaure ici volontairement). Supporté iOS
+     17.4+ (2024), donc sans risque de régression sur les appareils encore en
+     usage. Codes JS redondants nettoyés en conséquence dans js/auth.js. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#F9F9F9">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">

@@ -806,178 +806,41 @@ function updateAuthHeaderBtn(loggedIn, user) {
 
 // ── Modale login ─────────────────────────────────────────────────────────
 
-// Safari iOS positionne position:fixed par rapport au viewport de mise en
-// page (fixe), pas par rapport à la zone réellement visible — un clavier qui
-// s'ouvre ne réduit donc jamais la hauteur que #authOverlay utilise pour
-// centrer sa carte (align-items:center, css/styles.css), qui reste alors
-// centrée sur une hauteur périmée, avec le bas de la carte (champs/bouton
-// "Se connecter") caché derrière le clavier. (La bottom nav a SON PROPRE
-// traitement séparé désormais — masquée pendant la saisie, voir
-// js/actions-mobile-chrome.js — ceci ne concerne que la carte elle-même.)
-// On fait donc suivre #authOverlay à window.visualViewport à la place,
-// même remède déjà utilisé pour le configurateur d'armoire
-// (_armoireSyncMobileHeight, js/armoireConfig.js) : la carte reste centrée
-// dans la zone RÉELLEMENT visible, le fond assombri va bien jusqu'en bas
-// (jusqu'à la bottom nav, qui elle suit déjà correctement cette même zone),
-// plus de bande découverte.
-var _authViewportHandler = null;
-function _authSyncViewportHeight(){
-  var overlay = document.getElementById('authOverlay');
-  if(!overlay || !overlay.classList.contains('show')) return;
-  // Desktop/tablette large : pas de clavier logiciel à suivre, laisser le
-  // CSS gérer plutôt que polluer avec du inline.
-  if(window.innerWidth > 768 || !window.visualViewport){
-    overlay.style.position = '';
-    overlay.style.top = '';
-    overlay.style.left = '';
-    overlay.style.width = '';
-    overlay.style.height = '';
-    return;
-  }
-  var vv = window.visualViewport;
-  overlay.style.position = 'fixed';
-  overlay.style.top = vv.offsetTop + 'px';
-  overlay.style.left = vv.offsetLeft + 'px';
-  overlay.style.width = vv.width + 'px';
-  overlay.style.height = vv.height + 'px';
-  // Retour utilisateur : "la fenetre de connection qui suis pas le
-  // clavier" — même avec la hauteur ci-dessus recalée sur
-  // window.visualViewport, iOS Safari ajoute par-dessus le clavier sa
-  // propre barre de suggestion "Mots de passe" (accessoire natif du
-  // navigateur, pas du contenu web), qui n'est PAS toujours comptée dans
-  // visualViewport.height — la mesure ci-dessus peut donc rester trop
-  // généreuse de quelques dizaines de pixels, et le champ actif (ou le
-  // bouton "Se connecter" plus bas dans la carte) reste caché derrière
-  // cette barre malgré le recalcul. Filet de sécurité indépendant de cette
-  // mesure imprécise : fait défiler explicitement le CHAMP QUI A LE FOCUS
-  // dans la zone réellement visible (#authOverlay reste overflow-y:auto,
-  // voir css/styles.css) plutôt que de se fier uniquement au calcul de
-  // hauteur. rAF : laisse le navigateur appliquer la nouvelle hauteur/
-  // position ci-dessus avant de calculer où défiler.
-  requestAnimationFrame(function(){
-    var active = document.activeElement;
-    if(active && overlay.contains(active) && typeof active.scrollIntoView === 'function'){
-      active.scrollIntoView({ block: 'center' });
-    }
-  });
-}
+// Retour utilisateur (très long historique, "de pire en pire" au fil des
+// rustines) : la fenêtre de connexion ne suivait pas fiablement le clavier
+// iOS. TOUT ce qui suivait ici (position/hauteur d'#authOverlay recalée sur
+// window.visualViewport, réserve de hauteur fixe en padding-bottom pour
+// forcer un débordement, sondage répété de scroll déclenché au focus PUIS
+// au click…) tentait de compenser un même fait, jamais résolu à la racine :
+// en mode interactive-widget=resizes-visual (viewport, index.html), le
+// VIEWPORT DE MISE EN PAGE — celui que #authOverlay (position:fixed;
+// inset:0) utilise pour se positionner — ne rétrécit JAMAIS quand le
+// clavier s'ouvre ; seul le viewport VISUEL le fait, mesurable seulement
+// via window.visualViewport, une API dont le comportement s'est avéré trop
+// incohérent (voir tout l'historique ci-dessus, chaque rustine corrigeant
+// un appareil/cas pour en casser un autre) pour fonder quoi que ce soit de
+// fiable dessus.
+// Passé à interactive-widget=resizes-content (voir index.html) : c'est
+// cette fois le viewport de mise en page LUI-MÊME qui rétrécit quand le
+// clavier s'ouvre. #authOverlay suit alors nativement la zone réellement
+// visible, sans une ligne de JS ; Safari fait aussi défiler tout seul le
+// champ qui prend le focus au-dessus du clavier (comportement natif bien
+// plus ancien et éprouvé que window.visualViewport, qui n'a été introduit
+// que pour donner un ÉCHAPPATOIRE à ce comportement par défaut — on le
+// restaure ici volontairement). Plus rien à recaler à la main : la modale
+// n'a plus besoin que d'overflow-y:auto (déjà posé, voir css/styles.css)
+// comme filet de sécurité si un clavier exceptionnellement haut ne
+// laissait vraiment pas la place.
 
-// Retour utilisateur : "la fenetre de connection qui suis pas le clavier"
-// — TOUJOURS présent après le filet de sécurité ci-dessus. Constaté en
-// direct dans le simulateur : window.visualViewport ne se met JAMAIS à
-// jour sur cet appareil/version d'iOS quand le clavier s'ouvre (bug Safari
-// documenté — voir recherche menée sur les forums développeurs Apple, iOS
-// 26). Tout ce qui précède dans ce fichier (hauteur d'#authOverlay ET son
-// propre scrollIntoView) dépend de cette mesure et reste donc aveugle au
-// clavier sur un appareil touché par ce bug. Ce filet-ci ne dépend
-// D'AUCUNE mesure de viewport : fait défiler l'OVERLAY (overflow-y:auto,
-// voir css/styles.css) pour amener le champ qui a le focus tout en haut de
-// l'écran (petite marge), uniquement via getBoundingClientRect() — fiable
-// que visualViewport fonctionne ou non. Le bouton "Se connecter" peut
-// rester sous le clavier si celui-ci est grand, mais le champ EN COURS DE
-// SAISIE, lui, reste toujours visible — et la touche Entrée valide déjà la
-// connexion (voir _authWirePasswordToggles plus bas) sans avoir besoin de
-// voir le bouton.
-// Retour utilisateur : "sa devrai monter quand sa detecte un clavier
-// mobile" — window.innerWidth <= 768 seul ne suffit pas à dire "un clavier
-// logiciel va s'afficher" : une fenêtre desktop simplement rétrécie (souris/
-// trackpad, aucun clavier tactile) matche aussi cette largeur. Même
-// convention que le reste de l'app pour détecter un VRAI appareil tactile
-// (voir js/modal-autocomplete.js, décision d'auto-focus du formulaire
-// produit) : pointer:coarse en plus de la largeur, jamais l'un sans
-// l'autre.
+// Même convention que le reste de l'app pour détecter un VRAI appareil
+// tactile (voir js/modal-autocomplete.js, décision d'auto-focus du
+// formulaire produit) : pointer:coarse en plus de la largeur, jamais l'un
+// sans l'autre — window.innerWidth <= 768 seul ne suffit pas à dire "un
+// clavier logiciel va s'afficher" (une fenêtre desktop simplement rétrécie
+// à la souris matche aussi cette largeur).
 function _authIsMobileKeyboardDevice(){
   return window.innerWidth <= 768
     && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-}
-
-// Retour utilisateur : "quand je clique sur connection la fenetre monte
-// direct alors que le clavier n'est pas sorti" — l'identifiant se
-// focalise tout SEUL à l'ouverture de la fenêtre (openAuthModal plus bas
-// dans ce fichier, focus programmatique, aucun vrai geste de
-// l'utilisateur sur le champ). Un focus programmatique déclenche pourtant
-// un vrai événement 'focus' (indiscernable d'un focus obtenu par un tap
-// réel via cet événement seul) — d'où un premier remède ici basé sur "un
-// touchstart récent sur le champ" avant de faire confiance à ce focus.
-// Retour utilisateur (persistant, "de pire en pire") : ce remède a un
-// défaut de fond bien plus gênant que le cas qu'il traitait. Le VRAI
-// souci n'a jamais été de distinguer focus programmatique et focus réel :
-// c'est qu'un événement 'focus' NE SE REDÉCLENCHE PAS quand on tape sur
-// un champ qui a DÉJÀ le focus (cas constant ici, puisque l'identifiant
-// est auto-focalisé à l'ouverture) — donc le tout premier vrai tap de
-// l'utilisateur sur ce champ ne déclenchait JAMAIS la réserve/le défilement
-// (clavier réel affiché, fenêtre immobile), pendant qu'un focus
-// programmatique ultérieur (ex. le ré-auto-focus à la réouverture après
-// fermeture) pouvait lui, à l'inverse, passer à tort le filtre "touche
-// récente" si l'utilisateur avait touché autre chose dans #authOverlay
-// (ex. la croix de fermeture) dans les 800ms précédentes — carte remontée
-// en trop, sur une mise en page pas encore stabilisée ("sa monte
-// beaucoup trop haut"). Un événement 'focus' n'est tout simplement pas le
-// bon signal : remplacé plus bas par un vrai geste directement sur le
-// champ ('click', qui se déclenche à CHAQUE tap réel, focus ou non, et
-// jamais pour un .focus() scripté) — plus besoin de mesurer un délai
-// depuis un touchstart ailleurs dans la fenêtre.
-function _authScrollFieldToTop(el){
-  var overlay = document.getElementById('authOverlay');
-  if(!overlay || !el || !_authIsMobileKeyboardDevice()) return;
-  var overlayRect = overlay.getBoundingClientRect();
-  var elRect = el.getBoundingClientRect();
-  var margin = 16;
-  overlay.scrollTop += (elRect.top - overlayRect.top) - margin;
-}
-
-// Retour utilisateur : "la fenetre de connection qui suis pas le clavier"
-// — persistant malgré TOUT ce qui précède (recalage sur visualViewport,
-// scrollIntoView, sondage continu, correction du piège flexbox
-// align-items). Raison de fond, comprise seulement après coup : sur cet
-// appareil, window.visualViewport ne rétrécit JAMAIS quand le clavier
-// s'ouvre — donc la carte de connexion, elle, ne déborde JAMAIS
-// réellement de #authOverlay du point de vue du DOM (rien à faire
-// défiler, le clavier recouvre juste une zone que la mise en page ignore
-// complètement). Aucune des corrections précédentes ne pouvait donc
-// fonctionner : on ne peut pas faire défiler un contenu qui ne déborde
-// pas. Solution : ne plus essayer de MESURER le clavier du tout — se
-// contenter de réserver, dès la prise de focus, une hauteur FIXE en bas de
-// l'overlay (via padding-bottom), suffisante pour un clavier iOS dans la
-// quasi-totalité des cas. Ce padding force un débordement RÉEL de la
-// carte, que _authScrollFieldToTop ci-dessus peut alors vraiment faire
-// défiler (voir align-items:flex-start, css/styles.css, qui garantit que
-// ce débordement reste atteignable).
-// Retour utilisateur : "sa monte trop haut" — 380px (premier essai,
-// volontairement généreux) dépassait largement un clavier iOS réel,
-// laissant un vide sous "Se connecter" et poussant l'en-tête hors écran
-// pour rien. _authScrollFieldToTop amène le champ focus à 16px du HAUT de
-// l'écran quel que soit le débordement disponible — plus la réserve est
-// grande, plus la carte monte, même quand ce n'est pas nécessaire. Valeur
-// réduite à une estimation plus réaliste (clavier iOS standard, sans
-// marge superflue).
-// Retour utilisateur (persistant) : "la fenetre de connection qui suis pas
-// le clavier" — reproduit en conditions réelles (simulateur iOS, Safari) :
-// 260px suffit pour le clavier nu, mais dès qu'iOS propose son propre
-// panneau natif de suggestion d'identifiants enregistrés ("Se connecter à
-// « … » avec le mot de passe utilisé pour « … » ?"), ce panneau est
-// nettement plus haut qu'un clavier (jusqu'à ~40-45% de la hauteur
-// d'écran sur un iPhone) et vient s'ajouter AU-DESSUS du clavier — 260px
-// de réserve laisse alors le champ mot de passe et le bouton "Se
-// connecter" cachés dessous. Relevé à une valeur qui couvre aussi ce
-// panneau dans le pire cas (mesuré ~390px sur iPhone 17 Pro/iOS 26,
-// marge incluse) plutôt que le seul clavier nu.
-var AUTH_KEYBOARD_RESERVE_PX = 420;
-function _authReserveKeyboardSpace(reserve){
-  var overlay = document.getElementById('authOverlay');
-  if(!overlay || !_authIsMobileKeyboardDevice()) return;
-  // setProperty(..., 'important') et non overlay.style.paddingBottom= :
-  // #authOverlay a "padding:0 !important" en CSS (mobile, voir
-  // css/styles.css) — un style en ligne SANS !important perd contre un
-  // !important externe, quelle que soit sa spécificité (constaté en
-  // direct : .style.paddingBottom valait bien "380px" mais le padding
-  // RENDU restait 0). Un !important posé en ligne l'emporte, lui, sur
-  // n'importe quel !important externe.
-  if(reserve){
-    overlay.style.setProperty('padding-bottom', AUTH_KEYBOARD_RESERVE_PX + 'px', 'important');
-  } else {
-    overlay.style.removeProperty('padding-bottom');
-  }
 }
 
 // Génère le HTML d'un champ mot de passe avec bouton œil "maintenir pour
@@ -1034,28 +897,6 @@ function openAuthModal() {
   if (overlay) {
     overlay.classList.add('show');
     document.body.classList.add('modal-open');
-    _authSyncViewportHeight();
-    if(window.visualViewport && !_authViewportHandler){
-      // Retour utilisateur : "la fenetre de connection qui suis pas le
-      // clavier" — le panneau natif de suggestion d'identifiants
-      // enregistrés d'iOS peut s'ouvrir APRÈS coup (une fois le clavier
-      // déjà affiché, dès qu'on tape un identifiant qu'iOS reconnaît),
-      // réduisant encore la zone visible. _authScrollFieldToTop n'était
-      // jusqu'ici rappelé qu'au focus initial du champ (voir plus bas) —
-      // ce resize ultérieur passait inaperçu et le champ actif pouvait se
-      // retrouver de nouveau caché sous ce panneau. On re-cale donc aussi
-      // le champ actif à chaque redimensionnement du visualViewport, pas
-      // seulement à la prise de focus.
-      _authViewportHandler = function(){
-        _authSyncViewportHeight();
-        var active = document.activeElement;
-        if(active && overlay.contains(active) && typeof _authScrollFieldToTop === 'function'){
-          _authScrollFieldToTop(active);
-        }
-      };
-      window.visualViewport.addEventListener('resize', _authViewportHandler);
-      window.visualViewport.addEventListener('scroll', _authViewportHandler);
-    }
     // Repart toujours masqué à l'ouverture (le bouton œil #authPasswordToggle
     // plus bas dans ce fichier ne révèle que tant qu'on le maintient
     // enfoncé, donc un relâchement — fermeture de la modale comprise —
@@ -1094,28 +935,10 @@ function openAuthModal() {
 
 function closeAuthModal() {
   var overlay = document.getElementById('authOverlay');
-  if(_authViewportHandler && window.visualViewport){
-    window.visualViewport.removeEventListener('resize', _authViewportHandler);
-    window.visualViewport.removeEventListener('scroll', _authViewportHandler);
-    _authViewportHandler = null;
-  }
   if(overlay){
-    overlay.style.position = '';
-    overlay.style.top = '';
-    overlay.style.left = '';
-    overlay.style.width = '';
-    overlay.style.height = '';
-    // Retour utilisateur : "sa monte beaucoup trop haut" (au deuxième
-    // clic connexion après une fermeture) — la réserve de hauteur pour le
-    // clavier (voir _authReserveKeyboardSpace) et le défilement interne de
-    // la carte (overlay.scrollTop, voir _authScrollFieldToTop) restaient
-    // posés d'une ouverture à l'autre : la réouverture repartait donc
-    // d'une mise en page déjà décalée, sur laquelle le recalage suivant se
-    // rajoutait. Remis à plat explicitement à la fermeture plutôt que de
-    // compter sur l'événement 'blur' du champ (qui, lui, ne part QUE
-    // lorsque le champ perd réellement le focus — jamais garanti pendant
-    // l'animation de fermeture).
-    overlay.style.removeProperty('padding-bottom');
+    // Remise à zéro explicite du défilement interne de la carte plutôt que
+    // de compter sur le fait qu'il reparte tout seul : la réouverture doit
+    // toujours repartir d'une mise en page neutre.
     overlay.scrollTop = 0;
     var activeInOverlay = document.activeElement;
     if (activeInOverlay && overlay.contains(activeInOverlay) && typeof activeInOverlay.blur === 'function') {
@@ -1672,65 +1495,18 @@ function initAuth() {
   if (submitBtn) submitBtn.addEventListener('click', doLogin);
 
   // Touche Entrée dans les champs
+  // Retour utilisateur (très long historique, "de pire en pire" au fil des
+  // rustines) : voir le commentaire au-dessus de _authIsMobileKeyboardDevice
+  // plus haut dans ce fichier — plus rien à recaler ici à la main
+  // (position, hauteur, réserve, sondage de scroll…) depuis le passage à
+  // interactive-widget=resizes-content (index.html) : Safari fait
+  // maintenant tout seul défiler le champ qui prend le focus au-dessus du
+  // clavier, comme #authOverlay (position:fixed; inset:0) suit tout seul la
+  // zone réellement visible.
   ['authUsername', 'authPassword'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') doLogin();
-    });
-    // Retour utilisateur : "la fenetre de connection qui suis pas le
-    // clavier" — window.visualViewport ne se met jamais à jour sur cet
-    // appareil quand le clavier s'ouvre, donc la carte ne déborde jamais
-    // réellement d'#authOverlay du point de vue du DOM (rien à faire
-    // défiler tant qu'on ne force pas ce débordement — voir
-    // _authReserveKeyboardSpace).
-    // Retour utilisateur (persistant, "de pire en pire") : le focus était
-    // le mauvais signal pour déclencher tout ça — voir le commentaire
-    // au-dessus de _authScrollFieldToTop plus haut dans ce fichier pour
-    // l'historique complet. Deux symptômes distincts en découlaient :
-    // 1) le tout premier tap réel sur l'identifiant (déjà auto-focalisé à
-    //    l'ouverture) ne déclenchait RIEN, puisqu'un 'focus' ne se
-    //    redéclenche pas sur un champ qui a déjà le focus — clavier
-    //    affiché, fenêtre immobile ("le clavier apparait mais la fenetre
-    //    monte pas").
-    // 2) le ré-auto-focus programmatique à la RÉOUVERTURE (après une
-    //    fermeture) pouvait lui, à l'inverse, passer à tort le filtre "un
-    //    vrai contact tactile dans les 800ms" si l'utilisateur avait
-    //    touché autre chose dans #authOverlay juste avant (typiquement la
-    //    croix de fermeture) — carte remontée en trop sur une mise en
-    //    page pas encore stabilisée ("sa monte beaucoup trop haut").
-    // Corrigé en écoutant 'click' directement sur le champ plutôt que
-    // 'focus' sur le champ : un click se déclenche à CHAQUE tap réel de
-    // l'utilisateur (focus ou non — donc y compris quand le champ avait
-    // déjà le focus) et jamais pour un .focus() scripté seul — plus
-    // besoin de mesurer un délai depuis un touchstart ailleurs.
-    var pollId = null;
-    function stopPoll(){ if (pollId) { clearInterval(pollId); pollId = null; } }
-    if (el) el.addEventListener('click', function(){
-      if (typeof _authSyncViewportHeight === 'function') _authSyncViewportHeight();
-      // Réserve une hauteur fixe (voir _authReserveKeyboardSpace) tout de
-      // suite : le débordement doit exister AVANT de pouvoir défiler
-      // dedans.
-      if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(true);
-      // Retour utilisateur : "a la premiere ouverture du clavier sa
-      // fonctionne pas" — à la toute première apparition du clavier dans
-      // une session Safari, iOS peut mettre nettement plus longtemps à
-      // l'afficher (chargement du clavier logiciel, dictionnaire,
-      // correction automatique) qu'aux ouvertures suivantes (clavier déjà
-      // "chaud"). Un recalage répété (toutes les 120ms pendant 1,2s max,
-      // arrêté dès que le champ perd le focus ou qu'un nouveau click
-      // relance le sondage) s'adapte aux deux cas plutôt que de parier sur
-      // un délai fixe.
-      stopPoll();
-      var pollCount = 0;
-      pollId = setInterval(function(){
-        pollCount++;
-        if (document.activeElement !== el || pollCount > 10) { stopPoll(); return; }
-        if (typeof _authScrollFieldToTop === 'function') _authScrollFieldToTop(el);
-      }, 120);
-    });
-    if (el) el.addEventListener('blur', function(){
-      stopPoll();
-      if (typeof _authReserveKeyboardSpace === 'function') _authReserveKeyboardSpace(false);
     });
   });
 
