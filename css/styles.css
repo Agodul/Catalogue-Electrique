@@ -796,6 +796,12 @@
     padding:0; margin-right:8px;
     border:1px solid transparent;
     background:transparent;
+    /* align-self:center superflu depuis que .vm-meta-text (plus bas dans ce
+       fichier) est passée à align-items:center — gardé explicite pour ce
+       badge quand même : voir le commentaire sur .vm-meta-text pour
+       pourquoi un simple align-self isolé ne suffisait PAS à le centrer
+       (retour utilisateur, deux captures à l'appui). */
+    align-self:center;
   }
   .card .tag.family{ color:var(--moss); border-color:#C0D9A8; background:#EEF4E8; }
   .card .tag.series{ color:var(--copper-deep); border-color:#FECACA; background:#FEE2E2; }
@@ -1041,7 +1047,23 @@
   }
   .vm-meta-text{
     min-width:0; flex:1;
-    display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;
+    /* baseline → center (retour utilisateur, capture à l'appui : le badge
+       3DEXPERIENCE — 24px, dans un <a> qui enveloppe un <span> de même
+       classe/taille — toujours pas centré avec "3DEXPERIENCE" malgré un
+       align-self:center posé sur lui, voir .vm-meta-item .three-d-badge
+       plus haut dans ce fichier). En cause : mélanger align-items:baseline
+       (ici, sur le <label> texte) et un align-self:center isolé sur UN
+       SEUL des enfants ne centre pas cet enfant dans la ligne — cette
+       ligne prend la hauteur du badge (24px, le plus grand des deux) et le
+       <label>, lui, reste positionné par SA propre ligne de base de texte
+       à l'intérieur, qui ne tombe pas forcément au milieu de ces 24px
+       (constaté : haut du label ET du badge alignés, donc badge qui
+       débordait vers le bas). align-items:center sur TOUTE la ligne évite
+       ce mélange — sans changement visible sur les paires texte/texte
+       (ex. "MARQUE Schneider Electric"), la ligne de base et le milieu
+       d'un texte sur une seule ligne étant à quelques pixels l'un de
+       l'autre pour une même taille de police. */
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   }
   .vm-meta-item label{
     font-size:11px; letter-spacing:.05em;
@@ -3707,17 +3729,35 @@
   background-position: right 12px center;
   background-size: 16px;
 }
-/* 3DEXPERIENCE / Standard — même mécanique .active que .filter-toggle-chip
-   dans la toolbar desktop (icône seule là-bas, ici en pleine largeur avec
-   libellé, la place ne manquant pas dans ce tiroir). */
+/* 3DEXPERIENCE / Standard / SPI-LABS — même mécanique .active que
+   .filter-toggle-chip dans la toolbar desktop (icône seule là-bas, ici en
+   pleine largeur avec libellé, la place ne manquant pas dans ce tiroir).
+   Retour utilisateur : "réduire la taille des boutons [...] pour que tous
+   soit à la bonne taille" — à 3 sur une seule ligne (depuis l'ajout de
+   SPI-LABS), "3DEXPERIENCE" (un seul mot, jamais coupé) forçait sa
+   colonne flex à s'élargir au-delà de son tiers égal (flex:1 seul
+   n'empêche pas un contenu insécable de pousser au-delà, min-width:auto
+   par défaut) — ce qui réduisait d'autant "SPI-LABS" à côté, jusqu'à le
+   faire passer sur 2 lignes à son tiret ("SPI-\nLABS"), plus haut que les
+   deux autres boutons. Police/padding/écart réduits pour que les 3
+   tiennent sur une seule ligne à cette largeur. */
 .filter-sheet-toggles{ display: flex; gap: 8px; }
 .filter-sheet-toggle{
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 12px 10px;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 10px 4px;
   border: 1.5px solid var(--line); border-radius: 10px;
   background: var(--paper); color: var(--ink);
-  font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+  font-size: 11px; font-weight: 600; font-family: var(--font-sans);
+  white-space: nowrap;
   cursor: pointer;
+}
+/* Icône (image 3DEXPERIENCE ou <i> Tabler Standard/SPI-LABS) — même taille
+   pour les deux, l'image ayant jusqu'ici sa propre taille fixe (18px, plus
+   grande que l'icône police ~13px) en attribut style dans index.html. */
+.filter-sheet-toggle img,
+.filter-sheet-toggle i{
+  width: 15px; height: 15px; font-size: 15px;
+  flex-shrink: 0;
 }
 .filter-sheet-select:focus { border-color: var(--copper); }
 .filter-sheet-actions {
