@@ -1,54 +1,23 @@
-  // ── Barre de navigation mobile : masquée pendant la saisie ──────────
-  // Retour utilisateur : "je ne veux pas qu'elle remonte avec le clavier" —
-  // mais même sans AUCUN code JS/CSS pilotant sa position (voir
-  // css/styles.css, .bottom-nav), Safari repositionne lui-même tout élément
-  // position:fixed par rapport à la zone réellement visible dès qu'un
-  // clavier logiciel est affiché — capture à l'appui, la barre restait
-  // visible coincée juste au-dessus du clavier, comportement natif de
-  // Safari indépendant de notre CSS. Impossible à empêcher en contrôlant sa
-  // position ; la seule solution fiable est de la masquer activement tant
-  // qu'un champ de saisie a le focus, plutôt que de la laisser à sa merci.
-  // Un léger délai sur le blur laisse le temps à un focus qui rebondit vers
-  // un AUTRE champ de saisie (ex. Tab entre deux champs) de s'appliquer
-  // avant de réafficher la barre, pour ne pas la faire clignoter entre deux
-  // champs consécutifs.
-  // Retour utilisateur : "est-ce qu'on peut faire en sorte que la barre de
-  // navigation ne disparaisse pas lorsque aucun clavier ne sort ?" — un
-  // focus (attribut "focusin") ne veut pas dire qu'un clavier va réellement
-  // s'afficher : un focus purement programmatique (.focus() posé par du JS,
-  // ex. auto-focus à l'ouverture d'une fenêtre, ou pour ramener l'attention
-  // sur un champ en erreur) n'affiche AUCUN clavier sur mobile (Safari n'en
-  // affiche un qu'après un vrai geste de l'utilisateur sur le champ), donc
-  // masquer la barre dans ce cas ne sert à rien et est même trompeur — même
-  // diagnostic déjà posé pour la modale de connexion, voir js/auth.js. On ne
-  // masque désormais que si ce focus fait suite à un vrai contact TACTILE
-  // récent QUELQUE PART sur la page.
-  // Retour utilisateur : "sauf pour éviter de cacher la barre si c'est pas
-  // un appareil tactile ça fonctionne pas" — pointerdown se déclenche aussi
-  // pour un clic souris (ex. desktop réduit à une largeur mobile, sans
-  // aucun clavier logiciel à l'horizon), qui passait donc quand même le
-  // filtre. e.pointerType distingue précisément l'origine de CET événement
-  // ('touch'/'pen'/'mouse') — plus fiable ici qu'une détection globale du
-  // type d'appareil (matchMedia pointer:coarse), qui ne dit rien de CE geste
-  // précis sur un appareil hybride (iPad avec souris/trackpad, par ex.).
-  var _navLastRealPointerAt = 0;
-  document.addEventListener('pointerdown', function(e){
-    if (e.pointerType === 'touch') _navLastRealPointerAt = Date.now();
-  }, { passive: true, capture: true });
-  var _navHideOnKeyboardTimer = null;
-  function _navHideOnKeyboardCheck(){
-    var nav = document.getElementById('bottomNav');
-    if(!nav) return;
-    clearTimeout(_navHideOnKeyboardTimer);
-    _navHideOnKeyboardTimer = setTimeout(function(){
-      var ae = document.activeElement;
-      var fieldFocused = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && !ae.readOnly && !ae.disabled;
-      var realGestureRecent = (Date.now() - _navLastRealPointerAt) < 800;
-      nav.classList.toggle('bottom-nav-kb-hidden', !!fieldFocused && realGestureRecent);
-    }, 30);
-  }
-  document.addEventListener('focusin', _navHideOnKeyboardCheck);
-  document.addEventListener('focusout', _navHideOnKeyboardCheck);
+  // ── Barre de navigation mobile : ne se masque plus pendant la saisie ──
+  // Retour utilisateur : "corriger le fait que la barre de navigation
+  // disparaît lorsqu'on clique sur le bouton recherche" — cette barre
+  // (position:fixed; bottom:0, voir .bottom-nav dans css/styles.css) était
+  // masquée activement (classe .bottom-nav-kb-hidden, retirée) dès qu'un
+  // champ de saisie prenait le focus suite à un vrai contact tactile
+  // récent, pour éviter que Safari ne la laisse coincée juste au-dessus du
+  // clavier (son comportement natif de repositionnement des éléments
+  // position:fixed quand un clavier logiciel s'affiche).
+  // Ce contournement date d'AVANT le passage de la balise viewport à
+  // interactive-widget=resizes-content (voir index.html, appliqué depuis
+  // pour corriger exactement ce même souci sur la fenêtre de connexion,
+  // js/auth.js) : ce mode fait désormais rétrécir le VIEWPORT DE MISE EN
+  // PAGE lui-même quand le clavier s'ouvre, donc tout élément
+  // position:fixed (cette barre y compris) suit nativement la zone
+  // réellement visible SANS AUCUNE ligne de JS — ce mécanisme de masquage
+  // manuel n'a donc plus de raison d'être. Résultat observé sans lui,
+  // simulateur clavier physique activé : la barre ne disparaît plus au
+  // clic sur "Recherche" (elle ne disparaissait déjà que pour ça, sans
+  // qu'aucun clavier ne la remplace — la vraie cause du signalement).
 
   // ── Fermeture mutuelle des sheets ────────────────────────────
   // Ouvre le tiroir menu mobile/tablette — extrait du click handler de

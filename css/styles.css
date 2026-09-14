@@ -1434,9 +1434,38 @@
     border-color:var(--warn);
     background:#FEF2F2;
   }
+  /* Retour utilisateur : "corriger la page modification produit qui a un
+     scroll sur le côté à côté du slider SPI-LABS sur mobile" — 3 paires
+     interrupteur+libellé (3DEXPERIENCE/Essentiel/SPI-LABS) sur une seule
+     ligne sans retour à la ligne (flex-wrap absent) débordaient hors de la
+     fenêtre sur un écran étroit, forçant tout le formulaire à défiler
+     horizontalement. flex-wrap:wrap laisse la 3e paire redescendre sur une
+     nouvelle ligne plutôt que déborder. */
   .field.field-checkbox .checkbox-row{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:8px 18px;
     padding:4px 0;
+  }
+  /* Chaque interrupteur+libellé est maintenant sa propre paire (<label>,
+     voir js/templates.js) plutôt que 6 éléments à la suite dans la même
+     rangée avec un margin-left ad hoc sur le 2e/3e interrupteur pour les
+     regrouper visuellement : un margin-left ainsi posé sur un élément qui
+     devient le premier d'une ligne après un retour à la ligne (ci-dessus)
+     aurait laissé un vide orphelin à gauche de cette nouvelle ligne. Le
+     "gap" plus large entre paires (18px, via .checkbox-row) et plus serré
+     à l'intérieur d'une paire (8px, ici) reproduit le même effet de
+     groupement sans ce risque — et rend le libellé cliquable comme
+     l'interrupteur lui-même (vrai <label>, bonus accessibilité).  */
+  /* .field .checkbox-pair (pas juste .checkbox-pair) : sélecteur générique
+     ".field label" (plus haut dans ce fichier — display:block, majuscules,
+     couleur grise, marge basse, pour les VRAIS libellés de champs comme
+     "FAMILLE DE PRODUIT") a la même spécificité qu'un simple ".checkbox-pair"
+     à une classe et l'emportait donc dessus (retour utilisateur, capture à
+     l'appui : "ESSENTIEL"/"3DEXPERIENCE" repassés en majuscules empilées).
+     Deux classes ici pour repasser devant sans !important. */
+  .field .checkbox-pair{
+    display:flex; align-items:center; gap:8px;
+    text-transform:none; letter-spacing:normal; margin-bottom:0;
+    cursor:pointer;
   }
   .field.field-checkbox .checkbox-label{
     font-size:13px; color:var(--ink);
@@ -3788,22 +3817,21 @@
     box-shadow: 0 -2px 16px rgba(0,0,0,.08);
     align-items: stretch;
     /* Retour utilisateur explicite : "je ne veux pas qu'elle remonte avec le
-       clavier" — reste ancrée au vrai bas de la page (bottom:0 ci-dessus),
-       aucune règle ici ne la fait suivre le clavier (un essai précédent la
-       faisait suivre via env(keyboard-inset-height)/JS, retiré). MAIS
-       bottom:0 seul ne suffit pas à la garder invisible sous le clavier :
-       Safari repositionne lui-même tout élément position:fixed par rapport
-       à la zone réellement visible dès qu'un clavier logiciel s'affiche —
-       constaté en direct, capture à l'appui, la barre restait visible
-       coincée juste au-dessus du clavier malgré cette règle. D'où
-       .bottom-nav-kb-hidden juste en dessous : masquée EXPLICITEMENT
-       (display:none) tant qu'un champ de saisie a le focus (voir
-       js/actions-mobile-chrome.js, _navHideOnKeyboardCheck) — la seule
-       façon de contrer ce comportement natif de Safari. */
+       clavier" — reste ancrée au vrai bas de la page (bottom:0 ci-dessus).
+       Un ancien essai la faisait suivre via env(keyboard-inset-height)/JS
+       (retiré), puis un masquage JS actif au focus d'un champ a pris le
+       relais (classe .bottom-nav-kb-hidden, retirée à son tour — retour
+       utilisateur : "corriger le fait que la barre de navigation disparaît
+       lorsqu'on clique sur le bouton recherche") : ce masquage contournait
+       le comportement natif de Safari qui repositionnait cet élément
+       position:fixed par rapport à la zone réellement visible dès qu'un
+       clavier logiciel s'affichait — devenu inutile depuis le passage de la
+       balise viewport à interactive-widget=resizes-content (voir
+       index.html), qui fait déjà suivre nativement tout élément
+       position:fixed la zone réellement visible, sans JS. */
     /* Empêche le double-tap de déclencher un zoom sur la barre de nav */
     touch-action: manipulation;
   }
-  .bottom-nav.bottom-nav-kb-hidden { display: none; }
 
   .bottom-nav-item {
     flex: 1;
