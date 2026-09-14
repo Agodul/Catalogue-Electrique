@@ -1063,7 +1063,7 @@ function _renderUserList(container, users, isServer) {
             // ci-dessous changent d'emplacement dans le HTML, pas de logique.
             : (isServer
               ? '<div style="position:relative;flex-shrink:0;">'
-                + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false">⋯</button>'
+                + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button>'
                 + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'
                   + '<button type="button" data-user="'+u.username+'" data-display="'+(u.displayName||u.username)+'" data-admin="'+(isAdminU?'1':'0')+'" class="btnEditUser" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier</button>'
                   + '<button type="button" data-user="'+u.username+'" class="btnDelUser kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>'

@@ -44,7 +44,7 @@ function _productBadgesCompactHtml(p){
       // différaient encore malgré les mêmes icônes/couleurs). class
       // kebab-menu-danger au lieu de danger, et plus de <hr> séparateur
       // (.kebab-menu n'en a pas ailleurs dans l'app).
-      '<button class="vm-info-btn" id="vmInfoBtn" title="Plus d\'actions">⋯</button>' +
+      '<button class="vm-info-btn" id="vmInfoBtn" title="Plus d\'actions"><i class="ti ti-dots" aria-hidden="true"></i></button>' +
       '<div class="vm-info-menu kebab-menu" id="vmInfoMenu" role="menu">' +
         '<button id="vmEditBtn" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier la fiche</button>' +
         '<button id="vmProposeMenuBtn" role="menuitem" style="display:none;"><i class="ti ti-edit" aria-hidden="true"></i> Proposer une modification</button>' +
@@ -529,17 +529,29 @@ function _productBadgesCompactHtml(p){
           var sugModalTitle = document.getElementById('sugModalTitle');
           if(sugModalTitle) sugModalTitle.innerHTML = '<i class="ti ti-tool"></i> Caractéristiques techniques';
           if(sugList){
-            // Classe dédiée (pas .vm-meta-item directement, réutilisée ailleurs
-            // dans une grille 2 colonnes différente) : séparateur entre chaque
-            // ligne + white-space:pre-wrap pour respecter les retours à la
-            // ligne saisis dans la valeur (voir textarea .spec-value dans
-            // js/modal-specs-editor.js) — avant, une caractéristique regroupant plusieurs
-            // sous-valeurs (ex. puissance par tension) formait un seul long
-            // paragraphe illisible, sans distinction visuelle claire entre
-            // chaque ligne (retour utilisateur, capture à l'appui).
-            sugList.innerHTML = specEntries.map(function(entry){
-              return '<div class="spec-list-item"><label>'+escapeHtml(entry[0])+'</label><span>'+escapeHtml(entry[1])+'</span></div>';
-            }).join('');
+            // Retour utilisateur : "faire en sorte que l'affichage des
+            // caractéristiques soit comme [le tableau Propriété/Valeur]
+            // lorsqu'on clique sur les caractéristiques sur la fiche
+            // produit" — remplace l'ancien affichage empilé
+            // (.spec-list-item : étiquette au-dessus, valeur en gras
+            // dessous) par le même tableau à deux colonnes que l'aperçu du
+            // formulaire d'édition (.specs-table, voir #specsSummaryTable
+            // dans js/modal-specs-editor.js) — sans la colonne d'actions
+            // "⋯", ici en lecture seule. #sugList (.modal-body) défile déjà
+            // tout seul si la liste est longue, l'en-tête Propriété/Valeur
+            // reste collé en haut pendant ce défilement (position:sticky,
+            // voir .specs-table th, css/styles.css) comme dans le
+            // formulaire. white-space:pre-wrap sur la cellule Valeur :
+            // respecte les retours à la ligne saisis dans le formulaire
+            // (textarea .spec-value, js/modal-specs-editor.js) — sans ça,
+            // une caractéristique regroupant plusieurs sous-valeurs (ex.
+            // puissance par tension) redevient un seul long paragraphe
+            // illisible (retour utilisateur historique, capture à l'appui).
+            sugList.innerHTML = '<table class="specs-table"><tr><th>Propriété</th><th>Valeur</th></tr>'
+              + specEntries.map(function(entry){
+                  return '<tr><td>'+escapeHtml(entry[0])+'</td><td style="white-space:pre-wrap;">'+escapeHtml(entry[1])+'</td></tr>';
+                }).join('')
+              + '</table>';
           }
           if(sugOverlay){
             sugOverlay.style.display = 'flex';

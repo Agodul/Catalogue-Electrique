@@ -574,7 +574,7 @@ function _armoireListItemHtml(entry, kind){
     + '<button type="button" class="' + primaryClass + '" style="padding:6px 12px;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:11.5px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ti ti-plus" aria-hidden="true"></i> ' + primaryLabel + '</button>'
     + (!isBlock ? '<button type="button" class="armoire-config-load" title="Remplacer la configuration en cours par celle-ci" style="padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">Charger</button>' : '')
     + '<div style="position:relative;flex-shrink:0;">'
-      + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false">⋯</button>'
+      + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button>'
       + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'
         + menuItems
       + '</div>'

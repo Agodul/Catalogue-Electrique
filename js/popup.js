@@ -250,9 +250,19 @@ window._showImageLightbox = _showImageLightbox;
 // .kebab-btn/.kebab-menu dans css/styles.css pour le style.
 //
 // Marquage HTML attendu, un menu par bouton :
-//   <button class="kebab-btn" aria-haspopup="true" aria-expanded="false">⋯</button>
+//   <button class="kebab-btn" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button>
 //   <div class="kebab-menu" role="menu"> ... boutons d'action ... </div>
 // (le menu doit être le nextElementSibling du bouton)
+// Retour utilisateur : "pourquoi le bouton des fiche produit n'est pas
+// identique pour tous les systeme ?" — le "⋯" posé en texte brut (caractère
+// Unicode) prenait la police SYSTÈME de l'appareil, dont le glyphe de
+// l'ellipsis (espacement/épaisseur des points) varie fortement d'une
+// plateforme à l'autre (ex. iOS/Safari vs desktop) — trois points nets et
+// espacés ici, presque un tiret plein là. Remplacé PARTOUT (.kebab-btn ET
+// .vm-info-btn, fiche produit) par l'icône ti-dots de la police d'icônes
+// Tabler déjà utilisée pour tout le reste de l'app (menus, boutons…) : un
+// glyphe embarqué dans la page rend à l'identique quel que soit l'appareil,
+// contrairement à un caractère laissé au choix de la police système.
 //
 // IMPORTANT : ne JAMAIS attacher ce listener sur `document` — js/init.js
 // (_initModalEscape, MODALS.forEach) appelle e.stopPropagation() sur

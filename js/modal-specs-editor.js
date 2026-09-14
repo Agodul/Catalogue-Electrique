@@ -18,22 +18,52 @@
     // vrai aperçu du contenu. "⋯" par ligne ouvre la même fenêtre d'édition
     // que le bouton d'en-tête (#btnOpenSpecs) plutôt que de dupliquer la
     // logique d'édition ligne par ligne ici.
+    // Retour utilisateur : "je ne veux pas toucher à la taille du texte mais
+    // plus ajouter un scroll" — #specsSummaryWrap (css/styles.css,
+    // .specs-table-wrap) plafonne la hauteur et défile au lieu de rapetisser
+    // le texte quand il y a beaucoup de caractéristiques ; c'est donc lui
+    // qu'on affiche/masque désormais, la table elle-même reste toujours
+    // affichée (display par défaut) à l'intérieur.
+    var summaryWrap = document.getElementById('specsSummaryWrap');
     var summaryTable = document.getElementById('specsSummaryTable');
     var emptyHint = document.getElementById('specsEmptyHint');
-    if(summaryTable && emptyHint){
+    if(summaryWrap && summaryTable && emptyHint){
       var filledRows = _specsRows.filter(function(r){ return (r.key||'').trim(); });
       if(filledRows.length){
-        summaryTable.style.display = '';
+        summaryWrap.style.display = '';
         emptyHint.style.display = 'none';
+        // Retour utilisateur : "pour utiliser les 3 petits points de la
+        // caractéristique faudrait pouvoir la modifier ou même la
+        // supprimer sans avoir besoin d'ouvrir la fenêtre de
+        // caractéristique technique" — "⋯" ouvrait jusqu'ici TOUJOURS la
+        // grande fenêtre dédiée (#specsOverlay), quelle que soit la ligne
+        // cliquée (aucun data-ri n'était même posé). Ouvre désormais un
+        // petit menu "Modifier"/"Supprimer" juste sous "⋯", qui agit
+        // directement sur CETTE ligne (_specsShowRowMenu ci-dessous) — la
+        // grande fenêtre reste disponible via "Caractéristiques (N)" pour
+        // une édition plus poussée (réordonner, tout supprimer…), mais
+        // n'est plus un passage obligé pour une simple retouche.
+        // indexOf (égalité par référence) plutôt qu'un compteur : filledRows
+        // est un SOUS-ENSEMBLE de _specsRows (lignes vides exclues), son
+        // propre index ne correspond donc pas à l'index réel dans
+        // _specsRows dont dépendent _specsRows.splice()/l'édition.
+        // Retour utilisateur : "fait en sorte que ça respecte le style déjà
+        // en place" — le "⋯" est maintenant un vrai .kebab-btn (même bouton
+        // rond que le configurateur d'armoire/liste utilisateurs, voir
+        // css/styles.css) plutôt qu'un simple caractère "⋯" en texte brut.
         summaryTable.innerHTML = '<tr><th>Propriété</th><th>Valeur</th><th></th></tr>'
           + filledRows.map(function(row){
-              return '<tr><td>'+escapeHtml(row.key||'')+'</td><td>'+escapeHtml(row.value||'')+'</td><td class="more">⋯</td></tr>';
+              var ri = _specsRows.indexOf(row);
+              return '<tr data-ri="'+ri+'"><td>'+escapeHtml(row.key||'')+'</td><td>'+escapeHtml(row.value||'')+'</td>'
+                + '<td class="more"><button type="button" class="kebab-btn" data-ri="'+ri+'" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button></td></tr>';
             }).join('');
-        summaryTable.querySelectorAll('td.more').forEach(function(cell){
-          cell.addEventListener('click', function(){ if(btnOpenSpecs) btnOpenSpecs.click(); });
+        summaryTable.querySelectorAll('td.more .kebab-btn').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            _specsShowRowMenu(btn, parseInt(btn.getAttribute('data-ri'), 10));
+          });
         });
       } else {
-        summaryTable.style.display = 'none';
+        summaryWrap.style.display = 'none';
         emptyHint.style.display = '';
       }
     }
@@ -97,6 +127,124 @@
         _specsRenderRows();
       });
     });
+  }
+
+  // Menu "Modifier"/"Supprimer" ouvert par le "⋯" d'une ligne du tableau
+  // récapitulatif (#specsSummaryTable) — voir le retour utilisateur au-dessus
+  // de son appel dans _specsRenderRows.
+  // Retour utilisateur : "fait en sorte que ça respecte le style déjà en
+  // place" — repris en .kebab-menu (css/styles.css), le même menu ⋯ que le
+  // configurateur d'armoire et la liste des utilisateurs (icônes, rouge
+  // #991B1B pour "Supprimer"…), au lieu d'un style improvisé ici. Seul le
+  // POSITIONNEMENT reste géré à la main (position:fixed, ancré sous le "⋯"
+  // cliqué) plutôt que via _bindKebabMenuOn/.kebab-btn.open habituel
+  // (js/popup.js) — même exception déjà faite pour #vmInfoMenu (voir le
+  // commentaire sur .kebab-btn, css/styles.css) : ce menu doit rester dans
+  // les limites de l'écran même pour une ligne tout en bas du tableau qui
+  // défile (.specs-table-wrap), un simple .kebab-menu positionné en absolu
+  // (le mécanisme par défaut) aurait été coupé par l'overflow de ce
+  // conteneur qui défile.
+  function _specsShowRowMenu(anchorEl, ri){
+    var existing = document.getElementById('_specsRowMenu');
+    if(existing) existing.remove();
+    var menu = document.createElement('div');
+    menu.id = '_specsRowMenu';
+    menu.className = 'kebab-menu open';
+    menu.setAttribute('role', 'menu');
+    menu.style.position = 'fixed';
+    // Retour utilisateur : "lorsque je clique sur les 3 petits points le
+    // kebab ne s'affiche pas" — .kebab-menu (css/styles.css) ne fixe
+    // volontairement aucun z-index : dans son usage habituel, le menu est
+    // un simple sibling positionné en absolu DANS la fenêtre qui le
+    // contient (armoire/utilisateurs), donc déjà au-dessus de tout par la
+    // seule position dans le DOM, sans avoir besoin d'un z-index. Ici, le
+    // menu est ajouté à document.body (voir commentaire au-dessus), donc
+    // hors de la pile de #modalOverlay (z-index 500, voir css/styles.css) —
+    // sans z-index explicite (donc 0/auto), il s'affichait bel et bien
+    // (display:block confirmé) mais restait rendu DERRIÈRE la fenêtre de
+    // modification, invisible. --z-modal-top (la plus haute valeur utilisée
+    // dans l'appli, voir css/styles.css) + une marge, pour rester au-dessus
+    // de n'importe quelle fenêtre d'où ce menu pourrait un jour être ouvert.
+    menu.style.zIndex = 10700;
+    menu.innerHTML =
+      '<button type="button" data-action="edit"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier</button>' +
+      '<button type="button" data-action="delete" class="kebab-menu-danger"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>';
+    document.body.appendChild(menu);
+
+    anchorEl.classList.add('open');
+    anchorEl.setAttribute('aria-expanded', 'true');
+
+    var rect = anchorEl.getBoundingClientRect();
+    var menuW = menu.offsetWidth, menuH = menu.offsetHeight;
+    var left = Math.min(rect.right - menuW, window.innerWidth - menuW - 8);
+    var top = rect.bottom + 4;
+    if(top + menuH > window.innerHeight - 8) top = rect.top - menuH - 4; // pas assez de place en dessous : au-dessus
+    menu.style.left = Math.max(8, left) + 'px';
+    menu.style.top = Math.max(8, top) + 'px';
+
+    function closeMenu(){
+      if(menu.parentNode) menu.parentNode.removeChild(menu);
+      anchorEl.classList.remove('open');
+      anchorEl.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDocClick, true);
+    }
+    function onDocClick(e){ if(!menu.contains(e.target)) closeMenu(); }
+    // capture + micro-délai : le click qui a ouvert ce menu (sur le "⋯")
+    // ne doit pas être le MÊME click qui le referme aussitôt via ce
+    // listener document-wide posé après coup.
+    setTimeout(function(){ document.addEventListener('click', onDocClick, true); }, 0);
+
+    menu.querySelector('[data-action="edit"]').addEventListener('click', function(){
+      closeMenu();
+      _specsStartInlineEdit(ri);
+    });
+    menu.querySelector('[data-action="delete"]').addEventListener('click', function(){
+      closeMenu();
+      _specsRows.splice(ri, 1);
+      _specsRenderRows();
+    });
+  }
+
+  // Transforme la ligne `ri` du tableau récapitulatif en formulaire
+  // d'édition directe (Nom + Valeur), sans passer par la grande fenêtre
+  // dédiée (#specsOverlay) — voir le retour utilisateur au-dessus de
+  // _specsShowRowMenu. ✓ valide, ✕ ou Échap annule ; Entrée dans "Nom"
+  // passe à "Valeur" (même confort que la grande fenêtre), Entrée dans
+  // "Valeur" valide (Maj+Entrée pour une valeur multi-lignes).
+  function _specsStartInlineEdit(ri){
+    var summaryTable = document.getElementById('specsSummaryTable');
+    var tr = summaryTable && summaryTable.querySelector('tr[data-ri="'+ri+'"]');
+    var row = _specsRows[ri];
+    if(!tr || !row) return;
+    tr.innerHTML =
+      '<td colspan="2" style="padding:6px 8px;">' +
+        '<input type="text" class="specs-inline-key" value="'+escapeHtml(row.key||'')+'" placeholder="Nom" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:5px;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;">' +
+        '<textarea class="specs-inline-value" rows="1" placeholder="Valeur" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:32px;">'+escapeHtml(row.value||'')+'</textarea>' +
+      '</td>' +
+      '<td style="vertical-align:top;white-space:nowrap;padding:6px 4px;">' +
+        '<button type="button" class="specs-inline-save" title="Enregistrer" aria-label="Enregistrer" style="width:26px;height:26px;border:none;background:none;color:#15803d;cursor:pointer;padding:0;"><i class="ti ti-check" aria-hidden="true"></i></button>' +
+        '<button type="button" class="specs-inline-cancel" title="Annuler" aria-label="Annuler" style="width:26px;height:26px;border:none;background:none;color:var(--ink-soft);cursor:pointer;padding:0;"><i class="ti ti-x" aria-hidden="true"></i></button>' +
+      '</td>';
+    var keyEl = tr.querySelector('.specs-inline-key');
+    var valEl = tr.querySelector('.specs-inline-value');
+    function commit(){
+      row.key = keyEl.value;
+      row.value = valEl.value;
+      _specsRenderRows();
+    }
+    function cancel(){ _specsRenderRows(); }
+    tr.querySelector('.specs-inline-save').addEventListener('click', commit);
+    tr.querySelector('.specs-inline-cancel').addEventListener('click', cancel);
+    keyEl.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); valEl.focus(); }
+      else if(e.key === 'Escape'){ cancel(); }
+    });
+    valEl.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); commit(); }
+      else if(e.key === 'Escape'){ cancel(); }
+    });
+    keyEl.focus();
+    keyEl.select();
   }
 
   function _specsAddRowAndFocus(){

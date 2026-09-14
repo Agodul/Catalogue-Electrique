@@ -21,12 +21,19 @@
   // affiche un qu'après un vrai geste de l'utilisateur sur le champ), donc
   // masquer la barre dans ce cas ne sert à rien et est même trompeur — même
   // diagnostic déjà posé pour la modale de connexion, voir js/auth.js. On ne
-  // masque désormais que si ce focus fait suite à un vrai contact tactile
-  // récent QUELQUE PART sur la page (pointerdown, couvre souris et tactile) —
-  // jamais pour un focus purement scripté.
+  // masque désormais que si ce focus fait suite à un vrai contact TACTILE
+  // récent QUELQUE PART sur la page.
+  // Retour utilisateur : "sauf pour éviter de cacher la barre si c'est pas
+  // un appareil tactile ça fonctionne pas" — pointerdown se déclenche aussi
+  // pour un clic souris (ex. desktop réduit à une largeur mobile, sans
+  // aucun clavier logiciel à l'horizon), qui passait donc quand même le
+  // filtre. e.pointerType distingue précisément l'origine de CET événement
+  // ('touch'/'pen'/'mouse') — plus fiable ici qu'une détection globale du
+  // type d'appareil (matchMedia pointer:coarse), qui ne dit rien de CE geste
+  // précis sur un appareil hybride (iPad avec souris/trackpad, par ex.).
   var _navLastRealPointerAt = 0;
-  document.addEventListener('pointerdown', function(){
-    _navLastRealPointerAt = Date.now();
+  document.addEventListener('pointerdown', function(e){
+    if (e.pointerType === 'touch') _navLastRealPointerAt = Date.now();
   }, { passive: true, capture: true });
   var _navHideOnKeyboardTimer = null;
   function _navHideOnKeyboardCheck(){

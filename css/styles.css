@@ -919,26 +919,6 @@
   }
   .vm-meta-item span{ font-weight:600; }
 
-  /* ── Caractéristiques techniques : liste dans la modale dédiée ──────
-     Classe séparée de .vm-meta-item (réutilisée ailleurs dans une grille
-     2 colonnes différente) — chaque ligne a son propre séparateur et la
-     valeur respecte les retours à la ligne saisis dans le formulaire
-     (textarea .spec-value, voir js/modal-specs-editor.js) au lieu de tout afficher en un
-     seul bloc de texte compact et illisible (retour utilisateur, capture à
-     l'appui). */
-  .spec-list-item{
-    padding:10px 0; border-bottom:1px solid var(--line);
-  }
-  .spec-list-item:last-child{ border-bottom:none; }
-  .spec-list-item label{
-    display:block; font-size:11.5px; letter-spacing:.05em;
-    text-transform:uppercase; color:var(--ink-soft); margin-bottom:4px;
-  }
-  .spec-list-item span{
-    display:block; font-weight:600; color:var(--ink);
-    white-space:pre-wrap; line-height:1.5;
-  }
-
   .vm-ref-copy{ display:flex; align-items:center; gap:6px; }
   /* Champ "URL du serveur" (Réglages → Serveur de données) : retour
      utilisateur : "je veux que le bouton copier sois dans la zone de
@@ -1333,10 +1313,31 @@
      Propriété/Valeur ; "⋯" ouvre toujours la fenêtre d'édition dédiée
      (#specsOverlay, js/modal-specs-editor.js), inchangée. */
   .specs-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
-  .specs-table th{ text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); padding:0 10px 7px; border-bottom:1px solid var(--line); }
+  /* Retour utilisateur : "mets un peu plus d'espace" (capture entourant
+     l'en-tête Propriété/Valeur) — padding-top à 0 collait le texte contre
+     le bord haut du tableau (ou contre le haut de la zone de défilement,
+     .specs-table-wrap ci-dessous, puisque cet en-tête y reste collé en
+     position:sticky). */
+  .specs-table th{ text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); padding:8px 10px 7px; border-bottom:1px solid var(--line); background:var(--paper-card); }
   .specs-table td{ padding:9px 10px; border-bottom:1px solid var(--line); color:var(--ink); }
   .specs-table tr:last-child td{ border-bottom:none; }
-  .specs-table td.more{ text-align:right; color:var(--ink-soft); cursor:pointer; width:20px; }
+  /* width:1% + white-space:nowrap : cellule réduite à la largeur de son
+     contenu (le .kebab-btn de 26px, voir js/modal-specs-editor.js) plutôt
+     qu'une largeur fixe codée en dur, qui l'aurait soit comprimé soit
+     laissé flotter dans un vide selon la taille réelle du bouton. */
+  .specs-table td.more{ text-align:right; width:1%; white-space:nowrap; padding-left:4px; }
+  /* Retour utilisateur : "je ne veux pas toucher à la taille du texte mais
+     plus ajouter un scroll" — un produit avec beaucoup de caractéristiques
+     (ex. 50) rendait ce tableau très long dans un formulaire qui en
+     contient déjà beaucoup d'autres. Taille de texte/lignes inchangée ;
+     hauteur du tableau plafonnée avec défilement interne à la place. La
+     ligne d'en-tête (Propriété/Valeur) reste collée en haut du défilement
+     (position:sticky) pour rester lisible même après avoir descendu la
+     liste — d'où le fond opaque ajouté sur .specs-table th ci-dessus (sans
+     lui, le texte des lignes qui défilent dessous transparaîtrait). */
+  .specs-table-wrap{ max-height:260px; overflow-y:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:8px; }
+  .specs-table-wrap .specs-table th{ position:sticky; top:0; z-index:1; }
+  .specs-table-wrap .specs-table tr:first-child th{ border-bottom:1px solid var(--line); }
 
   .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .hint{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; line-height:1.4; }
