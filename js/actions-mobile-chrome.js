@@ -12,6 +12,22 @@
   // un AUTRE champ de saisie (ex. Tab entre deux champs) de s'appliquer
   // avant de réafficher la barre, pour ne pas la faire clignoter entre deux
   // champs consécutifs.
+  // Retour utilisateur : "est-ce qu'on peut faire en sorte que la barre de
+  // navigation ne disparaisse pas lorsque aucun clavier ne sort ?" — un
+  // focus (attribut "focusin") ne veut pas dire qu'un clavier va réellement
+  // s'afficher : un focus purement programmatique (.focus() posé par du JS,
+  // ex. auto-focus à l'ouverture d'une fenêtre, ou pour ramener l'attention
+  // sur un champ en erreur) n'affiche AUCUN clavier sur mobile (Safari n'en
+  // affiche un qu'après un vrai geste de l'utilisateur sur le champ), donc
+  // masquer la barre dans ce cas ne sert à rien et est même trompeur — même
+  // diagnostic déjà posé pour la modale de connexion, voir js/auth.js. On ne
+  // masque désormais que si ce focus fait suite à un vrai contact tactile
+  // récent QUELQUE PART sur la page (pointerdown, couvre souris et tactile) —
+  // jamais pour un focus purement scripté.
+  var _navLastRealPointerAt = 0;
+  document.addEventListener('pointerdown', function(){
+    _navLastRealPointerAt = Date.now();
+  }, { passive: true, capture: true });
   var _navHideOnKeyboardTimer = null;
   function _navHideOnKeyboardCheck(){
     var nav = document.getElementById('bottomNav');
@@ -20,7 +36,8 @@
     _navHideOnKeyboardTimer = setTimeout(function(){
       var ae = document.activeElement;
       var fieldFocused = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && !ae.readOnly && !ae.disabled;
-      nav.classList.toggle('bottom-nav-kb-hidden', !!fieldFocused);
+      var realGestureRecent = (Date.now() - _navLastRealPointerAt) < 800;
+      nav.classList.toggle('bottom-nav-kb-hidden', !!fieldFocused && realGestureRecent);
     }, 30);
   }
   document.addEventListener('focusin', _navHideOnKeyboardCheck);
