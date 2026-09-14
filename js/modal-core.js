@@ -51,6 +51,7 @@
   var f3dLink           = document.getElementById('f3dLink');
   var f3dLinkRow        = document.getElementById('f3dLinkRow');
   var fEssential        = document.getElementById('fEssential');
+  var fSpiLabs          = document.getElementById('fSpiLabs');
   var fSuggestionsSearch = document.getElementById('fSuggestionsSearch');
   var fSuggestionsChips  = document.getElementById('fSuggestionsChips');
   var fSuggestionsDrop   = document.getElementById('fSuggestionsDrop');

@@ -389,6 +389,7 @@
         var siEl=document.getElementById('searchInput');
         var f3dEl=document.getElementById('filter3DAvailable');
         var fEssEl=document.getElementById('filterEssential');
+        var fSpiLabsEl=document.getElementById('filterSpiLabs');
         var count=0;
         if(bbEl&&bbEl.value) count++;
         if(bfEl&&bfEl.value) count++;
@@ -396,6 +397,7 @@
         if(siEl&&siEl.value) count++;
         if(f3dEl&&f3dEl.checked) count++;
         if(fEssEl&&fEssEl.checked) count++;
+        if(fSpiLabsEl&&fSpiLabsEl.checked) count++;
         if(bnFilterBadge){ bnFilterBadge.textContent=count||''; bnFilterBadge.style.display=count>0?'':'none'; }
         if(count>0) bnFilter.classList.add('active'); else bnFilter.classList.remove('active');
       }
@@ -447,14 +449,21 @@
     var selEssential=document.getElementById('filterSheetEssential');
     var wrap3D=document.getElementById('filterSheet3DWrap');
     var wrapEssential=document.getElementById('filterSheetEssentialWrap');
+    // Retour utilisateur : "ajouter un bouton pour les référence qui sont
+    // dans la mallette de test comme pour standard" — même mécanique que
+    // sel3D/selEssential juste au-dessus.
+    var selSpiLabs=document.getElementById('filterSheetSpiLabs');
+    var wrapSpiLabs=document.getElementById('filterSheetSpiLabsWrap');
     var brandFilterEl=document.getElementById('brandFilter');
     var familyFilterEl=document.getElementById('familyFilter');
     var seriesFilterEl=document.getElementById('seriesFilter');
     var searchInputEl=document.getElementById('searchInput');
     var filter3DEl=document.getElementById('filter3DAvailable');
     var filterEssentialEl=document.getElementById('filterEssential');
+    var filterSpiLabsEl=document.getElementById('filterSpiLabs');
     var filter3DWrapEl=document.getElementById('filter3DWrap');
     var filterEssentialWrapEl=document.getElementById('filterEssentialWrap');
+    var filterSpiLabsWrapEl=document.getElementById('filterSpiLabsWrap');
     if(!sheet||!btnOpen) return;
 
     // ── Cascade mobile : recalcule les options en fonction des sélections ──
@@ -495,6 +504,7 @@
       if(selSort) selSort.value = window._priceSort || '';
       if(sel3D && filter3DEl){ sel3D.checked = filter3DEl.checked; if(wrap3D) wrap3D.classList.toggle('active', sel3D.checked); }
       if(selEssential && filterEssentialEl){ selEssential.checked = filterEssentialEl.checked; if(wrapEssential) wrapEssential.classList.toggle('active', selEssential.checked); }
+      if(selSpiLabs && filterSpiLabsEl){ selSpiLabs.checked = filterSpiLabsEl.checked; if(wrapSpiLabs) wrapSpiLabs.classList.toggle('active', selSpiLabs.checked); }
       overlay.style.display='block';
       sheet.classList.add('open');
       document.body.classList.add('modal-open');
@@ -516,6 +526,7 @@
       // js/actions-search.js — jamais déclenché ici).
       if(filter3DEl&&sel3D){ filter3DEl.checked=sel3D.checked; if(filter3DWrapEl) filter3DWrapEl.classList.toggle('active', sel3D.checked); }
       if(filterEssentialEl&&selEssential){ filterEssentialEl.checked=selEssential.checked; if(filterEssentialWrapEl) filterEssentialWrapEl.classList.toggle('active', selEssential.checked); }
+      if(filterSpiLabsEl&&selSpiLabs){ filterSpiLabsEl.checked=selSpiLabs.checked; if(filterSpiLabsWrapEl) filterSpiLabsWrapEl.classList.toggle('active', selSpiLabs.checked); }
       // .value= ne déclenche pas "change" → resynchroniser le badge de la
       // bottom nav à la main (voir window._syncBnFilterBadge, _initBottomNav).
       if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
@@ -529,12 +540,14 @@
       if(selSort) selSort.value='';
       if(sel3D){ sel3D.checked=false; if(wrap3D) wrap3D.classList.remove('active'); }
       if(selEssential){ selEssential.checked=false; if(wrapEssential) wrapEssential.classList.remove('active'); }
+      if(selSpiLabs){ selSpiLabs.checked=false; if(wrapSpiLabs) wrapSpiLabs.classList.remove('active'); }
       if(brandFilterEl) brandFilterEl.value='';
       if(familyFilterEl) familyFilterEl.value='';
       if(seriesFilterEl) seriesFilterEl.value='';
       if(searchInputEl) searchInputEl.value='';
       if(filter3DEl){ filter3DEl.checked=false; if(filter3DWrapEl) filter3DWrapEl.classList.remove('active'); }
       if(filterEssentialEl){ filterEssentialEl.checked=false; if(filterEssentialWrapEl) filterEssentialWrapEl.classList.remove('active'); }
+      if(filterSpiLabsEl){ filterSpiLabsEl.checked=false; if(filterSpiLabsWrapEl) filterSpiLabsWrapEl.classList.remove('active'); }
       if(typeof window._setPriceSort==='function') window._setPriceSort(null);
       if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
       closeSheet();
@@ -556,6 +569,7 @@
     // n'appliquent pas non plus tout de suite).
     if(sel3D && wrap3D) sel3D.addEventListener('change', function(){ wrap3D.classList.toggle('active', sel3D.checked); });
     if(selEssential && wrapEssential) selEssential.addEventListener('change', function(){ wrapEssential.classList.toggle('active', selEssential.checked); });
+    if(selSpiLabs && wrapSpiLabs) selSpiLabs.addEventListener('change', function(){ wrapSpiLabs.classList.toggle('active', selSpiLabs.checked); });
     window._openFilterSheet = openSheet;
     btnOpen.addEventListener('click', openSheet);
     if(btnClose) btnClose.addEventListener('click', closeSheet);

@@ -292,7 +292,18 @@
   function _specsCloseModal(){
     _specsRenderRows(); // met à jour le compteur sur le bouton avant de fermer
     if(specsOverlay){
-      document.body.classList.remove('modal-open');
+      // Retour utilisateur : "sur mobile, quand je suis sur une fenêtre, il
+      // faut que les boutons en bas à droite (Config, remonter en haut…)
+      // disparaissent" — #specsOverlay ne s'ouvre que depuis le formulaire
+      // produit (#modalOverlay, via #btnOpenSpecs), encore ouvert derrière
+      // une fois cette fenêtre-ci refermée. Retirer 'modal-open' sans
+      // condition faisait réapparaître le FAB stack (masqué par
+      // body.modal-open .fab-stack, css/styles.css) alors que le
+      // formulaire produit restait affiché à l'écran — voir
+      // window._isOtherOverlayOpen, js/init.js.
+      if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('specsOverlay')){
+        document.body.classList.remove('modal-open');
+      }
       if(typeof window._closeOverlayAnimated === 'function'){
         window._closeOverlayAnimated(specsOverlay, function(){ specsOverlay.style.display = 'none'; });
       } else {

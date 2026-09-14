@@ -229,7 +229,18 @@
     }
 
     document.getElementById('docCloseBtn').onclick = function(){
-      document.body.classList.remove('modal-open');
+      // Retour utilisateur : "sur mobile, quand je suis sur une fenêtre, il
+      // faut que les boutons en bas à droite (Config, remonter en haut…)
+      // disparaissent" — #docOverlay ne s'ouvre que depuis la fiche produit
+      // (#viewOverlay, voir vmDocBtn dans js/render-view-modal.js), encore
+      // ouverte derrière une fois cette fenêtre-ci refermée. Retirer
+      // 'modal-open' sans condition faisait réapparaître le FAB stack
+      // (masqué par body.modal-open .fab-stack, css/styles.css) alors que
+      // la fiche produit restait affichée à l'écran — voir
+      // window._isOtherOverlayOpen, js/init.js.
+      if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('docOverlay')){
+        document.body.classList.remove('modal-open');
+      }
       if(typeof window._closeOverlayAnimated === 'function'){
         window._closeOverlayAnimated(overlay, function(){ overlay.style.display = 'none'; });
       } else {

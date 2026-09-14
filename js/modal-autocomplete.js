@@ -100,6 +100,7 @@
     f3dLink.value = p.available3DXLink || '';
     update3dLinkVisibility();
     if(fEssential) fEssential.checked = !!p.essential;
+    if(fSpiLabs) fSpiLabs.checked = !!p.spiLabs;
     _sugRefs = Array.isArray(p.suggestions) ? p.suggestions.slice() : [];
     _sugHidden = Array.isArray(p.suggestionsHidden) ? p.suggestionsHidden.slice() : [];
     _sugRenderChips();
@@ -182,6 +183,11 @@
     // sert à "Ajouter un produit"/"Modifier le produit", jamais à la revue
     // d'une demande — l'état verrouillé ne doit donc jamais y être visible.
     if(typeof _reviewSetLocked === 'function') _reviewSetLocked(false);
+    // Repart d'un flag vierge à chaque ouverture — seul l'appel de vmEditBtn
+    // (js/render-view-modal-close.js) le repose juste après celui-ci, pour
+    // que requestCloseModal() sache s'il doit revenir sur la fiche produit
+    // en cas d'annulation (voir plus bas).
+    window._modalReturnToViewId = null;
     editingId = id || null;
     resetForm();
     if(editingId){
@@ -513,6 +519,7 @@
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
       essential: fEssential ? fEssential.checked : false,
+      spiLabs: fSpiLabs ? fSpiLabs.checked : false,
       suggestions: _sugRefs.slice().sort().join('|'),
       suggestionsHidden: _sugHidden.slice().sort().join('|'),
       spareParts: _sparePartsRefs.slice().sort().join('|'),
@@ -529,7 +536,7 @@
                 current.url || current.html || current.name || current.desc ||
                 current.price || current.photo || current.supplier || current.leadTime ||
                 current.tags || current.available3DX || current.available3DXLink ||
-                current.essential || current.suggestions || current.spareParts || (current.specs && current.specs !== '[]'));
+                current.essential || current.spiLabs || current.suggestions || current.spareParts || (current.specs && current.specs !== '[]'));
     }
     return Object.keys(current).some(function(k){ return current[k] !== _formOriginalSnapshot[k]; });
   }
@@ -625,17 +632,30 @@
     // changé puisqu'on n'a fait que consulter, pas accepter/refuser.
     var wasReviewingFromRequestsList = !!window._reviewMode;
 
+    // Édition ouverte depuis la fiche produit (bouton "Modifier" de la vue,
+    // voir vmEditBtn dans js/render-view-modal-close.js) : une fois cette
+    // fenêtre refermée SANS enregistrer, on doit revenir sur cette même
+    // fiche plutôt que sur ce qu'il y avait derrière (liste/accueil) —
+    // retour utilisateur : "la croix de la fenêtre de modifier un produit
+    // renvoie pas sur la fiche produit". Lu AVANT closeModal() : rien ne le
+    // touche d'ici là, mais autant fixer l'intention avant tout appel
+    // asynchrone (showDiscardConfirmPopup) qui pourrait laisser le temps à
+    // un autre openModal() de le réinitialiser entre-temps.
+    var returnToViewId = window._modalReturnToViewId || null;
+
     // Réinitialiser le mode proposition / révision
     resetProposeModeUI();
     resetReviewModeUI();
     if(!hasUnsavedInput()){
      closeModal();
      if(wasReviewingFromRequestsList && typeof _reqRevealPanel === 'function') _reqRevealPanel();
+     else if(returnToViewId && typeof openView === 'function') openView(returnToViewId);
     return;
     }
 
     showDiscardConfirmPopup(function(){
       closeModal();
       if(wasReviewingFromRequestsList && typeof _reqRevealPanel === 'function') _reqRevealPanel();
+      else if(returnToViewId && typeof openView === 'function') openView(returnToViewId);
     });
   }

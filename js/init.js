@@ -390,6 +390,43 @@
     });
   })();
 
+  // Liste centrale de tous les overlays "fenêtre" connus de l'app —
+  // partagée par _initScrollReset ci-dessous ET par _isOtherOverlayOpen
+  // plus bas (retour utilisateur : "sur mobile, quand je suis sur une
+  // fenêtre, le FAB stack — Config, remonter en haut… — doit disparaître")
+  // plutôt que deux listes maintenues séparément qui finiraient par diverger.
+  var _KNOWN_OVERLAY_IDS = [
+    'modalOverlay', 'viewOverlay', 'settingsOverlay', 'requestsOverlay',
+    'docOverlay', 'priceModalOverlay', 'specsOverlay', 'sugOverlay',
+    'sugPickerOverlay', 'conflictOverlay', 'reqDetailOverlay',
+    'xlsxImportOverlay', 'authOverlay', 'iconPickerModal', 'compareOverlay',
+    'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay'
+  ];
+
+  // ── Une fenêtre encore ouverte derrière celle qu'on referme ? ───────────
+  // Plusieurs fenêtres (Caractéristiques/Documents/Produits associés/Pièces
+  // de rechange/Description sur la fiche produit, Caractéristiques et
+  // Aperçu PDF dans le formulaire produit, détail d'une demande dans le
+  // panneau "Demandes"…) ne s'ouvrent JAMAIS seules : toujours PAR-DESSUS
+  // une autre fenêtre encore ouverte derrière. Chaque bouton fermer retirait
+  // jusqu'ici 'modal-open' du body sans condition à sa propre fermeture —
+  // ce qui réaffichait à tort le FAB stack (masqué par
+  // body.modal-open .fab-stack, voir css/styles.css) pendant que la fenêtre
+  // du dessous restait bel et bien affichée à l'écran (retour utilisateur).
+  // Utilisée par chaque bouton fermer AVANT de retirer 'modal-open' :
+  // window._isOtherOverlayOpen('idDeCetteFenêtre') → une AUTRE fenêtre
+  // connue est-elle encore visible ? display!=='none' suffit à détecter une
+  // fenêtre ouverte quel que soit son mécanisme (classList .open/.show OU
+  // style.display posé directement) : dans les deux cas, la fenêtre visible
+  // a un display calculé différent de 'none'.
+  window._isOtherOverlayOpen = function(excludeId){
+    return _KNOWN_OVERLAY_IDS.some(function(id){
+      if(id === excludeId) return false;
+      var el = document.getElementById(id);
+      return !!el && getComputedStyle(el).display !== 'none';
+    });
+  };
+
   // ── Remise à zéro du défilement à l'ouverture, pour TOUTES les fenêtres ──
   // Une fenêtre reste dans le DOM entre deux ouvertures (juste masquée) —
   // son scrollTop n'est donc jamais réinitialisé tout seul par le
@@ -405,14 +442,10 @@
   // classe exacte ni à modifier chaque fonction d'ouverture éparpillée dans
   // le code.
   ;(function _initScrollReset(){
-    var OVERLAY_IDS = [
-      'modalOverlay', 'viewOverlay', 'settingsOverlay', 'requestsOverlay',
-      'docOverlay', 'priceModalOverlay', 'specsOverlay', 'sugOverlay',
-      'sugPickerOverlay', 'conflictOverlay', 'reqDetailOverlay',
-      'xlsxImportOverlay', 'authOverlay', 'iconPickerModal', 'compareOverlay',
-      'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay',
-      'filterSheet', 'menuSheet'
-    ];
+    // _KNOWN_OVERLAY_IDS (plus haut) + filterSheet/menuSheet, les deux
+    // feuilles mobiles absentes de cette liste (déjà gérées à part par leur
+    // propre règle CSS body:has(...), voir _isOtherOverlayOpen plus haut).
+    var OVERLAY_IDS = _KNOWN_OVERLAY_IDS.concat(['filterSheet', 'menuSheet']);
     function isVisible(el){
       var cs = getComputedStyle(el);
       if(cs.display === 'none') return false;

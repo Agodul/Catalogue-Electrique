@@ -577,6 +577,12 @@
     only3D = !!(only3D && only3D.checked);
     var onlyEssential = document.getElementById('filterEssential');
     onlyEssential = !!(onlyEssential && onlyEssential.checked);
+    // Retour utilisateur : "ajouter un bouton pour les référence qui sont
+    // dans la mallette de test comme pour standard" — même mécanique que
+    // only3D/onlyEssential ci-dessus, sur p.spiLabs (case "SPI-LABS" du
+    // formulaire produit).
+    var onlySpiLabs = document.getElementById('filterSpiLabs');
+    onlySpiLabs = !!(onlySpiLabs && onlySpiLabs.checked);
 
     // Filtrage par sélecteurs — domaine (Électrique/Pneumatique) en premier,
     // en amont de tous les autres critères : jamais un résultat de l'autre
@@ -589,6 +595,7 @@
       if(series && p.series !== series) return false;
       if(only3D && !p.available3DX) return false;
       if(onlyEssential && !p.essential) return false;
+      if(onlySpiLabs && !p.spiLabs) return false;
       return true;
     });
 
@@ -700,10 +707,12 @@
     // vient d'apparaître ailleurs.
     var _f3dElForKey = document.getElementById('filter3DAvailable');
     var _fEssElForKey = document.getElementById('filterEssential');
+    var _fSpiLabsElForKey = document.getElementById('filterSpiLabs');
     var renderKey = JSON.stringify([
       brandFilterEl.value, familyFilterEl.value, seriesFilterEl.value,
       searchInputEl.value, window._priceSort, viewAll,
       !!(_f3dElForKey && _f3dElForKey.checked), !!(_fEssElForKey && _fEssElForKey.checked),
+      !!(_fSpiLabsElForKey && _fSpiLabsElForKey.checked),
       // Domaine actif : sans lui, basculer Électrique ↔ Pneumatique alors
       // qu'aucun autre filtre n'a changé (cas le plus courant, juste après
       // avoir cliqué le bouton) produirait la même clé que le rendu

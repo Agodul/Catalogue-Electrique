@@ -348,6 +348,14 @@
       var fEssEl = document.getElementById('filterEssential');
       var fEssWrapEl = document.getElementById('filterEssentialWrap');
       if(fEssEl){ fEssEl.checked = false; if(fEssWrapEl) fEssWrapEl.classList.remove('active'); }
+      // Retour utilisateur : "ajouter un bouton pour les référence qui sont
+      // dans la mallette de test comme pour standard" — même sens dans les
+      // deux domaines que 3D/Standard juste au-dessus (être dans la
+      // mallette SPI-LABS n'a rien à voir avec Électrique/Pneumatique),
+      // donc gardée elle aussi quand keep3DStandard est vrai.
+      var fSpiLabsEl = document.getElementById('filterSpiLabs');
+      var fSpiLabsWrapEl = document.getElementById('filterSpiLabsWrap');
+      if(fSpiLabsEl){ fSpiLabsEl.checked = false; if(fSpiLabsWrapEl) fSpiLabsWrapEl.classList.remove('active'); }
     }
     if(typeof window._setPriceSort === 'function') window._setPriceSort(null);
     if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
@@ -441,6 +449,12 @@
     var overlayEl = document.getElementById('modalOverlay');
     if(overlayEl && overlayEl.classList.contains('open')){
       if(typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+        // On va à l'accueil, pas à la fiche produit : si cette édition avait
+        // été ouverte depuis une fiche (voir _modalReturnToViewId dans
+        // js/modal-autocomplete.js), l'ignorer ici, sinon requestCloseModal()
+        // ré-ouvrirait cette fiche par-dessus l'accueil une fois la saisie
+        // abandonnée.
+        window._modalReturnToViewId = null;
         if(typeof requestCloseModal === 'function'){ requestCloseModal(); return; }
       }
       if(typeof closeModal === 'function') closeModal();

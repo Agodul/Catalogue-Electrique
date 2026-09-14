@@ -26,37 +26,26 @@
   });
   if(vmCloseBtn) vmCloseBtn.addEventListener('click', closeView);
 
-  // Délégation clic sur span "Voir plus / Voir moins" dans la description
+  // Retour utilisateur : "fais en sorte que quand la description affiche le
+  // bouton voir plus, ça ouvre une fenêtre avec la description complète" —
+  // "Voir plus" dépliait jusqu'ici le texte SUR PLACE (avec un "Voir
+  // moins" et un verrou de hauteur sur #viewModal pour empêcher la fiche
+  // de s'agrandir, voir l'historique retiré ci-dessus). Réutilise
+  // #sugOverlay/#sugModal/#sugList, la même fenêtre déjà réutilisée pour
+  // Caractéristiques/Documents/Produits associés/Pièces de rechange (voir
+  // js/render-view-modal.js) plutôt que d'en créer une nouvelle — la fiche
+  // elle-même ne bouge donc plus jamais.
   vmDesc.addEventListener('click', function(e){
     var toggle = e.target.closest('.vm-desc-toggle');
     if(!toggle) return;
-    var isExpanded = toggle.dataset.expanded === 'true';
-    var vmModalEl = document.getElementById('viewModal');
-    if(isExpanded){
-      var truncated = toggle.dataset.short;
-      vmDesc.innerHTML = escapeHtml(truncated)
-        + '<span class="vm-desc-toggle" role="button" tabindex="0"> Voir plus</span>';
-      vmDesc.querySelector('.vm-desc-toggle').dataset.full    = toggle.dataset.full;
-      vmDesc.querySelector('.vm-desc-toggle').dataset.short   = truncated;
-      vmDesc.querySelector('.vm-desc-toggle').dataset.expanded = 'false';
-      // "Voir moins" : redonne la main à la hauteur naturelle du contenu
-      // (retire le verrou posé ci-dessous à l'ouverture de "Voir plus").
-      if(vmModalEl) vmModalEl.style.height = '';
-    } else {
-      // "Voir plus" : verrouille la hauteur ACTUELLE de la fenêtre avant
-      // d'agrandir le texte, pour que le texte en plus se défile dans
-      // .vm-scroll au lieu de faire grandir toute la fiche produit (retour
-      // utilisateur : "lorsqu'on fait voir plus la fiche produit
-      // s'allonge"). Sans ce verrou, #viewModal (hauteur auto plafonnée à
-      // min(80vh,620px)) grandissait pour accueillir le texte complet tant
-      // que ce plafond n'était pas encore atteint.
-      if(vmModalEl) vmModalEl.style.height = vmModalEl.getBoundingClientRect().height + 'px';
-      var full = toggle.dataset.full;
-      vmDesc.innerHTML = escapeHtml(full)
-        + '<span class="vm-desc-toggle" role="button" tabindex="0"> Voir moins</span>';
-      vmDesc.querySelector('.vm-desc-toggle').dataset.full    = full;
-      vmDesc.querySelector('.vm-desc-toggle').dataset.short   = toggle.dataset.short;
-      vmDesc.querySelector('.vm-desc-toggle').dataset.expanded = 'true';
+    var sugModalTitle = document.getElementById('sugModalTitle');
+    var sugList = document.getElementById('sugList');
+    var sugOverlay = document.getElementById('sugOverlay');
+    if(sugModalTitle) sugModalTitle.innerHTML = '<i class="ti ti-file-text"></i> Description';
+    if(sugList) sugList.innerHTML = '<p style="margin:0;line-height:1.6;color:var(--ink);white-space:pre-wrap;">' + escapeHtml(toggle.dataset.full || '') + '</p>';
+    if(sugOverlay){
+      sugOverlay.style.display = 'flex';
+      document.body.classList.add('modal-open');
     }
   });
 
@@ -104,6 +93,15 @@
     }
     closeView();
     openModal(id);
+    // Mémorise qu'on vient de la fiche produit : si l'édition est annulée
+    // (croix, "Annuler", Échap — voir requestCloseModal dans
+    // js/modal-autocomplete.js) plutôt qu'enregistrée, on doit revenir sur
+    // cette même fiche au lieu de se retrouver sur la page derrière (liste/
+    // accueil) — retour utilisateur : "la croix de la fenêtre de modifier
+    // un produit renvoie pas sur la fiche produit". openModal() efface ce
+    // flag à chaque ouverture (voir js/modal-autocomplete.js), donc il ne
+    // doit être posé qu'APRÈS l'appel ci-dessus.
+    window._modalReturnToViewId = id;
     // Démarre le heartbeat du verrou (voir js/modal-editlock-heartbeat.js) — seulement ici,
     // juste après un verrou effectivement posé par _tryLockProductForEdit
     // ci-dessus, pas dans openModal() lui-même (aussi utilisé pour "Ajouter

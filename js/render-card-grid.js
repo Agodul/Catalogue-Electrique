@@ -104,6 +104,12 @@
         photo+
         (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')+
         (p.essential ? '<div class="essential-badge" title="Produit essentiel"><i class="ti ti-star-filled"></i> Standard</div>' : '')+
+        // Retour utilisateur : "ajouter un bouton pour les référence qui
+        // sont dans la mallette de test comme pour standard" — même
+        // traitement que .essential-badge juste au-dessus (pastille sur la
+        // photo), coin haut-gauche libre (Essentiel est en bas-gauche, 3D
+        // en bas-droite) — voir .spi-labs-badge dans css/styles.css.
+        (p.spiLabs ? '<div class="spi-labs-badge" title="Disponible dans la mallette de test SPI-LABS"><i class="ti ti-briefcase"></i> SPI-LABS</div>' : '')+
       '</div>'+
       '<div class="body">'+
         '<div class="body-top">'+

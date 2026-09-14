@@ -243,8 +243,10 @@
     // Réinitialiser aussi les cases 3DEXPERIENCE/Standard (retour utilisateur)
     var _f3dReset = document.getElementById('filter3DAvailable');
     var _fEssReset = document.getElementById('filterEssential');
+    var _fSpiLabsReset = document.getElementById('filterSpiLabs');
     if(_f3dReset){ _f3dReset.checked = false; document.getElementById('filter3DWrap').classList.remove('active'); }
     if(_fEssReset){ _fEssReset.checked = false; document.getElementById('filterEssentialWrap').classList.remove('active'); }
+    if(_fSpiLabsReset){ _fSpiLabsReset.checked = false; document.getElementById('filterSpiLabsWrap').classList.remove('active'); }
     // Réinitialiser aussi le tri prix
     window._setPriceSort(null);
     // .value= ne déclenche pas "change" → resynchroniser le badge de la

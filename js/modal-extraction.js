@@ -5,13 +5,38 @@
     return ta.value;
   }
 
-  // Retire les balises HTML et nettoie les espaces/sauts de ligne
+  // Retire les balises HTML et nettoie les espaces — retour utilisateur :
+  // "l'importation de la description produit ne garde pas sa mise en page
+  // d'origine". Avant, TOUTES les balises de bloc (paragraphes, <br>,
+  // puces de liste…) devenaient un simple espace, puis tout saut de ligne
+  // restant était lui-même écrasé (.replace(/\s+/g,' ')) : une description
+  // avec plusieurs paragraphes ou une liste à puces ressortait en un seul
+  // bloc de texte collé, alors que #fDesc est une <textarea> qui affiche
+  // très bien des sauts de ligne (et que la fiche produit les restitue
+  // aussi, voir vmDesc en white-space:pre-wrap, js/render-view-modal.js).
+  // Les frontières de bloc deviennent maintenant de vrais sauts de ligne
+  // (et les puces de liste gardent un tiret, seul indice qui survit une
+  // fois hors HTML) au lieu d'un espace — seuls les espaces/tabulations
+  // sont ensuite aplatis, jamais les \n.
   function stripHtml(str){
     if(!str) return str;
-    // Remplace les balises de bloc par des espaces pour éviter les mots collés
     var s = str
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<\/?(p|div|li|ul|ol|h[1-6]|strong|b|em|i)[^>]*>/gi, ' ');
+      .replace(/<br\s*\/?>/gi, '\n')
+      // Élément de liste : préfixé d'un tiret — sans balise, un saut de
+      // ligne seul ne suffirait plus à distinguer une liste d'un paragraphe.
+      // </li> ne produit RIEN (pas de \n) : le \n vient déjà du "\n- " de
+      // l'élément SUIVANT (ou du </ul>/</ol> final) — sinon chaque puce se
+      // retrouvait séparée de la suivante par une ligne vide, comme un
+      // paragraphe à part entière plutôt qu'une liste compacte.
+      .replace(/<li[^>]*>/gi, '\n- ')
+      .replace(/<\/li>/gi, '')
+      // Reste des balises de bloc (ouvrantes ET fermantes, <\/?>) : simple
+      // frontière de paragraphe. Le nettoyage plus bas fusionne les sauts de
+      // ligne consécutifs qui en résultent.
+      .replace(/<\/?(p|div|ul|ol|h[1-6])[^>]*>/gi, '\n')
+      // Emphase en ligne (gras/italique…) : jamais de saut de ligne, juste
+      // un espace pour ne pas coller deux mots adjacents.
+      .replace(/<\/?(strong|b|em|i)[^>]*>/gi, ' ');
     // Retire toutes les balises restantes — laisser le PARSEUR HTML du
     // navigateur s'en charger (stripHtmlTags, js/storage.js) plutôt qu'une
     // regex /<[^>]+>/g (alerte CodeQL "Incomplete multi-character
@@ -25,8 +50,14 @@
     s = stripHtmlTags(s);
     // Décode les entités HTML
     s = decodeEntities(s);
-    // Nettoie les espaces multiples et sauts de ligne
-    s = s.replace(/\s+/g, ' ').trim();
+    // Nettoie les espaces/tabulations multiples (mais PAS les \n, qui
+    // portent la mise en page d'origine), les espaces collés à un saut de
+    // ligne, puis limite les sauts de ligne consécutifs à un maximum de 2
+    // (un paragraphe vide entre deux blocs, jamais plus).
+    s = s.replace(/[ \t]+/g, ' ')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
     return s;
   }
 
@@ -42,10 +73,13 @@
     if(!str) return str;
     var s = str;
     EXTRACT_JUNK_PHRASES.forEach(function(re){ s = s.replace(re, ' '); });
-    // Recolle les séparateurs (tirets, barres, puces) laissés orphelins par la suppression.
-    s = s.replace(/\s+/g, ' ').trim();
+    // Recolle les séparateurs (tirets, barres, puces) laissés orphelins par
+    // la suppression — [ \t]+ (pas \s+) : ne touche pas aux \n, qui portent
+    // la mise en page d'origine de la description depuis stripHtml()
+    // juste au-dessus (retour utilisateur : mise en page perdue à l'import).
+    s = s.replace(/[ \t]+/g, ' ').trim();
     s = s.replace(/([-–—|•])(\s*\1)+/g, '$1').replace(/^[\s\-–—|•]+|[\s\-–—|•]+$/g, '');
-    return s.replace(/\s+/g, ' ').trim();
+    return s.replace(/[ \t]+/g, ' ').trim();
   }
 
   function extractFromHtml(htmlStr, pageUrl){
@@ -551,8 +585,13 @@
     }
 
     // ── Nettoyage final ────────────────────────────────────────────────
+    // .replace(/\s+/g,' ') après stripHtml() effacait tout saut de ligne
+    // que stripHtml() venait de préserver (retour utilisateur : mise en
+    // page d'origine perdue à l'import) — result.name reste sur une seule
+    // ligne (aucune balise de bloc n'y a de sens), mais result.desc ne doit
+    // plus repasser par ce même aplatissement.
     if(result.name)  result.name  = stripJunkPhrases(stripHtml(result.name).replace(/\s+/g,' ').trim());
-    if(result.desc)  result.desc  = stripJunkPhrases(stripHtml(result.desc).replace(/\s+/g,' ').trim());
+    if(result.desc)  result.desc  = stripJunkPhrases(stripHtml(result.desc));
     if(result.price) result.price = stripJunkPhrases(decodeEntities(result.price).replace(/\s+/g,' ').trim());
     // Repli général : result.photo (LA photo principale, utilisée pour
     // fPhoto) restait null tant qu'aucune source dédiée (JSON-LD, og:image,

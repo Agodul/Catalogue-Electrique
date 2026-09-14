@@ -11,6 +11,10 @@ function _productBadgesCompactHtml(p){
   var html = '';
   if(p.essential) html += '<i class="ti ti-star-filled" title="Produit essentiel" style="color:var(--copper);font-size:11px;margin-left:5px;vertical-align:middle;"></i>';
   if(p.available3DX) html += '<img src="assets/three-d-badge.png" alt="3DEX" title="Disponible dans la 3DEXPERIENCE" style="width:13px;height:13px;margin-left:4px;vertical-align:middle;">';
+  // Retour utilisateur : "ajouter un bouton pour les référence qui sont
+  // dans la mallette de test comme pour standard" — même traitement compact
+  // que les deux repères juste au-dessus.
+  if(p.spiLabs) html += '<i class="ti ti-briefcase" title="Disponible dans la mallette de test SPI-LABS" style="color:var(--copper);font-size:11px;margin-left:5px;vertical-align:middle;"></i>';
   return html;
 }
 
@@ -51,53 +55,76 @@ function _productBadgesCompactHtml(p){
         '<button id="vmDeleteBtn" class="kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer le produit</button>' +
       '</div>' +
       '<div class="vm-scroll">' +
+        // Retour utilisateur : "modifie l'apparence de la fiche produit
+        // pour se rapprocher de [maquette d'une fiche produit e-commerce]"
+        // — .vm-body passe d'une seule colonne (tout empilé, prix compris)
+        // à deux zones : .vm-main (identité produit — référence, nom, infos
+        // générales, description, accès Documents/Suggestions/
+        // Caractéristiques/Pièces de rechange) et .vm-side (prix +
+        // "Ajouter à la configuration", en carte à part comme le bloc prix
+        // de la maquette) — voir .vm-body/.vm-main/.vm-side (grid 2
+        // colonnes sur desktop, empilées sur mobile) dans css/styles.css.
+        // Pas de panier/quantité au sens e-commerce (aucune notion de
+        // panier dans cette app) : réutilise "Ajouter à la configuration"
+        // (déjà existant, voir plus bas) comme CTA principal à la place,
+        // avec le même sélecteur de quantité que la maquette puisque
+        // _armoireAddToDraft accepte déjà une quantité.
         '<div class="vm-body">' +
-          '<div class="vm-ref" id="vmRef"></div>' +
-          '<div class="vm-name" id="vmName"></div>' +
-          '<div class="vm-tags" id="vmTags"></div>' +
-          '<div class="vm-meta" id="vmMeta"></div>' +
-          '<div class="vm-desc" id="vmDesc"></div>' +
-          '<div class="vm-price-row"><div class="vm-price" id="vmPrice"></div></div>' +
-          '<div id="vmPriceLabel" style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-family:var(--font-sans);"></div>' +
-          '<div class="vm-price-history" id="vmPriceHistory"></div>' +
-          '<div class="vm-actions-row">' +
-            '<div id="vmDocBtnWrap" class="vm-action-wrap" style="display:none;">' +
-              '<button id="vmDocBtn" class="vm-action-btn" title="Documents">' +
-                // Icône générique de document (même icône que le titre de la
-                // modale "Documents produit" elle-même, voir docOverlay dans
-                // js/templates.js) plutôt que le logo PDF — retour
-                // utilisateur : les documents ne sont pas tous des PDF.
-                '<i class="ti ti-files" style="font-size:19px;"></i>' +
-              '</button>' +
+          '<div class="vm-main">' +
+            '<div class="vm-ref" id="vmRef"></div>' +
+            '<div class="vm-name" id="vmName"></div>' +
+            '<div class="vm-tags" id="vmTags"></div>' +
+            '<div class="vm-meta" id="vmMeta"></div>' +
+            '<div class="vm-desc" id="vmDesc"></div>' +
+            // Retour utilisateur : "fais en sorte que ça remplace les
+            // boutons avec les icônes" (capture à l'appui — rangée
+            // d'onglets texte "Caractéristiques / Documents (3) / Produits
+            // associés (4)") — remplace la rangée de petites icônes
+            // carrées (.vm-action-btn) par des onglets texte + décompte
+            // entre parenthèses, même ordre que la maquette (Pièces de
+            // rechange ajouté après : 4ème catégorie que la maquette n'a
+            // pas, voir .vm-tabs-row/.vm-tab-btn dans css/styles.css).
+            // Chaque onglet ouvre toujours sa fenêtre dédiée (retour
+            // utilisateur explicite plus tôt : garder les fenêtres
+            // actuelles plutôt que fusionner leur contenu dans la page) —
+            // seule l'APPARENCE du déclencheur change ici, pas la
+            // navigation.
+            '<div class="vm-tabs-row">' +
+              '<div id="vmSpecsSection" class="vm-tab-wrap" style="display:none;">' +
+                '<button id="vmSpecsToggle" class="vm-tab-btn" title="Voir les caractéristiques">Caractéristiques<span id="vmSpecsToggleLabel" class="vm-tab-count"></span></button>' +
+              '</div>' +
+              '<div id="vmDocBtnWrap" class="vm-tab-wrap" style="display:none;">' +
+                '<button id="vmDocBtn" class="vm-tab-btn" title="Documents">Documents</button>' +
+              '</div>' +
+              '<div id="vmSuggestionsSection" class="vm-tab-wrap" style="display:none;">' +
+                '<button id="vmSuggestionsToggle" class="vm-tab-btn" title="Afficher suggestions">Produits associés<span id="vmSuggestionsToggleLabel" class="vm-tab-count"></span></button>' +
+              '</div>' +
+              '<div id="vmSparePartsSection" class="vm-tab-wrap" style="display:none;">' +
+                '<button id="vmSparePartsToggle" class="vm-tab-btn" title="Voir les pièces de rechange">Pièces de rechange<span id="vmSparePartsToggleLabel" class="vm-tab-count"></span></button>' +
+              '</div>' +
             '</div>' +
-            '<div id="vmSuggestionsSection" class="vm-action-wrap" style="display:none;">' +
-              '<button id="vmSuggestionsToggle" class="vm-action-btn" title="Afficher suggestions">' +
-                '<i class="ti ti-bulb" style="font-size:19px;"></i>' +
-                '<span id="vmSuggestionsToggleLabel" class="vm-action-badge"></span>' +
-              '</button>' +
-            '</div>' +
-            '<div id="vmSpecsSection" class="vm-action-wrap" style="display:none;">' +
-              '<button id="vmSpecsToggle" class="vm-action-btn" title="Voir les caractéristiques">' +
-                '<i class="ti ti-list-details" style="font-size:19px;"></i>' +
-                '<span id="vmSpecsToggleLabel" class="vm-action-badge"></span>' +
-              '</button>' +
-            '</div>' +
-            '<div id="vmSparePartsSection" class="vm-action-wrap" style="display:none;">' +
-              '<button id="vmSparePartsToggle" class="vm-action-btn" title="Voir les pièces de rechange">' +
-                '<i class="ti ti-tool" style="font-size:19px;"></i>' +
-                '<span id="vmSparePartsToggleLabel" class="vm-action-badge"></span>' +
-              '</button>' +
-            '</div>' +
-            '<div id="vmAddToConfigWrap" class="vm-action-wrap" style="display:none;">' +
-              '<button id="vmAddToConfigBtn" class="vm-action-btn" title="Ajouter à la configuration">' +
+          '</div>' +
+          '<div class="vm-side">' +
+            '<div class="vm-side-card">' +
+              '<div class="vm-price-row"><div class="vm-price" id="vmPrice"></div></div>' +
+              '<div id="vmPriceLabel" class="vm-price-label"></div>' +
+              '<div id="vmAddToConfigWrap" class="vm-add-config-row" style="display:none;">' +
+                '<div class="vm-qty-stepper">' +
+                  '<button type="button" id="vmQtyMinus" aria-label="Diminuer la quantité">−</button>' +
+                  '<input type="text" inputmode="numeric" id="vmQtyInput" value="1" aria-label="Quantité">' +
+                  '<button type="button" id="vmQtyPlus" aria-label="Augmenter la quantité">+</button>' +
+                '</div>' +
                 // "+" plutôt que list-check (retour utilisateur) — même
                 // icône que les autres actions d'ajout du configurateur
                 // d'armoire (ex. "Insérer" un bloc, "Ajouter un
                 // fournisseur", voir armoireConfig.js/index.html), plus
                 // immédiatement lisible comme "ajouter" que la coche.
-                '<i id="vmAddToConfigIcon" class="ti ti-plus" style="font-size:19px;"></i>' +
-              '</button>' +
+                '<button type="button" id="vmAddToConfigBtn" class="copper vm-add-config-btn" title="Ajouter à la configuration">' +
+                  '<i id="vmAddToConfigIcon" class="ti ti-plus" aria-hidden="true"></i> Ajouter à la configuration' +
+                '</button>' +
+              '</div>' +
             '</div>' +
+            '<div class="vm-side-card vm-price-history" id="vmPriceHistory"></div>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -142,13 +169,13 @@ function _productBadgesCompactHtml(p){
   }
   if(vmMeta){
     vmMeta.addEventListener('click', function(e){
-      var btn = e.target.closest ? e.target.closest('.vm-copy-btn') : null;
-      if(!btn) return;
-      var ref = btn.getAttribute('data-copy') || '';
+      var wrap = e.target.closest ? e.target.closest('.vm-ref-copy') : null;
+      if(!wrap) return;
+      var ref = wrap.getAttribute('data-copy') || '';
       copyToClipboard(ref).then(function(){
         showToast('Référence copiée ✓', 'ok', 1800);
-        btn.classList.add('copied');
-        setTimeout(function(){ btn.classList.remove('copied'); }, 1200);
+        wrap.classList.add('copied');
+        setTimeout(function(){ wrap.classList.remove('copied'); }, 1200);
       }).catch(function(){
         showToast('Impossible de copier la référence', 'err', 2500);
       });
@@ -189,12 +216,6 @@ function _productBadgesCompactHtml(p){
     viewingId = id;
     window._viewingId = id; // exposé pour requests.js
     vmInfoMenu.classList.remove('open');
-    // Retire un éventuel verrou de hauteur posé par "Voir plus" sur la
-    // fiche précédente (voir plus bas) — sans ça, ouvrir un nouveau produit
-    // hériterait de la hauteur figée du précédent au lieu de s'ajuster à
-    // son propre contenu.
-    var vmModalEl = document.getElementById('viewModal');
-    if(vmModalEl) vmModalEl.style.height = '';
 
     // Photo — badges Essentiel/3DEXPERIENCE (retour utilisateur : aussi
     // visibles sur la fiche produit, pas seulement sur la carte catalogue).
@@ -203,8 +224,22 @@ function _productBadgesCompactHtml(p){
     // le innerHTML du conteneur en cas d'échec de chargement, ce qui aurait
     // aussi effacé les badges — onerror cible maintenant l'<img> lui-même
     // (outerHTML), pas son parent.
+    // Retour utilisateur : "les badges dans la vignette de la fiche produit
+    // [...] c'est pas joli de les mettre dans tous les coins" — les 3
+    // repères (3D/Essentiel/SPI-LABS) étaient chacun dans un coin différent
+    // de la photo. Regroupés en une seule pile (.vm-badges, voir
+    // css/styles.css) au lieu de chacun sa propre position:absolute —
+    // chaque badge n'a donc plus qu'à exister ou non, c'est la pile qui
+    // gère sa place, jamais plus d'un coin occupé.
+    // Retour utilisateur : "après on est pas obligé de mettre le texte des
+    // badges" — icône seule (le title porte toujours le libellé complet,
+    // au survol/pour les lecteurs d'écran) plutôt que la pastille large
+    // "⭐ Standard"/"💼 SPI-LABS" utilisée sur la carte catalogue — la pile
+    // groupée (.vm-badges) rend le texte redondant avec l'icône.
     var vmBadgesHtml = (p.available3DX ? '<div class="three-d-overlay" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX"></div>' : '')
-      + (p.essential ? '<div class="essential-badge" title="Produit essentiel"><i class="ti ti-star-filled"></i> Standard</div>' : '');
+      + (p.essential ? '<div class="essential-badge" title="Produit essentiel"><i class="ti ti-star-filled"></i></div>' : '')
+      + (p.spiLabs ? '<div class="spi-labs-badge" title="Disponible dans la mallette de test SPI-LABS"><i class="ti ti-briefcase"></i></div>' : '');
+    if(vmBadgesHtml) vmBadgesHtml = '<div class="vm-badges">' + vmBadgesHtml + '</div>';
     if(p.photo){
       // Pas de loading="lazy" (retiré, même raison que render-card-grid.js) :
       // sur une fiche produit, la photo est la seule/l'unique image affichée
@@ -233,6 +268,24 @@ function _productBadgesCompactHtml(p){
     if(p.leadTime) metaItems.push(['Délai',p.leadTime]);
     if(p.available3DX) metaItems.push(['3DEXPERIENCE', '<span class="three-d-badge" title="Disponible dans la 3DEXPERIENCE"><img src="assets/three-d-badge.png" alt="3DEX" /></span>']);
     if(p.url)      metaItems.push(['URL',        p.url]);
+    // Retour utilisateur : "modifie l'apparence de la fiche produit pour se
+    // rapprocher de [maquette]" — icône par ligne (voir la maquette : une
+    // pastille par propriété — tension, tag, calendrier…) au lieu d'une
+    // simple étiquette texte ; .vm-meta passe d'une grille 2 colonnes à une
+    // liste à une colonne, chaque ligne = icône + libellé/valeur empilés
+    // (voir .vm-meta/.vm-meta-item dans css/styles.css).
+    // Retour utilisateur : une couleur par propriété avait été ajoutée ici
+    // ("ajoute un peu de couleur"), puis retirée ("retire les couleurs des
+    // icônes, je ne t'ai jamais demandé ça" — mal compris : la couleur
+    // demandée visait la rangée de boutons SOUS ce tableau, voir
+    // .vm-action-btn/#vmDocBtn etc. dans css/styles.css, pas les icônes
+    // d'ici). Icônes revenues à une seule couleur unie (voir
+    // .vm-meta-icon, css/styles.css).
+    var META_ICONS = {
+      'Marque': 'ti-tag', 'Référence': 'ti-hash', 'Famille': 'ti-folder',
+      'Série': 'ti-stack-2', 'Fournisseur': 'ti-truck', 'Délai': 'ti-calendar-time',
+      '3DEXPERIENCE': 'ti-cube', 'URL': 'ti-link'
+    };
     vmMeta.innerHTML = metaItems.map(function(m){
       var val;
       if(m[0] === 'URL'){
@@ -245,22 +298,42 @@ function _productBadgesCompactHtml(p){
           ? '<a href="'+escapeHtml(p.available3DXLink)+'" target="_blank" rel="noopener noreferrer" class="three-d-badge" title="Disponible dans la 3DEXPERIENCE">'+m[1]+'</a>'
           : m[1];
       } else if(m[0] === 'Référence'){
-        val = '<span class="vm-ref-copy">'
+        // Retour utilisateur : "que le bouton copier la référence soit
+        // plutôt lorsqu'on clique sur la ref, ça copie la ref" — toute la
+        // zone (texte + icône) devient la cible du clic (role="button" +
+        // data-copy posé ici, sur .vm-ref-copy lui-même) plutôt qu'un
+        // <button> séparé à côté du texte ; voir la délégation de clic sur
+        // .vm-ref-copy (et non plus .vm-copy-btn) plus haut dans ce
+        // fichier. L'icône reste affichée (copier/coche) comme simple
+        // repère visuel, mais n'est plus, seule, la cible cliquable.
+        val = '<span class="vm-ref-copy" role="button" tabindex="0" data-copy="'+escapeHtml(m[1])+'" title="Copier la référence" aria-label="Copier la référence">'
           + '<span>'+escapeHtml(m[1])+'</span>'
-          + '<button type="button" class="vm-copy-btn" data-copy="'+escapeHtml(m[1])+'" title="Copier la référence" aria-label="Copier la référence"><i class="ti ti-copy" aria-hidden="true"></i><i class="ti ti-check" aria-hidden="true"></i></button>'
+          + '<i class="ti ti-copy vm-copy-icon" aria-hidden="true"></i><i class="ti ti-check vm-copy-icon" aria-hidden="true"></i>'
           + '</span>';
       } else {
         val = '<span>'+escapeHtml(m[1])+'</span>';
       }
-      return '<div class="vm-meta-item"><label>'+escapeHtml(m[0])+'</label>'+val+'</div>';
+      var iconClass = META_ICONS[m[0]] || 'ti-info-circle';
+      return '<div class="vm-meta-item"><i class="ti '+iconClass+' vm-meta-icon" aria-hidden="true"></i><div class="vm-meta-text"><label>'+escapeHtml(m[0])+'</label>'+val+'</div></div>';
     }).join('');
     vmMeta.style.display = metaItems.length ? '' : 'none';
 
-    // Description avec troncature + "Voir plus" / "Voir moins" (mobile et desktop)
+    // Description avec troncature + "Voir plus" (mobile et desktop).
     // Tags HTML retirés comme sur la carte catalogue (renderCard) — sans ça,
     // une description contenant du HTML collé par erreur affichait les
     // balises en clair ici alors que la carte les nettoyait déjà (retour
     // utilisateur : incohérence entre les deux vues).
+    // Retour utilisateur : "fais en sorte que quand la description affiche
+    // le bouton voir plus, ça ouvre une fenêtre avec la description
+    // complète" — "Voir plus" dépliait jusqu'ici le texte SUR PLACE (avec
+    // un "Voir moins" pour revenir, et un verrou de hauteur sur #viewModal
+    // pour empêcher la fiche de s'agrandir pendant ce dépliage, voir
+    // js/render-view-modal-close.js) ; ouvre maintenant la même fenêtre
+    // réutilisée que Caractéristiques/Documents/Produits associés (voir
+    // #sugOverlay, _vmOpenDescModal ci-dessous) avec le texte complet —
+    // .vm-desc reste toujours tronqué, plus de "Voir moins" ni de verrou de
+    // hauteur à gérer (plus nécessaires : la fiche elle-même ne change
+    // jamais de taille).
     var fullDesc = stripHtmlTags(p.desc || '').trim();
     var isMobile = window.innerWidth <= 640;
     var CHAR_LIMIT = isMobile ? 160 : 300;
@@ -268,12 +341,10 @@ function _productBadgesCompactHtml(p){
 
     if(fullDesc.length > CHAR_LIMIT){
       var truncated = fullDesc.slice(0, fullDesc.lastIndexOf(' ', CHAR_LIMIT) || CHAR_LIMIT);
-      var _shortText = truncated;
-      var _fullText  = fullDesc;
       vmDesc.innerHTML = escapeHtml(truncated)
         + '<span class="vm-desc-toggle" role="button" tabindex="0"> Voir plus</span>';
       var _span = vmDesc.querySelector('.vm-desc-toggle');
-      if(_span){ _span.dataset.full = _fullText; _span.dataset.short = _shortText; _span.dataset.expanded = 'false'; }
+      if(_span){ _span.dataset.full = fullDesc; }
     } else {
       vmDesc.textContent = fullDesc;
     }
@@ -289,11 +360,23 @@ function _productBadgesCompactHtml(p){
       : '';
     vmPrice.innerHTML = (orig ? '<span class="vm-price-original" title="Prix catalogue fabricant">'+escapeHtml(_displayPrice(orig))+'</span>' : '')+
                         escapeHtml(_displayPrice(p.price)||'—')+discBadgeVm+badge;
-    // Ligne explicite catalogue vs votre prix
+    // Légende sous le prix (retour utilisateur : maquette avec "Prix
+    // unitaire (HT)" sous le prix) — affichée seulement s'il y a bien un
+    // prix, pas comme légende flottante sur un prix manquant ("—").
     var vmPriceLabelEl = document.getElementById('vmPriceLabel');
-    if(vmPriceLabelEl) vmPriceLabelEl.innerHTML = '';
+    if(vmPriceLabelEl) vmPriceLabelEl.textContent = p.price ? 'Prix unitaire (HT)' : '';
 
-    vmPriceHistory.innerHTML = buildPriceHistoryReadonly(p);
+    // Retour utilisateur : "fais attention lorsqu'il n'y a pas d'historique
+    // de prix tu m'affiche une bulle vide" (capture à l'appui) —
+    // buildPriceHistoryReadonly() renvoie '' sans historique, mais
+    // #vmPriceHistory reste un .vm-side-card (bordure/fond/ombre, voir
+    // css/styles.css) même vide : ça affichait quand même une carte
+    // blanche vide sous le bouton "Ajouter à la configuration". Masquer le
+    // conteneur lui-même quand il n'y a rien à y montrer, pas juste vider
+    // son contenu.
+    var priceHistoryHtml = buildPriceHistoryReadonly(p);
+    vmPriceHistory.innerHTML = priceHistoryHtml;
+    vmPriceHistory.style.display = priceHistoryHtml ? '' : 'none';
 
     // ── Bouton Document (visible pour tous) ────────────────────────
     var vmDocBtn     = document.getElementById('vmDocBtn');
@@ -328,23 +411,49 @@ function _productBadgesCompactHtml(p){
     var vmAddToConfigWrap = document.getElementById('vmAddToConfigWrap');
     var vmAddToConfigBtn  = document.getElementById('vmAddToConfigBtn');
     var vmAddToConfigIcon = document.getElementById('vmAddToConfigIcon');
+    var vmQtyInput        = document.getElementById('vmQtyInput');
+    var vmQtyMinus        = document.getElementById('vmQtyMinus');
+    var vmQtyPlus         = document.getElementById('vmQtyPlus');
     var _armoireLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
     if(vmAddToConfigWrap) vmAddToConfigWrap.style.display = (_armoireLoggedIn && p.ref) ? '' : 'none';
+
+    // Retour utilisateur : "modifie l'apparence de la fiche produit pour se
+    // rapprocher de [maquette]" — bouton devenu un vrai CTA (texte +
+    // icône, plus une icône seule), avec le même sélecteur de quantité que
+    // la maquette. Remis à "1" à chaque ouverture de fiche (nouveau
+    // produit = nouvelle saisie, jamais celle du produit précédent).
+    if(vmQtyInput) vmQtyInput.value = '1';
+    function _vmQtyClamp(){
+      if(!vmQtyInput) return 1;
+      var n = parseInt(vmQtyInput.value, 10);
+      if(!n || n < 1) n = 1;
+      vmQtyInput.value = n;
+      return n;
+    }
+    if(vmQtyMinus) vmQtyMinus.onclick = function(){
+      vmQtyInput.value = Math.max(1, _vmQtyClamp() - 1);
+    };
+    if(vmQtyPlus) vmQtyPlus.onclick = function(){
+      vmQtyInput.value = _vmQtyClamp() + 1;
+    };
+    if(vmQtyInput){
+      vmQtyInput.onchange = _vmQtyClamp;
+      vmQtyInput.onblur = _vmQtyClamp;
+    }
 
     if(vmAddToConfigBtn){
       vmAddToConfigBtn.onclick = function(){
         if(typeof _armoireAddToDraft !== 'function' || !p.ref) return;
-        _armoireAddToDraft(p.ref, 1);
+        var qtyToAdd = _vmQtyClamp();
+        _armoireAddToDraft(p.ref, qtyToAdd);
         var existing = _armoireDraft.find(function(it){ return it.ref === p.ref; });
-        var qty = existing ? existing.qty : 1;
+        var qty = existing ? existing.qty : qtyToAdd;
         if(typeof showToast === 'function') showToast('Ajouté à la configuration en cours (' + qty + ' ex.)', 'ok', 2500);
-        // Bouton devenu icône seule (retour utilisateur : "petit icon pour
-        // gagné de la place") — plus de texte "Ajouté ✓" à afficher, le
-        // retour visuel passe par l'icône elle-même (coche verte, 1,4s)
-        // en plus du toast déjà affiché ci-dessus.
+        // Retour visuel bref (coche verte, 1,4s) en plus du toast ci-dessus
+        // — repris de l'ancienne version icône seule du bouton.
         if(vmAddToConfigIcon){
           vmAddToConfigIcon.className = 'ti ti-check';
-          vmAddToConfigIcon.style.color = '#2E7D32';
+          vmAddToConfigIcon.style.color = '#4ADE80';
           setTimeout(function(){
             vmAddToConfigIcon.className = 'ti ti-plus';
             vmAddToConfigIcon.style.color = '';
@@ -386,11 +495,12 @@ function _productBadgesCompactHtml(p){
     if(sugSection){
       if(sugRefs.length){
         sugSection.style.display = '';
-        // Icône seule (retour utilisateur : gagner de la place) : le
-        // libellé complet passe en infobulle (title) sur le bouton, seul le
-        // nombre reste visible en permanence, dans une petite pastille.
+        // Onglet texte "Produits associés (N)" (retour utilisateur, voir
+        // .vm-tab-count dans css/styles.css) — le span du décompte suit
+        // directement le libellé posé en dur dans _vmInjectTemplate
+        // plus haut, d'où le "(" / ")" ajoutés ici autour du nombre.
         if(sugToggle) sugToggle.title = 'Afficher les suggestions (' + sugRefs.length + ')';
-        if(sugLabel) sugLabel.textContent = sugRefs.length;
+        if(sugLabel) sugLabel.textContent = ' (' + sugRefs.length + ')';
 
         if(sugToggle) sugToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');
@@ -439,7 +549,18 @@ function _productBadgesCompactHtml(p){
     }
     var sugCloseBtn = document.getElementById('sugCloseBtn');
     if(sugCloseBtn) sugCloseBtn.onclick = function(){
-      document.body.classList.remove('modal-open');
+      // Retour utilisateur : "sur mobile, quand je suis sur une fenêtre, il
+      // faut que les boutons en bas à droite (Config, remonter en haut…)
+      // disparaissent" — #sugOverlay (Caractéristiques/Documents/Produits
+      // associés/Pièces de rechange/Description, voir plus haut) ne s'ouvre
+      // JAMAIS seul : toujours par-dessus une autre fenêtre encore ouverte
+      // derrière (la fiche produit). Retirer 'modal-open' sans condition
+      // ici faisait réapparaître le FAB stack (masqué par
+      // body.modal-open .fab-stack, css/styles.css) alors qu'une autre
+      // fenêtre restait affichée — voir window._isOtherOverlayOpen, js/init.js.
+      if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('sugOverlay')){
+        document.body.classList.remove('modal-open');
+      }
       if(sugOverlay){
         if(typeof window._closeOverlayAnimated === 'function'){
           window._closeOverlayAnimated(sugOverlay, function(){ sugOverlay.style.display = 'none'; });
@@ -467,7 +588,7 @@ function _productBadgesCompactHtml(p){
       if(sparePartsRefs.length){
         sparePartsSection.style.display = '';
         if(sparePartsToggle) sparePartsToggle.title = 'Voir les pièces de rechange (' + sparePartsRefs.length + ')';
-        if(sparePartsLabel) sparePartsLabel.textContent = sparePartsRefs.length;
+        if(sparePartsLabel) sparePartsLabel.textContent = ' (' + sparePartsRefs.length + ')';
 
         if(sparePartsToggle) sparePartsToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');
@@ -523,7 +644,7 @@ function _productBadgesCompactHtml(p){
       if(specEntries.length){
         specsSection.style.display = '';
         if(specsToggle) specsToggle.title = 'Voir les caractéristiques (' + specEntries.length + ')';
-        if(specsToggleLabel) specsToggleLabel.textContent = specEntries.length;
+        if(specsToggleLabel) specsToggleLabel.textContent = ' (' + specEntries.length + ')';
 
         if(specsToggle) specsToggle.onclick = function(){
           var sugModalTitle = document.getElementById('sugModalTitle');

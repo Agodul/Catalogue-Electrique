@@ -616,14 +616,27 @@
      produit (.vm-photo) — retour utilisateur : "Essentiel"/3DEXPERIENCE
      devraient aussi être visibles en consultant une fiche, pas seulement
      dans la grille. .vm-photo a déjà position:relative (voir plus haut). */
+  /* Retour utilisateur : "les badges dans la vignette de la fiche produit
+     [...] c'est pas joli de les mettre dans tous les coins" — 3D/Essentiel/
+     SPI-LABS étaient chacun positionnés indépendamment dans un coin
+     différent (bas-droite/bas-gauche/haut-gauche). Regroupés dans un seul
+     conteneur .vm-badges (voir js/render-view-modal.js), lui seul en
+     position:absolute — chaque badge devient un simple élément de cette
+     pile — à l'horizontale, une ligne (retour utilisateur) plutôt qu'une
+     colonne (gap ci-dessous) — jamais plus qu'un seul coin occupé.
+     En bas-gauche (pas en haut) : les deux coins du haut sont déjà pris par
+     #vmCloseBtn (✕, visible mobile/tablette uniquement) et #vmInfoBtn (⋯,
+     toujours visible) — les y superposer aurait juste déplacé le problème
+     plutôt que le régler. */
+  .vm-photo .vm-badges{
+    position:absolute; bottom:10px; left:10px;
+    display:flex; flex-direction:row; align-items:center; gap:6px;
+    z-index:2;
+  }
   .vm-photo .three-d-overlay{
-    position:absolute;
-    right:10px;
-    bottom:10px;
     display:flex;
     align-items:center;
     justify-content:center;
-    z-index:2;
   }
   .vm-photo .three-d-overlay img{
     width:24px;
@@ -640,23 +653,56 @@
        Neutralisé explicitement pour ne garder QUE les 24px déclarés. */
     transform:none;
   }
-  /* Alignement avec le badge "Essentiel" (.essential-badge, taille de base
-     définie plus bas dans ce fichier) — retour utilisateur : les deux
-     badges de la fiche produit doivent être à la même hauteur et de la
-     même taille, et le badge "Essentiel" doit être plus large. Padding et
-     taille de police fixés ici (pas seulement bottom/left/height) : sans
-     ça, les règles responsive de .essential-badge plus bas (mobile ≤640,
-     ≤380…) continuaient à réduire son padding/sa police et donc sa
-     largeur — cette règle est plus spécifique (.vm-photo .essential-badge)
-     donc l'emporte à tous les gabarits, y compris mobile/tablette. */
+  /* Sur la fiche produit (pas la carte catalogue, voir .essential-badge
+     "Standard"/.spi-labs-badge plus bas dans ce fichier, celles-là gardent
+     leur texte) — retour utilisateur : "on est pas obligé de mettre le
+     texte des badges". Icône seule dans une pastille ronde, même taille
+     que .vm-photo .three-d-overlay img (24px) pour rester aligné avec elle
+     dans la pile .vm-badges — le title porte toujours le libellé complet
+     (survol / lecteurs d'écran). */
   .vm-photo .essential-badge{
-    bottom:10px; left:10px;
-    height:24px; box-sizing:border-box;
-    display:flex; align-items:center; gap:4px;
-    padding:0 14px;
-    font-size:11px;
-    letter-spacing:.03em;
-    border-radius:20px;
+    /* position:static (au lieu de bottom/left) : n'est plus positionné
+       tout seul, .vm-badges (juste au-dessus) place désormais toute la
+       pile. Plus spécifique que .essential-badge de base (position:absolute,
+       plus bas dans ce fichier) donc l'emporte bien ici. */
+    position:static;
+    /* min-width:0 explicite : même piège que "position" ci-dessus — sans
+       lui, le min-width:92px de .essential-badge de base (carte catalogue,
+       pensé pour aligner sa largeur sur "SPI-LABS", voir plus bas dans ce
+       fichier) restait le seul à déclarer "min-width" ici et forçait cette
+       pastille ronde de 24px à s'étirer en ovale (retour utilisateur,
+       capture à l'appui : badges anormalement larges sur la fiche produit).
+       width:24px seul ne suffit pas à s'en protéger : min-width prime
+       toujours sur width quand il est plus grand. */
+    min-width:0;
+    width:24px; height:24px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+    font-size:12px;
+    border-radius:50%;
+  }
+  /* Badge "SPI-LABS" — même traitement que .vm-photo .essential-badge
+     juste au-dessus, même pile .vm-badges. */
+  .vm-photo .spi-labs-badge{
+    /* position:static explicite : sans lui, la règle .spi-labs-badge de
+       base (carte catalogue, position:absolute; top/left, plus bas dans ce
+       fichier) restait la SEULE à déclarer "position" pour cet élément —
+       une règle plus spécifique qui ne redéclare pas une propriété ne
+       "gagne" pas dessus, elle laisse simplement la seule règle qui la
+       déclare s'appliquer (même bug qu'aurait eu .essential-badge
+       juste au-dessus sans son propre position:static explicite). */
+    position:static;
+    /* min-width:0 : même piège que sur .vm-photo .essential-badge juste
+       au-dessus, avec .spi-labs-badge de base (min-width:92px, pour aligner
+       sa largeur sur "Standard" côté carte catalogue). */
+    min-width:0;
+    width:24px; height:24px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+    background:var(--copper); color:#fff;
+    font-size:12px;
+    border-radius:50%;
+    box-shadow:0 1px 4px rgba(0,0,0,.18);
   }
   .card .tag.three-d{
     display:inline-flex; align-items:center; justify-content:center;
@@ -819,7 +865,18 @@
   #viewOverlay.open{ display:flex; }
   #viewModal{
     background:var(--paper-card); border-radius:12px;
-    width:100%; max-width:760px;
+    /* 760px → 1040px (retour utilisateur : maquette 3 zones — photo/infos/
+       prix) : la nouvelle carte prix (.vm-side, 260px + 28px d'espacement,
+       voir plus haut) a besoin de place en plus de la colonne d'infos
+       existante, sinon .vm-main se retrouve trop étroite (texte/valeurs
+       longues qui débordent).
+       1040px → 1180px (retour utilisateur : "revoir la mise en page sur
+       desktop", proposition "Aéré" retenue) : sur un écran large, la fiche
+       restait cantonnée à 1040px avec beaucoup de gris inutilisé autour —
+       voir aussi .vm-photo juste en dessous (passée à une largeur fixe au
+       lieu d'un pourcentage) : c'est bien .vm-main qui profite de cette
+       largeur en plus, pas la photo. */
+    width:100%; max-width:1180px;
     /* max-height (pas height fixe) : un essai de hauteur fixe pour que
        toutes les fiches produit fassent la même taille a été fait puis
        annulé (retour utilisateur, capture à l'appui) — pour un produit avec
@@ -848,7 +905,14 @@
     flex:1; overflow:hidden; min-height:0; max-height:100%;
   }
   .vm-photo{
-    flex:0 0 35%;
+    /* 35% → largeur fixe (retour utilisateur : "revoir la mise en page sur
+       desktop") : en pourcentage, élargir #viewModal (voir plus haut,
+       1040px → 1180px) aurait aussi élargi la photo d'autant, sans rien
+       changer à l'étroitesse de .vm-main à côté (le vrai problème signalé).
+       Largeur fixe : les 140px gagnés vont intégralement à .vm-main/
+       .vm-side. Valeur proche de l'ancien 35% de 1040px (~364px) pour ne
+       pas rapetisser la photo par rapport à avant. */
+    flex:0 0 340px;
     background:var(--paper-card);
     display:flex; align-items:center; justify-content:center;
     overflow:hidden; position:relative;
@@ -901,25 +965,112 @@
      d'armoire malgré les mêmes icônes/couleurs). */
   .vm-info-menu{ position:absolute; top:54px; right:14px; z-index:60; }
 
-  .vm-body{ padding:22px 26px 28px; }
+  /* Retour utilisateur : "modifie l'apparence de la fiche produit pour se
+     rapprocher de [maquette d'une fiche produit e-commerce]" — .vm-body
+     passe d'une seule colonne empilée à une grille 2 colonnes desktop :
+     .vm-main (identité produit) | .vm-side (prix + CTA "Ajouter à la
+     configuration", en carte à part comme le bloc prix de la maquette).
+     minmax(0,1fr) sur la 1ère colonne : sans ça, une longue valeur de
+     caractéristique/URL dans .vm-main pourrait forcer la grille à
+     s'élargir au lieu de retourner à la ligne dans sa propre colonne. */
+  .vm-body{
+    display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:28px;
+    align-items:start; padding:22px 26px 28px;
+  }
+  .vm-main{ min-width:0; }
+  /* Retour utilisateur : "descendre ça" (capture à l'appui) — .vm-side (la
+     carte prix) commençait au même niveau que le haut de .vm-main, mais
+     #vmInfoBtn ("⋯", position:absolute; top:12px; right:12px, voir plus
+     haut) flotte à cette même hauteur au-dessus de TOUT #viewModal (pas
+     seulement au-dessus de la photo) — sur la colonne de droite (bien plus
+     étroite que la photo), la carte prix se retrouvait donc coincée sous ce
+     bouton rond. margin-top calé sur sa propre hauteur (34px) + une marge,
+     pour repartir clairement en dessous plutôt que d'agrandir tout
+     .vm-body (qui aurait aussi inutilement poussé .vm-main vers le bas). */
+  .vm-side{ display:flex; flex-direction:column; gap:16px; min-width:0; margin-top:30px; }
+  /* Retour utilisateur : "regarde le rendu final, il faudrait corriger la
+     mise en forme" (capture à l'appui) — la bordure 1px (var(--line), gris
+     très clair) de la carte prix se distinguait à peine du fond blanc de
+     la fiche, surtout entourée de son propre contenu déjà bordé (sélecteur
+     de quantité, bouton "Copier"…) — "Historique des prix" juste en
+     dessous, avec un contenu simple (tableau sans bordure), paraissait
+     nettement plus "encadrée" bien qu'utilisant la MÊME bordure. Une
+     ombre légère (var(--shadow), déjà utilisée ailleurs pour distinguer
+     une carte du fond, ex. .card) détache clairement les deux cartes du
+     fond blanc, bordure ou pas. */
+  .vm-side-card{
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--paper-card); padding:16px;
+    box-shadow:var(--shadow);
+  }
   .vm-ref{
     letter-spacing:.07em; text-transform:uppercase; color:var(--copper-deep);
     margin-bottom:6px;
   }
   .vm-name{ font-size:24px; font-weight:600; line-height:1.2; margin-bottom:10px; }
   .vm-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  /* Retour utilisateur : liste à une colonne (icône + libellé/valeur
+     empilés par ligne, voir META_ICONS dans js/render-view-modal.js) au
+     lieu d'une grille 2 colonnes sans icône — plus proche de la maquette
+     ("Informations générales"), et une seule colonne reste lisible même
+     pour une valeur longue (ex. tension d'alimentation multi-plages) qui
+     aurait débordé de sa moitié de grille. */
   .vm-meta{
-    display:grid; grid-template-columns:1fr 1fr; gap:10px 24px;
-    margin-bottom:16px; padding:14px; background:var(--paper);
-    border:1px solid var(--line); border-radius:4px;
+    display:flex; flex-direction:column;
+    margin-bottom:16px; background:var(--paper-card);
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  /* Retour utilisateur : "la taille n'est pas optimisée" (carte infos
+     générales, capture à l'appui) — chaque ligne était haute (icône seule +
+     libellé/valeur empilés en dessous, padding 10px). Icône et libellé/
+     valeur passent côte à côte SUR UNE LIGNE (align-items:center, plus
+     empilés) et le padding est resserré : une ligne prend nettement moins
+     de hauteur sans rien retirer d'affiché. */
+  .vm-meta-item{
+    display:flex; align-items:center; gap:10px;
+    padding:6px 14px; border-bottom:1px solid var(--line);
+  }
+  .vm-meta-item:last-child{ border-bottom:none; }
+  /* Retour utilisateur : une pastille ronde teintée par propriété avait été
+     ajoutée ici, puis retirée ("retire les couleurs des icônes, je ne t'ai
+     jamais demandé ça") — icône seule, une couleur unie pour toute la
+     carte, comme à l'origine. */
+  .vm-meta-icon{
+    flex-shrink:0; width:18px; margin-top:0;
+    font-size:15px; color:var(--copper); text-align:center;
+  }
+  .vm-meta-text{
+    min-width:0; flex:1;
+    display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;
   }
   .vm-meta-item label{
-    display:block; font-size:12.5px; letter-spacing:.05em;
-    text-transform:uppercase; color:var(--ink-soft); margin-bottom:2px;
+    font-size:11px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--ink-soft);
+    flex-shrink:0;
   }
   .vm-meta-item span{ font-weight:600; }
 
-  .vm-ref-copy{ display:flex; align-items:center; gap:6px; }
+  /* Retour utilisateur : "que le bouton copier la référence soit plutôt
+     lorsqu'on clique sur la ref, ça copie la ref" — toute la zone (texte +
+     icône) est désormais la cible du clic (voir le role="button" posé en
+     JS, js/render-view-modal.js), donc stylée comme un élément cliquable à
+     part entière plutôt qu'un simple texte à côté d'un bouton séparé.
+     border-radius/padding négatif (-3px, compensé par le padding) : agrandit
+     la zone cliquable sans décaler le texte de sa position d'origine dans
+     la ligne. */
+  .vm-ref-copy{
+    display:inline-flex; align-items:center; gap:6px;
+    margin:-3px -6px; padding:3px 6px;
+    border-radius:6px; cursor:pointer;
+    transition:background .15s ease;
+  }
+  .vm-ref-copy:hover{ background:var(--paper); }
+  .vm-copy-icon{ font-size:14px; color:var(--ink-soft); }
+  .vm-ref-copy:hover .vm-copy-icon{ color:var(--copper); }
+  .vm-ref-copy .ti-check{ display:none; color:var(--moss); }
+  .vm-ref-copy.copied .ti-copy{ display:none; }
+  .vm-ref-copy.copied .ti-check{ display:inline; }
+  .vm-ref-copy.copied:hover .vm-copy-icon{ color:var(--moss); }
   /* Champ "URL du serveur" (Réglages → Serveur de données) : retour
      utilisateur : "je veux que le bouton copier sois dans la zone de
      saisie" — contrairement à .vm-ref-copy (input + bouton séparés côte à
@@ -960,75 +1111,153 @@
   .vm-copy-btn.copied{ border-color:var(--moss); }
   .vm-desc{
     color:var(--ink-soft); line-height:1.6; margin-bottom:16px; font-size:14px;
+    /* Retour utilisateur : "l'importation de la description produit ne
+       garde pas sa mise en page d'origine" — l'extraction (js/modal-
+       extraction.js) préserve désormais les sauts de ligne/paragraphes/
+       puces d'origine dans le texte stocké, mais sans pre-wrap ici,
+       white-space:normal (par défaut) les effaçait quand même à
+       l'affichage — pour une description assez courte pour ne PAS passer
+       par "Voir plus" (qui, lui, ouvre #sugList avec ce même pre-wrap en
+       ligne, voir _vmOpenDescModal dans js/render-view-modal.js). */
+    white-space:pre-wrap;
   }
 
-  /* Prix dans la vue détail */
-  .vm-price-row{ display:flex; align-items:baseline; gap:12px; margin-bottom:16px; }
+  /* Prix dans la vue détail — carte .vm-side-card, voir .vm-side plus haut */
+  .vm-price-row{ display:flex; align-items:baseline; gap:12px; }
   .vm-price{ font-size:26px; font-weight:700; }
-  .vm-price-history{ margin-top:4px; }
-
-  /* Actions en bas de la fiche produit (Documents/Suggestions/
-     Caractéristiques/Pièces de rechange/Ajouter à la configuration) —
-     retour utilisateur : "revoir la disposition" puis "petit icon pour
-     gagné de la place". Une 1ère version passait par une grille 2 colonnes
-     avec libellé complet par bouton (encore assez haut en pile de 5) ;
-     remplacée ici par une rangée de petites icônes carrées (le libellé
-     complet reste accessible en infobulle via l'attribut title="" posé en
-     JS sur chaque <button>, voir js/render-view-modal.js) — flex-wrap plutôt
-     qu'une grille fixe : les icônes se réenroulent naturellement sur
-     plusieurs lignes si la largeur de la fiche ne suffit pas (mobile),
-     inutile d'avoir un media query dédié comme avec la grille précédente.
-     Les wrappers gardent leur display:none individuel (JS) : un wrapper
-     caché ne prend simplement pas de place dans la rangée. */
-  .vm-actions-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    /* Espace avec le texte au-dessus (prix / historique de prix) — retour
-       utilisateur : "trop collé au texte du dessus". Les boutons n'ayant
-       plus de texte, ce n'était plus qu'une icône directement sous le prix
-       sans respiration ; sur les wrappers eux-mêmes ce margin-top est
-       neutralisé juste en dessous (redondant avec ce margin-top de la
-       rangée elle-même). */
-    margin-top:14px;
+  .vm-price-label{ font-size:12.5px; color:var(--ink-soft); margin:2px 0 14px; }
+  /* Sélecteur de quantité + CTA "Ajouter à la configuration", même bloc que
+     le prix (retour utilisateur : maquette) — .copper (déjà utilisé pour
+     "Enregistrer le produit" etc., voir plus haut dans ce fichier) donne au
+     bouton le même bleu plein que le reste de l'app, pas une couleur
+     inventée pour l'occasion. */
+  .vm-add-config-row{ display:flex; flex-direction:column; gap:10px; }
+  .vm-qty-stepper{
+    display:flex; align-items:center; align-self:flex-start;
+    border:1.5px solid var(--line); border-radius:8px; overflow:hidden;
   }
-  .vm-actions-row > div{ margin-top:0 !important; }
-  .vm-action-btn{
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    width:44px;
-    height:44px;
-    border-radius:9px;
-    border:1.5px solid #194093;
+  .vm-qty-stepper button{
+    width:32px; height:32px; border:none; background:var(--paper);
+    color:var(--ink); font-size:15px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-sans);
+  }
+  .vm-qty-stepper button:hover{ background:var(--line); }
+  .vm-qty-stepper input{
+    width:38px; height:32px; border:none; text-align:center;
+    border-left:1.5px solid var(--line); border-right:1.5px solid var(--line);
+    font-size:13.5px; font-family:inherit; color:var(--ink);
     background:var(--paper-card);
-    color:#194093;
+  }
+  .vm-add-config-btn{
+    width:100%; display:flex; align-items:center; justify-content:center;
+    gap:8px; padding:11px 14px; border-radius:9px;
+    font-size:13.5px; font-weight:600; cursor:pointer; color:#fff;
+  }
+  .vm-add-config-btn i{ font-size:17px; }
+
+  /* Historique des prix — classes posées par buildPriceHistoryReadonly()
+     (js/render-view-modal.js) mais jamais stylées jusqu'ici (tableau nu,
+     aucune couleur sur les variations). */
+  .vm-price-history .ph-title{
+    font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--ink-soft); margin-bottom:10px;
+  }
+  .vm-price-history td{ padding:5px 4px; border-bottom:1px solid var(--line); }
+  .vm-price-history tr:last-child td{ border-bottom:none; }
+  .vm-price-history .ph-date{ color:var(--ink-soft); }
+  .vm-price-history .ph-price{ font-weight:600; text-align:right; }
+  .vm-price-history .ph-delta{ text-align:right; font-weight:600; }
+  .vm-price-history .ph-delta.up{ color:#B91C1C; }
+  .vm-price-history .ph-delta.down{ color:var(--moss); }
+  .vm-price-history tr.ph-current td{ font-weight:700; color:var(--ink); }
+
+  /* En dessous de 900px (tablette, ou fenêtre desktop réduite — la fiche
+     produit garde photo|contenu côte à côte jusqu'à 640px, voir plus bas,
+     donc ce cas intermédiaire existe), la grille 2 colonnes de .vm-body
+     (.vm-main | .vm-side 260px) manque de place et écrase .vm-main :
+     empilée à la place, .vm-side repasse sous .vm-main comme un bloc
+     normal. */
+  @media (max-width:900px){
+    .vm-body{ display:block; }
+    .vm-side{ margin-top:20px; }
+  }
+
+  /* Onglets texte en bas de la fiche produit (Caractéristiques/Documents/
+     Produits associés/Pièces de rechange) — retour utilisateur : "fais en
+     sorte que ça remplace les boutons avec les icônes" (capture à
+     l'appui — maquette "Caractéristiques / Documents (3) / Produits
+     associés (4)", soulignement bleu sur l'onglet actif). Remplace la
+     rangée de petites icônes carrées (.vm-action-btn, ancienne version) —
+     chaque onglet ouvre toujours sa PROPRE fenêtre (retour utilisateur
+     antérieur : garder les fenêtres actuelles plutôt que fusionner leur
+     contenu dans la page), donc pas de vrai état "actif" permanent comme
+     dans la maquette (rien n'y reste "sélectionné" après la fermeture de
+     la fenêtre) — seul un survol/focus souligné rappelle qu'il s'agit
+     d'onglets cliquables. Les wrappers gardent leur display:none
+     individuel (JS, voir js/render-view-modal.js) : un wrapper caché ne
+     prend simplement pas de place dans la rangée. */
+  /* Retour utilisateur : "améliore moi ça, quand j'ai les 4 c'est pas
+     joli" (capture à l'appui) — flex-wrap alignait les 4 onglets à la
+     queue leu leu, revenant à la ligne dès que ça ne tenait plus SANS
+     tenir compte des colonnes : "Produits associés" et "Pièces de
+     rechange" (ligne 2) ne s'alignaient pas sous "Caractéristiques"/
+     "Documents" (ligne 1), avec un grand vide vertical entre les deux
+     (gap:20px appliqué aussi bien à l'écart vertical qu'horizontal).
+     Grille 2 colonnes à la place : les 4 (ou moins, un onglet caché par
+     son wrapper ne compte simplement pas) se rangent proprement en 2x2,
+     colonnes alignées, écart vertical resserré et distinct de l'écart
+     horizontal (gap:8px 28px). */
+  .vm-tabs-row{
+    display:grid;
+    grid-template-columns:repeat(2, max-content);
+    gap:8px 28px;
+    border-bottom:1px solid var(--line);
+    margin-top:14px;
+    padding-bottom:2px;
+  }
+  /* Retour utilisateur : "retirer la barre grise qui sépare les boutons
+     Caractéristiques/Documents... de la section prix sur desktop" — cette
+     bordure est le dernier élément de .vm-main (voir _vmInjectTemplate,
+     js/render-view-modal.js), donc au même niveau visuel que .vm-side (la
+     carte prix) juste à côté sur la grille 2 colonnes (>900px, voir
+     @media (max-width:900px) plus haut) : elle se lisait comme une ligne de
+     séparation entre les deux plutôt que comme un simple soulignement des
+     onglets. Retirée seulement à partir de cette largeur — en dessous,
+     .vm-side repasse sous .vm-main comme un bloc empilé normal et la
+     bordure n'a plus cet effet de "coupure" à côté du prix. */
+  @media (min-width:901px){
+    .vm-tabs-row{ border-bottom:none; padding-bottom:0; }
+  }
+  .vm-tabs-row > div{ margin-top:0 !important; }
+  .vm-tab-btn{
+    background:none;
+    border:none;
+    border-bottom:2px solid transparent;
+    border-radius:0;
+    padding:0 0 8px;
+    font-size:13.5px;
+    font-weight:600;
+    /* Retour utilisateur : "mets les 4 boutons en bleu" (capture à l'appui
+       — Caractéristiques/Documents/Produits associés/Pièces de rechange en
+       gris) — couleur de l'app (var(--copper)) au lieu de var(--ink-soft)
+       même au repos ; :hover/:focus-visible juste en dessous gardait déjà
+       cette même couleur, il ne reste donc plus qu'un seul état de couleur. */
+    color:var(--copper);
     cursor:pointer;
     font-family:var(--font-sans);
-    padding:0;
   }
-  /* Petite pastille de comptage (suggestions/caractéristiques/pièces de
-     rechange) — vide et invisible tant que le JS n'y met pas de nombre
-     (produit sans aucune suggestion, etc., le bouton reste alors masqué de
-     toute façon par son wrapper). */
-  .vm-action-badge{
-    position:absolute;
-    top:-6px;
-    right:-6px;
-    min-width:16px;
-    height:16px;
-    padding:0 4px;
-    border-radius:999px;
-    background:#194093;
-    color:#fff;
-    font-size:10px;
-    font-weight:700;
-    line-height:16px;
-    text-align:center;
-    font-family:var(--font-sans);
+  /* box-shadow:none : annule le voile sombre générique posé par
+     button:hover:not(.secondary):not(.copper) (plus haut dans ce fichier)
+     — .vm-tab-btn n'a pas cette exclusion (ni .secondary ni .copper), le
+     voile s'affichait donc quand même en rectangle plein derrière le
+     texte, en plus du soulignement voulu ici. */
+  .vm-tab-btn:hover, .vm-tab-btn:focus-visible{
+    color:var(--copper);
+    border-bottom-color:var(--copper);
+    box-shadow:none;
   }
-  .vm-action-badge:empty{ display:none; }
+  .vm-tab-count{ color:inherit; }
 
   .empty-state{
     border:1px dashed var(--line);
@@ -1055,6 +1284,22 @@
     overflow:hidden;
     display:flex; flex-direction:column;
   }
+  /* Retour utilisateur : "toujours 700px x 690px", puis "la taille max",
+     puis "je veux que ça soit 650px la hauteur max s'il y a beaucoup de
+     caractéristiques" — ni une hauteur FIXE (vide en bas pour une liste
+     courte) ni une hauteur qui va jusqu'au plafond de l'écran (calc(100vh -
+     48px), bien plus que 650px sur un grand écran) : PAS de height, juste
+     un max-height — la fenêtre s'ajuste à son contenu (une liste courte
+     reste petite) et ne dépasse jamais 650px (une liste fournie, ex. 50
+     caractéristiques, défile à l'intérieur au-delà, voir .modal-body plus
+     bas dans ce fichier). #sugModal (voir js/templates.js) est réutilisé
+     pour Suggestions/Pièces de rechange EN PLUS de Caractéristiques (même
+     overlay/liste, voir js/render-view-modal.js) — largeur toujours fixe à
+     700px (fenêtre stable, ne change pas de largeur selon le nombre de
+     lignes). Écrasé sur mobile par la feuille ancrée en bas
+     (width/height:100%, voir plus bas dans ce fichier), qui l'emporte déjà
+     via !important. */
+  #sugModal{ width:700px; max-width:700px; max-height:650px; }
   .modal-head{
     padding:18px 24px;
     /* Ombre plutôt qu'un simple trait — retour utilisateur (maquette
@@ -1842,11 +2087,18 @@
     .vm-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-width:0; min-height:0; }
     .vm-close-btn{ display:flex; position:absolute; top:8px; left:8px; width:32px; height:32px; z-index:10; }
     .vm-info-btn{ position:absolute; top:8px; right:8px; width:32px; height:32px; font-size:12px; z-index:10; }
-    .vm-meta{ grid-template-columns:1fr 1fr; gap:5px 8px; padding:8px 12px; }
+    /* .vm-body : grille desktop (.vm-main | .vm-side, voir plus haut)
+       redevenue un simple empilement — .vm-side (carte prix) repasse sous
+       .vm-main comme un bloc normal, même principe que le repli tablette
+       (@media max-width:900px) plus haut dans ce fichier. */
+    .vm-body{ display:block; padding:8px 12px 20px; }
+    .vm-side{ margin-top:10px; gap:10px; }
+    .vm-side-card{ padding:10px 12px; border-radius:8px; }
+    .vm-meta-item{ padding:5px 8px; gap:7px; }
+    .vm-meta-icon{ font-size:12px; width:14px; }
     .vm-meta-item a{ font-size:11px ; }
     .vm-meta-item label{ font-size:9px; }
     .vm-meta-item span{ font-size:11px; font-weight:600; }
-    .vm-body{ padding:8px 12px 20px; }
     .vm-ref{ font-size:9px; margin-bottom:2px; }
     .vm-name{ font-size:13px; margin-bottom:4px; line-height:1.2; }
     .vm-tags{ margin-bottom:4px; gap:3px; }
@@ -1855,9 +2107,14 @@
       max-height:15vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
     }
     .vm-price{ font-size:16px; }
-    .vm-price-row{ margin-bottom:6px; }
-    #vmPriceLabel{ font-size:10.5px; margin-bottom:6px; }
+    .vm-price-row{ margin-bottom:0; }
+    #vmPriceLabel{ font-size:10.5px; margin-bottom:8px; }
+    .vm-qty-stepper button{ width:28px; height:28px; font-size:13px; }
+    .vm-qty-stepper input{ width:32px; height:28px; font-size:12px; }
+    .vm-add-config-btn{ padding:9px 12px; font-size:12.5px; }
     .vm-price-history th, .vm-price-history td{ padding:3px 6px; font-size:10.5px; }
+    .vm-tabs-row{ gap:6px 16px; margin-top:8px; }
+    .vm-tab-btn{ font-size:11px; padding-bottom:6px; }
 
     /* ── Modale édition ── */
     .modal-overlay{ padding:0; align-items:flex-end; justify-content:stretch; }
@@ -4006,8 +4263,13 @@
   select#seriesFilter{ order:4; font-size:14px; height:42px; padding:6px 4px; padding-right:24px; flex:1 1 0; min-width:0; }
   #filter3DWrap{ order:5; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
   #filterEssentialWrap{ order:6; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
-  #btnResetFilters{ order:7; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
-  #sortPriceBtn{ order:8; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  /* Retour utilisateur : "mets le bouton filtre SPI labs juste après le
+     bouton de standard sur desktop" — sans order explicite, ce nouveau
+     chip retombait à order:0 (valeur par défaut), donc tout au début de la
+     toolbar au lieu de suivre #filterEssentialWrap comme dans le DOM. */
+  #filterSpiLabsWrap{ order:7; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #btnResetFilters{ order:8; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
+  #sortPriceBtn{ order:9; font-size:14px; padding:0 10px; height:42px; flex-shrink:0; box-sizing:border-box; }
 
 /* ── Badge essentiel ─────────────────────────────────────── */
 /* Aligné avec le badge 3D (.card .photo .three-d-overlay, voir plus haut
@@ -4021,7 +4283,7 @@
 .essential-badge{
   position:absolute; bottom:10px; left:10px;
   height:22px; box-sizing:border-box;
-  display:flex; align-items:center;
+  display:flex; align-items:center; justify-content:center;
   background:var(--copper); color:#fff;
   font-size:11px; font-weight:700;
   padding:0 12px; border-radius:20px;
@@ -4030,6 +4292,36 @@
   box-shadow:0 1px 4px rgba(0,0,0,.18);
   white-space:nowrap;
   line-height:1.2;
+  /* Retour utilisateur : "fais en sorte que le badge SPI-LABS fasse bien la
+     même taille que celle de Standard" — même police/padding/hauteur des
+     deux côtés déjà (voir .spi-labs-badge juste en dessous), mais "SPI-LABS"
+     (tout en capitales) et "Standard" n'ont pas exactement la même largeur
+     naturelle selon leur texte — largeur minimale partagée (mesurée sur le
+     plus large des deux, SPI-LABS) pour que les deux pastilles occupent
+     toujours EXACTEMENT le même espace, quel que soit leur texte.
+     justify-content:center recentre le contenu dans cette largeur commune. */
+  min-width:92px;
+}
+
+/* Badge "SPI-LABS" (retour utilisateur : "ajouter un bouton pour les
+   référence qui sont dans la mallette de test comme pour standard") —
+   même style que .essential-badge juste au-dessus (dimensions/police/
+   paliers responsive identiques à chaque largeur, voir plus bas), mais en
+   haut-gauche de la photo : les deux coins du bas sont déjà pris par
+   Essentiel (bas-gauche) et 3DEXPERIENCE (bas-droite, .three-d-overlay). */
+.spi-labs-badge{
+  position:absolute; top:10px; left:10px;
+  height:22px; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--copper); color:#fff;
+  font-size:11px; font-weight:700;
+  padding:0 12px; border-radius:20px;
+  pointer-events:none; z-index:2;
+  letter-spacing:.03em;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+  white-space:nowrap;
+  line-height:1.2;
+  min-width:92px; /* voir commentaire sur .essential-badge juste au-dessus */
 }
 
 /* Tablette grande 769-1024px */
@@ -4038,6 +4330,13 @@
     font-size:10px;
     padding:0 10px;
     height:19px; bottom:9px; left:9px;
+    min-width:84px;
+  }
+  .spi-labs-badge{
+    font-size:10px;
+    padding:0 10px;
+    height:19px; top:9px; left:9px;
+    min-width:84px;
   }
   .card .photo .three-d-overlay{ bottom:9px; right:9px; }
   .card .photo .three-d-overlay img{ width:19px; height:19px; }
@@ -4049,6 +4348,13 @@
     font-size:9px;
     padding:0 9px;
     height:17px; bottom:8px; left:8px;
+    min-width:75px;
+  }
+  .spi-labs-badge{
+    font-size:9px;
+    padding:0 9px;
+    height:17px; top:8px; left:8px;
+    min-width:75px;
   }
   .card .photo .three-d-overlay{ bottom:8px; right:8px; }
   .card .photo .three-d-overlay img{ width:17px; height:17px; }
@@ -4062,6 +4368,15 @@
     height:15px; bottom:6px; left:6px;
     border-radius:12px;
     letter-spacing:0;
+    min-width:67px;
+  }
+  .spi-labs-badge{
+    font-size:8px;
+    padding:0 7px;
+    height:15px; top:6px; left:6px;
+    border-radius:12px;
+    letter-spacing:0;
+    min-width:67px;
   }
   .card .photo .three-d-overlay{ bottom:6px; right:6px; }
 }
@@ -4072,6 +4387,13 @@
     font-size:8.5px;
     padding:0 7px;
     height:15px; bottom:6px; left:6px;
+    min-width:71px;
+  }
+  .spi-labs-badge{
+    font-size:8.5px;
+    padding:0 7px;
+    height:15px; top:6px; left:6px;
+    min-width:71px;
   }
 }
 

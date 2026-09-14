@@ -18,6 +18,10 @@
   // porte .sort-price-btn.
   var filter3DEl = document.getElementById('filter3DAvailable');
   var filterEssentialEl = document.getElementById('filterEssential');
+  // Retour utilisateur : "ajouter un bouton pour les référence qui sont
+  // dans la mallette de test comme pour standard" — même mécanique que
+  // filter3DEl/filterEssentialEl juste au-dessus.
+  var filterSpiLabsEl = document.getElementById('filterSpiLabs');
   if(filter3DEl) filter3DEl.addEventListener('change', function(){
     document.getElementById('filter3DWrap').classList.toggle('active', filter3DEl.checked);
     if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
@@ -25,6 +29,11 @@
   });
   if(filterEssentialEl) filterEssentialEl.addEventListener('change', function(){
     document.getElementById('filterEssentialWrap').classList.toggle('active', filterEssentialEl.checked);
+    if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
+    render();
+  });
+  if(filterSpiLabsEl) filterSpiLabsEl.addEventListener('change', function(){
+    document.getElementById('filterSpiLabsWrap').classList.toggle('active', filterSpiLabsEl.checked);
     if(typeof window._syncBnFilterBadge === 'function') window._syncBnFilterBadge();
     render();
   });

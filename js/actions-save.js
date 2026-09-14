@@ -201,6 +201,7 @@
       available3DX: f3dAvailable.checked,
       available3DXLink: f3dLink.value.trim(),
       essential: document.getElementById('fEssential') ? document.getElementById('fEssential').checked : false,
+      spiLabs: document.getElementById('fSpiLabs') ? document.getElementById('fSpiLabs').checked : false,
       suggestions: typeof window._getSugRefs === 'function' ? window._getSugRefs() : [],
       suggestionsHidden: typeof window._getSugHidden === 'function' ? window._getSugHidden() : [],
       spareParts: typeof window._getSparePartsRefs === 'function' ? window._getSparePartsRefs() : [],

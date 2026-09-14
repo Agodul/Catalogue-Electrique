@@ -814,6 +814,15 @@
       <input type="checkbox" id="filterEssential">
       <i class="ti ti-star-filled" aria-hidden="true"></i>
     </label>
+    <!-- Retour utilisateur : "ajouter un bouton pour les référence qui sont
+         dans la mallette de test comme pour standard" — même mécanique que
+         #filterEssentialWrap juste au-dessus (case cachée + .filter-toggle-chip,
+         voir js/actions-search.js), pour les produits marqués p.spiLabs
+         (case "SPI-LABS" du formulaire produit, voir #fSpiLabs). -->
+    <label class="sort-price-btn filter-toggle-chip" id="filterSpiLabsWrap" title="Afficher uniquement les produits de la mallette de test SPI-LABS" aria-label="Afficher uniquement les produits de la mallette de test SPI-LABS">
+      <input type="checkbox" id="filterSpiLabs">
+      <i class="ti ti-briefcase" aria-hidden="true"></i>
+    </label>
     <button id="btnResetFilters" title="Réinitialiser les filtres" class="sort-price-btn">
       <i class="ti ti-filter-off"></i>
     </button>
@@ -880,6 +889,16 @@
           <input type="checkbox" id="filterSheetEssential">
           <i class="ti ti-star-filled" aria-hidden="true"></i>
           <span>Standard</span>
+        </label>
+        <!-- Retour utilisateur : "ajouter un bouton pour les référence qui
+             sont dans la mallette de test comme pour standard" — même
+             mécanique que #filterSheetEssentialWrap juste au-dessus,
+             synchronisée avec #filterSpiLabs (toolbar desktop, la vraie
+             source) — voir _initFilterSheet dans js/actions-mobile-chrome.js. -->
+        <label class="filter-sheet-toggle filter-toggle-chip" id="filterSheetSpiLabsWrap">
+          <input type="checkbox" id="filterSheetSpiLabs">
+          <i class="ti ti-briefcase" aria-hidden="true"></i>
+          <span>SPI-LABS</span>
         </label>
       </div>
       <div class="filter-sheet-actions">

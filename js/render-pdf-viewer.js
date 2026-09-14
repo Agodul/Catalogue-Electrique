@@ -938,7 +938,19 @@
 
   function _pdfClose(){
     var overlay  = document.getElementById('pdfViewerOverlay');
-    document.body.classList.remove('modal-open');
+    // Retour utilisateur : "sur mobile, quand je suis sur une fenêtre, il
+    // faut que les boutons en bas à droite (Config, remonter en haut…)
+    // disparaissent" — #pdfViewerOverlay ne s'ouvre que par-dessus une
+    // autre fenêtre encore ouverte derrière (Documents de la fiche produit,
+    // ou documents joints à une demande en révision — voir
+    // window._openPdfViewerWithBuffer, appelé depuis js/render-documents.js
+    // et js/modal-request-review.js). Retirer 'modal-open' sans condition
+    // faisait réapparaître le FAB stack (masqué par
+    // body.modal-open .fab-stack, css/styles.css) alors qu'une autre
+    // fenêtre restait affichée — voir window._isOtherOverlayOpen, js/init.js.
+    if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('pdfViewerOverlay')){
+      document.body.classList.remove('modal-open');
+    }
     // Le contenu (pages rendues, document PDF.js) n'est détruit qu'APRÈS
     // l'animation de fermeture — sinon la page se vide d'un coup pendant
     // que la fenêtre est encore visible en train de s'estomper.

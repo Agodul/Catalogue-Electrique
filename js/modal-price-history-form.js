@@ -253,6 +253,7 @@
     f3dLink.value = '';
     f3dLinkRow.style.display = 'none';
     if(fEssential) fEssential.checked = false;
+    if(fSpiLabs) fSpiLabs.checked = false;
     _sugRefs = [];
     _sugHidden = [];
     _sugRenderChips();

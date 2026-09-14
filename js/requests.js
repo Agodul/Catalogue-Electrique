@@ -951,6 +951,10 @@
     // déverrouillé avec des modifications en cours.
     var modalOverlayEl = document.getElementById('modalOverlay');
     if(modalOverlayEl && modalOverlayEl.classList.contains('open') && typeof requestCloseModal === 'function'){
+      // On ouvre le panneau des demandes, pas la fiche produit : ignorer un
+      // éventuel _modalReturnToViewId (voir js/modal-autocomplete.js) pour
+      // que requestCloseModal() ne rouvre pas la fiche par-dessus.
+      window._modalReturnToViewId = null;
       requestCloseModal();
     }
     // Carte centrée comme les autres fenêtres de l'app (fiche produit,
