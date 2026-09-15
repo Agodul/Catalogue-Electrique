@@ -1290,6 +1290,22 @@
   }
   .empty-state strong{ display:block; color:var(--ink); font-size:18px; margin-bottom:6px; font-family:inherit;}
 
+  /* Bandeau "résultats approximatifs" — recherche par tolérance aux fautes
+     de frappe (voir js/storage.js, window._lastSearchUsedFuzzy) : ce repli
+     ne s'active qu'en dernier recours (aucune correspondance exacte), donc
+     annoncé explicitement plutôt que de laisser croire à une correspondance
+     exacte silencieuse sur des résultats qui n'en sont pas. */
+  .search-fuzzy-hint{
+    display:flex; align-items:center; gap:6px;
+    font-size:12.5px; color:var(--ink-soft);
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:7px 12px;
+    margin:-4px 0 12px;
+  }
+  .search-fuzzy-hint i{ color:var(--copper); font-size:14px; flex-shrink:0; }
+
   /* ===== MODAL ===== */
   .modal-overlay{
     position:fixed; inset:0; background:var(--overlay-scrim);
@@ -3706,15 +3722,29 @@
   padding: 4px 20px 24px;
   display: flex; flex-direction: column; gap: 8px;
 }
+/* Retour utilisateur : "est-ce que les éléments de la fenêtre filtre sur
+   mobile ont la même taille que la fenêtre ajouter un produit" — non,
+   constaté en mesurant les deux en direct : sélecteurs 47px de haut ici
+   contre 38px côté formulaire produit (.field input/select, voir plus haut
+   dans ce fichier), boutons Appliquer/Réinitialiser 47px contre 32-38px
+   pour Enregistrer/Annuler, libellés en gras ici mais normaux côté
+   formulaire. Aligné sur le formulaire produit (plus dense, cohérent avec
+   le fait qu'il doit faire tenir beaucoup plus de champs à l'écran) plutôt
+   que l'inverse.
+   La taille de POLICE affichée, elle, était déjà identique dans les deux
+   (16px) grâce à la règle anti-zoom iOS globale plus haut dans ce fichier
+   (@media ... max-width:768px, !important) — seuls le remplissage
+   (padding), la hauteur des boutons et le poids des libellés créaient
+   l'écart visible. */
 .filter-sheet-label {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  font-size: 11px; font-weight: 400; text-transform: uppercase;
   letter-spacing: .06em; color: var(--ink-soft); margin-top: 4px;
 }
 .filter-sheet-select {
-  width: 100%; padding: 12px 34px 12px 14px;
+  width: 100%; padding: 8px 30px 8px 10px;
   border: 1.5px solid var(--line); border-radius: 10px;
   background: var(--paper); color: var(--ink);
-  font-size: 15px; font-family: var(--font-sans);
+  font-size: 14px; font-family: var(--font-sans);
   outline: none;
   /* Même correctif que #fDomain (retour utilisateur : "le sélecteur n'est
      pas bien intégré") — le cadre/fond ci-dessus était déjà personnalisé,
@@ -3726,7 +3756,7 @@
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 8px center;
   background-size: 16px;
 }
 /* 3DEXPERIENCE / Standard / SPI-LABS — même mécanique .active que
@@ -3764,17 +3794,17 @@
   display: flex; gap: 10px; margin-top: 8px;
 }
 .filter-sheet-btn-reset {
-  flex: 0 0 auto; padding: 12px 16px;
+  flex: 0 0 auto; padding: 10px 8px;
   border: 1.5px solid var(--line); border-radius: 10px;
   background: var(--paper); color: var(--ink-soft);
-  font-size: 14px; font-family: var(--font-sans); cursor: pointer;
+  font-size: 13px; font-family: var(--font-sans); cursor: pointer;
   display: flex; align-items: center; gap: 6px;
 }
 .filter-sheet-btn-apply {
-  flex: 1; padding: 14px 16px;
+  flex: 1; padding: 10px 8px;
   border: none; border-radius: 10px;
   background: #194093; color: #fff;
-  font-size: 15px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   font-family: var(--font-sans); cursor: pointer;
   box-shadow: 0 2px 8px rgba(25,64,147,.35);
 }

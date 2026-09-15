@@ -515,38 +515,132 @@
   // ci-dessous), jamais à la place de la recherche exacte, qui reste
   // prioritaire : "coller" systématiquement risquerait, sur un terme très
   // court, de faire chevaucher deux mots qui n'ont rien à voir.
-  function termMatchesField(term, field){
+  //
+  // Distance d'édition (Levenshtein) bornée — s'arrête dès qu'une ligne de
+  // la matrice dépasse déjà maxDist (inutile de continuer, le résultat
+  // final sera forcément > maxDist aussi) : gardé rapide même appelé pour
+  // chaque mot de chaque champ de chaque produit à chaque frappe.
+  function levenshteinWithin(a, b, maxDist){
+    var la = a.length, lb = b.length;
+    if(Math.abs(la - lb) > maxDist) return false;
+    var prev = new Array(lb + 1);
+    for(var j = 0; j <= lb; j++) prev[j] = j;
+    for(var i = 1; i <= la; i++){
+      var curr = new Array(lb + 1);
+      curr[0] = i;
+      var rowMin = curr[0];
+      for(j = 1; j <= lb; j++){
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+        if(curr[j] < rowMin) rowMin = curr[j];
+      }
+      if(rowMin > maxDist) return false;
+      prev = curr;
+    }
+    return prev[lb] <= maxDist;
+  }
+
+  // Tolérance aux fautes de frappe — retour utilisateur : "disjocteur" (une
+  // lettre en moins) ne retrouvait rien. Seulement à partir de 4 caractères
+  // (sous ce seuil, une distance de 1 matcherait presque n'importe quel mot
+  // court — trop de faux positifs). Comparé mot par mot (le champ normalisé
+  // peut contenir plusieurs mots, ex. un nom de produit) plutôt qu'au champ
+  // entier : la distance d'édition entre un mot de 6 lettres et une phrase
+  // de 40 n'aurait aucun sens. Tolérance élargie à 2 pour les termes plus
+  // longs (8+), où une seule lettre d'écart reste trop strict sur un mot
+  // déjà long.
+  // Première lettre exigée identique : sans ce garde-fou, "cable" retrouvait
+  // "table" (distance de 1, mais un mot totalement différent) — constaté en
+  // testant les cas limites. Une faute de frappe touche rarement le tout
+  // premier caractère d'un mot ; ce garde-fou coûte donc peu de rappel réel
+  // tout en éliminant l'essentiel des faux positifs de ce genre.
+  // Chiffres exclus (terme ET mot comparé) — retour beaucoup plus sérieux,
+  // constaté en testant sur le vrai catalogue (594 produits) : sans cette
+  // exclusion, "IP65" retrouvait "IP68", "230V" retrouvait "240V", une
+  // référence "000061" retrouvait "000071"… la distance d'édition ne fait
+  // AUCUNE différence entre "une lettre mal tapée" et "une valeur technique
+  // différente d'un chiffre" — dangereux sur un catalogue où le chiffre est
+  // justement ce qui distingue deux produits.
+  function termMatchesFieldFuzzy(term, field){
+    if(term.length < 4 || /[0-9]/.test(term)) return false;
+    var maxDist = term.length >= 8 ? 2 : 1;
+    var firstChar = term.charAt(0);
+    var words = field.split(/[\s-]+/);
+    for(var i = 0; i < words.length; i++){
+      var w = words[i];
+      if(!w || w.charAt(0) !== firstChar || /[0-9]/.test(w)) continue;
+      // Écart de longueur déjà trop grand : la distance ne pourra de toute
+      // façon jamais tenir sous maxDist, inutile de calculer.
+      if(Math.abs(w.length - term.length) > maxDist) continue;
+      if(levenshteinWithin(term, w, maxDist)) return true;
+    }
+    return false;
+  }
+
+  // allowFuzzy est VOLONTAIREMENT explicite (pas d'essai systématique) —
+  // retour beaucoup plus sérieux, constaté en confrontant la tolérance aux
+  // fautes de frappe au vrai catalogue (594 produits, ~2300 mots distincts
+  // cherchés) : même limitée aux mots sans chiffre et à la même première
+  // lettre, elle confond encore des mots métier bien réels et DIFFÉRENTS
+  // ("connecteur"/"contacteur"/"conducteur", "profile"/"profinet"…). Sur UN
+  // SEUL mot tapé, ça suffit à glisser des produits sans rapport dans des
+  // résultats par ailleurs PERTINENTS — la recherche stricte (exact + collé)
+  // reste donc TOUJOURS tentée en premier (voir getFilteredProducts) ; le
+  // flou n'est activé qu'en dernier recours, quand elle ne renvoie
+  // STRICTEMENT RIEN, pour le seul cas qui a motivé cette tolérance :
+  // "disjocteur" ne retrouvait rien du tout, pas "retrouvait aussi des
+  // résultats sans rapport en plus des bons".
+  function termMatchesField(term, field, allowFuzzy){
     if(field.indexOf(term) !== -1) return true;
     var termC = term.replace(/[\s-]/g, '');
-    if(!termC) return false;
-    return field.replace(/[\s-]/g, '').indexOf(termC) !== -1;
+    if(termC && field.replace(/[\s-]/g, '').indexOf(termC) !== -1) return true;
+    return !!allowFuzzy && termMatchesFieldFuzzy(term, field);
+  }
+
+  // Texte des caractéristiques techniques (p.specs, objet {clé: valeur} —
+  // voir js/modal-specs-editor.js) mis à plat pour la recherche : clés ET
+  // valeurs, un terme comme "IP65" ou "24V" doit pouvoir retrouver le
+  // produit même s'il n'est nulle part ailleurs (nom, tags…).
+  function productSpecsText(p){
+    if(!p.specs || typeof p.specs !== 'object') return '';
+    return Object.keys(p.specs).map(function(k){ return k + ' ' + p.specs[k]; }).join(' ');
   }
 
 
   // ─────────────────────────────────────────────────────────────
   //  RECHERCHE PAR PERTINENCE
   //  Un produit correspond si TOUS les mots tapés se retrouvent quelque part
-  //  (référence, nom, tags, marque ou famille). Le classement privilégie
-  //  ensuite les correspondances les plus fortes :
+  //  (référence, nom, tags, marque, famille, série, fournisseur ou
+  //  caractéristiques techniques). Le classement privilégie ensuite les
+  //  correspondances les plus fortes :
   //    100 — référence exacte              80 — référence commence par le terme
   //     70 — nom exact complet              60 — nom commence par le terme
   //     50 — marque ou famille exacte
   //  + un petit bonus par terme selon le champ où il a été trouvé (réf > nom
-  //  > tags > marque/famille), pour départager le reste.
-  //  La description N'EST PAS cherchée (retour utilisateur : elle parle
-  //  souvent d'un AUTRE produit en rapport — ex. une alimentation dont la
-  //  description recommande "protégée par un disjoncteur" — et remontait
+  //  > tags > série > marque/famille > caractéristiques > fournisseur), pour
+  //  départager le reste.
+  //  Retour utilisateur : "série"/"fournisseur" (filtres existants, menus
+  //  déroulants) et les caractéristiques techniques (specs clé/valeur, ex.
+  //  "IP65") n'étaient cherchés NULLE PART en texte libre — tapé dans la
+  //  recherche, aucun des trois ne remontait le produit, contrairement à ce
+  //  qu'un menu déroulant du même nom juste à côté laissait penser possible.
+  //  La description reste volontairement EXCLUE (retour utilisateur : elle
+  //  parle souvent d'un AUTRE produit en rapport — ex. une alimentation dont
+  //  la description recommande "protégée par un disjoncteur" — et remontait
   //  alors dans une recherche "disjoncteur" alors que ce n'en est pas un).
   //  Le score est calculé à la volée pour la recherche en cours — il n'est
   //  jamais écrit sur les produits eux-mêmes (voir l'ancien champ _score,
   //  supprimé, qui restait figé une fois enregistré par erreur).
   // ─────────────────────────────────────────────────────────────
-  function scoreProductMatch(p, raw, terms){
-    var ref    = normalizeSearch(p.ref || '');
-    var name   = normalizeSearch(p.name || '');
-    var tags   = normalizeSearch((p.tags||[]).join(' '));
-    var brand  = normalizeSearch(p.brand || '');
-    var family = normalizeSearch(p.family || '');
+  function scoreProductMatch(p, raw, terms, allowFuzzy){
+    var ref      = normalizeSearch(p.ref || '');
+    var name     = normalizeSearch(p.name || '');
+    var tags     = normalizeSearch((p.tags||[]).join(' '));
+    var brand    = normalizeSearch(p.brand || '');
+    var family   = normalizeSearch(p.family || '');
+    var series   = normalizeSearch(p.series || '');
+    var supplier = normalizeSearch(p.supplier || '');
+    var specs    = normalizeSearch(productSpecsText(p));
 
     var score = 0;
     if(ref === raw) score = 100;
@@ -556,10 +650,13 @@
     else if(brand === raw || family === raw) score = 50;
 
     terms.forEach(function(t){
-      if(termMatchesField(t, ref)) score += 8;
-      else if(termMatchesField(t, name)) score += 6;
-      else if(termMatchesField(t, tags)) score += 5;
-      else if(termMatchesField(t, brand) || termMatchesField(t, family)) score += 3;
+      if(termMatchesField(t, ref, allowFuzzy)) score += 8;
+      else if(termMatchesField(t, name, allowFuzzy)) score += 6;
+      else if(termMatchesField(t, tags, allowFuzzy)) score += 5;
+      else if(termMatchesField(t, series, allowFuzzy)) score += 4;
+      else if(termMatchesField(t, brand, allowFuzzy) || termMatchesField(t, family, allowFuzzy)) score += 3;
+      else if(termMatchesField(t, specs, allowFuzzy)) score += 2;
+      else if(termMatchesField(t, supplier, allowFuzzy)) score += 2;
     });
     return score;
   }
@@ -600,6 +697,7 @@
     });
 
     if(!raw){
+      window._lastSearchUsedFuzzy = false;
       if(window._priceSort === 'asc'){
         filtered.sort(function(a,b){ return (parsePriceNumber(a.price)||0) - (parsePriceNumber(b.price)||0); });
       } else if(window._priceSort === 'desc'){
@@ -612,22 +710,42 @@
     var terms = raw.split(/\s+/).filter(Boolean);
 
     // Filtrer : le produit doit contenir chaque terme dans au moins un des
-    // champs recherchés (référence, nom, tags, marque, famille — PAS la
-    // description, voir le commentaire au-dessus de scoreProductMatch)
-    var matched = filtered.filter(function(p){
-      var ref    = normalizeSearch(p.ref || '');
-      var name   = normalizeSearch(p.name || '');
-      var tags   = normalizeSearch((p.tags||[]).join(' '));
-      var brandN = normalizeSearch(p.brand || '');
-      var familyN= normalizeSearch(p.family || '');
-      return terms.every(function(t){
-        return termMatchesField(t, ref) || termMatchesField(t, name) || termMatchesField(t, tags)
-          || termMatchesField(t, brandN) || termMatchesField(t, familyN);
+    // champs recherchés (référence, nom, tags, marque, famille, série,
+    // fournisseur, caractéristiques techniques — PAS la description, voir
+    // le commentaire au-dessus de scoreProductMatch)
+    function matchAll(allowFuzzy){
+      return filtered.filter(function(p){
+        var ref      = normalizeSearch(p.ref || '');
+        var name     = normalizeSearch(p.name || '');
+        var tags     = normalizeSearch((p.tags||[]).join(' '));
+        var brandN   = normalizeSearch(p.brand || '');
+        var familyN  = normalizeSearch(p.family || '');
+        var seriesN  = normalizeSearch(p.series || '');
+        var supplierN= normalizeSearch(p.supplier || '');
+        var specsN   = normalizeSearch(productSpecsText(p));
+        return terms.every(function(t){
+          return termMatchesField(t, ref, allowFuzzy) || termMatchesField(t, name, allowFuzzy) || termMatchesField(t, tags, allowFuzzy)
+            || termMatchesField(t, brandN, allowFuzzy) || termMatchesField(t, familyN, allowFuzzy)
+            || termMatchesField(t, seriesN, allowFuzzy) || termMatchesField(t, supplierN, allowFuzzy) || termMatchesField(t, specsN, allowFuzzy);
+        });
       });
-    });
+    }
+    // Recherche stricte (exact + collé) d'abord, TOUJOURS — la tolérance aux
+    // fautes de frappe n'est activée que si elle ne renvoie RIEN du tout
+    // (voir le commentaire sur allowFuzzy, au-dessus de termMatchesField) :
+    // jamais mélangée à de vrais résultats, seulement quand l'alternative
+    // est un écran "Aucun résultat".
+    var matched = matchAll(false);
+    var usedFuzzy = false;
+    if(matched.length === 0){
+      matched = matchAll(true);
+      usedFuzzy = true;
+    }
+    // Exposé pour l'affichage (bandeau "résultats approximatifs", voir render()).
+    window._lastSearchUsedFuzzy = usedFuzzy;
 
     // Trier par pertinence (score calculé pour cette recherche uniquement)
-    matched.sort(function(a, b){ return scoreProductMatch(b, raw, terms) - scoreProductMatch(a, raw, terms); });
+    matched.sort(function(a, b){ return scoreProductMatch(b, raw, terms, usedFuzzy) - scoreProductMatch(a, raw, terms, usedFuzzy); });
 
     // Tri prix si actif (prioritaire sur la pertinence si demandé explicitement)
     if(window._priceSort === 'asc'){
@@ -659,6 +777,24 @@
   var _lazyScrollHandler = null;
   var _lazyClickBound = false; // délégation du bouton « Afficher plus », posée une fois
   var _cardAnimEndBound = false; // libération de will-change après l'entrée en cascade, posée une fois
+
+  // Nombre de cartes construites par lot (rendu initial ET chaque
+  // "Afficher plus"/auto-scroll) — retour utilisateur : réduire ce lot sur
+  // mobile pour gagner en perf. Un téléphone est généralement plus limité
+  // (CPU, décodage/affichage des photos, réseau) qu'un ordinateur pour
+  // construire autant de cartes d'un coup ; réduit donc le lot UNIQUEMENT
+  // sur un vrai téléphone tactile — même convention que
+  // _authIsMobileKeyboardDevice (js/auth.js) : largeur ET pointer:coarse,
+  // jamais l'un sans l'autre (une fenêtre desktop simplement réduite à la
+  // souris matche aussi une largeur ≤768px, sans être un mobile). Tablette
+  // et desktop gardent 40 : assez capables pour ce volume, pas de raison de
+  // leur imposer plus de rechargements de lot (donc plus souvent le bouton/
+  // le à-coup du chargement suivant) sans bénéfice réel pour eux.
+  function _cardBatchSize(){
+    var isPhone = window.innerWidth <= 768
+      && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    return isPhone ? 20 : 40;
+  }
 
   // fastPath=true : appelé depuis la recherche texte, qui ne change jamais
   // le périmètre des marques/familles/séries → on saute leur reconstruction.
@@ -759,16 +895,26 @@
         + '</div>';
     }
 
+    var batchSize = _cardBatchSize();
     if(hasSearch || viewAll){
       // ── Mode recherche ou "Voir tout" : liste plate ──
-      _lazyItems = filtered.slice(40);
+      _lazyItems = filtered.slice(batchSize);
       var label = hasSearch ? 'Résultats' : 'Tous les produits';
       html += '<div class="brand-group" id="lazySearchGroup">';
       html += '<div class="brand-heading"><h2>'+label+'</h2><span class="tally sans">'+filtered.length+(filtered.length>1?' références':' référence')+'</span></div>';
+      // Retour beaucoup plus sérieux (voir termMatchesField/getFilteredProducts) :
+      // la tolérance aux fautes de frappe n'est activée qu'en dernier recours,
+      // quand la recherche stricte ne renvoie RIEN — mais dans ce cas les
+      // résultats affichés ne correspondent plus exactement au texte tapé.
+      // Ce bandeau l'explique plutôt que de laisser croire à une
+      // correspondance exacte silencieuse.
+      if(hasSearch && window._lastSearchUsedFuzzy && filtered.length > 0){
+        html += '<div class="search-fuzzy-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Aucune correspondance exacte pour « '+escapeHtml(searchInputEl.value.trim())+' » — résultats approximatifs.</div>';
+      }
       html += '<div class="grid" id="lazyGrid">';
-      filtered.slice(0, 40).forEach(function(p){ html += renderCard(p); });
+      filtered.slice(0, batchSize).forEach(function(p){ html += renderCard(p); });
       html += '</div></div>';
-      if(filtered.length > 40){
+      if(filtered.length > batchSize){
         html += '<div id="lazyMore" style="text-align:center;padding:16px 0;"><button type="button" class="btn-load-more">Afficher plus ('+_lazyItems.length+' restants)</button></div>';
       }
     } else {
@@ -783,7 +929,7 @@
         html += '<div class="brand-heading"><h2>'+escapeHtml(groupName)+'</h2><span class="tally sans">'+items.length+(items.length>1?' références':' référence')+'</span></div>';
         html += '<div class="grid">';
         items.forEach(function(p){
-          if(totalRendered < 40){
+          if(totalRendered < batchSize){
             html += renderCard(p);
             totalRendered++;
           } else {
@@ -837,7 +983,6 @@
     }
 
     // ── Lazy load : charger plus de cartes au clic ou au scroll ──
-    var _lazyOffset = 40;
     window._loadMoreCards = function(){
       // En mode recherche/viewAll : lazyGrid existe
       // En mode normal (groupement) : utiliser le conteneur principal
@@ -851,8 +996,11 @@
         }
       }
       if(!grid) return;
-      var batch = _lazyItems.slice(0, 40);
-      _lazyItems = _lazyItems.slice(40);
+      // Recalculé à chaque lot (pas seulement au rendu initial) : couvre une
+      // rotation d'écran/un redimensionnement entre deux "Afficher plus".
+      var loadMoreBatchSize = _cardBatchSize();
+      var batch = _lazyItems.slice(0, loadMoreBatchSize);
+      _lazyItems = _lazyItems.slice(loadMoreBatchSize);
       var tmp = document.createElement('div');
       var newCards = []; // uniquement les cartes de CE lot — voir rebind ci-dessous
       // Les items peuvent être des produits directs ou des objets {p, group}

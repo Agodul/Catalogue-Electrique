@@ -167,6 +167,38 @@
     // Utiliser getElementById directement pour éviter la collision de noms
     var famEl = document.getElementById('familyFilter');
     var brandEl = document.getElementById('brandFilter');
+    // Retour utilisateur : "quand je change de catalogue [domaine], je dois
+    // ouvrir une catégorie pour qu'à la suivante ce soit bien rangé" —
+    // renderHome() (seule fonction rappelée par switchDomain() tant qu'on
+    // est sur l'accueil, voir js/actions-home.js) ne touche JAMAIS les
+    // <select> famille/marque du catalogue : juste après un changement de
+    // domaine depuis l'accueil, ces deux <select> gardent encore les
+    // <option> de L'ANCIEN domaine. famEl.value = familyFilter ci-dessous
+    // échouait alors SILENCIEUSEMENT dès que cette famille n'existe QUE
+    // dans le nouveau domaine — un <select>.value sans <option>
+    // correspondante est simplement ignoré par le navigateur, la sélection
+    // reste vide. render() juste en dessous relit ensuite ce <select> pour
+    // reconstruire la cascade marque/famille/série (voir storage.js), y lit
+    // une valeur vide, et affiche alors TOUT le domaine au lieu de la seule
+    // catégorie cliquée — reproduit et vérifié en direct. render()
+    // reconstruit ENSUITE la liste d'options pour le bon domaine (trop
+    // tard pour CE clic), d'où un deuxième clic qui, lui, fonctionne
+    // normalement : d'où l'impression qu'il fallait "en ouvrir une" avant
+    // que ça se range. Reconstruit ici la liste d'options (déjà scopée au
+    // domaine actif via _filterCache/refreshFilterCache, voir storage.js)
+    // AVANT d'affecter .value, pour que cette toute première sélection
+    // porte déjà sur une <option> existante.
+    refreshFilterCache();
+    if(famEl){
+      famEl.innerHTML = '<option value="">Toutes les familles</option>' + _filterCache.families.map(function(f){
+        return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
+      }).join('');
+    }
+    if(brandEl){
+      brandEl.innerHTML = '<option value="">Toutes les marques</option>' + _filterCache.brands.map(function(b){
+        return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
+      }).join('');
+    }
     // Toujours affecter (même une chaîne vide), pas seulement si truthy —
     // sinon showCatalogue('','') ("Voir tout le catalogue") laissait les
     // <select> sur leur dernière valeur (ex. une famille cliquée depuis
