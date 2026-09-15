@@ -563,19 +563,41 @@ function _armoireFetchBlocks(){
   });
 }
 
+// Retour utilisateur, capture à l'appui : des entrées "Brouillon — X"
+// dupliquées et VISIBLES dans la liste "Blocs" partagée par toute l'équipe
+// ("lorsque je modifie la config en cours c'est automatiquement ajouté aux
+// blocs [...] je voulais que ça reste que dans la configuration en cours").
+// Cause : draft/username (voir plus bas) ne reviennent apparemment pas
+// fidèlement de CE serveur une fois enregistrés (schéma pas encore accepté
+// en écriture malgré la confirmation reçue) — _armoireFindServerDraft ne
+// retrouvait donc JAMAIS sa propre entrée via draft===true, recréait une
+// nouvelle entrée à CHAQUE sauvegarde automatique au lieu de la remplacer
+// (_armoireServerDraftId restait toujours null), d'où l'empilement.
+// Préfixe distinctif, jamais choisi par un vrai bloc (l'utilisateur ne tape
+// jamais lui-même ce nom) : sert de repli fiable pour reconnaître/filtrer un
+// brouillon même si draft/username ne sont pas persistés tels quels.
+var ARMOIRE_DRAFT_NAME_PREFIX = 'Brouillon — ';
+
 // Retrouve, parmi les entrées /configBlocks déjà chargées (_armoireBlocks),
-// celle qui est le brouillon serveur de L'UTILISATEUR CONNECTÉ (draft: true
-// + username === son identifiant) — jamais celui d'un autre compte, même si
-// le serveur en renvoyait un par erreur. Schéma réel confirmé par le
-// serveur (pas "kind"/"user" comme d'abord supposé) : draft (booléen) et
-// username, ce dernier rempli par le serveur lui-même depuis le token —
-// jamais envoyé dans le corps d'une requête (voir _armoireSyncDraftToServer),
-// seulement lu ici sur ce qui revient.
+// celle qui est le brouillon serveur de L'UTILISATEUR CONNECTÉ — jamais
+// celui d'un autre compte, même si le serveur en renvoyait un par erreur.
+// Priorité à draft===true + username (schéma "propre", confirmé par le
+// serveur : draft booléen, username rempli par le serveur lui-même depuis
+// le token, jamais envoyé dans le corps d'une requête — voir
+// _armoireSyncDraftToServer) ; repli sur le NOM exact généré ici si ces deux
+// champs ne reviennent pas fidèlement (voir le retour utilisateur ci-dessus).
 function _armoireFindServerDraft(){
   var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
   var username = me && me.username;
   if(!username) return null;
-  return _armoireBlocks.find(function(b){ return b && b.draft === true && b.username === username; }) || null;
+  var expectedName = ARMOIRE_DRAFT_NAME_PREFIX + username;
+  return _armoireBlocks.find(function(b){
+    if(!b) return false;
+    if(b.draft === true && b.username === username) return true;
+    // Repli nom : n'exige username QUE s'il est présent sur l'entrée (pour
+    // rester utilisable même si ce champ, lui non plus, ne revient pas).
+    return b.name === expectedName && (!b.username || b.username === username);
+  }) || null;
 }
 
 // Appelée après _armoireFetchBlocks() (voir _armoireOpen) — repère le
@@ -640,7 +662,7 @@ function _armoireSyncDraftToServer(){
   // avec l'exemple de POST fourni : aucun champ username dedans, seulement en
   // retour du GET) — l'envoyer serait de toute façon ignoré, voire risqué si
   // le serveur devait un jour le prendre en compte tel quel.
-  var body = { draft: true, name: 'Brouillon — ' + username, folder: '', items: _armoireDraft };
+  var body = { draft: true, name: ARMOIRE_DRAFT_NAME_PREFIX + username, folder: '', items: _armoireDraft };
   var apiCall = _armoireServerDraftId
     ? _armoireReplaceEntry('/configBlocks', _armoireServerDraftId, body)
     : _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify(body) });
@@ -837,11 +859,19 @@ function _armoireRenderGroupedList(list, kind, emptyMessage){
 }
 
 function _armoireRenderBlocksList(){
-  // Exclut les brouillons personnels (draft: true, voir
-  // _armoireSyncDraftToServer) — stockés dans /configBlocks pour réutiliser
-  // le même endpoint, mais jamais destinés à apparaître dans la liste
-  // "Blocs" partagée par toute l'équipe.
-  var realBlocks = _armoireBlocks.filter(function(b){ return !b || b.draft !== true; });
+  // Exclut les brouillons personnels — stockés dans /configBlocks pour
+  // réutiliser le même endpoint, mais jamais destinés à apparaître dans la
+  // liste "Blocs" partagée par toute l'équipe. draft===true d'abord, repli
+  // sur le préfixe de nom (voir ARMOIRE_DRAFT_NAME_PREFIX/
+  // _armoireFindServerDraft) si ce champ ne revient pas fidèlement de ce
+  // serveur — retour utilisateur, capture à l'appui : sans ce repli, des
+  // brouillons restaient visibles et insérables comme de vrais blocs.
+  var realBlocks = _armoireBlocks.filter(function(b){
+    if(!b) return true;
+    if(b.draft === true) return false;
+    if(typeof b.name === 'string' && b.name.indexOf(ARMOIRE_DRAFT_NAME_PREFIX) === 0) return false;
+    return true;
+  });
   _armoireRenderGroupedList(realBlocks, 'block', 'Aucun bloc enregistré pour l\'instant.');
 }
 
