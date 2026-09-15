@@ -915,15 +915,15 @@ function openAuthModal() {
     // navigation disparait directement" — cet auto-focus programmatique
     // ne fait apparaître AUCUN clavier sur mobile (Safari n'affiche le
     // clavier logiciel qu'après un vrai geste utilisateur sur le champ,
-    // jamais pour un .focus() scripté). La bottom nav ne se masque plus du
-    // tout au focus depuis (voir js/actions-mobile-chrome.js — retour
-    // utilisateur : "corriger le fait que la barre de navigation disparaît
-    // lorsqu'on clique sur le bouton recherche"), donc cette raison-là ne
-    // tient plus, mais la garde reste utile pour l'autre raison encore
-    // valable : sur mobile/tactile, cet auto-focus n'a de toute façon aucun
-    // intérêt puisqu'il ne sort pas le clavier — inutile d'en payer l'effet
-    // de bord (scroll involontaire, etc.). Gardé uniquement sur desktop
-    // (navigation clavier), où le focus au clavier physique reste utile.
+    // jamais pour un .focus() scripté), mais déclenche quand même
+    // l'événement 'focus'/'focusin' — et la bottom nav se masque sur
+    // TOUT focusin d'un champ de saisie (voir _navHideOnKeyboardCheck,
+    // js/actions-mobile-chrome.js), keyboard réellement affiché ou pas.
+    // Résultat : la barre disparaissait dès l'OUVERTURE de la fenêtre,
+    // avant le moindre geste. Sur mobile/tactile, cet auto-focus n'a de
+    // toute façon aucun intérêt puisqu'il ne sort pas le clavier — inutile
+    // d'en payer l'effet de bord. Gardé uniquement sur desktop (navigation
+    // clavier), où le focus au clavier physique reste utile.
     if (!_authIsMobileKeyboardDevice()) {
       setTimeout(function() {
         var inp = document.getElementById('authUsername');

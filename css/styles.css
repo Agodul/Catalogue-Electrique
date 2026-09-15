@@ -3857,21 +3857,31 @@
     box-shadow: 0 -2px 16px rgba(0,0,0,.08);
     align-items: stretch;
     /* Retour utilisateur explicite : "je ne veux pas qu'elle remonte avec le
-       clavier" — reste ancrée au vrai bas de la page (bottom:0 ci-dessus).
-       Un ancien essai la faisait suivre via env(keyboard-inset-height)/JS
-       (retiré), puis un masquage JS actif au focus d'un champ a pris le
-       relais (classe .bottom-nav-kb-hidden, retirée à son tour — retour
-       utilisateur : "corriger le fait que la barre de navigation disparaît
-       lorsqu'on clique sur le bouton recherche") : ce masquage contournait
-       le comportement natif de Safari qui repositionnait cet élément
-       position:fixed par rapport à la zone réellement visible dès qu'un
-       clavier logiciel s'affichait — devenu inutile depuis le passage de la
-       balise viewport à interactive-widget=resizes-content (voir
-       index.html), qui fait déjà suivre nativement tout élément
-       position:fixed la zone réellement visible, sans JS. */
+       clavier" — reste ancrée au vrai bas de la page (bottom:0 ci-dessus),
+       aucune règle ici ne la fait suivre le clavier (un essai précédent la
+       faisait suivre via env(keyboard-inset-height)/JS, retiré). MAIS
+       bottom:0 seul ne suffit pas à la garder invisible sous le clavier :
+       Safari repositionne lui-même tout élément position:fixed par rapport
+       à la zone réellement visible dès qu'un clavier logiciel s'affiche —
+       constaté en direct, capture à l'appui, la barre restait visible
+       coincée juste au-dessus du clavier malgré cette règle. D'où
+       .bottom-nav-kb-hidden juste en dessous : masquée EXPLICITEMENT
+       (display:none) tant qu'un champ de saisie a le focus (voir
+       js/actions-mobile-chrome.js, _navHideOnKeyboardCheck) — la seule
+       façon de contrer ce comportement natif de Safari.
+       Brièvement retirée puis RÉTABLIE (retour utilisateur : "corriger le
+       fait que la barre de navigation disparaît lorsqu'on clique sur le
+       bouton recherche", suivi de "tu as cassé pour la connexion") — voir
+       le commentaire complet sur ce va-et-vient en tête de
+       js/actions-mobile-chrome.js : interactive-widget=resizes-content
+       (index.html) aide mais ne suffit pas seul face à la barre de
+       suggestion "Mots de passe"/Face ID d'iOS, qui ajoute une hauteur au
+       clavier que ce mode ne répercute pas toujours dans le viewport de
+       mise en page. */
     /* Empêche le double-tap de déclencher un zoom sur la barre de nav */
     touch-action: manipulation;
   }
+  .bottom-nav.bottom-nav-kb-hidden { display: none; }
 
   .bottom-nav-item {
     flex: 1;
@@ -4272,6 +4282,23 @@
   background: var(--paper-card);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+/* Animation d'apparition — retour utilisateur : "peux-tu ajouter une
+   animation d'apparition" (la barre apparaissait d'un coup sec, display:
+   none → block sans transition). display ne peut pas être transitionné :
+   la classe ci-dessous porte une @keyframes déclenchée par _openMobile
+   SearchBar (js/actions-mobile-chrome.js), qui force un reflow avant de
+   l'ajouter pour qu'elle rejoue à chaque ouverture (une classe déjà
+   présente ne redéclenche pas son animation). */
+#mobileSearchBar.mobile-search-bar-anim-in{
+  animation: mobileSearchBarIn .22s ease;
+}
+@keyframes mobileSearchBarIn{
+  from{ opacity: 0; transform: translateY(-10px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  #mobileSearchBar.mobile-search-bar-anim-in{ animation: none; }
 }
 .mobile-search-inner{
   display: flex;
