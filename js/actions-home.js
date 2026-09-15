@@ -220,6 +220,35 @@
     showCatalogue('','');
   }
 
+  // ── Recherche depuis l'accueil desktop ──────────────────────────────
+  // Retour utilisateur : "rajouter une recherche de produit sur la page
+  // d'accueil desktop" — voir le commentaire complet sur #homeSearchInput,
+  // index.html. Ne duplique PAS la logique de recherche/debounce
+  // (js/actions-search.js) : dès la première frappe réelle, bascule vers le
+  // catalogue (showCatalogueAll, même geste que bnSearch sur mobile — voir
+  // js/actions-mobile-chrome.js) puis relaie la saisie au VRAI champ
+  // (#searchInput). #searchInput.value est affecté AVANT showCatalogueAll()
+  // (pas après) pour que le render() qu'elle déclenche déjà affiche
+  // directement les bons résultats — sans ça, un premier rendu "Tous les
+  // produits" s'afficherait brièvement avant d'être remplacé par les
+  // résultats filtrés au prochain rendu (debounce à 180ms), un clignotement
+  // évitable ici. Focus transféré au vrai champ en dernier : les frappes
+  // suivantes de l'utilisateur y atterrissent directement, ce champ-ci
+  // n'étant de toute façon plus visible une fois #homePage masqué.
+  var homeSearchInput = document.getElementById('homeSearchInput');
+  if(homeSearchInput){
+    homeSearchInput.addEventListener('input', function(){
+      var typed = homeSearchInput.value;
+      var si = document.getElementById('searchInput');
+      if(si) si.value = typed;
+      showCatalogueAll();
+      if(si) si.focus();
+      // Repart vide pour la prochaine visite de l'accueil — même geste que
+      // showHome() ci-dessus, qui vide déjà #searchInput au retour.
+      homeSearchInput.value = '';
+    });
+  }
+
   // Croix du bandeau de catégorie active (.active-filter-close, voir
   // js/storage.js) — délégation sur #content, régénéré à chaque rendu
   // (render()), donc un listener direct posé dessus serait perdu au rendu

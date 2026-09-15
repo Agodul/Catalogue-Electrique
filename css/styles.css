@@ -2493,6 +2493,61 @@
     margin:0 auto;
   }
   #homePage.hidden{ display:none; }
+  /* Retour utilisateur : "déplace la barre de recherche à côté de voir tout
+     le catalogue", puis "fais du 50/50" — grid à 2 colonnes égales (1fr
+     1fr) plutôt que flex (display:flex + flex:1 des deux côtés, essayé
+     d'abord) : constaté en mesurant, <button> a un comportement de
+     rétrécissement en item flex différent de celui d'un <div> (même avec
+     flex-basis:0% et min-width:0 identiques des deux côtés — un souci de
+     dimensionnement intrinsèque propre aux éléments de formulaire, connu
+     de Flexbox), qui cassait le 50/50 (377px contre 403px dans nos
+     mesures). Une grille à pistes explicites (1fr 1fr) n'a pas ce défaut :
+     chaque piste fait EXACTEMENT la même largeur, quel que soit le contenu.
+     align-items:stretch (valeur par défaut, posée pour la clarté) : le
+     bouton adopte naturellement la hauteur du champ de recherche (le plus
+     grand des deux, padding 14px contre 12px), sans avoir à recopier ses
+     dimensions exactes à la main. */
+  .home-search-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    align-items:stretch;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  /* Retour utilisateur : "rajouter une recherche de produit sur la page
+     d'accueil desktop" — voir le commentaire complet sur #homeSearchInput,
+     index.html. Même langage visuel que .search-field (toolbar catalogue,
+     icône + halo copper au focus) mais en composant autonome, plus généreux
+     (hero de page d'accueil) plutôt que rattaché à la logique de repli des
+     voisins de la toolbar (.toolbar:has(#searchInput:focus)…), qui ne
+     s'applique qu'à cette dernière. */
+  .home-search-field{
+    position:relative;
+    min-width:0;
+  }
+  .home-search-field svg{
+    position:absolute; left:16px; top:50%; transform:translateY(-50%);
+    width:18px; height:18px; opacity:.5; color:var(--ink-soft);
+    pointer-events:none;
+    transition:opacity .16s ease, color .16s ease;
+  }
+  .home-search-field:focus-within svg{ opacity:.9; color:var(--copper); }
+  .home-search-field input{
+    width:100%; box-sizing:border-box;
+    font-size:15px;
+    padding:14px 16px 14px 46px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--paper-card);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    transition:border-color .16s ease, box-shadow .16s ease;
+  }
+  .home-search-field input:focus{
+    outline:none;
+    border-color:var(--copper);
+    box-shadow:0 0 0 3px rgba(25,64,147,.12);
+  }
   .home-stats{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -2577,6 +2632,18 @@
   .home-all-btn:hover{
     border-color:var(--copper);
     background:#EEF4FF;
+  }
+  /* Dans .home-search-row (desktop, grid 1fr 1fr — voir plus haut dans ce
+     fichier) uniquement : min-width:0 empêche le bouton de dépasser sa
+     colonne à cause de son contenu ("Voir tout le catalogue" + icône), même
+     logique que .home-search-field juste au-dessus. Sur mobile/tablette,
+     .home-search-row repasse en display:block (voir plus bas dans ce
+     fichier, même palier que .home-search-field{display:none}) : le
+     bouton n'est alors plus un enfant de grille, et sa largeur pleine page
+     habituelle (.home-all-btn, width:100%) reprend le dessus normalement. */
+  .home-search-row .home-all-btn{
+    min-width:0;
+    white-space:nowrap;
   }
   @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:7px; }
@@ -3876,6 +3943,17 @@
 @media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
   .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: var(--z-sheet-high) !important; }
+  /* Masqué exactement au palier où la bottom-nav (juste en dessous) prend
+     le relais — son bouton "Recherche" comble déjà ce besoin ici (voir le
+     commentaire sur #homeSearchInput, index.html) ; sans ce masquage les
+     deux points d'entrée coexisteraient sur les tablettes tactiles. */
+  .home-search-field { display: none !important; }
+  /* .home-search-row redevient un simple bloc (plus une ligne flex) une
+     fois son seul enfant restant visible ("Voir tout le catalogue" ci-
+     dessus) — .home-search-row .home-all-btn{width:auto} (plus haut dans ce
+     fichier) redevient alors un bloc pleine largeur standard, sans avoir à
+     ajouter un width:100% séparé ici pour l'annuler. */
+  .home-search-row { display: block; }
   .bottom-nav {
     display: flex;
     position: fixed;

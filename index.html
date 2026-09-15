@@ -760,10 +760,34 @@
 
 <div id="homePage">
   <div class="home-stats" id="homeStats"></div>
-  <button class="home-all-btn" id="homeAllBtn" style="margin-top:10px; margin-bottom:10px;">
-    <i class="ti ti-layout-grid" aria-hidden="true"></i>
-    Voir tout le catalogue
-  </button>
+  <!-- Retour utilisateur : "déplace la barre de recherche à côté de voir
+       tout le catalogue" — regroupés sur une même ligne (.home-search-row,
+       voir css/styles.css) plutôt que chacun sur sa propre ligne. Retour
+       utilisateur antérieur : "rajouter une recherche de produit sur la
+       page d'accueil desktop" — le vrai champ de recherche (#searchInput)
+       vit dans .toolbar, à l'intérieur de #catalogueWrap, masqué tant qu'on
+       est sur l'accueil (#homePage et #catalogueWrap ne sont jamais
+       visibles en même temps) : aucun moyen de chercher sans déjà être dans
+       le catalogue. Sur mobile/tablette, le bouton "Recherche" de la nav du
+       bas comble déjà ce trou (bascule vers le catalogue PUIS ouvre la
+       barre de recherche sticky, voir bnSearch dans
+       js/actions-mobile-chrome.js) — masqué ici (voir css/styles.css) au
+       même palier que cette nav pour ne jamais doubler ce point d'entrée.
+       Champ séparé de #searchInput (pas le même id, deux fois le même id
+       serait invalide) : au premier focus, redirige simplement vers le
+       vrai champ après avoir basculé vers le catalogue (voir
+       js/actions-home.js) — même geste que bnSearch, pas de logique de
+       recherche dupliquée ici. -->
+  <div class="home-search-row">
+    <div class="home-search-field">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="homeSearchInput" placeholder="Rechercher un produit (réf, nom, description)…" autocomplete="off">
+    </div>
+    <button class="home-all-btn" id="homeAllBtn">
+      <i class="ti ti-layout-grid" aria-hidden="true"></i>
+      Voir tout le catalogue
+    </button>
+  </div>
   <button class="home-all-btn" id="btnOpenArmoireConfig" style="display:none;margin-bottom:20px;border-color:var(--copper);color:var(--copper-deep);">
     <i class="ti ti-tools" aria-hidden="true"></i>
     Configurateur d'armoire
