@@ -66,6 +66,26 @@ function _armoireRestoreDraftFromStorage(){
 }
 _armoireRestoreDraftFromStorage();
 
+// Retour utilisateur : "je voudrais que les brouillons soient enregistrés
+// automatiquement sur le serveur [...] comme ça on peut la reprendre sur
+// notre tel ou un autre pc avec le même identifiant" — jusqu'ici,
+// ARMOIRE_DRAFT_STORAGE_KEY (juste au-dessus) n'est QUE du localStorage,
+// propre à CET appareil/navigateur, jamais synchronisé. Réutilise
+// /configBlocks (même endpoint que les vrais blocs partagés) plutôt qu'un
+// nouvel endpoint dédié : chaque entrée porte désormais draft (booléen,
+// false par défaut pour un vrai bloc partagé) — schéma confirmé par le
+// serveur. username (identifiant du propriétaire) est lui aussi présent sur
+// chaque entrée, mais rempli PAR LE SERVEUR depuis le token : jamais envoyé
+// dans le corps d'une requête, seulement lu sur ce qui revient (voir
+// _armoireFindServerDraft). Un brouillon (draft: true) n'est donc JAMAIS
+// mélangé à la liste "Blocs" visible (filtrée sur draft !== true, voir
+// _armoireRenderBlocksList) : invisible pour le reste de l'équipe, un seul
+// par utilisateur (id retrouvé/mis à jour via _armoireServerDraftId, jamais
+// dupliqué).
+var _armoireServerDraftId = null; // id de CE brouillon sur le serveur, si déjà créé
+var _armoireDraftSyncTimer = null;
+var ARMOIRE_DRAFT_SYNC_DELAY_MS = 1500; // anti-rafale : pas un appel réseau à chaque frappe/clic +/-
+
 var _armoireBlocks = [];
 var _armoireSavedConfigs = [];
 var _armoireActiveTab = 'blocks';
@@ -307,6 +327,7 @@ function _armoireRenderDraft(){
   // le panneau n'a jamais été affiché cette session (ex. ajout depuis une
   // fiche produit).
   _armoireSaveDraftToStorage();
+  _armoireScheduleDraftSync();
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
   _armoireRenderStats();
@@ -520,6 +541,95 @@ function _armoireFetchBlocks(){
   });
 }
 
+// Retrouve, parmi les entrées /configBlocks déjà chargées (_armoireBlocks),
+// celle qui est le brouillon serveur de L'UTILISATEUR CONNECTÉ (draft: true
+// + username === son identifiant) — jamais celui d'un autre compte, même si
+// le serveur en renvoyait un par erreur. Schéma réel confirmé par le
+// serveur (pas "kind"/"user" comme d'abord supposé) : draft (booléen) et
+// username, ce dernier rempli par le serveur lui-même depuis le token —
+// jamais envoyé dans le corps d'une requête (voir _armoireSyncDraftToServer),
+// seulement lu ici sur ce qui revient.
+function _armoireFindServerDraft(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username) return null;
+  return _armoireBlocks.find(function(b){ return b && b.draft === true && b.username === username; }) || null;
+}
+
+// Appelée après _armoireFetchBlocks() (voir _armoireOpen) — repère le
+// brouillon serveur de l'utilisateur ET, seulement si rien n'est déjà
+// présent LOCALEMENT, le restaure. Retour utilisateur : "reprendre sur
+// notre tel ou un autre pc avec le même identifiant" — sur l'appareil où le
+// brouillon a été composé, le local (déjà restauré au chargement de la
+// page par _armoireRestoreDraftFromStorage, TOUJOURS au moins aussi récent
+// que ce qui a pu être synchronisé côté serveur, voir
+// ARMOIRE_DRAFT_SYNC_DELAY_MS) reste prioritaire — jamais écrasé par une
+// version serveur potentiellement plus ancienne.
+function _armoireSyncDraftFromServer(){
+  var serverDraft = _armoireFindServerDraft();
+  _armoireServerDraftId = serverDraft ? serverDraft.id : null;
+  if(_armoireDraft.length || !serverDraft || !Array.isArray(serverDraft.items) || !serverDraft.items.length) return;
+  var restored = serverDraft.items.filter(function(it){
+    return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
+  });
+  if(!restored.length) return;
+  _armoireDraft = restored;
+  _armoireRenderDraft();
+  if(typeof showToast === 'function'){
+    showToast('Configuration en cours reprise depuis un autre appareil (' + restored.length + ' référence' + (restored.length > 1 ? 's' : '') + ')', 'ok', 4000);
+  }
+}
+
+// Anti-rafale (voir ARMOIRE_DRAFT_SYNC_DELAY_MS) — appelée à chaque
+// modification réelle du brouillon (_armoireRenderDraft), jamais à chaque
+// caractère tapé/clic +/- individuellement.
+function _armoireScheduleDraftSync(){
+  if(_armoireEditingEntry) return; // même garde que _armoireSaveDraftToStorage — jamais PENDANT l'édition d'un bloc/config existant
+  clearTimeout(_armoireDraftSyncTimer);
+  _armoireDraftSyncTimer = setTimeout(_armoireSyncDraftToServer, ARMOIRE_DRAFT_SYNC_DELAY_MS);
+}
+
+function _armoireSyncDraftToServer(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username) return; // pas connecté : rien à synchroniser, le localStorage suffit pour cet appareil
+
+  if(!_armoireDraft.length){
+    // Brouillon vidé (enregistré comme bloc/config, ou retiré à la main) —
+    // même geste que _armoireSaveDraftToStorage côté localStorage : supprime
+    // plutôt que de laisser une entrée serveur périmée suggérer, sur un
+    // autre appareil, un travail en cours qui n'existe plus.
+    if(!_armoireServerDraftId) return;
+    var idToDelete = _armoireServerDraftId;
+    _armoireServerDraftId = null;
+    _armoireApi('/configBlocks/' + encodeURIComponent(idToDelete), { method: 'DELETE' })
+      .catch(function(e){ console.warn('_armoireSyncDraftToServer (suppression):', e && e.message); });
+    return;
+  }
+
+  // username n'est PAS envoyé ici — le serveur le déduit lui-même du token
+  // (voir authHeaders()/_armoireApi), jamais du corps de la requête (cohérent
+  // avec l'exemple de POST fourni : aucun champ username dedans, seulement en
+  // retour du GET) — l'envoyer serait de toute façon ignoré, voire risqué si
+  // le serveur devait un jour le prendre en compte tel quel.
+  var body = { draft: true, name: 'Brouillon — ' + username, folder: '', items: _armoireDraft };
+  var apiCall = _armoireServerDraftId
+    ? _armoireReplaceEntry('/configBlocks', _armoireServerDraftId, body)
+    : _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify(body) });
+  // Pas de dépendance à la forme exacte de la réponse POST (id renvoyé ou
+  // non, jamais inspecté par _armoireSaveBlock/_armoireSaveConfig non plus)
+  // — un nouveau GET /configBlocks fait autorité pour retrouver le vrai id
+  // serveur fraîchement créé.
+  apiCall
+    .then(function(){ return _armoireApi('/configBlocks'); })
+    .then(function(list){
+      _armoireBlocks = Array.isArray(list) ? list : [];
+      var mine = _armoireFindServerDraft();
+      _armoireServerDraftId = mine ? mine.id : null;
+    })
+    .catch(function(e){ console.warn('_armoireSyncDraftToServer:', e && e.message); });
+}
+
 function _armoireFetchSavedConfigs(){
   return _armoireApi('/configSavedConfigs').then(function(list){
     _armoireSavedConfigs = Array.isArray(list) ? list : [];
@@ -699,7 +809,12 @@ function _armoireRenderGroupedList(list, kind, emptyMessage){
 }
 
 function _armoireRenderBlocksList(){
-  _armoireRenderGroupedList(_armoireBlocks, 'block', 'Aucun bloc enregistré pour l\'instant.');
+  // Exclut les brouillons personnels (draft: true, voir
+  // _armoireSyncDraftToServer) — stockés dans /configBlocks pour réutiliser
+  // le même endpoint, mais jamais destinés à apparaître dans la liste
+  // "Blocs" partagée par toute l'équipe.
+  var realBlocks = _armoireBlocks.filter(function(b){ return !b || b.draft !== true; });
+  _armoireRenderGroupedList(realBlocks, 'block', 'Aucun bloc enregistré pour l\'instant.');
 }
 
 function _armoireRenderSavedList(){
@@ -1456,7 +1571,10 @@ function _armoireOpen(){
   _armoireRenderDraft();
   _armoireRenderSearchResults('');
   _armoireSwitchTab(_armoireActiveTab);
-  _armoireFetchBlocks();
+  // Retour utilisateur : "reprendre sur notre tel ou un autre pc avec le
+  // même identifiant" — _armoireBlocks doit être à jour (contient
+  // éventuellement le brouillon serveur) avant de chercher dedans.
+  _armoireFetchBlocks().then(_armoireSyncDraftFromServer);
   _armoireFetchSavedConfigs();
 
   // Retour utilisateur : "comment éviter de perdre la config [...] alors
@@ -1485,6 +1603,16 @@ function _armoireClose(){
   // remplacée par le contenu édité — restaure silencieusement (voir
   // _armoireCancelEditEntry, jamais perdre la configuration de l'utilisateur).
   if(_armoireEditingEntry) _armoireCancelEditEntry();
+  // Retour utilisateur : "reprendre sur notre tel ou un autre pc" — force la
+  // synchronisation serveur immédiatement à la fermeture plutôt que
+  // d'attendre le délai anti-rafale (ARMOIRE_DRAFT_SYNC_DELAY_MS) : sans ça,
+  // fermer le configurateur puis changer d'appareil dans la seconde et demie
+  // qui suit pouvait reprendre une version un cran en retard.
+  if(_armoireDraftSyncTimer){
+    clearTimeout(_armoireDraftSyncTimer);
+    _armoireDraftSyncTimer = null;
+    _armoireSyncDraftToServer();
+  }
   var overlay = document.getElementById('armoireConfigOverlay');
   document.body.classList.remove('modal-open');
   _armoireCloseBlocksDrawer(true); // toute la fenêtre disparaît déjà — pas besoin d'une seconde anim en plus
