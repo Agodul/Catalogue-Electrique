@@ -22,6 +22,17 @@ var _armoireDraft = []; // [{ref, qty}]
 // restauration juste en dessous.
 var ARMOIRE_DRAFT_STORAGE_KEY = 'cat_armoire_draft';
 
+// Horodatage (ms) de la dernière sauvegarde locale RÉELLE (mis à jour par
+// _armoireSaveDraftToStorage ET par la restauration au chargement de la
+// page) — retour utilisateur : "faut que le serveur soit prioritaire" pour
+// la reprise multi-appareils (voir _armoireSyncDraftFromServer), mais SANS
+// jamais écraser un brouillon local plus récent que ce qui est sur le
+// serveur (ex. tout juste récupéré après un crash, jamais eu le temps de
+// partir vers le serveur) — sinon le filet de sécurité local ci-dessus
+// perdrait tout son intérêt. Le plus récent des deux gagne, jamais "le
+// serveur, toujours, sans condition".
+var _armoireDraftLocalSavedAt = 0;
+
 function _armoireSaveDraftToStorage(){
   // Ne jamais persister PENDANT l'édition d'un bloc/config existant :
   // _armoireDraft contient alors TEMPORAIREMENT le contenu de l'entrée
@@ -30,8 +41,13 @@ function _armoireSaveDraftToStorage(){
   // perdrait pour de bon en cas de crash pendant une édition.
   if(_armoireEditingEntry) return;
   try{
-    if(_armoireDraft.length) localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify(_armoireDraft));
-    else localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
+    if(_armoireDraft.length){
+      _armoireDraftLocalSavedAt = Date.now();
+      localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt }));
+    } else {
+      _armoireDraftLocalSavedAt = 0;
+      localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
+    }
   }catch(e){
     // Navigation privée / quota dépassé : tant pis, pas de sauvegarde de
     // secours possible, mais ça ne doit jamais faire planter le
@@ -51,8 +67,14 @@ function _armoireRestoreDraftFromStorage(){
     var raw = localStorage.getItem(ARMOIRE_DRAFT_STORAGE_KEY);
     if(!raw) return;
     var parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) return;
-    var restored = parsed.filter(function(it){
+    // Ancien format (tableau brut, avant l'ajout de l'horodatage ci-dessus)
+    // toujours accepté en lecture — migré vers le nouveau format dès la
+    // prochaine sauvegarde réelle, sans rien casser pour un brouillon déjà
+    // en localStorage avant cette mise à jour.
+    var items = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.items) ? parsed.items : null);
+    if(!items) return;
+    _armoireDraftLocalSavedAt = (parsed && typeof parsed.savedAt === 'number') ? parsed.savedAt : 0;
+    var restored = items.filter(function(it){
       return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
     });
     if(restored.length){
@@ -557,24 +579,30 @@ function _armoireFindServerDraft(){
 }
 
 // Appelée après _armoireFetchBlocks() (voir _armoireOpen) — repère le
-// brouillon serveur de l'utilisateur ET, seulement si rien n'est déjà
-// présent LOCALEMENT, le restaure. Retour utilisateur : "reprendre sur
-// notre tel ou un autre pc avec le même identifiant" — sur l'appareil où le
-// brouillon a été composé, le local (déjà restauré au chargement de la
-// page par _armoireRestoreDraftFromStorage, TOUJOURS au moins aussi récent
-// que ce qui a pu être synchronisé côté serveur, voir
-// ARMOIRE_DRAFT_SYNC_DELAY_MS) reste prioritaire — jamais écrasé par une
-// version serveur potentiellement plus ancienne.
+// brouillon serveur de l'utilisateur et décide s'il faut l'adopter. Retour
+// utilisateur : "faut que le serveur soit prioritaire" — mais PAS
+// aveuglément : un brouillon local plus RÉCENT que ce qui est sur le
+// serveur (ex. tout juste récupéré après un crash, voir
+// _armoireRestoreDraftFromStorage, jamais eu le temps de partir vers le
+// serveur — voir ARMOIRE_DRAFT_SYNC_DELAY_MS) ne doit jamais être écrasé par
+// une version serveur plus ancienne, sinon le filet de sécurité local perd
+// tout son intérêt. Comparaison par horodatage : serverDraft.createdAt (une
+// toute nouvelle entrée à chaque sauvegarde — _armoireSyncDraftToServer
+// recrée plutôt que modifie, l'API n'ayant pas de PUT/PATCH, voir
+// _armoireReplaceEntry) contre _armoireDraftLocalSavedAt (mis à jour à
+// chaque sauvegarde locale réelle) — le plus récent des deux gagne.
 function _armoireSyncDraftFromServer(){
   var serverDraft = _armoireFindServerDraft();
   _armoireServerDraftId = serverDraft ? serverDraft.id : null;
-  if(_armoireDraft.length || !serverDraft || !Array.isArray(serverDraft.items) || !serverDraft.items.length) return;
+  if(!serverDraft || !Array.isArray(serverDraft.items) || !serverDraft.items.length) return;
+  var serverSavedAt = typeof serverDraft.createdAt === 'number' ? serverDraft.createdAt : 0;
+  if(_armoireDraft.length && _armoireDraftLocalSavedAt >= serverSavedAt) return; // local plus récent (ou égal) : on le garde
   var restored = serverDraft.items.filter(function(it){
     return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
   });
   if(!restored.length) return;
   _armoireDraft = restored;
-  _armoireRenderDraft();
+  _armoireRenderDraft(); // met aussi _armoireDraftLocalSavedAt à jour (voir _armoireSaveDraftToStorage)
   if(typeof showToast === 'function'){
     showToast('Configuration en cours reprise depuis un autre appareil (' + restored.length + ' référence' + (restored.length > 1 ? 's' : '') + ')', 'ok', 4000);
   }
