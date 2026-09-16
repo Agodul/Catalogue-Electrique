@@ -106,6 +106,37 @@
       if(!ok) return;
     }
 
+    // Retour utilisateur : "j'ai encore la notification [...] restaurée]
+    // lorsque je fais une mise à jour et que j'ai une configuration en
+    // cours" — la configuration d'armoire (window._armoireDraft) survit très
+    // bien au rechargement ci-dessous (copie dans localStorage, voir
+    // js/armoireConfig.js) : rien n'est réellement perdu. Le problème est
+    // ailleurs : le toast "Configuration en cours restaurée" (voir
+    // _armoireWarnIfDraftNotBackedUp) ne s'affiche QUE quand aucune copie de
+    // ce brouillon n'existe encore sur le serveur — or la synchro
+    // automatique est anti-rafale (ARMOIRE_DRAFT_SYNC_DELAY_MS) et n'avait
+    // pas forcément eu le temps de partir avant ce clic sur "Mettre à jour".
+    // Au rechargement, la copie serveur n'existait donc pas encore et le
+    // toast se déclenchait à tort, comme si la configuration avait failli
+    // être perdue. Même geste qu'à la fermeture du configurateur
+    // (_armoireClose) : forcer cette synchro immédiatement — mais cette fois
+    // en l'ATTENDANT avant de recharger (borné à 4s pour ne jamais bloquer
+    // la mise à jour si le serveur ne répond pas).
+    if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
+      if(window._armoireDraftSyncTimer){
+        clearTimeout(window._armoireDraftSyncTimer);
+        window._armoireDraftSyncTimer = null;
+      }
+      if(typeof window._armoireSyncDraftToServer === 'function'){
+        try{
+          await Promise.race([
+            window._armoireSyncDraftToServer(),
+            new Promise(function(resolve){ setTimeout(resolve, 4000); })
+          ]);
+        }catch(e){}
+      }
+    }
+
     // S'assurer que le nouveau Service Worker a bien pris la main AVANT de
     // recharger — sinon un simple rechargement re-servirait juste l'ancienne
     // version depuis le cache déjà en place (cas #appVersionUpdateBtn : rien

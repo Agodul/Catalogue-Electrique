@@ -703,7 +703,12 @@ function _armoireSyncDraftToServer(){
   // non, jamais inspecté par _armoireSaveBlock/_armoireSaveConfig non plus)
   // — un nouveau GET /configBlocks fait autorité pour retrouver le vrai id
   // serveur fraîchement créé.
-  apiCall
+  // "return" ici (pas juste apiCall.then(...) en fire-and-forget) : voir
+  // window._performSwUpdate (js/pwa.js), qui doit pouvoir ATTENDRE la fin
+  // de cette synchro avant de recharger la page en cas de mise à jour —
+  // sinon _armoireServerDraftId n'est jamais mis à jour à temps (retour
+  // utilisateur ci-dessous).
+  return apiCall
     .then(function(){ return _armoireApi('/configBlocks'); })
     .then(function(list){
       _armoireBlocks = Array.isArray(list) ? list : [];
