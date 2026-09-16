@@ -10,7 +10,8 @@
     ref:'Référence', name:'Nom', brand:'Marque', family:'Famille',
     series:'Série', supplier:'Fournisseur', price:'Prix', priceCatalogue:'Prix catalogue',
     desc:'Description', url:'URL', photo:'Photo', tags:'Tags',
-    createdAt:'Créé le', updatedAt:'Modifié le', priceHistory:'Historique des prix'
+    createdAt:'Créé le', updatedAt:'Modifié le', priceHistory:'Historique des prix',
+    comments:'Commentaires'
   };
 
   function formatFieldValue(key, val){
@@ -19,6 +20,10 @@
     if(key === 'priceHistory' && Array.isArray(val)){
       if(val.length === 0) return '<em style="color:var(--ink-soft)">Aucun</em>';
       return val.map(function(h){ return new Date(h.date).toLocaleDateString('fr-FR')+' → '+(typeof _displayPrice==='function'?_displayPrice(h.price):h.price); }).join('<br>');
+    }
+    if(key === 'comments' && Array.isArray(val)){
+      if(val.length === 0) return '<em style="color:var(--ink-soft)">Aucun</em>';
+      return val.map(function(c){ return '<strong>'+escapeHtml(c.author||'—')+'</strong> : '+escapeHtml(c.text||''); }).join('<br>');
     }
     // Prix affichés au même format que partout ailleurs dans l'app (virgule
     // + €, via _displayPrice() dans render.js) plutôt que la valeur brute

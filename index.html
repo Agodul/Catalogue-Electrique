@@ -154,6 +154,7 @@
      render-view-modal-close.js plus bas). -->
 <script src="js/render-view-modal.js" defer></script>
 <script src="js/render-documents.js" defer></script>
+<script src="js/render-comments.js" defer></script>
 <script src="js/render-pdf-viewer.js" defer></script>
 <script src="js/render-view-modal-close.js" defer></script>
 <script src="js/render-price-helpers.js" defer></script>
@@ -506,6 +507,65 @@
     <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;">
       <button id="priceModalCancel" style="padding:8px 16px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;">Fermer</button>
       <button id="priceModalSave" class="copper" style="padding:8px 18px;border-radius:6px;font-size:13px;">Appliquer</button>
+    </div>
+  </div>
+</div>
+<!-- Modale Commentaires — infos absentes de la fiche fabricant, retours
+     d'usage… voir js/render-comments.js -->
+<div id="commentsModalOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10100;align-items:center;justify-content:center;padding:16px;">
+  <!-- Retour utilisateur : "je veux que la fenetre de commentaire est une
+       hauteur max de 550px avant de commencer a scroll" — plafond fixe au
+       lieu de 90vh, min() gardé en filet pour les tout petits écrans
+       (mobile paysage) où 550px dépasserait la hauteur réelle disponible. -->
+  <div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:560px;max-height:min(550px, 90vh);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--line);gap:12px;">
+      <div>
+        <div style="font-weight:700;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:8px;">
+          <i class="ti ti-message-circle-2" aria-hidden="true" style="font-size:17px;color:var(--copper);"></i>
+          Commentaires
+        </div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;" id="commentsModalRef"></div>
+      </div>
+      <!-- Retour utilisateur : "je veux que le bouton pour ajouter un
+           commentaire soit la ou il y a le rectangle rouge, je veux un
+           bouton bleu" (capture à l'appui, espace vide entre le titre et la
+           croix fermer), classe .copper comme les autres actions
+           principales bleues de l'app (ex. priceModalAddBtn). Retour
+           utilisateur suivant : "je veux que lorsqu'on clique [sur ce
+           bouton] une fenêtre apparaisse" — ouvre désormais #commentsNewOverlay,
+           une vraie fenêtre à part plutôt qu'un formulaire déplié sur place. -->
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button id="commentsModalNewBtn" class="copper" style="padding:7px 14px;border-radius:6px;font-size:13px;white-space:nowrap;">
+          Nouveau commentaire
+        </button>
+        <button id="commentsModalClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+      </div>
+    </div>
+    <!-- Corps -->
+    <div style="overflow-y:auto;flex:1;padding:14px 20px;">
+      <div id="commentsModalList" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="commentsModalEmpty" style="display:none;padding:16px 0;font-size:13px;color:var(--ink-soft);font-style:italic;">Aucun commentaire pour l'instant.</div>
+    </div>
+  </div>
+</div>
+<!-- Fenêtre "Nouveau commentaire" — s'ouvre PAR-DESSUS #commentsModalOverlay
+     encore ouverte derrière (retour utilisateur, voir plus haut), z-index
+     supérieur pour rester au premier plan ; voir js/render-comments.js. -->
+<div id="commentsNewOverlay" style="display:none;position:fixed;inset:0;background:var(--overlay-scrim);z-index:10110;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--line);">
+      <div id="commentsNewTitle" style="font-weight:700;font-size:15px;color:var(--ink);">Nouveau commentaire</div>
+      <button id="commentsNewClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <div style="padding:16px 20px;">
+      <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Votre commentaire</label>
+      <textarea id="commentsModalNewText" rows="4" placeholder="Info absente de la fiche fabricant, retour après utilisation…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);resize:vertical;font-family:inherit;"></textarea>
+      <div id="commentsModalError" style="display:none;margin-top:6px;font-size:12px;color:var(--warn);"></div>
+    </div>
+    <div style="padding:12px 20px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;">
+      <button id="commentsModalCancelBtn" style="padding:8px 16px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;">Annuler</button>
+      <button id="commentsModalAddBtn" class="copper" style="padding:8px 16px;border-radius:6px;font-size:13px;">Ajouter</button>
     </div>
   </div>
 </div>

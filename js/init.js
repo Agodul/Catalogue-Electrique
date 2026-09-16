@@ -314,6 +314,8 @@
       { overlay: 'sugPickerOverlay',  close: 'sugPickerCloseBtn' },
       { overlay: 'armoireConfigOverlay', close: 'armoireConfigCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
+      { overlay: 'commentsModalOverlay', close: 'commentsModalClose' },
+      { overlay: 'commentsNewOverlay', close: 'commentsNewClose' },
       { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },
       { overlay: 'conflictOverlay',   close: 'conflictCloseBtn' },
       { overlay: 'reqDetailOverlay',  close: 'reqDetailClose'   },
@@ -397,7 +399,7 @@
   // plutôt que deux listes maintenues séparément qui finiraient par diverger.
   var _KNOWN_OVERLAY_IDS = [
     'modalOverlay', 'viewOverlay', 'settingsOverlay', 'requestsOverlay',
-    'docOverlay', 'priceModalOverlay', 'specsOverlay', 'sugOverlay',
+    'docOverlay', 'priceModalOverlay', 'commentsModalOverlay', 'commentsNewOverlay', 'specsOverlay', 'sugOverlay',
     'sugPickerOverlay', 'conflictOverlay', 'reqDetailOverlay',
     'xlsxImportOverlay', 'authOverlay', 'iconPickerModal', 'compareOverlay',
     'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay'

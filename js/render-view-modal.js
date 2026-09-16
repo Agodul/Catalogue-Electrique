@@ -96,6 +96,9 @@ function _productBadgesCompactHtml(p){
               '<div id="vmDocBtnWrap" class="vm-tab-wrap" style="display:none;">' +
                 '<button id="vmDocBtn" class="vm-tab-btn" title="Documents">Documents</button>' +
               '</div>' +
+              '<div id="vmCommentsSection" class="vm-tab-wrap" style="display:none;">' +
+                '<button id="vmCommentsToggle" class="vm-tab-btn" title="Commentaires">Commentaires<span id="vmCommentsToggleLabel" class="vm-tab-count"></span></button>' +
+              '</div>' +
               '<div id="vmSuggestionsSection" class="vm-tab-wrap" style="display:none;">' +
                 '<button id="vmSuggestionsToggle" class="vm-tab-btn" title="Afficher suggestions">Produits associés<span id="vmSuggestionsToggleLabel" class="vm-tab-count"></span></button>' +
               '</div>' +
@@ -400,6 +403,35 @@ function _productBadgesCompactHtml(p){
     if(vmDocBtnWrap) vmDocBtnWrap.style.display = (p.hasDoc && sUrlDoc && _canViewDocs) ? '' : 'none';
     if(vmDocBtn) vmDocBtn.onclick = function(){ window._openDocModal(p, sUrlDoc); };
     // ── Fin bouton Document ─────────────────────────────────────────
+
+    // ── Bouton Commentaires ──────────────────────────────────────────
+    // Retour utilisateur : "j'aimerai ajouter un bouton commentaire [...]
+    // pour ajouter des information que le fabriquant de dis pas ou même des
+    // retour apres uilisation" — ajouter reste réservé à canEdit (outil
+    // d'équipe pour la saisie), mais retour utilisateur suivant : "il faut
+    // que les commentaire soit visible par un non login" — la CONSULTATION
+    // suit désormais la même règle que les documents publics (vmDocBtnWrap
+    // un peu plus haut) : un visiteur non connecté voit l'onglet (les
+    // commentaires existants restent une information publique du produit),
+    // seul un compte connecté SANS canEdit se le voit retiré (ce n'est pas
+    // un espace de discussion public pour autant : ajouter un commentaire
+    // reste réservé à l'équipe, voir _canAddComment/commentsModalNewBtn
+    // ci-dessous et le garde-fou d'_openCommentsModal, js/render-comments.js).
+    // Retour utilisateur suivant : "je veux qui soit integere comme ici
+    // [l'onglet Commentaires, au même endroit que Caractéristiques] et
+    // retire le du kebab" — le second accès ajouté un temps dans le menu ⋯
+    // (à côté de "Modifier la fiche"/"Supprimer le produit") est retiré :
+    // CET onglet reste le seul chemin.
+    var vmCommentsSection = document.getElementById('vmCommentsSection');
+    var vmCommentsToggle  = document.getElementById('vmCommentsToggle');
+    var vmCommentsLabel   = document.getElementById('vmCommentsToggleLabel');
+    var _canViewComments = !_permsDoc.loggedIn || !!(_permsDoc.canEdit || _permsDoc.isAdmin);
+    var _commentsCount = Array.isArray(p.comments) ? p.comments.length : 0;
+    if(vmCommentsSection) vmCommentsSection.style.display = _canViewComments ? '' : 'none';
+    if(vmCommentsToggle)  vmCommentsToggle.title = 'Commentaires' + (_commentsCount ? ' (' + _commentsCount + ')' : '');
+    if(vmCommentsLabel)   vmCommentsLabel.textContent = _commentsCount ? ' (' + _commentsCount + ')' : '';
+    if(vmCommentsToggle)  vmCommentsToggle.onclick = function(){ if(typeof window._openCommentsModal === 'function') window._openCommentsModal(p); };
+    // ── Fin bouton Commentaires ───────────────────────────────────────
 
     // ── Bouton "Ajouter à la configuration" ─────────────────────────
     // Retour utilisateur (1) : "ajouter un bouton [...] lorsqu'on a une
