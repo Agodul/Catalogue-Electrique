@@ -340,7 +340,8 @@
           var newTags     = COL_TAGS      ? canonicalizeTags((row[COL_TAGS]||'').toString().split(',').map(function(t){return t.trim();}).filter(Boolean)) : [];
 
           var existing = existingMap[ref];
-          var status, oldPrice = '';
+          var status, oldPrice = '', oldCataloguePrice = '';
+          var catPriceChanged = false, sellingPriceChanged = false;
 
           if(!existing){
             // Nouvelle référence
@@ -357,17 +358,19 @@
             // exportée, même sur un export réimporté sans aucune
             // modification (retour utilisateur : "il me trouve plein de
             // différence alors que c'est exactement le même fichier").
-            var existingCatalogue = existing.priceCatalogue
+            oldCataloguePrice = existing.priceCatalogue
               || (Array.isArray(existing.priceHistory) && existing.priceHistory.length > 0 ? existing.priceHistory[0].price : '')
               || '';
-            var currentCatForCheck     = normPrice(existingCatalogue);
+            var currentCatForCheck     = normPrice(oldCataloguePrice);
             var currentSellingForCheck = normPrice(existing.price || '');
             // Même repli que l'export pour la description (stripHtmlTags) —
             // même raison : existing.desc peut contenir du HTML, jamais égal
             // à la version texte brut réimportée depuis l'Excel.
             var existingDescPlain = stripHtmlTags(existing.desc || '');
-            var hasChange = (newCataloguePrice && normPrice(newCataloguePrice) !== currentCatForCheck)
-              || (newSellingPrice && normPrice(newSellingPrice) !== currentSellingForCheck)
+            catPriceChanged     = !!(newCataloguePrice && normPrice(newCataloguePrice) !== currentCatForCheck);
+            sellingPriceChanged = !!(newSellingPrice && normPrice(newSellingPrice) !== currentSellingForCheck);
+            var hasChange = catPriceChanged
+              || sellingPriceChanged
               || (newName     && newName     !== (existing.name     ||''))
               || (newBrand    && newBrand    !== (existing.brand    ||''))
               || (newFamily   && newFamily   !== (existing.family   ||''))
@@ -379,7 +382,7 @@
           }
 
           xlsxPendingData.push({
-            ref, status, oldPrice,
+            ref, status, oldPrice, oldCataloguePrice, catPriceChanged, sellingPriceChanged,
             newPrice, newCataloguePrice, newSellingPrice,
             newName, newBrand, newFamily,
             newSeries, newSupplier, newDesc, newPhoto, newTags,
@@ -417,11 +420,37 @@
               ? '<span class="badge-update">Màj</span>'
               : '<span class="badge-nochange">Inchangé</span>';
 
-          var priceCell = item.status === 'update' && item.newPrice
-            ? '<span class="price-old">' + escapeHtml(item.oldPrice) + '</span><span class="price-new">' + escapeHtml(item.newPrice) + '</span>'
-            : item.status === 'new'
-              ? '<span class="price-new">' + escapeHtml(item.newPrice) + '</span>'
-              : escapeHtml(item.oldPrice);
+          // Retour utilisateur : "bug de prix lorsque le prix remisé a
+          // changer, le système reste sur les prix catalogue alors qu'il
+          // doit faire le prix catalogue et le prix remisé" —
+          // item.newPrice (= newCataloguePrice || newSellingPrice)
+          // privilégiait TOUJOURS le prix catalogue dès que sa colonne
+          // était renseignée (quasi toujours, un export la remplit déjà) :
+          // un changement du seul prix de vente/remisé restait invisible
+          // dans cette prévisualisation, remplacé par le prix catalogue
+          // inchangé — l'import réel appliquait pourtant déjà les deux
+          // correctement (catPriceChanged/sellingPriceChanged, voir la
+          // confirmation plus bas), seul cet aperçu mentait. Affiche
+          // désormais CHAQUE prix qui change réellement, étiqueté, plutôt
+          // qu'un seul en priorisant le catalogue.
+          var priceCell;
+          if(item.status === 'update'){
+            var updateParts = [];
+            if(item.catPriceChanged) updateParts.push(
+              '<div><span class="price-old">' + escapeHtml(item.oldCataloguePrice || '—') + '</span><span class="price-new">' + escapeHtml(item.newCataloguePrice) + '</span> <span class="price-field-label">catalogue</span></div>'
+            );
+            if(item.sellingPriceChanged) updateParts.push(
+              '<div><span class="price-old">' + escapeHtml(item.oldPrice || '—') + '</span><span class="price-new">' + escapeHtml(item.newSellingPrice) + '</span> <span class="price-field-label">vente</span></div>'
+            );
+            priceCell = updateParts.length ? updateParts.join('') : escapeHtml(item.oldPrice);
+          } else if(item.status === 'new'){
+            var newParts = [];
+            if(item.newCataloguePrice) newParts.push('<div><span class="price-new">' + escapeHtml(item.newCataloguePrice) + '</span> <span class="price-field-label">catalogue</span></div>');
+            if(item.newSellingPrice)   newParts.push('<div><span class="price-new">' + escapeHtml(item.newSellingPrice) + '</span> <span class="price-field-label">vente</span></div>');
+            priceCell = newParts.length ? newParts.join('') : escapeHtml(item.newPrice);
+          } else {
+            priceCell = escapeHtml(item.oldPrice);
+          }
 
           tr.innerHTML =
             '<td>' + badge + '</td>' +
@@ -585,13 +614,24 @@
         var sellingChanged = item.newSellingPrice &&
           normPriceConfirm(item.newSellingPrice) !== normPriceConfirm(p.price || '');
 
+        // Retour utilisateur : "est-ce que ça écrase les anciens prix [...]
+        // ou ça les ajoute à l'historique ?" — en vérifiant, l'historique
+        // enregistrait le NOUVEAU prix (déjà égal au prix courant juste
+        // après), pas l'ANCIEN qu'il remplace : l'ancien prix disparaissait
+        // purement et simplement (ni conservé, ni visible), et "Historique
+        // des prix" affichait deux fois le même prix (l'entrée du jour ET
+        // "Prix actuel"). Même convention que l'édition manuelle des prix
+        // (js/modal-price-history-form.js : "if(p.priceCatalogue)
+        // history.push({price: p.priceCatalogue, ...})" AVANT d'écraser) :
+        // c'est la valeur qu'on quitte qui part en historique, jamais celle
+        // qu'on adopte.
         if(catChanged){
+          if(p.priceCatalogue) p.priceHistory.push({price: p.priceCatalogue, date: now, label: 'Prix catalogue fabricant'});
           p.priceCatalogue = item.newCataloguePrice;
-          p.priceHistory.push({price: item.newCataloguePrice, date: now, label: 'Prix catalogue fabricant'});
         }
         if(sellingChanged){
+          if(p.price) p.priceHistory.push({price: p.price, date: now, label: 'Votre prix'});
           p.price = item.newSellingPrice;
-          p.priceHistory.push({price: item.newSellingPrice, date: now, label: 'Votre prix'});
         }
         p.updatedAt = Date.now();
         touchedByXlsx.push(p);

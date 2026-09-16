@@ -2470,6 +2470,17 @@
     text-decoration:line-through;color:var(--ink-soft);margin-right:4px;font-size:12px;
   }
   #xlsxPreviewTable .price-new{ color:var(--copper);font-weight:700; }
+  /* Retour utilisateur : "bug de prix lorsque le prix remisé a changer,
+     le système reste sur les prix catalogue [...] il doit faire le prix
+     catalogue et le prix remisé" — l'aperçu d'import peut maintenant
+     afficher les deux prix sur des lignes séparées (voir la cellule
+     "Nouveau prix", js/actions-import-export.js) ; cette étiquette
+     ("catalogue"/"vente") distingue laquelle des deux est concernée sur
+     chaque ligne.
+  */
+  #xlsxPreviewTable .price-field-label{
+    font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);
+  }
 
   /* ── Voir plus / moins inline dans la description ── */
   /* Voir plus/moins — masqué sur desktop, affiché par JS sur mobile */
