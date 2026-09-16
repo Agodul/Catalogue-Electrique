@@ -1623,19 +1623,36 @@ function _armoireOpen(){
   // Retour utilisateur : "reprendre sur notre tel ou un autre pc avec le
   // même identifiant" — _armoireBlocks doit être à jour (contient
   // éventuellement le brouillon serveur) avant de chercher dedans.
-  _armoireFetchBlocks().then(_armoireSyncDraftFromServer);
+  // Le message "restauré [...] non enregistré" (voir
+  // _armoireWarnIfDraftNotBackedUp plus bas) n'a de sens qu'APRÈS ce
+  // GET/_armoireSyncDraftFromServer : avant, on ne sait pas encore si ce
+  // brouillon est déjà confirmé côté serveur ou pas. Les deux branches
+  // (succès/échec de la requête) doivent y mener : sans serveur configuré ou
+  // en cas d'erreur réseau, le brouillon local reste la seule copie qui
+  // existe — l'avertissement reste pertinent dans ce cas, pas seulement en
+  // cas de succès.
+  _armoireFetchBlocks().then(_armoireSyncDraftFromServer)
+    .then(_armoireWarnIfDraftNotBackedUp, _armoireWarnIfDraftNotBackedUp);
   _armoireFetchSavedConfigs();
+}
 
-  // Retour utilisateur : "comment éviter de perdre la config [...] alors
-  // qu'on a pas enregistré ?" — voir _armoireRestoreDraftFromStorage plus
-  // haut. Prévient explicitement, une seule fois par session, que le
-  // contenu déjà présent vient d'une restauration automatique (sinon
-  // déroutant : des produits apparaissent sans que l'utilisateur les ait
-  // ajoutés cette fois-ci).
-  if(_armoireDraftWasRestored){
-    _armoireDraftWasRestored = false;
-    if(typeof showToast === 'function') showToast('Configuration en cours restaurée (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' non enregistrée' + (_armoireDraft.length > 1 ? 's' : '') + ')', 'ok', 4000);
-  }
+// Retour utilisateur : "comment éviter de perdre la config [...] alors qu'on
+// a pas enregistré ?" (avertissement d'origine) puis "j'ai encore la notif
+// qui dit [...] qu'il a récupéré la config qui n'avait pas été enregistrée"
+// (ce même avertissement, mais devenu trompeur) — _armoireDraftWasRestored
+// se contentait de dire "un brouillon existait déjà en localStorage au
+// chargement de la page", vrai à CHAQUE réouverture de l'app dès que la
+// synchro serveur fonctionne (le brouillon y est alors déjà sauvegardé, ce
+// n'est plus une simple copie de secours locale à risque). Attendre ici la
+// fin de _armoireSyncDraftFromServer et vérifier _armoireServerDraftId (déjà
+// mis à jour par cette fonction, qu'elle ait fini par garder le local ou
+// adopter le serveur) permet de ne prévenir que quand c'est réellement vrai :
+// aucune copie de ce brouillon n'existe sur le serveur pour l'instant.
+function _armoireWarnIfDraftNotBackedUp(){
+  if(!_armoireDraftWasRestored) return;
+  _armoireDraftWasRestored = false;
+  if(!_armoireDraft.length || _armoireServerDraftId) return;
+  if(typeof showToast === 'function') showToast('Configuration en cours restaurée (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' non enregistrée' + (_armoireDraft.length > 1 ? 's' : '') + ')', 'ok', 4000);
 }
 
 function _armoireClose(){
