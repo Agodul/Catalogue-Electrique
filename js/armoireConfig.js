@@ -709,6 +709,22 @@ function _armoireSyncDraftToServer(){
       _armoireBlocks = Array.isArray(list) ? list : [];
       var mine = _armoireFindServerDraft();
       _armoireServerDraftId = mine ? mine.id : null;
+      // Retour utilisateur : "quand j'ouvre le configurateur j'ai toujours
+      // la notif [reprise depuis un autre appareil]" — _armoireDraftLocalSavedAt
+      // (pris au moment de l'ÉDITION, AVANT l'anti-rafale de
+      // ARMOIRE_DRAFT_SYNC_DELAY_MS et l'aller-retour réseau ci-dessus) est
+      // mécaniquement TOUJOURS antérieur au createdAt que le serveur vient
+      // d'attribuer à cette même entrée. Sans ce rattrapage, la toute
+      // prochaine ouverture — même sur CET appareil, sans aucun autre
+      // appareil impliqué — trouvait donc systématiquement le serveur "plus
+      // récent" que le local et réaffichait le brouillon qu'on venait
+      // pourtant tout juste d'y envoyer, avec le toast donnant l'impression
+      // trompeuse qu'un autre appareil avait modifié la configuration.
+      var confirmedAt = (mine && typeof mine.createdAt === 'number') ? mine.createdAt : Date.now();
+      if(confirmedAt > _armoireDraftLocalSavedAt){
+        _armoireDraftLocalSavedAt = confirmedAt;
+        try{ localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt })); }catch(e){}
+      }
     })
     .catch(function(e){ console.warn('_armoireSyncDraftToServer:', e && e.message); });
 }
