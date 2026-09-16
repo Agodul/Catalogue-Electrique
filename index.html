@@ -185,7 +185,6 @@
 <script src="js/actions-settings-nav.js" defer></script>
 <script src="js/actions-backup.js" defer></script>
 <script src="js/actions-compare.js" defer></script>
-<script src="js/actions-plugin-download.js" defer></script>
 <script src="js/actions-import-export.js" defer></script>
 <script src="js/actions-home.js" defer></script>
 <script src="js/actions-conflicts.js" defer></script>
@@ -306,26 +305,17 @@
           <span class="mi-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
           <span class="mi-texts"><span class="mi-title">Comparer les offres</span><span class="mi-sub">Importer les fichiers fournisseurs</span></span>
         </button>
-        <!-- Distribution de l'extension Chrome depuis le serveur (API
-             "/plugin/file" ajoutée par le développeur backend) — retour
-             utilisateur : "mettre à disposition l'extension [...] à tous
-             les user loggin". Visible dès qu'on est connecté, pas
-             seulement admin (voir js/auth.js) — c'est un simple
-             téléchargement, pas une action de gestion. -->
-        <button class="hdr-menu-item" id="btnDownloadExtension" style="display:none;">
+        <!-- Retour utilisateur : "retirer tout ce qui touche au bouton pour
+             l'extension et me laisser un bouton qui permettra d'être envoyé
+             vers la page de ce lien" — remplace le téléchargement/envoi
+             manuel (API "/plugin/file", js/actions-plugin-download.js,
+             supprimé) par un simple lien vers la fiche Chrome Web Store,
+             visible par tous (plus besoin d'être connecté, ce n'est plus une
+             action de gestion). -->
+        <a class="hdr-menu-item" id="btnChromeExtension" href="https://chromewebstore.google.com/detail/spi-catalogue-%C3%A9lectrique/eiogeifdkechjhgnpoceamnedjogkchp" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
           <span class="mi-icon" style="background:#EFF6FF;"><i class="ti ti-puzzle" style="color:#194093;"></i></span>
-          <span class="mi-texts"><span class="mi-title">Télécharger l'extension</span><span class="mi-sub">Extension Chrome SPI Catalogue</span></span>
-        </button>
-        <!-- Envoi d'une nouvelle version (POST /plugin/file) — ADMIN
-             uniquement (retour utilisateur : "faudrai pouvoir ajouter
-             depuis le client mais seulement pour les admins") : remplace le
-             fichier que TOUS les utilisateurs téléchargent ensuite via le
-             bouton ci-dessus, une portée qui dépasse un simple compte
-             utilisateur normal. -->
-        <button class="hdr-menu-item" id="btnUploadExtension" style="display:none;">
-          <span class="mi-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
-          <span class="mi-texts"><span class="mi-title">Envoyer une nouvelle version</span><span class="mi-sub">Remplace le fichier distribué à tous</span></span>
-        </button>
+          <span class="mi-texts"><span class="mi-title">Extension Chrome</span><span class="mi-sub">Voir sur le Chrome Web Store</span></span>
+        </a>
         <div class="hdr-menu-sep"></div>
         <button class="hdr-menu-item" id="btnRequestsMenu" style="display:none;">
           <span class="mi-icon" style="background:#EFF6FF;position:relative;">
@@ -1029,9 +1019,6 @@
 
 <input type="file" id="fileImport" accept="application/json" style="display:none;">
 <input type="file" id="fileImportXlsx" accept=".xlsx,.xls" style="display:none;">
-<!-- Envoi d'une nouvelle version de l'extension (POST /plugin/file, admin
-     uniquement) — voir js/actions-plugin-download.js. -->
-<input type="file" id="fileUploadExtension" accept=".zip,application/zip" style="display:none;">
 
   <!-- ── Popup installation PWA ────────────────────────────────────── -->
   <div id="pwaInstallBanner" style="
@@ -1308,16 +1295,11 @@
       <span class="menu-sheet-icon" style="background:#FFF7ED;"><i class="ti ti-scale" style="color:#EA580C;"></i></span>
       <span class="menu-sheet-texts"><span class="menu-sheet-title">Comparer les offres</span><span class="menu-sheet-sub">Importer les fichiers fournisseurs</span></span>
     </button>
-    <!-- Miroir mobile de #btnDownloadExtension (menu ⋮ desktop, voir plus haut). -->
-    <button class="menu-sheet-item" id="msDownloadExtension" style="display:none;">
+    <!-- Miroir mobile du lien Extension Chrome (menu ⋮ desktop, voir plus haut). -->
+    <a class="menu-sheet-item" id="msChromeExtension" href="https://chromewebstore.google.com/detail/spi-catalogue-%C3%A9lectrique/eiogeifdkechjhgnpoceamnedjogkchp" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
       <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-puzzle" style="color:#194093;"></i></span>
-      <span class="menu-sheet-texts"><span class="menu-sheet-title">Télécharger l'extension</span><span class="menu-sheet-sub">Extension Chrome SPI Catalogue</span></span>
-    </button>
-    <!-- Miroir mobile de #btnUploadExtension (menu ⋮ desktop) — admin uniquement. -->
-    <button class="menu-sheet-item" id="msUploadExtension" style="display:none;">
-      <span class="menu-sheet-icon" style="background:#EFF6FF;"><i class="ti ti-upload" style="color:#194093;"></i></span>
-      <span class="menu-sheet-texts"><span class="menu-sheet-title">Envoyer une nouvelle version</span><span class="menu-sheet-sub">Remplace le fichier distribué à tous</span></span>
-    </button>
+      <span class="menu-sheet-texts"><span class="menu-sheet-title">Extension Chrome</span><span class="menu-sheet-sub">Voir sur le Chrome Web Store</span></span>
+    </a>
     <button class="menu-sheet-item danger" id="msCleanDescs">
       <span class="menu-sheet-icon" style="background:#FEF2F2;"><i class="ti ti-eraser" style="color:#DC2626;"></i></span>
       <span class="menu-sheet-texts"><span class="menu-sheet-title">Nettoyer descriptions</span><span class="menu-sheet-sub">Supprimer les balises HTML</span></span>

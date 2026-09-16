@@ -317,14 +317,6 @@ async function authLogin(username, password) {
       if (_wasViewAllBeforeLogin && typeof showCatalogueAll === 'function') showCatalogueAll();
       document.dispatchEvent(new CustomEvent('spi_auth_changed'));
       if (typeof window._pdfPreloadLib === 'function') window._pdfPreloadLib();
-      // Version de l'extension affichée sur le bouton "Télécharger
-      // l'extension" (js/actions-plugin-download.js) : l'appel fait au
-      // chargement du script échoue silencieusement si l'utilisateur n'était
-      // pas déjà connecté à ce moment-là (l'API est authentifiée) — sans ce
-      // rappel ici, le sous-texte de version resterait vide jusqu'au
-      // prochain rechargement complet de la page (retour utilisateur :
-      // "faut attendre que le user se connecte").
-      if (typeof window._refreshExtensionVersionDisplay === 'function') window._refreshExtensionVersionDisplay();
       // Démarrer le polling demandes si admin (garde déjà l'admin/serveur en
       // interne — ne fait plus qu'autoriser les notifications navigateur,
       // voir requests.js : le premier /checkReq+/checkBugs immédiat qu'elle
@@ -595,18 +587,6 @@ function applyAuthUI() {
   var btnFabArmoireConfig = document.getElementById('btnFabArmoireConfig');
   if (btnFabArmoireConfig) btnFabArmoireConfig.style.display = loggedIn ? '' : 'none';
 
-  // Téléchargement de l'extension Chrome (menu ⋮) — visible pour TOUT
-  // utilisateur connecté, pas seulement admin (retour utilisateur : "mettre
-  // à disposition l'extension [...] à tous les user loggin"), voir
-  // js/actions-plugin-download.js.
-  var btnDownloadExtension = document.getElementById('btnDownloadExtension');
-  if (btnDownloadExtension) btnDownloadExtension.style.display = loggedIn ? '' : 'none';
-  // Envoi d'une nouvelle version : ADMIN uniquement (retour utilisateur :
-  // "faudrai pouvoir ajouter depuis le client mais seulement pour les
-  // admins") — remplace le fichier distribué à tout le monde.
-  var btnUploadExtension = document.getElementById('btnUploadExtension');
-  if (btnUploadExtension) btnUploadExtension.style.display = isAdmin ? '' : 'none';
-
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
   var canPropose = loggedIn && !canEdit && !!_sUrlReq;
@@ -710,7 +690,7 @@ function applyAuthUI() {
     });
   }
   var _hdrDataIds = ['btnExport','btnImport','btnExportXlsx','btnImportXlsx'];
-  var _hdrToolIds = ['btnCompare','btnDownloadExtension','btnUploadExtension','btnCleanDescs'];
+  var _hdrToolIds = ['btnCompare','btnChromeExtension','btnCleanDescs'];
   var _hdrTitles  = document.querySelectorAll('#hdrMenu .hdr-menu-section-title');
   var _hdrSeps    = document.querySelectorAll('#hdrMenu .hdr-menu-sep');
   if(_hdrTitles[0]) _hdrTitles[0].style.display = _hdrAllHidden(_hdrDataIds) ? 'none' : '';
