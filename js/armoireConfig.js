@@ -33,18 +33,38 @@ var ARMOIRE_DRAFT_STORAGE_KEY = 'cat_armoire_draft';
 // serveur, toujours, sans condition".
 var _armoireDraftLocalSavedAt = 0;
 
+// Dernier contenu RÉELLEMENT persisté (JSON) — retour utilisateur : "quand
+// je modifie la quantité, ça ne s'actualise pas sur l'autre appareil".
+// _armoireRenderDraft() (donc _armoireSaveDraftToStorage) est aussi appelée
+// pour de simples RÉ-AFFICHAGES sans rapport avec une modification (ex.
+// _armoireOpen() rend le brouillon déjà en mémoire dès l'ouverture, avant
+// même d'avoir vérifié le serveur) — sans ce garde-fou, cette sauvegarde
+// "pour rien" avançait quand même _armoireDraftLocalSavedAt à
+// Date.now(), qui gagnait alors QUASI TOUJOURS la comparaison dans
+// _armoireSyncDraftFromServer face à un horodatage serveur forcément dans
+// le passé — un autre appareil avait beau avoir sauvegardé une quantité
+// plus récente juste après, ce nouvel appareil-ci ignorait systématiquement
+// le serveur dès qu'il avait ne serait-ce qu'un vieux brouillon local.
+// L'horodatage ne doit avancer que sur un contenu qui a RÉELLEMENT changé.
+var _armoireDraftLastSavedItemsJson = null;
+
 function _armoireSaveDraftToStorage(){
   // Ne jamais persister PENDANT l'édition d'un bloc/config existant :
   // _armoireDraft contient alors TEMPORAIREMENT le contenu de l'entrée
   // éditée (voir _armoireStartEditEntry/_armoireDraftBackup plus bas), pas
   // la vraie configuration en cours de l'utilisateur — l'écraser ici la
   // perdrait pour de bon en cas de crash pendant une édition.
-  if(_armoireEditingEntry) return;
+  if(_armoireEditingEntry) return false;
   try{
     if(_armoireDraft.length){
+      var itemsJson = JSON.stringify(_armoireDraft);
+      if(itemsJson === _armoireDraftLastSavedItemsJson) return false; // contenu inchangé : ne pas avancer l'horodatage
+      _armoireDraftLastSavedItemsJson = itemsJson;
       _armoireDraftLocalSavedAt = Date.now();
       localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt }));
     } else {
+      if(_armoireDraftLastSavedItemsJson === null) return false; // déjà vide : rien de réellement nouveau à synchroniser
+      _armoireDraftLastSavedItemsJson = null;
       _armoireDraftLocalSavedAt = 0;
       localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
     }
@@ -52,7 +72,9 @@ function _armoireSaveDraftToStorage(){
     // Navigation privée / quota dépassé : tant pis, pas de sauvegarde de
     // secours possible, mais ça ne doit jamais faire planter le
     // configurateur pour autant.
+    return false;
   }
+  return true;
 }
 
 // Mis à true si un brouillon non vide a été restauré au chargement de la
@@ -80,6 +102,11 @@ function _armoireRestoreDraftFromStorage(){
     if(restored.length){
       _armoireDraft = restored;
       _armoireDraftWasRestored = true;
+      // Le prochain _armoireRenderDraft() (ex. à l'ouverture du panneau) va
+      // re-sauvegarder ce même contenu tel quel — sans ceci, ce simple
+      // ré-affichage serait pris pour une modification réelle et avancerait
+      // _armoireDraftLocalSavedAt à Date.now() (voir _armoireSaveDraftToStorage).
+      _armoireDraftLastSavedItemsJson = JSON.stringify(_armoireDraft);
     }
   }catch(e){
     // Contenu corrompu/illisible : on repart simplement d'un brouillon vide
@@ -348,8 +375,14 @@ function _armoireRenderDraft(){
   // le "if(!el) return" ci-dessous pour que la persistance ait lieu même si
   // le panneau n'a jamais été affiché cette session (ex. ajout depuis une
   // fiche produit).
-  _armoireSaveDraftToStorage();
-  _armoireScheduleDraftSync();
+  // _armoireScheduleDraftSync() UNIQUEMENT si _armoireSaveDraftToStorage()
+  // a réellement persisté un changement — sinon un simple ré-affichage sans
+  // rapport avec une modification (ex. _armoireOpen() qui rend le brouillon
+  // déjà en mémoire) programmait quand même un aller-retour serveur inutile
+  // (recréation de l'entrée avec un nouvel id/horodatage, voir
+  // _armoireReplaceEntry — aucun PUT/PATCH disponible côté serveur) pour un
+  // contenu pourtant identique.
+  if(_armoireSaveDraftToStorage()) _armoireScheduleDraftSync();
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
   _armoireRenderStats();
