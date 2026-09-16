@@ -180,6 +180,17 @@
   }
 
   window._openDocModal = function openDocModal(p, sUrl){
+    // Retour utilisateur : "regarde que chaque perm affiche les boutons
+    // autorisés" — le bouton qui mène ici est déjà masqué sans canViewDocs
+    // pour un compte connecté (voir js/render-view-modal.js), mais cette
+    // fonction reste accessible directement (console, autre appel). Même
+    // garde-fou que deleteProduct()/openModal() : un visiteur NON connecté
+    // garde l'accès aux documents publics comme avant.
+    var _perms = window._userPerms || {};
+    if(_perms.loggedIn && !(_perms.canViewDocs || _perms.isAdmin)){
+      if(typeof showToast === 'function') showToast('Droit de consultation des documents requis', 'err', 3000);
+      return;
+    }
     var overlay = document.getElementById('docOverlay');
     var docList = document.getElementById('docList');
     if(!overlay || !docList) return;

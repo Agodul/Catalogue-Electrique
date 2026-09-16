@@ -93,6 +93,19 @@
     var loaded = supplierSlots.filter(function(s){ return Object.keys(s.data).length > 0; });
     if(loaded.length < 2){ showToast('Importez au moins 2 fichiers fournisseurs', 'err', 2500); return; }
 
+    // Retour utilisateur : "fais des test en étant un user qui n'a pas de
+    // permission" — ce panneau reste accessible à tout connecté (comparer
+    // des prix est une simple lecture, utile même sans droit d'édition),
+    // mais "Appliquer"/"Appliquer tous les meilleurs prix" modifient
+    // directement product.price sans aucune vérification jusqu'ici : un
+    // utilisateur sans canEdit pouvait changer un prix catalogue par ce
+    // biais alors que le formulaire produit et "Gestion des prix" le lui
+    // interdisent tous les deux. Même vérification que hasDirectEditRights
+    // dans js/actions-import-export.js.
+    var canApplyPrices = !!(window._userPerms && (window._userPerms.canEdit || window._userPerms.isAdmin));
+    var btnSaveBestEl = document.getElementById('btnSaveBest');
+    if(btnSaveBestEl) btnSaveBestEl.style.display = canApplyPrices ? '' : 'none';
+
     // Collecter toutes les références présentes dans au moins un fichier
     var allRefs = {};
     loaded.forEach(function(s){ Object.keys(s.data).forEach(function(r){ allRefs[r]=true; }); });
@@ -119,7 +132,7 @@
         ? '<span style="color:#059669;font-size:12px;">-'+((1-bestPrice/worstPrice)*100).toFixed(0)+'%</span>' : '—';
 
       var bestSupplier = bestPrice !== null ? loaded[prices.indexOf(bestPrice)] : null;
-      var action = (bestPrice !== null && prod)
+      var action = (canApplyPrices && bestPrice !== null && prod)
         ? '<button class="compare-save-btn" data-ref="'+escapeHtml(ref)+'" data-price="'+bestPrice+'" data-supplier="'+(bestSupplier?escapeHtml(bestSupplier.name):'')+'" title="Appliquer le meilleur prix">Appliquer</button>'
         : '—';
 

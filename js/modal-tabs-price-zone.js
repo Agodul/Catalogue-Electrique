@@ -27,6 +27,7 @@
   // ---------- Zone prix de vente ----------
   var sellingPriceZoneEl = document.getElementById('sellingPriceZone');
   var fSellingPrice      = document.getElementById('fSellingPrice');
+  _restrictToPriceChars(fSellingPrice);
   var sellingPriceHint   = document.getElementById('sellingPriceHint');
   // fTags déclaré en haut du fichier
   // f3dAvailable, f3dLink, f3dLinkRow déclarés en haut du fichier

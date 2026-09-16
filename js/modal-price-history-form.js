@@ -1,5 +1,17 @@
   // ── Modale gestion des prix ───────────────────────────────────────
   function openPriceModal(){
+    // Retour utilisateur : "fais des test en étant un user qui n'a pas de
+    // permission" — le bouton qui mène ici (#btnOpenPriceModal) n'apparaît
+    // que dans le formulaire produit en édition, lui-même déjà bloqué sans
+    // canEdit (voir openModal, js/modal-autocomplete.js) — mais cette
+    // fonction reste accessible directement (console, autre appel) et
+    // modifie/enregistre réellement le prix sans aucune vérification.
+    // Même garde-fou que deleteProduct()/openModal().
+    var _perms = window._userPerms || {};
+    if(!(_perms.canEdit || _perms.isAdmin)){
+      if(typeof showToast === 'function') showToast('Droit de modification requis', 'err', 3000);
+      return;
+    }
     var p = products.find(function(x){ return x.id === editingId; });
     if(!p) return;
 
@@ -154,6 +166,11 @@
   document.getElementById('priceModalClose').addEventListener('click', closePriceModal);
   document.getElementById('priceModalCancel').addEventListener('click', closePriceModal);
   // clic extérieur bloqué — géré par _initModalEscape()
+
+  if(window._restrictToPriceChars){
+    window._restrictToPriceChars(document.getElementById('priceModalNewCatalogue'));
+    window._restrictToPriceChars(document.getElementById('priceModalNewRemise'));
+  }
 
   // Ajouter un nouveau prix — le prix catalogue et le prix remisé sont
   // modifiés indépendamment : ne renseigner que l'un des deux ne touche que

@@ -179,6 +179,22 @@
   };
 
   function openModal(id){
+    // Retour utilisateur : "fais des test en étant un user qui n'a pas de
+    // permission" — les boutons qui mènent ici (Ajouter, Modifier la fiche,
+    // extraction via l'extension Chrome) sont déjà masqués sans canEdit,
+    // mais cette fonction reste accessible directement (console, autre
+    // appel), et rien n'empêchait alors d'y saisir puis d'enregistrer —
+    // même diagnostic déjà posé pour deleteProduct() (js/render-card-grid.js),
+    // repris ici à l'identique : vérifier réellement le droit, pas se fier
+    // qu'à l'UI qui le masque. La revue d'une demande proposée (voir
+    // js/modal-request-review.js) passe aussi par ici, mais uniquement pour
+    // un admin (isAdmin toujours vrai dans ce cas) — jamais bloquée par ce
+    // garde-fou.
+    var _perms = window._userPerms || {};
+    if(!(_perms.canEdit || _perms.isAdmin)){
+      if(typeof showToast === 'function') showToast('Droit de modification requis', 'err', 3000);
+      return;
+    }
     // Garde-fou supplémentaire (en plus de resetReviewModeUI) : openModal()
     // sert à "Ajouter un produit"/"Modifier le produit", jamais à la revue
     // d'une demande — l'état verrouillé ne doit donc jamais y être visible.

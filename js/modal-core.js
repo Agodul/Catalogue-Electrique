@@ -18,6 +18,26 @@
   // pas re-cliqué "Enregistrer".
   function _markFieldInvalid(el){ if(el) el.classList.add('field-invalid'); }
   function _clearFieldInvalid(el){ if(el) el.classList.remove('field-invalid'); }
+
+  // Retour utilisateur : "les zone de saisie de prix doit accepté que les
+  // chiffre et . ou ," — filtre en direct les caractères tapés/collés dans
+  // un champ prix (garde virgule ET point, cf. parsePriceNumber dans
+  // js/actions-save.js qui accepte les deux formats de séparateur décimal).
+  // Exposée sur window car ce fichier charge en premier (voir l'ordre des
+  // <script> dans index.html) : les autres champs prix (priceModalNewCatalogue/
+  // Remise, fSellingPrice) la réutilisent depuis leur propre fichier.
+  function _restrictToPriceChars(el){
+    if(!el) return;
+    el.addEventListener('input', function(){
+      var cleaned = el.value.replace(/[^0-9.,]/g, '');
+      if(cleaned !== el.value){
+        var pos = el.selectionStart - (el.value.length - cleaned.length);
+        el.value = cleaned;
+        try{ el.setSelectionRange(pos, pos); }catch(e){}
+      }
+    });
+  }
+  window._restrictToPriceChars = _restrictToPriceChars;
   [fBrand, fRef].forEach(function(el){
     if(el) el.addEventListener('input', function(){ _clearFieldInvalid(el); });
   });
@@ -35,6 +55,7 @@
   var fDesc = document.getElementById('fDesc');
 
   var fPrice = document.getElementById('fPrice');
+  _restrictToPriceChars(fPrice);
   var priceDisplayRow = document.getElementById('priceDisplayRow');
   var priceDisplayVal = document.getElementById('priceDisplayVal');
   var priceCreateRow  = document.getElementById('priceCreateRow');

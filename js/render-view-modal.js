@@ -378,11 +378,26 @@ function _productBadgesCompactHtml(p){
     vmPriceHistory.innerHTML = priceHistoryHtml;
     vmPriceHistory.style.display = priceHistoryHtml ? '' : 'none';
 
-    // ── Bouton Document (visible pour tous) ────────────────────────
+    // ── Bouton Document (visible pour tous les visiteurs non connectés —
+    // un document public reste public ; pour un compte connecté, respecte
+    // maintenant canViewDocs) ────────────────────────────────────────
+    // Retour utilisateur : "regarde que chaque perm affiche les boutons
+    // autorisés" — "Voir les documents PDF" (canViewDocs) existe bien comme
+    // case à cocher par utilisateur (voir Ajouter/Modifier utilisateur,
+    // js/auth.js) mais n'était vérifiée nulle part : ce bouton s'affichait
+    // pour absolument tout le monde, y compris un compte connecté SANS
+    // cette permission. Un visiteur NON connecté continue de voir les
+    // documents publics comme avant (_perms.loggedIn faux) — seul un compte
+    // connecté sans canViewDocs se le voit désormais retiré.
     var vmDocBtn     = document.getElementById('vmDocBtn');
     var vmDocBtnWrap = document.getElementById('vmDocBtnWrap');
     var sUrlDoc      = localStorage.getItem('cat_server_url');
-    if(vmDocBtnWrap) vmDocBtnWrap.style.display = (p.hasDoc && sUrlDoc) ? '' : 'none';
+    // _perms est déclarée plus bas dans cette même fonction (section
+    // "Appliquer permissions sur les boutons de la fiche") — pas encore
+    // disponible ici, donc relu directement depuis window._userPerms.
+    var _permsDoc    = window._userPerms || {};
+    var _canViewDocs = !_permsDoc.loggedIn || !!_permsDoc.canViewDocs;
+    if(vmDocBtnWrap) vmDocBtnWrap.style.display = (p.hasDoc && sUrlDoc && _canViewDocs) ? '' : 'none';
     if(vmDocBtn) vmDocBtn.onclick = function(){ window._openDocModal(p, sUrlDoc); };
     // ── Fin bouton Document ─────────────────────────────────────────
 
