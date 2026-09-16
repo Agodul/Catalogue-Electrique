@@ -12,18 +12,7 @@
     document.getElementById('priceModalCurrentRemiseWrap').style.display = remiseActive ? '' : 'none';
     document.getElementById('priceModalCurrent').textContent = p.price || '—';
 
-    // Delta global
-    var deltaEl = document.getElementById('priceModalDelta');
-    if(Array.isArray(p.priceHistory) && p.priceHistory.length > 0 && p.price){
-      var first = parsePriceNumber(p.priceHistory[0].price);
-      var cur   = parsePriceNumber(p.price);
-      if(first && cur && first !== 0){
-        var pct = ((cur - first) / first) * 100;
-        var sign = pct >= 0 ? '+' : '';
-        deltaEl.textContent = sign + pct.toFixed(1) + ' %';
-        deltaEl.style.color = pct > 0 ? 'var(--warn)' : (pct < 0 ? 'var(--moss,#4a7c59)' : 'var(--ink-soft)');
-      } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
-    } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
+    updatePriceModalDelta(p);
 
     renderPriceModalTable(p);
 
@@ -39,6 +28,27 @@
     document.getElementById('priceModalError').style.display = 'none';
 
     priceModalOverlay.style.display = 'flex';
+  }
+
+  // Retour utilisateur : "le -13,5% en haut ne s'est pas mis à jour après le
+  // nouvel ajout" — extrait d'openPriceModal() pour être aussi appelable
+  // depuis le handler "Ajouter" ci-dessous (priceModalAddBtn), qui modifiait
+  // p.price/p.priceHistory puis rafraîchissait le tableau et les deux
+  // encadrés PRIX CATALOGUE/PRIX REMISÉ, mais jamais ce delta-ci — resté
+  // figé sur sa valeur d'ouverture de modale jusqu'à la prochaine fermeture/
+  // réouverture.
+  function updatePriceModalDelta(p){
+    var deltaEl = document.getElementById('priceModalDelta');
+    if(Array.isArray(p.priceHistory) && p.priceHistory.length > 0 && p.price){
+      var first = parsePriceNumber(p.priceHistory[0].price);
+      var cur   = parsePriceNumber(p.price);
+      if(first && cur && first !== 0){
+        var pct = ((cur - first) / first) * 100;
+        var sign = pct >= 0 ? '+' : '';
+        deltaEl.textContent = sign + pct.toFixed(1) + ' %';
+        deltaEl.style.color = pct > 0 ? 'var(--warn)' : (pct < 0 ? 'var(--moss,#4a7c59)' : 'var(--ink-soft)');
+      } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
+    } else { deltaEl.textContent = '—'; deltaEl.style.color = ''; }
   }
 
   function closePriceModal(){
@@ -220,6 +230,7 @@
     document.getElementById('priceModalCurrent').textContent = p.price || '—';
     document.getElementById('priceModalNewCatalogue').value = p.priceCatalogue || p.price || '';
     document.getElementById('priceModalNewRemise').value = remiseActive ? p.price : '';
+    updatePriceModalDelta(p);
   });
 
   // Appliquer et fermer

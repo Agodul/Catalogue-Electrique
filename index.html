@@ -346,7 +346,22 @@
       </div>
     </div>
 
-<!-- Modale Comparaison offres -->
+    <button class="copper" id="btnAdd">Ajouter un produit</button>
+    <button class="copper" id="btnProposeProduct" style="display:none;">
+      <i class="ti ti-edit" aria-hidden="true"></i> Proposer un produit
+    </button>
+  </div>
+</header>
+
+<!-- Modale Comparaison offres — retour utilisateur : sur mobile, ouvrir ce
+     comparateur depuis le tiroir "Menu" pendant qu'une fiche produit était
+     déjà affichée le laissait invisible sous cette fiche malgré son z-index
+     bien plus élevé (--z-panel). Cause : ce bloc était resté imbriqué DANS
+     <header> (position:sticky, z-index:1) au lieu d'être un frère de
+     <header> comme #viewOverlay/#settingsOverlay plus bas — <header> crée
+     son propre contexte d'empilement, qui plafonnait ce comparateur à sa
+     propre priorité (1) quoi que dise son z-index interne, malgré une
+     valeur nominale de 9999. Déplacé ici, hors de <header>. -->
 <div id="compareOverlay">
   <div class="compare-box">
     <div class="compare-header">
@@ -403,14 +418,6 @@
     </div>
   </div>
 </div>
-
-
-    <button class="copper" id="btnAdd">Ajouter un produit</button>
-    <button class="copper" id="btnProposeProduct" style="display:none;">
-      <i class="ti ti-edit" aria-hidden="true"></i> Proposer un produit
-    </button>
-  </div>
-</header>
 
 <!-- ===== BARRE RECHERCHE MOBILE STICKY ===== -->
 <div id="mobileSearchBar" style="display:none;">

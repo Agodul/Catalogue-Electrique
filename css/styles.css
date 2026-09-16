@@ -3757,9 +3757,27 @@
     z-index: var(--z-sheet-high);
     background: var(--paper-card);
     border-top: 1.5px solid var(--line);
-    margin-bottom: calc(56px + env(safe-area-inset-bottom));
     border-radius: 20px 20px 0 0;
-    padding-bottom: 16px;
+    /* Retour utilisateur : "quand je clique sur une zone de texte la barre
+       [de nav] disparaît" — pas un bug de la barre elle-même : cette feuille
+       gardait toujours une bande de 56px visible en bas de l'écran, même
+       fermée (translateY(100%) ne bouge que de la hauteur PROPRE de la
+       feuille, pas de la marge réservée à la bottom nav ci-dessous en plus)
+       — d'ordinaire invisible, cette bande reste masquée SOUS la bottom nav
+       (opaque, z-index --z-nav supérieur à --z-sheet-high ici), donc
+       imperceptible... jusqu'à ce que cette même bottom nav se masque
+       pendant la saisie clavier (_navHideOnKeyboardCheck,
+       js/actions-mobile-chrome.js), révélant la bande. #menuSheet un peu
+       plus bas déjà le bon motif (padding-bottom, PAS margin-bottom) :
+       repris ici à l'identique — la réserve pour la bottom nav va dans la
+       hauteur propre de l'élément (padding), pas dans un décalage de sa
+       position (margin), pour que translateY(100%) l'évacue vraiment en
+       entier plutôt que de laisser cette réserve derrière.
+       --nav-h inclut déjà env(safe-area-inset-bottom) — ne pas l'ajouter
+       deux fois (même remarque déjà posée sur #menuSheet). +16px : léger
+       espace d'air que cette feuille avait déjà (ex-padding-bottom), gardé
+       tel quel une fois fusionné avec la réserve nav. */
+    padding-bottom: calc(var(--nav-h, 56px) + 16px);
     transform: translateY(100%);
     transition: transform .3s cubic-bezier(.32,.72,0,1);
     max-height: 75vh;

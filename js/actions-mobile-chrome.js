@@ -1,95 +1,42 @@
   // ── Barre de navigation mobile : masquée pendant la saisie ──────────
-  // Retour utilisateur : "je ne veux pas qu'elle remonte avec le clavier" —
-  // mais même sans AUCUN code JS/CSS pilotant sa position (voir
-  // css/styles.css, .bottom-nav), Safari repositionne lui-même tout élément
-  // position:fixed par rapport à la zone réellement visible dès qu'un
-  // clavier logiciel est affiché — capture à l'appui, la barre restait
-  // visible coincée juste au-dessus du clavier, comportement natif de
-  // Safari indépendant de notre CSS. Impossible à empêcher en contrôlant sa
-  // position ; la seule solution fiable est de la masquer activement tant
-  // qu'un champ de saisie a le focus, plutôt que de la laisser à sa merci.
+  // Historique résumé (voir git log pour le détail complet des retours
+  // utilisateur successifs) : sans AUCUN code JS/CSS pilotant sa position,
+  // Safari repositionne lui-même tout élément position:fixed par rapport à
+  // la zone réellement visible dès qu'un clavier logiciel apparaît — capture
+  // à l'appui, la barre restait coincée juste au-dessus du clavier de façon
+  // peu fiable. interactive-widget=resizes-content (index.html) règle le
+  // PIRE de ce défaut pour la quasi-totalité des champs de l'app (formulaire
+  // produit, configurateur d'armoire, gestion des prix, recherche...) — la
+  // barre suit correctement, sans qu'aucun masquage JS soit nécessaire, EXACTEMENT
+  // comme "Recherche" s'est toujours comporté (jamais masquée, jamais eu de
+  // souci, voir l'historique de git blame sur ce fichier).
+  // Retour utilisateur : "je veux que la barre de navigation et les zones de
+  // saisie fonctionnent comme la recherche [...] regarde pour réutiliser son
+  // fonctionnement" — la SEULE exception connue, confirmée avec capture à
+  // l'appui ("tu as cassé pour la connexion") lors d'un essai antérieur de
+  // retrait total de ce masquage, est la barre de suggestion Mots de passe/
+  // Face ID que Safari affiche AU-DESSUS du clavier pour un champ mot de
+  // passe (ou l'identifiant juste avant, dans le même formulaire) — une
+  // hauteur que resizes-content ne prend pas en compte, laissant la nav
+  // flotter au milieu de l'écran avec l'accueil visible en dessous. Tous les
+  // champs mot de passe de l'app sont type="password" (voir js/auth.js :
+  // connexion, changement de mot de passe, ajout d'utilisateur), donc ce
+  // filet peut se limiter à CES champs précis (+ l'identifiant qui les
+  // précède dans le même formulaire) plutôt qu'à "tout champ de texte,
+  // partout" comme avant.
   // Un léger délai sur le blur laisse le temps à un focus qui rebondit vers
-  // un AUTRE champ de saisie (ex. Tab entre deux champs) de s'appliquer
-  // avant de réafficher la barre, pour ne pas la faire clignoter entre deux
-  // champs consécutifs.
-  // Retour utilisateur : "est-ce qu'on peut faire en sorte que la barre de
-  // navigation ne disparaisse pas lorsque aucun clavier ne sort ?" — un
-  // focus (attribut "focusin") ne veut pas dire qu'un clavier va réellement
-  // s'afficher : un focus purement programmatique (.focus() posé par du JS,
-  // ex. auto-focus à l'ouverture d'une fenêtre, ou pour ramener l'attention
-  // sur un champ en erreur) n'affiche AUCUN clavier sur mobile (Safari n'en
-  // affiche un qu'après un vrai geste de l'utilisateur sur le champ), donc
-  // masquer la barre dans ce cas ne sert à rien et est même trompeur — même
-  // diagnostic déjà posé pour la modale de connexion, voir js/auth.js. On ne
-  // masque désormais que si ce focus fait suite à un vrai contact TACTILE
-  // récent QUELQUE PART sur la page.
-  // Retour utilisateur : "sauf pour éviter de cacher la barre si c'est pas
-  // un appareil tactile ça fonctionne pas" — pointerdown se déclenche aussi
-  // pour un clic souris (ex. desktop réduit à une largeur mobile, sans
-  // aucun clavier logiciel à l'horizon), qui passait donc quand même le
-  // filtre. e.pointerType distingue précisément l'origine de CET événement
-  // ('touch'/'pen'/'mouse') — plus fiable ici qu'une détection globale du
-  // type d'appareil (matchMedia pointer:coarse), qui ne dit rien de CE geste
-  // précis sur un appareil hybride (iPad avec souris/trackpad, par ex.).
-  // RÉTABLI après une suppression de courte durée — retour utilisateur :
-  // "corriger le fait que la barre de navigation disparaît lorsqu'on clique
-  // sur le bouton recherche" avait fait retirer ce mécanisme en pariant que
-  // interactive-widget=resizes-content (index.html) suffisait désormais
-  // seul à garder la barre bien positionnée pendant la saisie. Vrai pour
-  // "Recherche" testé alors sur le SIMULATEUR iOS (clavier physique activé
-  // par défaut, donc AUCUN clavier logiciel ne s'affichait jamais — la
-  // barre semblait disparaître "pour rien", mais ce n'était qu'un artefact
-  // du simulateur, pas un vrai bug). Sur un VRAI appareil en revanche
-  // (captures à l'appui, retour utilisateur : "tu as cassé pour la
-  // connexion") : resizes-content ne suit pas parfaitement la hauteur
-  // ajoutée par la barre de suggestion "Mots de passe"/Face ID au-dessus du
-  // clavier — sans ce masquage, la barre de nav (position:fixed; bottom:0)
-  // se retrouvait "flottante" au milieu de l'écran, entre le formulaire de
-  // connexion remonté et cette suggestion, avec l'accueil visible en
-  // arrière-plan dans l'espace laissé sous elle. resizes-content reste
-  // utile (évite le PIRE défaut de Safari, l'élément qui suit le clavier au
-  // pixel près), mais pas suffisant seul pour ce cas précis — ce filet
-  // JS-ci reste donc nécessaire en complément.
-  // Retour utilisateur (persistant après le rétablissement ci-dessus) :
-  // "lorsque je clique sur le bouton recherche la barre de navigation
-  // disparait [encore]" — le rétablissement corrigeait bien la connexion
-  // mais réintroduisait aussi le symptôme d'origine pour la recherche, un
-  // masquage global des DEUX. Les deux champs n'ont pourtant pas le même
-  // risque : #authOverlay (comme #settingsOverlay, #iconPickerModal…) est
-  // une fenêtre MODALE plein écran (position:fixed; inset:0; fond
-  // assombri, z-index --z-modal-top volontairement SOUS --z-nav, voir
-  // css/styles.css) — si son fond ne suit pas exactement la zone visible
-  // réduite par le clavier, une bande de l'accueil (derrière la modale)
-  // reste visible entre ce fond et la nav, d'où le masquage nécessaire.
-  // #mobileSearchBar, lui, n'est PAS une modale : une simple barre
-  // position:sticky en haut de la page (css/styles.css), sans fond
-  // assombri ni superposition — aucun "trou" ne peut y révéler quoi que ce
-  // soit derrière, masquer la nav pendant qu'on tape une recherche n'a donc
-  // aucune utilité, contrairement à la connexion. Exclusion ciblée du champ
-  // de recherche mobile ci-dessous plutôt qu'un retrait global (qui
-  // recasserait la connexion) ou un ajout au cas par cas de chaque modale
-  // (fragile, un oubli suffit à laisser le bug reparaître) — tout le reste
-  // (connexion, réglages, formulaires dans une fenêtre modale…) continue
-  // d'être protégé comme avant.
-  // Retour utilisateur : "lorsque je mets un filtre ça fait disparaître la
-  // barre de navigation" — les 3 cases à cocher de la feuille de filtres
-  // (#filterSheet3D/#filterSheetEssential/#filterSheetSpiLabs, voir
-  // index.html) sont des <input type="checkbox"> : tagName === 'INPUT'
-  // matchait donc déjà la condition ci-dessous, alors qu'AUCUN clavier ne
-  // s'affiche jamais pour une case à cocher (même diagnostic que la
-  // recherche, cause différente : ici c'est le TYPE de champ qui est en
-  // cause, pas l'endroit où il se trouve). Ne considérer comme "champ
-  // texte" (donc susceptible de faire apparaître un clavier) que les
-  // <textarea> et les <input> dont le "type" est réellement une saisie
-  // texte — checkbox/radio/range/color/file/button/submit/date… en sont
-  // tous exclus.
-  var _navTextInputTypes = { text:1, search:1, email:1, password:1, tel:1, url:1, number:1 };
-  function _navIsTextEntryField(el){
+  // un AUTRE champ protégé (Tab entre identifiant et mot de passe) de
+  // s'appliquer avant de réafficher la barre, pour ne pas la faire clignoter.
+  // Ne se déclenche que sur un vrai focus consécutif à un geste TACTILE
+  // récent (e.pointerType === 'touch', pas juste matchMedia pointer:coarse
+  // qui ne dit rien de CE geste précis sur un appareil hybride type iPad
+  // avec souris) — un focus purement programmatique (.focus() posé par du
+  // JS, ex. remise en évidence d'un champ en erreur) n'affiche aucun clavier
+  // sur mobile, masquer la barre dans ce cas serait trompeur pour rien.
+  function _navFieldNeedsProtection(el){
     if (!el) return false;
-    if (el.tagName === 'TEXTAREA') return true;
-    if (el.tagName !== 'INPUT') return false;
-    var type = (el.type || 'text').toLowerCase();
-    return !!_navTextInputTypes[type];
+    if (el.tagName === 'INPUT' && (el.type || '').toLowerCase() === 'password') return true;
+    return el.id === 'authUsername'; // identifiant juste avant le mot de passe, même formulaire de connexion
   }
   var _navLastRealPointerAt = 0;
   document.addEventListener('pointerdown', function(e){
@@ -102,7 +49,7 @@
     clearTimeout(_navHideOnKeyboardTimer);
     _navHideOnKeyboardTimer = setTimeout(function(){
       var ae = document.activeElement;
-      var fieldFocused = _navIsTextEntryField(ae) && !ae.readOnly && !ae.disabled && ae.id !== 'mobileSearchInput';
+      var fieldFocused = _navFieldNeedsProtection(ae) && !ae.readOnly && !ae.disabled;
       var realGestureRecent = (Date.now() - _navLastRealPointerAt) < 800;
       nav.classList.toggle('bottom-nav-kb-hidden', !!fieldFocused && realGestureRecent);
     }, 30);
@@ -211,12 +158,47 @@
 
       // Ferme complètement la fiche produit (jamais la navigation "retour
       // en arrière" de closeView() lors d'un changement d'onglet nav).
+      // Exposée sur window (_closeViewOverlayNow) : _initMenuSheet plus bas
+      // est une fonction bien SÉPARÉE de celle-ci (_initBottomNav), chacune
+      // avec sa propre portée — un simple closeViewOverlayNow() depuis
+      // là-bas lève un ReferenceError, seule la version globale est
+      // atteignable depuis l'extérieur de cette fonction-ci.
       function closeViewOverlayNow(){
         var _vo=document.getElementById('viewOverlay');
         if(_vo&&_vo.classList.contains('open')){_vo.classList.remove('open');document.body.classList.remove('modal-open');if(window._viewingId!==undefined)window._viewingId=null;}
       }
+      window._closeViewOverlayNow = closeViewOverlayNow;
+
+      // Retour utilisateur : "quand j'ajoute un produit ou même une modif et
+      // que je clique sur un des boutons de la barre de navigation j'ai bien
+      // la popup mais j'ai quand même la fenêtre qui change" — closeAllOverlaysNow()
+      // plus bas déclenche bien la confirmation "Annuler la saisie" (elle
+      // clique le vrai bouton fermer de #modalOverlay, qui passe par
+      // requestCloseModal(), voir js/modal-autocomplete.js), mais cette
+      // confirmation est un popup DOM asynchrone (boutons "Continuer"/
+      // "Annuler la saisie"), pas un window.confirm() bloquant — la suite du
+      // gestionnaire de clic (changement de vue, onglet actif, défilement...)
+      // s'exécutait donc tout de suite après, sans attendre la réponse. Même
+      // diagnostic déjà posé pour le logo SPI (brandmarkLogo, js/actions-home.js)
+      // sur ce même formulaire ; généralisé ici en un garde-fou réutilisable
+      // par les 4 boutons de la barre. Renvoie true (et affiche/relance la
+      // confirmation) si la navigation doit être interrompue.
+      function _blockNavIfUnsavedModal(){
+        var _mo = document.getElementById('modalOverlay');
+        if(_mo && _mo.classList.contains('open') && typeof hasUnsavedInput === 'function' && hasUnsavedInput()){
+          // On quitte vers une autre vue, pas vers la fiche produit
+          // d'origine : sans ceci, requestCloseModal() la rouvrirait par-
+          // dessus la nouvelle vue une fois la saisie abandonnée (voir le
+          // même traitement dans brandmarkLogo).
+          window._modalReturnToViewId = null;
+          if(typeof requestCloseModal === 'function') requestCloseModal();
+          return true;
+        }
+        return false;
+      }
 
       bnHome.addEventListener('click', function(){
+        if(_blockNavIfUnsavedModal()) return;
         closeMenuSheet();
         closeFloatingSearchNow();
         closeFilterSheetNow();
@@ -236,6 +218,7 @@
       });
 
       bnSearch.addEventListener('click', function(){
+        if(_blockNavIfUnsavedModal()) return;
         // Retour utilisateur : même bascule que "Menu" — recliquer sur
         // "Recherche" pendant qu'elle est déjà ouverte doit la refermer,
         // pas la rouvrir sans effet visible. Comme le bouton "Annuler" de
@@ -258,6 +241,7 @@
       });
 
       bnFilter.addEventListener('click', function(){
+        if(_blockNavIfUnsavedModal()) return;
         // Retour utilisateur : même bascule que "Menu"/"Recherche" —
         // recliquer sur "Filtres" pendant qu'il est déjà ouvert doit le
         // refermer. On repasse par le vrai bouton ✕ du tiroir
@@ -289,6 +273,7 @@
       });
 
       bnMenu.addEventListener('click', function(){
+        if(_blockNavIfUnsavedModal()) return;
         // Retour utilisateur : recliquer sur "Menu" pendant qu'il est déjà
         // ouvert doit le refermer (comme un bouton bascule), pas le
         // rouvrir/rafraîchir sans effet visible. On repasse par le vrai
@@ -781,15 +766,25 @@
         window._authOpenedFromMobileMenu = true;
         _setHeaderBackMode('authCloseBtn', 'authBackBtn', true);
       }
+      window._closeViewOverlayNow();
       closeSheet();
       setTimeout(function(){ var b=document.getElementById('btnAuthToggle'); if(b) b.click(); }, 320);
     };
 
     // Délégation boutons
+    // closeViewOverlayNow() : retour utilisateur — "quand tu clique sur les
+    // autres boutons de la barre de navigation ça ne ferme pas la fiche
+    // produit" (constaté ici en ouvrant "Comparer les offres" depuis ce
+    // menu pendant qu'une fiche produit était affichée) — chaque entrée de
+    // ce menu ouvre une fenêtre à part entière par-dessus, jamais pensée
+    // pour coexister avec la fiche déjà ouverte (elle continue de tourner
+    // derrière, encore interactive). bnHome/bnSearch/bnFilter le faisaient
+    // déjà pour un changement d'onglet direct ; il manquait ici, pour une
+    // navigation depuis CE tiroir.
     function ms(id, targetId){
       var btn=document.getElementById(id);
       var tgt=document.getElementById(targetId);
-      if(btn&&tgt) btn.onclick = function(){ closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
+      if(btn&&tgt) btn.onclick = function(){ window._closeViewOverlayNow(); closeSheet(); setTimeout(function(){ tgt.click(); }, 320); };
     }
     // Variante de ms() qui pose en plus un drapeau "vient du menu mobile" et
     // bascule l'icône du bouton fermer en ← avant d'ouvrir la fenêtre cible
@@ -807,6 +802,7 @@
       if(btn&&tgt) btn.onclick = function(){
         window[flagName] = true;
         _setHeaderBackMode(closeBtnId, backBtnId, true);
+        window._closeViewOverlayNow();
         closeSheet();
         setTimeout(function(){ tgt.click(); }, 320);
       };
@@ -823,6 +819,7 @@
       if(btn && tgt) btn.onclick = function(){
         window._reqOpenedFromMobileMenu = true;
         _setHeaderBackMode('requestsPanelClose', 'requestsBackBtn', true);
+        window._closeViewOverlayNow();
         closeSheet();
         setTimeout(function(){ tgt.click(); }, 320);
       };
@@ -847,6 +844,7 @@
       if(btn && tgt) btn.onclick = function(){
         window._settingsOpenedFromMobileMenu = true;
         _setHeaderBackMode('settingsClose', 'settingsBackBtn', true);
+        window._closeViewOverlayNow();
         closeSheet();
         setTimeout(function(){ tgt.click(); }, 320);
       };
