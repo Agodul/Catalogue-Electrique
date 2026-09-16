@@ -4761,24 +4761,52 @@
      élément position:fixed est résolu contre le viewport visuel réel par
      le moteur de rendu, donc insensible à cet écart vh/dvh. */
   #armoireConfigOverlay{ padding:0 !important; }
+  /* Retour utilisateur : "corriger le problème de fenêtre avec le clavier"
+     (capture à l'appui : pied de page flottant au milieu de l'écran,
+     accueil visible dans l'espace découvert en dessous, puis le clavier) —
+     position/top/left/right/bottom/height étaient jusqu'ici calculées et
+     posées en inline par _armoireSyncMobileHeight() (js/armoireConfig.js)
+     via window.visualViewport, dans l'idée que c'était le seul moyen
+     fiable de connaître la zone réellement visible. Même piège déjà
+     rencontré et corrigé pour la fenêtre de connexion (voir js/auth.js/
+     index.html) : visualViewport ne reflète pas toujours la hauteur
+     ajoutée par les barres d'accessoire d'iOS au-dessus du clavier
+     (suggestion de mot, "Mots de passe"/Face ID…), d'où cet écart.
+     index.html porte déjà interactive-widget=resizes-content pour TOUTE la
+     page : le viewport de mise en page (celui que position:fixed suit
+     nativement) rétrécit tout seul quand le clavier s'ouvre, plus besoin
+     de le recalculer à la main en JS — supprimé, cette règle CSS est
+     désormais la seule source de vérité (JS retiré, donc !important
+     inutile ici contrairement au reste de ce bloc). */
   #armoireConfigModal{
-    /* position/top/left/right/bottom/height : PAS de !important ici — ces
-       propriétés sont calculées et posées en inline par
-       _armoireSyncMobileHeight() (js/armoireConfig.js) via
-       window.visualViewport, seul moyen fiable d'éviter le bug iOS Safari
-       où position:fixed se cale sur le mauvais viewport. Un !important en
-       feuille externe battrait ce inline et ferait revenir le bug. Cette
-       règle CSS ne sert que de repli si JS/visualViewport est indisponible. */
     position:fixed;
     top:env(safe-area-inset-top, 0px);
     left:0;
     right:0;
     bottom:var(--nav-h, 56px);
-    height:auto;
+    /* !important : le balisage (desktop) pose height:min(940px,92vh) en
+       inline sur cet élément — sans !important ici, cette valeur l'emporte
+       toujours (un style inline bat toute règle externe non !important,
+       peu importe sa spécificité), la hauteur reviendrait alors à 92vh (le
+       défaut exact qu'on cherche à éviter, voir le commentaire au-dessus)
+       et top+bottom ci-dessus, eux, seraient juste calculés/ignorés (top +
+       height explicite + bottom sont surcontraints : "bottom" perd,
+       constaté en mesurant — la hauteur rendue correspondait pile à 92vh
+       et pas à var(--nav-h)). */
+    height:auto !important;
     max-width:100% !important;
     width:100% !important;
     border-radius:16px 16px 0 0 !important;
   }
+  /* La bottom-nav se masque PENDANT la saisie (.bottom-nav-kb-hidden, voir
+     _navHideOnKeyboardCheck dans js/actions-mobile-chrome.js) — inutile de
+     lui laisser --nav-h de marge dans ce cas, la modale peut alors
+     descendre jusqu'au vrai bas de la zone visible (déjà réduite par
+     resizes-content pour le clavier). Sans cette règle, un espace de la
+     hauteur de la nav (qui, elle, ne s'affiche plus) resterait entre le
+     bas de la modale et le clavier — comblé ici par le fond assombri de la
+     modale elle-même plutôt que par du vide. */
+  body:has(.bottom-nav-kb-hidden) #armoireConfigModal{ bottom:0; }
   /* Empiler les deux colonnes moitié-moitié les rendait inutilisables
      (~220px chacune, listes minuscules, double scroll imbriqué — retour
      utilisateur). À la place : bascule "Parcourir" / "Ma configuration",
@@ -4825,7 +4853,7 @@
     border-radius:0; box-shadow:none; border-left:none;
   }
   /* Marge de sécurité contre le bas de la modale collé pile contre le nav
-     (0px d'écart, voir _armoireSyncMobileHeight dans js/armoireConfig.js) —
+     (0px d'écart, voir #armoireConfigModal juste au-dessus dans ce fichier) —
      "Enregistrer" se retrouvait caché derrière le nav (dont le z-index est
      volontairement plus élevé, --z-nav > cette modale) au moindre écart de
      mesure d'un vrai appareil (arrondi, barre d'outils dynamique…). Un

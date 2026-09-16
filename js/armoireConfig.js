@@ -1535,84 +1535,26 @@ function _armoireUpdateMobileDraftBadge(){
 
 // ── Ouverture / fermeture ────────────────────────────────────────────────
 
-// Safari iOS positionne les éléments position:fixed par rapport au
-// viewport de mise en page (qui inclut la zone sous la barre d'outils
-// dynamique), pas par rapport à ce qui est réellement visible à l'écran —
-// un bug ancien et bien documenté. Le CSS seul (même position:fixed avec
-// top/bottom explicites) reste donc piégé par ce décalage. On calcule
-// et applique la hauteur en JS via window.visualViewport, qui lui reflète
-// la zone réellement visible, et on la resynchronise à chaque changement
-// (rotation, apparition/disparition de la barre d'outils, clavier...).
-// Hauteur d'origine (desktop) du modal, capturée depuis le HTML avant toute
-// modification JS — sert à la restaurer telle quelle en repassant en
-// desktop, plutôt que de la vider (style.height='' efface l'inline existant
-// sans rien remettre à la place, laissant le modal sans contrainte de
-// hauteur : il grossit alors à la taille de tout son contenu, ~2000px+,
-// et déborde largement de l'écran — bug réel observé en le vérifiant).
-var _armoireOriginalHeight = null;
-
-// Mesure la vraie valeur en pixels de env(safe-area-inset-top) via un
-// élément sonde, plutôt que d'injecter la chaîne "env(...)" directement
-// dans un style inline posé en JS après le chargement de la page — ce
-// deuxième chemin a des soucis de support connus sur certaines versions de
-// WebKit/iOS (la valeur ne se recalcule pas toujours correctement une fois
-// affectée dynamiquement), ce qui laissait la fenêtre remonter derrière la
-// barre de statut malgré la règle. Une sonde mesurée donne un nombre en
-// pixels déjà résolu par le moteur de rendu — fiable dans tous les cas.
-function _armoireSafeAreaTop(){
-  var probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;';
-  document.body.appendChild(probe);
-  var px = parseFloat(getComputedStyle(probe).paddingTop) || 0;
-  document.body.removeChild(probe);
-  return px;
-}
-
-function _armoireSyncMobileHeight(){
-  var modal = document.getElementById('armoireConfigModal');
-  if(!modal) return;
-  if(_armoireOriginalHeight === null) _armoireOriginalHeight = modal.style.height || 'min(820px,90vh)';
-  if(window.innerWidth > 768){
-    // Desktop / tablette large : laisser le CSS gérer, ne pas polluer avec du inline.
-    modal.style.position = '';
-    modal.style.top = '';
-    modal.style.left = '';
-    modal.style.right = '';
-    modal.style.bottom = '';
-    modal.style.height = _armoireOriginalHeight;
-    return;
-  }
-  var nav = document.querySelector('.bottom-nav');
-  var navRect = (nav && getComputedStyle(nav).display !== 'none') ? nav.getBoundingClientRect() : null;
-  var vv = window.visualViewport;
-  var viewportH = vv ? vv.height : window.innerHeight;
-  // Hauteur de nav visible dans le viewport actuel (0 si masquée/hors écran).
-  var navH = navRect ? Math.max(0, viewportH - navRect.top) : 0;
-  // Collée pile contre le nav (0px d'écart), PAS de marge ici — un essai
-  // précédent reculait le bas de la modale de quelques px pour éviter que
-  // "Enregistrer" passe sous le nav (voir plus bas, .armoire-cfg-footer),
-  // mais ça laissait voir le fond assombri de la fenêtre (--overlay-scrim)
-  // dans l'écart, une bande grise disgracieuse entre la modale et le nav
-  // (retour utilisateur, capture à l'appui) — la marge de sécurité contre
-  // les imprécisions de mesure (arrondi, sous-pixel, barre d'outils
-  // dynamique…) est déplacée à l'INTÉRIEUR de la modale (padding-bottom du
-  // pied de page) plutôt qu'à l'extérieur, pour garder l'aspect "collé".
-  var bottomPx = Math.max(240, viewportH - navH);
-  var safeTop = _armoireSafeAreaTop();
-  modal.style.position = 'fixed';
-  // top laisse la place à l'encoche/barre de statut — sans ça la fenêtre
-  // remonte derrière l'heure/le réseau/la batterie en haut de l'écran. La
-  // hauteur est réduite d'autant pour garder le bas au même endroit (juste
-  // au-dessus de la nav, calculé ci-dessus). safeTop est un nombre de
-  // pixels déjà mesuré (voir _armoireSafeAreaTop), pas une chaîne "env(...)".
-  modal.style.top = safeTop + 'px';
-  modal.style.left = '0px';
-  modal.style.right = '0px';
-  modal.style.bottom = 'auto';
-  modal.style.height = Math.max(200, bottomPx - safeTop) + 'px';
-}
-
-var _armoireViewportHandler = null;
+// Retour utilisateur : "corriger le problème de fenêtre avec le clavier"
+// (capture à l'appui : le pied de page de la modale flottant au milieu de
+// l'écran, l'accueil visible dans l'espace resté découvert en dessous, puis
+// le clavier) — CE fichier calculait encore la position/hauteur de la
+// modale en JS via window.visualViewport (voir l'historique retiré ici),
+// exactement le même piège déjà rencontré et corrigé pour la fenêtre de
+// connexion (voir js/auth.js/index.html, interactive-widget=resizes-
+// content) : visualViewport ne reflète pas toujours fidèlement la hauteur
+// ajoutée par les barres d'accessoire d'iOS au-dessus du clavier (suggestion
+// de mot, "Mots de passe"/Face ID…), donc une modale dimensionnée dessus
+// peut s'arrêter avant la vraie limite visible. index.html porte déjà
+// interactive-widget=resizes-content pour TOUTE la page : le viewport de
+// mise en page lui-même rétrécit quand le clavier s'ouvre, qu'une modale
+// l'utilise via du CSS position:fixed ou non — plus besoin de le
+// recalculer à la main ici. #armoireConfigModal (voir css/styles.css)
+// s'ancre donc désormais en pur CSS (position:fixed; bottom:var(--nav-h)),
+// sans plus aucune ligne de JS ; le seul cas que le CSS seul ne peut pas
+// connaître (la bottom-nav qui se masque PENDANT la saisie, voir
+// _navHideOnKeyboardCheck, js/actions-mobile-chrome.js) est géré par un
+// sélecteur :has() dédié (body:has(.bottom-nav-kb-hidden) #armoireConfigModal).
 
 function _armoireOpen(){
   var overlay = document.getElementById('armoireConfigOverlay');
@@ -1645,14 +1587,6 @@ function _armoireOpen(){
     _armoireDraftWasRestored = false;
     if(typeof showToast === 'function') showToast('Configuration en cours restaurée (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' non enregistrée' + (_armoireDraft.length > 1 ? 's' : '') + ')', 'ok', 4000);
   }
-
-  _armoireSyncMobileHeight();
-  if(window.visualViewport && !_armoireViewportHandler){
-    _armoireViewportHandler = function(){ _armoireSyncMobileHeight(); };
-    window.visualViewport.addEventListener('resize', _armoireViewportHandler);
-    window.visualViewport.addEventListener('scroll', _armoireViewportHandler);
-  }
-  window.addEventListener('orientationchange', _armoireSyncMobileHeight);
 }
 
 function _armoireClose(){
@@ -1676,21 +1610,6 @@ function _armoireClose(){
   _armoireCloseBlocksDrawer(true); // toute la fenêtre disparaît déjà — pas besoin d'une seconde anim en plus
   function teardown(){
     if(overlay) overlay.style.display = 'none';
-    if(_armoireViewportHandler && window.visualViewport){
-      window.visualViewport.removeEventListener('resize', _armoireViewportHandler);
-      window.visualViewport.removeEventListener('scroll', _armoireViewportHandler);
-      _armoireViewportHandler = null;
-    }
-    window.removeEventListener('orientationchange', _armoireSyncMobileHeight);
-    var modal = document.getElementById('armoireConfigModal');
-    if(modal){
-      modal.style.position = '';
-      modal.style.top = '';
-      modal.style.left = '';
-      modal.style.right = '';
-      modal.style.bottom = '';
-      modal.style.height = '';
-    }
   }
   if(overlay && typeof window._closeOverlayAnimated === 'function'){
     window._closeOverlayAnimated(overlay, teardown);

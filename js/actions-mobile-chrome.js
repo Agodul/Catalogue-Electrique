@@ -954,3 +954,45 @@
       if(settingsBox) _initDragHandle(settingsBox.querySelector('.sheet-handle-bar'), settingsBox, 'settingsClose');
     } catch(e){ console.error('[SheetDragHandles]', e); }
   };
+
+  // ── Verrou de défilement du body pendant qu'une fenêtre modale est ouverte ──
+  // Retour utilisateur (test réel sur Simulateur iOS, clavier logiciel actif
+  // — contrairement aux sessions précédentes où le clavier physique du Mac
+  // restait activé par défaut, masquant ce bug, voir plus haut dans ce
+  // fichier) : body.modal-open{overflow:hidden} (css/styles.css) ne suffit
+  // pas sous Safari iOS — au focus d'un champ de saisie, Safari fait quand
+  // même défiler le document pour amener ce champ au-dessus du clavier,
+  // ignorant overflow:hidden sur le body. La fenêtre modale (position:
+  // fixed) reste bien ancrée à l'écran, mais ce défilement du document
+  // sous-jacent peut suffire à faire percevoir un décalage (ex. son propre
+  // en-tête qui semble "remonter" hors champ) et, une fois le clavier
+  // refermé, laisse le document scrollé n'importe où. Un MutationObserver
+  // centralisé ici plutôt qu'un correctif dans chacun des nombreux endroits
+  // qui ajoutent/retirent 'modal-open' (voir js/*.js) : un seul point à
+  // maintenir, aucun oubli possible sur une future fenêtre modale. Technique
+  // standard (verrouiller via position:fixed + décalage négatif plutôt que
+  // via overflow seul, qui ne tient pas sous Safari iOS) plutôt qu'une
+  // nouveauté propre à ce projet.
+  (function _initModalOpenScrollLock(){
+    var _lockedScrollY = 0;
+    var _locked = false;
+    function lock(){
+      if(_locked) return;
+      _locked = true;
+      _lockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.body.style.position = 'fixed';
+      document.body.style.top = (-_lockedScrollY) + 'px';
+      document.body.style.width = '100%';
+    }
+    function unlock(){
+      if(!_locked) return;
+      _locked = false;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, _lockedScrollY);
+    }
+    new MutationObserver(function(){
+      if(document.body.classList.contains('modal-open')) lock(); else unlock();
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  })();
