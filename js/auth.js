@@ -1476,7 +1476,7 @@ function initAuth() {
     var errEl    = document.getElementById('authError');
     if (errEl) errEl.textContent = '';
     var ok = await authLogin(username, password);
-    if (!ok && errEl) errEl.textContent = 'Identifiants incorrects.';
+    if (!ok && errEl) errEl.textContent = 'Identifiants ou mot de passe incorrects.';
   }
 
   var submitBtn = document.getElementById('authSubmitBtn');

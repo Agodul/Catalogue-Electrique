@@ -255,24 +255,20 @@ await test('Hors ligne : les bibliothèques répondent depuis le cache', async (
 });
 
 await test("Les requêtes vers l'API métier ne passent jamais par le cache", async () => {
+  // Retour utilisateur (Firefox, capture à l'appui) : le SW n'appelle plus
+  // DU TOUT event.respondWith() pour une requête cross-origin — appeler
+  // event.respondWith(fetch(event.request)) ne servait à rien (aucune mise
+  // en cache dessus) mais cassait la requête sur Firefox si ce fetch
+  // rejetait (API injoignable, CORS...), Firefox étant plus strict que
+  // Chrome sur une promesse de respondWith() qui rejette. Ne pas appeler
+  // respondWith() laisse le navigateur traiter la requête lui-même,
+  // nativement — invisible pour ce bac à sable de test (pas de vrai
+  // navigateur ici), donc la seule chose vérifiable ici est que le SW
+  // s'efface bel et bien (aucune réponse renvoyée) et ne met jamais rien en
+  // cache pour cette origine.
   const { state, sw } = await bootServiceWorker();
-  const avant = state.requests.length;
-  await sw.dispatch('fetch', { request: new Request('https://api.exemple.test/pullDatas') });
-  const nouvelles = state.requests.slice(avant);
-  // .includes() sur l'URL complète (issue CodeQL "Incomplete URL substring
-  // sanitization") : une sous-chaîne matche aussi une URL PIÉGÉE qui
-  // contiendrait celle-ci ailleurs (ex. .../?x=https://api.exemple.test/pullDatas
-  // sur un tout autre domaine) — comparer origine + chemin exacts via URL()
-  // est la seule façon fiable de vérifier "c'est vraiment CETTE requête".
-  const requeteApiPresente = nouvelles.some((u) => {
-    try {
-      const parsed = new URL(u);
-      return parsed.origin === 'https://api.exemple.test' && parsed.pathname === '/pullDatas';
-    } catch {
-      return false;
-    }
-  });
-  assert(requeteApiPresente, 'la requête distante n\'est pas partie sur le réseau');
+  const res = await sw.dispatch('fetch', { request: new Request('https://api.exemple.test/pullDatas') });
+  assert(res === undefined, 'le SW a répondu lui-même à une requête cross-origin au lieu de laisser le navigateur s\'en charger');
   const noms = await state.caches.keys();
   for (const nom of noms) {
     const c = await state.caches.open(nom);

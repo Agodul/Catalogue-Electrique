@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260917132246";
+const CACHE = "spi-catalogue-v20260917171925";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -455,8 +455,17 @@ self.addEventListener("fetch", event => {
   // potentiellement avec des données obsolètes. Toutes les ressources de
   // l'app elle-même (FILES ci-dessus) sont en chemin relatif, donc
   // same-origin — aucune n'est concernée par ce bypass.
+  // Retour utilisateur (Firefox, capture à l'appui) : appeler
+  // event.respondWith(fetch(...)) ici ne servait STRICTEMENT à rien (ça
+  // relance exactement la même requête, sans mise en cache) mais avait un
+  // coût réel — si ce fetch échoue (serveur API injoignable, CORS, mixte
+  // http/https bloqué...), la promesse passée à respondWith() rejette, ce
+  // que Firefox refuse plus strictement que Chrome ("A ServiceWorker passed
+  // a promise to FetchEvent.respondWith() that rejected"), cassant la
+  // requête au lieu de la laisser échouer normalement côté page. Ne PAS
+  // appeler respondWith() du tout laisse le navigateur traiter la requête
+  // lui-même, nativement, sans que ce Service Worker ne s'en mêle.
   if(event.request.url.startsWith('blob:') || url.origin !== self.location.origin){
-    event.respondWith(fetch(event.request));
     return;
   }
 
