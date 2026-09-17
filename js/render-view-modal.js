@@ -464,18 +464,18 @@ function _productBadgesCompactHtml(p){
     // accès reste disponible ailleurs, désormais via une bulle flottante
     // permanente juste au-dessus de "Ajouter un produit" (voir
     // #btnFabArmoireConfig, index.html/js/auth.js), juste plus sur la fiche
-    // produit elle-même. Même règle d'accès que le configurateur lui-même
-    // (accueil, js/auth.js) : tout utilisateur connecté, pas seulement
-    // canEdit — ce n'est pas une modification du
-    // catalogue, juste une liste personnelle.
+    // produit elle-même. Retour utilisateur suivant : "j'aimerais que le
+    // configurateur soit disponible lorsqu'on n'est pas loggé" — même règle
+    // d'accès que le configurateur lui-même (accueil, js/auth.js) désormais
+    // ouvert à tous, connecté ou non ; un visiteur anonyme garde sa
+    // configuration en cours sur cet appareil (voir js/armoireConfig.js).
     var vmAddToConfigWrap = document.getElementById('vmAddToConfigWrap');
     var vmAddToConfigBtn  = document.getElementById('vmAddToConfigBtn');
     var vmAddToConfigIcon = document.getElementById('vmAddToConfigIcon');
     var vmQtyInput        = document.getElementById('vmQtyInput');
     var vmQtyMinus        = document.getElementById('vmQtyMinus');
     var vmQtyPlus         = document.getElementById('vmQtyPlus');
-    var _armoireLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
-    if(vmAddToConfigWrap) vmAddToConfigWrap.style.display = (_armoireLoggedIn && p.ref) ? '' : 'none';
+    if(vmAddToConfigWrap) vmAddToConfigWrap.style.display = p.ref ? '' : 'none';
 
     // Retour utilisateur : "modifie l'apparence de la fiche produit pour se
     // rapprocher de [maquette]" — bouton devenu un vrai CTA (texte +

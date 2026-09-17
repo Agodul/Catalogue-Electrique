@@ -48,6 +48,30 @@ var _armoireDraftLocalSavedAt = 0;
 // L'horodatage ne doit avancer que sur un contenu qui a RÉELLEMENT changé.
 var _armoireDraftLastSavedItemsJson = null;
 
+// Retour utilisateur : "j'aimerais que le configurateur soit disponible
+// lorsqu'on n'est pas loggé mais comment faire pour pas avoir de problème
+// lorsqu'on se reconnecte avec le système de synchro entre appareils ?" —
+// cet appareil peut désormais accumuler un brouillon SANS être connecté
+// (voir plus bas, retrait des gardes canLoggedIn). ARMOIRE_DRAFT_STORAGE_KEY
+// n'a toujours qu'UNE seule entrée par appareil (jamais par compte) :
+// _armoireDraftOwner retient à QUI appartient ce brouillon local (username,
+// ou null si construit anonymement) pour détecter, à la prochaine connexion
+// (voir _armoireReconcileOwnerOnLogin plus bas), qu'il ne s'agit peut-être
+// PAS du brouillon du compte qui vient de se connecter — sur un poste
+// partagé, un autre compte a très bien pu laisser le sien derrière lui.
+var _armoireDraftOwner = null;
+
+// Retour utilisateur : "a tu fais un max d'essei" — posé à true pendant
+// toute la durée de _armoireReconcileOwnerOnLogin (y compris pendant
+// l'attente de la réponse à la boîte de dialogue "Garder"/"Mettre de côté"),
+// pour qu'AUCUN autre code (ni _armoireSyncDraftFromServer, ni le retaguage
+// de propriétaire dans _armoireSaveDraftToStorage juste en dessous) ne
+// vienne trancher à la place de l'utilisateur ou court-circuiter sa
+// décision pendant qu'elle est encore en attente — repéré en testant
+// précisément ce cas de figure : ouvrir le panneau juste après une
+// connexion, avant d'avoir répondu à la boîte de dialogue.
+var _armoireReconcilingOwner = false;
+
 function _armoireSaveDraftToStorage(){
   // Ne jamais persister PENDANT l'édition d'un bloc/config existant :
   // _armoireDraft contient alors TEMPORAIREMENT le contenu de l'entrée
@@ -58,14 +82,32 @@ function _armoireSaveDraftToStorage(){
   try{
     if(_armoireDraft.length){
       var itemsJson = JSON.stringify(_armoireDraft);
-      if(itemsJson === _armoireDraftLastSavedItemsJson) return false; // contenu inchangé : ne pas avancer l'horodatage
+      // Retaguer le propriétaire ACTUEL même si le contenu n'a pas changé
+      // (ex. juste après une réconciliation de connexion) — mais alors sans
+      // avancer l'horodatage ni republier vers le serveur pour rien, la
+      // ligne juste en dessous s'en charge déjà. SAUF pendant
+      // _armoireReconcileOwnerOnLogin (_armoireReconcilingOwner) : sinon un
+      // simple ré-affichage déclenché entre-temps (ex. ouvrir le panneau
+      // pendant que la boîte "Garder"/"Mettre de côté" attend encore une
+      // réponse — repéré en testant précisément ce cas) retaguait déjà le
+      // brouillon au nouveau compte et programmait une synchro AVANT que la
+      // décision de l'utilisateur ne soit connue, court-circuitant la
+      // réconciliation. Celle-ci force elle-même une ré-écriture explicite
+      // une fois sa décision prise (_armoireDraftLastSavedItemsJson remis à
+      // null juste avant, drapeau déjà retombé à false à ce moment-là).
+      var _meSave = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+      var _ownerSave = (_meSave && _meSave.username) || null;
+      var _ownerChanged = !_armoireReconcilingOwner && (_ownerSave !== _armoireDraftOwner);
+      if(itemsJson === _armoireDraftLastSavedItemsJson && !_ownerChanged) return false; // rien de réellement nouveau
       _armoireDraftLastSavedItemsJson = itemsJson;
       _armoireDraftLocalSavedAt = Date.now();
-      localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt }));
+      if(!_armoireReconcilingOwner) _armoireDraftOwner = _ownerSave;
+      localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt, owner: _armoireDraftOwner }));
     } else {
       if(_armoireDraftLastSavedItemsJson === null) return false; // déjà vide : rien de réellement nouveau à synchroniser
       _armoireDraftLastSavedItemsJson = null;
       _armoireDraftLocalSavedAt = 0;
+      _armoireDraftOwner = null;
       localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
     }
   }catch(e){
@@ -96,6 +138,10 @@ function _armoireRestoreDraftFromStorage(){
     var items = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.items) ? parsed.items : null);
     if(!items) return;
     _armoireDraftLocalSavedAt = (parsed && typeof parsed.savedAt === 'number') ? parsed.savedAt : 0;
+    // owner absent (ancien format d'avant l'accès anonyme, ou brouillon
+    // déjà anonyme) : traité comme "sans propriétaire" plutôt que supposer
+    // qu'il appartient au compte qui va se connecter ensuite.
+    _armoireDraftOwner = (parsed && typeof parsed.owner === 'string') ? parsed.owner : null;
     var restored = items.filter(function(it){
       return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
     });
@@ -611,6 +657,16 @@ function _armoireFetchBlocks(){
 // brouillon même si draft/username ne sont pas persistés tels quels.
 var ARMOIRE_DRAFT_NAME_PREFIX = 'Brouillon — ';
 
+// Retour utilisateur : "faudrait ajouter un bouton pour les retrouver au
+// lieu de les pousser dans blocs" — les configurations mises de côté par
+// _armoireReconcileOwnerOnLogin (conflit à la connexion) restent dans
+// /configBlocks (aucune autre collection dédiée côté serveur), mais dans
+// LEUR PROPRE dossier plutôt que mêlées aux vrais blocs à la racine —
+// l'en-tête de ce dossier (déjà cliquable/dépliable pour n'importe quel
+// dossier, voir _armoireRenderBlocksList) sert de "bouton pour les
+// retrouver", sans avoir besoin d'une collection ou d'une vue séparée.
+var ARMOIRE_SETASIDE_FOLDER = 'Mises de côté (connexion)';
+
 // Retrouve, parmi les entrées /configBlocks déjà chargées (_armoireBlocks),
 // celle qui est le brouillon serveur de L'UTILISATEUR CONNECTÉ — jamais
 // celui d'un autre compte, même si le serveur en renvoyait un par erreur.
@@ -647,6 +703,19 @@ function _armoireFindServerDraft(){
 // _armoireReplaceEntry) contre _armoireDraftLocalSavedAt (mis à jour à
 // chaque sauvegarde locale réelle) — le plus récent des deux gagne.
 function _armoireSyncDraftFromServer(){
+  // Retour utilisateur : "a tu fais un max d'essei" — en testant le cas où
+  // le panneau est ouvert PENDANT que la boîte de dialogue de
+  // _armoireReconcileOwnerOnLogin attend encore une réponse (ouvrir le
+  // configurateur juste après une connexion, avant d'avoir répondu "Garder"/
+  // "Mettre de côté"), ce timestamp-vs-timestamp ci-dessous s'exécutait EN
+  // MÊME TEMPS et écrasait déjà _armoireDraft de son côté — la
+  // réconciliation répondait alors sur un brouillon local qui n'était plus
+  // le bon (silencieusement remplacé par le brouillon serveur pendant que
+  // l'utilisateur lisait encore la question). _armoireReconcilingOwner
+  // (posé/retiré par _armoireReconcileOwnerOnLogin) fait de cette décision
+  // "plus récent gagne" un cas par défaut, jamais actif tant qu'une
+  // réconciliation par propriétaire est en cours de résolution.
+  if(_armoireReconcilingOwner) return;
   var serverDraft = _armoireFindServerDraft();
   _armoireServerDraftId = serverDraft ? serverDraft.id : null;
   if(!serverDraft || !Array.isArray(serverDraft.items) || !serverDraft.items.length) return;
@@ -728,11 +797,79 @@ function _armoireSyncDraftToServer(){
       var confirmedAt = (mine && typeof mine.createdAt === 'number') ? mine.createdAt : Date.now();
       if(confirmedAt > _armoireDraftLocalSavedAt){
         _armoireDraftLocalSavedAt = confirmedAt;
-        try{ localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt })); }catch(e){}
+        try{ localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt, owner: _armoireDraftOwner })); }catch(e){}
       }
     })
     .catch(function(e){ console.warn('_armoireSyncDraftToServer:', e && e.message); });
 }
+
+// Retour utilisateur : "j'aimerais que le configurateur soit disponible
+// lorsqu'on n'est pas loggé mais comment faire pour pas avoir de problème
+// lorsqu'on se reconnecte avec le système de synchro entre appareils ?" —
+// appelée sur l'évènement 'spi_auth_changed' (déclenché par authLogin(),
+// js/auth.js, uniquement lors d'une CONNEXION interactive — jamais à la
+// déconnexion, qui recharge toute la page). Décisions utilisateur :
+// - Si le brouillon local n'appartient pas déjà à ce compte (anonyme, ou
+//   laissé par un AUTRE compte sur un poste partagé) ET que le compte a
+//   lui-même déjà un brouillon serveur non vide : demander lequel garder
+//   ("Garder celle de cet appareil" / "Mettre de côté celle de cet
+//   appareil") — jamais de choix automatique, jamais de perte silencieuse.
+// - Celle qui n'est PAS gardée est enregistrée comme un bloc nommé et
+//   daté (retrouvable dans "Blocs"), jamais simplement effacée.
+// - Si le compte n'a PAS encore de brouillon serveur, le brouillon local
+//   est adopté directement (rien à mettre de côté).
+async function _armoireReconcileOwnerOnLogin(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username) return; // jamais appelé sans connexion réussie, mais gardé par prudence
+  if(_armoireDraftOwner === username) return; // déjà le brouillon de ce compte, rien à réconcilier
+  if(!_armoireDraft.length) return; // rien localement — la prochaine sauvegarde retaguera tout seul
+
+  // Copie figée AVANT le premier "await" : _armoireDraft (la variable, pas
+  // cette copie) reste libre de bouger entre-temps (l'utilisateur peut
+  // continuer à cliquer, ou — sans le verrou ci-dessus — une autre synchro
+  // pourrait s'exécuter) sans jamais fausser la décision prise ici sur ce
+  // qu'était RÉELLEMENT le brouillon de cet appareil au moment de la connexion.
+  var localItemsSnapshot = _armoireDraft.slice();
+  _armoireReconcilingOwner = true;
+  var finalItems = localItemsSnapshot;
+  try{
+    try{ await _armoireFetchBlocks(); }catch(e){ /* tant pis, continue avec _armoireBlocks déjà connu */ }
+    var serverDraft = _armoireFindServerDraft();
+    _armoireServerDraftId = serverDraft ? serverDraft.id : null;
+    var serverItems = (serverDraft && Array.isArray(serverDraft.items)) ? serverDraft.items.filter(function(it){
+      return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
+    }) : [];
+
+    if(serverItems.length){
+      var dateLabel = new Date().toLocaleString('fr-FR');
+      var keepLocal = await customConfirm(
+        'Deux configurations en cours',
+        'Cet appareil a une configuration en cours (' + localItemsSnapshot.length + ' référence' + (localItemsSnapshot.length > 1 ? 's' : '') + '), et votre compte en a déjà une autre (' + serverItems.length + ' référence' + (serverItems.length > 1 ? 's' : '') + '). Celle qui n\'est pas gardée sera enregistrée comme bloc, pas perdue.',
+        { okLabel: 'Garder celle de cet appareil', cancelLabel: 'Mettre de côté celle de cet appareil' }
+      );
+      var setAsideItems = keepLocal ? serverItems : localItemsSnapshot;
+      var setAsideLabel = (keepLocal ? 'Configuration mise de côté (' : 'Configuration invité mise de côté (') + dateLabel + ')';
+      try{
+        await _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify({ name: setAsideLabel, folder: ARMOIRE_SETASIDE_FOLDER, items: setAsideItems }) });
+      }catch(e){ console.warn('_armoireReconcileOwnerOnLogin (mise de côté):', e && e.message); }
+      finalItems = keepLocal ? localItemsSnapshot : serverItems;
+      if(typeof showToast === 'function') showToast('« ' + setAsideLabel + ' » enregistrée dans Blocs, dossier « ' + ARMOIRE_SETASIDE_FOLDER + ' » ✓', 'ok', 5000);
+    }
+  }catch(e){
+    console.warn('_armoireReconcileOwnerOnLogin:', e && e.message);
+  }
+  // Retombe à false AVANT le rendu final (pas dans un "finally" après) :
+  // _armoireSaveDraftToStorage (voir plus haut) n'accepte de retaguer le
+  // propriétaire QUE lorsque ce drapeau est déjà retombé — sinon cette toute
+  // dernière écriture, pourtant la décision légitime prise ici, se
+  // retrouverait elle-même supprimée par le garde-fou anti-court-circuit.
+  _armoireReconcilingOwner = false;
+  _armoireDraft = finalItems;
+  _armoireDraftLastSavedItemsJson = null; // force la ré-écriture (nouveau propriétaire) même si le contenu est resté identique
+  _armoireRenderDraft(); // persiste (avec le bon owner), affiche, et programme la synchro vers ce compte
+}
+document.addEventListener('spi_auth_changed', function(){ _armoireReconcileOwnerOnLogin(); });
 
 function _armoireFetchSavedConfigs(){
   return _armoireApi('/configSavedConfigs').then(function(list){

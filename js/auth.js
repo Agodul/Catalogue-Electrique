@@ -577,15 +577,23 @@ function applyAuthUI() {
   var btnFabAdd = document.getElementById('btnFabAdd');
   if (btnFabAdd) btnFabAdd.style.display = canEdit ? '' : 'none';
 
-  // Bouton "Configurateur d'armoire" (accueil) — tout utilisateur connecté
+  // Bouton "Configurateur d'armoire" (accueil) — retour utilisateur :
+  // "j'aimerais que le configurateur soit disponible lorsqu'on n'est pas
+  // loggé" — toujours visible désormais, connecté ou non. Un visiteur
+  // anonyme garde sa configuration en cours sur CET appareil (localStorage,
+  // voir js/armoireConfig.js) sans jamais la synchroniser au serveur tant
+  // qu'il ne se connecte pas ; la réconciliation avec un éventuel brouillon
+  // déjà présent sur le compte se fait alors dans
+  // _armoireReconcileOwnerOnLogin (js/armoireConfig.js, écouteur
+  // 'spi_auth_changed').
   var btnOpenArmoireConfig = document.getElementById('btnOpenArmoireConfig');
-  if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = loggedIn ? '' : 'none';
+  if (btnOpenArmoireConfig) btnOpenArmoireConfig.style.display = '';
   // Même accès, mais permanent (pas seulement l'accueil) — bulle flottante
   // au-dessus de "Ajouter un produit" plutôt qu'une entrée de menu (retour
   // utilisateur : "je ne veux pas le bouton configurateur dans le menu mais
   // juste au dessus du petit plus", voir .fab-stack dans index.html).
   var btnFabArmoireConfig = document.getElementById('btnFabArmoireConfig');
-  if (btnFabArmoireConfig) btnFabArmoireConfig.style.display = loggedIn ? '' : 'none';
+  if (btnFabArmoireConfig) btnFabArmoireConfig.style.display = '';
 
   // Boutons "Proposer" : visibles si connecté + serveur + pas de permission canEdit
   var _sUrlReq   = localStorage.getItem('cat_server_url') || '';
