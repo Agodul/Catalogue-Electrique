@@ -12,160 +12,152 @@
 
 var _armoireDraft = []; // [{ref, qty}]
 
-// Clé localStorage pour ne pas perdre une configuration en cours non
-// enregistrée en cas de fermeture inattendue (crash, fermeture accidentelle
-// de l'onglet/du navigateur…) — retour utilisateur : "comment faire pour
-// éviter de perdre la config alors qu'on a pas enregistré ?". _armoireDraft
-// n'était qu'une variable en mémoire jusqu'ici, perdue au moindre rechargement
-// de page. Voir _armoireSaveDraftToStorage (appelée à chaque
-// _armoireRenderDraft, donc à chaque modification réelle du brouillon) et la
-// restauration juste en dessous.
+// Retour utilisateur : "je ne veux plus de localstorage pour les config je
+// veux garder que le serveur en cas de crash" puis "il faudrait que seule
+// la config anonyme soit enregistrée dans le local" — un compte CONNECTÉ n'a
+// plus aucune copie locale : le serveur (voir _armoireSyncDraftToServer/
+// _armoireSyncDraftFromServer plus bas) est sa seule sauvegarde, rouvrir le
+// configurateur récupère le dernier état synchronisé. Un visiteur NON
+// connecté n'a lui aucune notion de compte côté serveur — sans copie
+// locale, sa configuration ne survivrait à AUCUN rechargement ; cette clé
+// reste donc utilisée, mais SEULEMENT pour lui (voir _armoireMarkDraftChanged
+// et _armoireRestoreLocalDraftIfAnonymous plus bas, qui vérifient
+// authIsLoggedIn() avant d'y toucher).
 var ARMOIRE_DRAFT_STORAGE_KEY = 'cat_armoire_draft';
 
-// Horodatage (ms) de la dernière sauvegarde locale RÉELLE (mis à jour par
-// _armoireSaveDraftToStorage ET par la restauration au chargement de la
-// page) — retour utilisateur : "faut que le serveur soit prioritaire" pour
-// la reprise multi-appareils (voir _armoireSyncDraftFromServer), mais SANS
-// jamais écraser un brouillon local plus récent que ce qui est sur le
-// serveur (ex. tout juste récupéré après un crash, jamais eu le temps de
-// partir vers le serveur) — sinon le filet de sécurité local ci-dessus
-// perdrait tout son intérêt. Le plus récent des deux gagne, jamais "le
-// serveur, toujours, sans condition".
-var _armoireDraftLocalSavedAt = 0;
-
-// Dernier contenu RÉELLEMENT persisté (JSON) — retour utilisateur : "quand
-// je modifie la quantité, ça ne s'actualise pas sur l'autre appareil".
-// _armoireRenderDraft() (donc _armoireSaveDraftToStorage) est aussi appelée
-// pour de simples RÉ-AFFICHAGES sans rapport avec une modification (ex.
-// _armoireOpen() rend le brouillon déjà en mémoire dès l'ouverture, avant
-// même d'avoir vérifié le serveur) — sans ce garde-fou, cette sauvegarde
-// "pour rien" avançait quand même _armoireDraftLocalSavedAt à
-// Date.now(), qui gagnait alors QUASI TOUJOURS la comparaison dans
-// _armoireSyncDraftFromServer face à un horodatage serveur forcément dans
-// le passé — un autre appareil avait beau avoir sauvegardé une quantité
-// plus récente juste après, ce nouvel appareil-ci ignorait systématiquement
-// le serveur dès qu'il avait ne serait-ce qu'un vieux brouillon local.
-// L'horodatage ne doit avancer que sur un contenu qui a RÉELLEMENT changé.
+// Dernier contenu RÉELLEMENT envoyé/connu (JSON) — évite de reprogrammer une
+// synchro à chaque simple RÉ-AFFICHAGE sans rapport avec une modification
+// (ex. _armoireOpen() rend le brouillon déjà en mémoire dès l'ouverture,
+// avant même d'avoir vérifié le serveur).
 var _armoireDraftLastSavedItemsJson = null;
+
+// Horodatage (ms) de la dernière modification RÉELLE de ce brouillon en
+// mémoire, dans CETTE page — comparé à serverDraft.createdAt dans
+// _armoireSyncDraftFromServer pour décider qui, du serveur ou de cette page,
+// est le plus à jour (retour utilisateur : "faut que le serveur soit
+// prioritaire" pour la reprise multi-appareils, mais sans écraser une
+// modification plus récente faite ICI, dans la même page, qui n'aurait pas
+// encore eu le temps de partir vers le serveur — anti-rafale, voir
+// ARMOIRE_DRAFT_SYNC_DELAY_MS). Contrairement à avant, ne survit plus à un
+// rechargement (remis à 0 par défaut) : sans copie locale, il n'y a plus
+// rien à comparer avant la toute première synchro de cette page.
+var _armoireDraftLocalSavedAt = 0;
 
 // Retour utilisateur : "j'aimerais que le configurateur soit disponible
 // lorsqu'on n'est pas loggé mais comment faire pour pas avoir de problème
 // lorsqu'on se reconnecte avec le système de synchro entre appareils ?" —
-// cet appareil peut désormais accumuler un brouillon SANS être connecté
-// (voir plus bas, retrait des gardes canLoggedIn). ARMOIRE_DRAFT_STORAGE_KEY
-// n'a toujours qu'UNE seule entrée par appareil (jamais par compte) :
-// _armoireDraftOwner retient à QUI appartient ce brouillon local (username,
-// ou null si construit anonymement) pour détecter, à la prochaine connexion
-// (voir _armoireReconcileOwnerOnLogin plus bas), qu'il ne s'agit peut-être
-// PAS du brouillon du compte qui vient de se connecter — sur un poste
-// partagé, un autre compte a très bien pu laisser le sien derrière lui.
+// ce brouillon (en mémoire, voir plus haut) peut désormais s'accumuler SANS
+// être connecté. _armoireDraftOwner retient à QUI il appartient (username,
+// ou null si construit anonymement dans CETTE page) pour détecter, si on se
+// connecte SANS recharger la page (voir _armoireReconcileOwnerOnLogin plus
+// bas), qu'il ne s'agit peut-être pas du brouillon déjà sur le compte qui
+// vient de se connecter.
 var _armoireDraftOwner = null;
 
 // Retour utilisateur : "a tu fais un max d'essei" — posé à true pendant
 // toute la durée de _armoireReconcileOwnerOnLogin (y compris pendant
 // l'attente de la réponse à la boîte de dialogue "Garder"/"Mettre de côté"),
 // pour qu'AUCUN autre code (ni _armoireSyncDraftFromServer, ni le retaguage
-// de propriétaire dans _armoireSaveDraftToStorage juste en dessous) ne
-// vienne trancher à la place de l'utilisateur ou court-circuiter sa
-// décision pendant qu'elle est encore en attente — repéré en testant
-// précisément ce cas de figure : ouvrir le panneau juste après une
-// connexion, avant d'avoir répondu à la boîte de dialogue.
+// de propriétaire dans _armoireMarkDraftChanged juste en dessous) ne vienne
+// trancher à la place de l'utilisateur ou court-circuiter sa décision
+// pendant qu'elle est encore en attente — repéré en testant précisément ce
+// cas de figure : ouvrir le panneau juste après une connexion, avant
+// d'avoir répondu à la boîte de dialogue.
 var _armoireReconcilingOwner = false;
 
-function _armoireSaveDraftToStorage(){
-  // Ne jamais persister PENDANT l'édition d'un bloc/config existant :
+// Renvoie true si le contenu a réellement changé depuis le dernier appel —
+// _armoireRenderDraft() (juste en dessous) ne programme une synchro
+// (_armoireScheduleDraftSync) que dans ce cas. N'écrit dans localStorage que
+// pour un visiteur NON connecté (voir ARMOIRE_DRAFT_STORAGE_KEY plus haut) —
+// un compte connecté n'a plus aucune copie locale, y compris pour nettoyer
+// une éventuelle trace anonyme laissée avant sa connexion (sinon un visiteur
+// suivant, anonyme, sur le même appareil partagé, la retrouverait à tort).
+function _armoireMarkDraftChanged(){
+  // Ne jamais avancer PENDANT l'édition d'un bloc/config existant :
   // _armoireDraft contient alors TEMPORAIREMENT le contenu de l'entrée
   // éditée (voir _armoireStartEditEntry/_armoireDraftBackup plus bas), pas
-  // la vraie configuration en cours de l'utilisateur — l'écraser ici la
-  // perdrait pour de bon en cas de crash pendant une édition.
+  // la vraie configuration en cours de l'utilisateur.
   if(_armoireEditingEntry) return false;
-  try{
-    if(_armoireDraft.length){
-      var itemsJson = JSON.stringify(_armoireDraft);
-      // Retaguer le propriétaire ACTUEL même si le contenu n'a pas changé
-      // (ex. juste après une réconciliation de connexion) — mais alors sans
-      // avancer l'horodatage ni republier vers le serveur pour rien, la
-      // ligne juste en dessous s'en charge déjà. SAUF pendant
-      // _armoireReconcileOwnerOnLogin (_armoireReconcilingOwner) : sinon un
-      // simple ré-affichage déclenché entre-temps (ex. ouvrir le panneau
-      // pendant que la boîte "Garder"/"Mettre de côté" attend encore une
-      // réponse — repéré en testant précisément ce cas) retaguait déjà le
-      // brouillon au nouveau compte et programmait une synchro AVANT que la
-      // décision de l'utilisateur ne soit connue, court-circuitant la
-      // réconciliation. Celle-ci force elle-même une ré-écriture explicite
-      // une fois sa décision prise (_armoireDraftLastSavedItemsJson remis à
-      // null juste avant, drapeau déjà retombé à false à ce moment-là).
-      var _meSave = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
-      var _ownerSave = (_meSave && _meSave.username) || null;
-      var _ownerChanged = !_armoireReconcilingOwner && (_ownerSave !== _armoireDraftOwner);
-      if(itemsJson === _armoireDraftLastSavedItemsJson && !_ownerChanged) return false; // rien de réellement nouveau
-      _armoireDraftLastSavedItemsJson = itemsJson;
-      _armoireDraftLocalSavedAt = Date.now();
-      if(!_armoireReconcilingOwner) _armoireDraftOwner = _ownerSave;
-      localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt, owner: _armoireDraftOwner }));
-    } else {
-      if(_armoireDraftLastSavedItemsJson === null) return false; // déjà vide : rien de réellement nouveau à synchroniser
-      _armoireDraftLastSavedItemsJson = null;
-      _armoireDraftLocalSavedAt = 0;
-      _armoireDraftOwner = null;
-      localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
+  var isLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
+  if(_armoireDraft.length){
+    var itemsJson = JSON.stringify(_armoireDraft);
+    if(itemsJson === _armoireDraftLastSavedItemsJson) return false; // contenu inchangé
+    // Retour utilisateur : "je veux que la demande de mise de côté ce fasse
+    // lorsqu'on clique sur le configurateur" — _armoireDraftOwner n'est
+    // JAMAIS modifié ici, sur une simple modification de contenu (ex.
+    // "Ajouter à la configuration" depuis une fiche produit, avant même
+    // d'avoir ouvert le configurateur) : seule _armoireReconcileOwnerOnLogin
+    // (déclenchée à l'ouverture du panneau, voir _armoireOpen) a le droit de
+    // décider à qui appartient ce brouillon. Tant que le panneau n'a pas été
+    // ouvert après une connexion, le brouillon continue de vivre en mémoire
+    // sous son propriétaire actuel (potentiellement encore "anonyme") sans
+    // se synchroniser vers le compte tout juste connecté dans son dos (voir
+    // le même garde-fou dans _armoireScheduleDraftSync plus bas).
+    _armoireDraftLastSavedItemsJson = itemsJson;
+    _armoireDraftLocalSavedAt = Date.now();
+    try{
+      if(isLoggedIn) localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY);
+      else localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, itemsJson);
+    }catch(e){
+      // Navigation privée / quota dépassé : tant pis, pas de sauvegarde de
+      // secours possible, mais ça ne doit jamais faire planter le
+      // configurateur pour autant.
     }
-  }catch(e){
-    // Navigation privée / quota dépassé : tant pis, pas de sauvegarde de
-    // secours possible, mais ça ne doit jamais faire planter le
-    // configurateur pour autant.
-    return false;
+  } else {
+    if(_armoireDraftLastSavedItemsJson === null) return false; // déjà vide : rien de réellement nouveau
+    _armoireDraftLastSavedItemsJson = null;
+    _armoireDraftLocalSavedAt = 0;
+    // Repéré en testant "Vider" un compte connecté (voir le chantier
+    // multi-emplacements ci-dessus, mais un bug préexistant, pas nouveau) :
+    // remettre _armoireDraftOwner à null ICI empêchait ensuite
+    // _armoireScheduleDraftSync() de programmer la suppression côté serveur
+    // (son garde-fou compare _armoireDraftOwner au compte connecté — voir
+    // plus bas — et le trouvait aussitôt "différent" puisqu'on venait de
+    // l'effacer nous-mêmes), laissant l'entrée serveur orpheline pour de bon
+    // (jamais nettoyée, y compris à la fermeture du panneau). Un compte
+    // connecté reste propriétaire de SON brouillon même vide — seul un
+    // visiteur anonyme doit repartir de zéro (owner=null) pour qu'une
+    // éventuelle connexion ultérieure déclenche bien une vraie réconciliation.
+    if(!isLoggedIn) _armoireDraftOwner = null;
+    try{ localStorage.removeItem(ARMOIRE_DRAFT_STORAGE_KEY); }catch(e){}
   }
   return true;
 }
 
-// Mis à true si un brouillon non vide a été restauré au chargement de la
-// page — consommé une seule fois par _armoireOpen() (toast d'info) pour que
-// l'utilisateur comprenne D'OÙ viennent ces produits déjà présents la
-// première fois qu'il ouvre le configurateur cette session, sans répéter le
-// toast à chaque réouverture du panneau.
-var _armoireDraftWasRestored = false;
-
-function _armoireRestoreDraftFromStorage(){
+// Retour utilisateur : "il faudrait que seule la config anonyme soit
+// enregistrée dans le local" — restaure le brouillon anonyme laissé sur cet
+// appareil, mais SEULEMENT si personne n'est déjà connecté à ce chargement
+// de page (un compte connecté récupère sa propre configuration depuis le
+// serveur, voir _armoireOpen/_armoireSyncDraftFromServer — jamais depuis une
+// trace locale qui pourrait appartenir à quelqu'un d'autre sur un poste
+// partagé).
+function _armoireRestoreLocalDraftIfAnonymous(){
+  if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()) return;
   try{
     var raw = localStorage.getItem(ARMOIRE_DRAFT_STORAGE_KEY);
     if(!raw) return;
-    var parsed = JSON.parse(raw);
-    // Ancien format (tableau brut, avant l'ajout de l'horodatage ci-dessus)
-    // toujours accepté en lecture — migré vers le nouveau format dès la
-    // prochaine sauvegarde réelle, sans rien casser pour un brouillon déjà
-    // en localStorage avant cette mise à jour.
-    var items = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.items) ? parsed.items : null);
-    if(!items) return;
-    _armoireDraftLocalSavedAt = (parsed && typeof parsed.savedAt === 'number') ? parsed.savedAt : 0;
-    // owner absent (ancien format d'avant l'accès anonyme, ou brouillon
-    // déjà anonyme) : traité comme "sans propriétaire" plutôt que supposer
-    // qu'il appartient au compte qui va se connecter ensuite.
-    _armoireDraftOwner = (parsed && typeof parsed.owner === 'string') ? parsed.owner : null;
+    var items = JSON.parse(raw);
+    if(!Array.isArray(items)) return;
     var restored = items.filter(function(it){
       return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
     });
-    if(restored.length){
-      _armoireDraft = restored;
-      _armoireDraftWasRestored = true;
-      // Le prochain _armoireRenderDraft() (ex. à l'ouverture du panneau) va
-      // re-sauvegarder ce même contenu tel quel — sans ceci, ce simple
-      // ré-affichage serait pris pour une modification réelle et avancerait
-      // _armoireDraftLocalSavedAt à Date.now() (voir _armoireSaveDraftToStorage).
-      _armoireDraftLastSavedItemsJson = JSON.stringify(_armoireDraft);
-    }
+    if(!restored.length) return;
+    _armoireDraft = restored;
+    // Le prochain _armoireRenderDraft() (ex. à l'ouverture du panneau) va
+    // re-sauvegarder ce même contenu tel quel — sans ceci, ce simple
+    // ré-affichage serait pris pour une modification réelle (voir
+    // _armoireMarkDraftChanged ci-dessus).
+    _armoireDraftLastSavedItemsJson = JSON.stringify(_armoireDraft);
   }catch(e){
     // Contenu corrompu/illisible : on repart simplement d'un brouillon vide
     // plutôt que de faire planter le chargement de la page.
   }
 }
-_armoireRestoreDraftFromStorage();
+_armoireRestoreLocalDraftIfAnonymous();
 
 // Retour utilisateur : "je voudrais que les brouillons soient enregistrés
 // automatiquement sur le serveur [...] comme ça on peut la reprendre sur
-// notre tel ou un autre pc avec le même identifiant" — jusqu'ici,
-// ARMOIRE_DRAFT_STORAGE_KEY (juste au-dessus) n'est QUE du localStorage,
-// propre à CET appareil/navigateur, jamais synchronisé. Réutilise
+// notre tel ou un autre pc avec le même identifiant" — réutilise
 // /configBlocks (même endpoint que les vrais blocs partagés) plutôt qu'un
 // nouvel endpoint dédié : chaque entrée porte désormais draft (booléen,
 // false par défaut pour un vrai bloc partagé) — schéma confirmé par le
@@ -180,6 +172,114 @@ _armoireRestoreDraftFromStorage();
 var _armoireServerDraftId = null; // id de CE brouillon sur le serveur, si déjà créé
 var _armoireDraftSyncTimer = null;
 var ARMOIRE_DRAFT_SYNC_DELAY_MS = 1500; // anti-rafale : pas un appel réseau à chaque frappe/clic +/-
+
+// Retour utilisateur : "on va fiabiliser la création d'armoire puis se
+// connecter [...] lorsqu'on clique sur mettre de côté ça fasse en sorte
+// qu'on ait deux config en cours et qu'on puisse naviguer de l'une à
+// l'autre facilement" — remplace l'ancien comportement (la configuration
+// non gardée était archivée comme un bloc nommé, dans
+// ARMOIRE_SETASIDE_FOLDER, invisible depuis "Configuration en cours").
+// Désormais _armoireDraft reste "l'emplacement actif affiché" (tout le
+// reste du code — ajout/retrait/quantité/rendu — continue de fonctionner
+// sans changement), et _armoireOtherDraftSlots retient les AUTRES
+// brouillons actifs du même compte, chacun déjà synchronisé côté serveur
+// (jamais uniquement en mémoire, sinon perdu à la fermeture de l'onglet —
+// but même de ce chantier : "fiabiliser").
+// Forme : [{ id, name, items }].
+var _armoireOtherDraftSlots = [];
+
+// Nom de l'entrée serveur correspondant au brouillon actuellement chargé
+// dans _armoireDraft. null = pas encore choisi, _armoireSyncDraftToServer
+// retombe alors sur le nom "principal" (ARMOIRE_DRAFT_NAME_PREFIX +
+// username), exactement le comportement d'avant ce chantier — un compte
+// qui n'a jamais eu qu'un seul brouillon actif ne voit donc aucune
+// différence. Ce n'est QUE lorsqu'un second emplacement existe (voir
+// _armoireReconcileOwnerOnLogin/_armoireSwitchDraftSlot) qu'un nom
+// distinct (suffixé) est assigné, pour que les deux entrées /configBlocks
+// ne se confondent jamais l'une avec l'autre.
+var _armoireActiveDraftName = null;
+
+// Retour utilisateur : "faudrait que la config qui devient visible passe en
+// bleu sans devoir tout faire bouger" — avant ceci, l'emplacement actif
+// était TOUJOURS dessiné en première position dans le sélecteur/la fenêtre
+// de gestion, et _armoireSwitchDraftSlot échangeait le CONTENU entre cette
+// position 1 et celle cliquée : basculer donnait donc l'impression que les
+// lignes se mélangeaient (le contenu cliqué "sautait" en haut, un autre
+// contenu apparaissait là où on avait cliqué), au lieu que la ligne cliquée
+// devienne simplement bleue sur PLACE. Chaque emplacement reçoit maintenant
+// une clé stable, propre à cette page (jamais persistée, jamais envoyée au
+// serveur), qui ne change JAMAIS pour ce même emplacement logique — y
+// compris après un renommage ou une resynchronisation qui change son id
+// serveur (voir _armoireEnsureActiveSlotKey plus bas, qui fait le lien).
+// Le rendu (_armoireDraftListRowsHtml) trie toujours par cette clé plutôt
+// que de mettre l'actif en tête : seule la couleur bascule d'une ligne à
+// l'autre, jamais leur position respective.
+var _armoireSlotKeySeq = 1;
+var _armoireSlotKeyByIdentity = {}; // "id:X" ou "name:Y" -> clé stable
+var _armoireActiveSlotKey = 0; // 0 = pas encore attribuée (avant le tout premier rendu)
+function _armoireSlotIdentity(id, name){
+  return id ? ('id:' + id) : ('name:' + (name || ''));
+}
+// Retrouve la clé déjà connue pour cette identité (id serveur si présent,
+// sinon nom), ou lui en attribue une toute nouvelle si c'est la première
+// fois qu'on la rencontre.
+function _armoireGetOrCreateSlotKey(id, name){
+  var identity = _armoireSlotIdentity(id, name);
+  if(!_armoireSlotKeyByIdentity[identity]) _armoireSlotKeyByIdentity[identity] = _armoireSlotKeySeq++;
+  return _armoireSlotKeyByIdentity[identity];
+}
+// Appelée après CHAQUE changement de _armoireServerDraftId/_armoireActiveDraftName
+// qui représente TOUJOURS le même emplacement logique (resynchronisation,
+// renommage, adoption au chargement) — jamais après _armoireSwitchDraftSlot
+// (qui assigne lui-même explicitement la clé de la cible) ni
+// _armoireCreateNewDraftSlot (qui assigne lui-même une clé toute neuve,
+// jamais une continuité) : ces deux-là gèrent _armoireActiveSlotKey de leur
+// côté, en connaissance de cause.
+function _armoireEnsureActiveSlotKey(){
+  var identity = _armoireSlotIdentity(_armoireServerDraftId, _armoireActiveDraftName);
+  if(_armoireActiveSlotKey){
+    // Fait le lien : ce nouvel id/nom (venant de changer suite à une
+    // synchro/un renommage) désigne le MÊME emplacement, jamais une clé
+    // neuve qui le ferait sauter de position dans la liste.
+    _armoireSlotKeyByIdentity[identity] = _armoireActiveSlotKey;
+  } else {
+    _armoireActiveSlotKey = _armoireGetOrCreateSlotKey(_armoireServerDraftId, _armoireActiveDraftName);
+  }
+}
+
+// Retour utilisateur : "regarde pourquoi lorsque je nomme depuis l'actif ça
+// me recrée une config" — remplacer une entrée serveur (renommer, ou toute
+// sauvegarde automatique du brouillon actif, aucun PUT/PATCH disponible —
+// voir _armoireReplaceEntry) fait un POST de la nouvelle PUIS un DELETE de
+// l'ancienne. Sur CE serveur, déjà connu pour ne pas persister certains
+// champs fidèlement (voir ARMOIRE_DRAFT_NAME_PREFIX plus haut), ce DELETE
+// peut ne pas être immédiatement répercuté sur le GET suivant — l'ancienne
+// entrée, sous son ANCIEN nom, réapparaissait alors comme un tout nouvel
+// "autre emplacement" fantôme (le renommage ne change jamais le nom d'UNE
+// entrée existante, contrairement à une simple modification de contenu, la
+// déduplication par nom déjà en place — voir _armoireDetectOtherDraftSlots —
+// ne pouvait donc rien y faire). Toute entrée qu'on a nous-mêmes demandé de
+// supprimer (remplacement compris) est retenue ici pour le reste de la
+// session — jamais réaffichée, même si le serveur la sert encore un moment.
+// Clé "basePath:id" (un id n'est unique qu'au sein d'une même collection).
+var _armoireRetiredEntryIds = {};
+function _armoireMarkEntryRetired(basePath, id){
+  if(id !== null && id !== undefined) _armoireRetiredEntryIds[basePath + ':' + id] = true;
+}
+function _armoireIsEntryRetired(basePath, id){
+  return !!_armoireRetiredEntryIds[basePath + ':' + id];
+}
+// Remplace toute affectation directe de _armoireBlocks depuis une réponse
+// serveur — filtre les entrées retirées (voir ci-dessus) avant qu'elles ne
+// puissent réapparaître dans les Blocs, le sélecteur de brouillons, etc.
+function _armoireSetBlocksFromServer(list){
+  var arr = Array.isArray(list) ? list : _armoireBlocks;
+  _armoireBlocks = arr.filter(function(b){ return !(b && _armoireIsEntryRetired('/configBlocks', b.id)); });
+}
+function _armoireSetSavedConfigsFromServer(list){
+  var arr = Array.isArray(list) ? list : _armoireSavedConfigs;
+  _armoireSavedConfigs = arr.filter(function(b){ return !(b && _armoireIsEntryRetired('/configSavedConfigs', b.id)); });
+}
 
 var _armoireBlocks = [];
 var _armoireSavedConfigs = [];
@@ -417,22 +517,29 @@ async function _armoireQuoteRequest(){
 function _armoireRenderDraft(){
   // Appelée à chaque modification réelle du brouillon (ajout/quantité/
   // retrait/vidage/chargement d'une config enregistrée) — le point d'entrée
-  // unique le plus fiable pour garder la sauvegarde de secours à jour, AVANT
-  // le "if(!el) return" ci-dessous pour que la persistance ait lieu même si
-  // le panneau n'a jamais été affiché cette session (ex. ajout depuis une
-  // fiche produit).
-  // _armoireScheduleDraftSync() UNIQUEMENT si _armoireSaveDraftToStorage()
-  // a réellement persisté un changement — sinon un simple ré-affichage sans
-  // rapport avec une modification (ex. _armoireOpen() qui rend le brouillon
-  // déjà en mémoire) programmait quand même un aller-retour serveur inutile
+  // unique le plus fiable pour garder la synchro serveur à jour, AVANT le
+  // "if(!el) return" ci-dessous pour que ça marche même si le panneau n'a
+  // jamais été affiché cette session (ex. ajout depuis une fiche produit).
+  // _armoireScheduleDraftSync() UNIQUEMENT si _armoireMarkDraftChanged() a
+  // détecté un changement réel — sinon un simple ré-affichage sans rapport
+  // avec une modification (ex. _armoireOpen() qui rend le brouillon déjà en
+  // mémoire) programmait quand même un aller-retour serveur inutile
   // (recréation de l'entrée avec un nouvel id/horodatage, voir
   // _armoireReplaceEntry — aucun PUT/PATCH disponible côté serveur) pour un
   // contenu pourtant identique.
-  if(_armoireSaveDraftToStorage()) _armoireScheduleDraftSync();
+  if(_armoireMarkDraftChanged()) _armoireScheduleDraftSync();
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
   _armoireRenderStats();
   _armoireUpdateMobileDraftBadge();
+  // Repéré en testant la reprise après rechargement (compte déjà connecté,
+  // deux emplacements déjà actifs côté serveur) : _armoireDetectOtherDraftSlots
+  // (appelée par _armoireSyncDraftFromServer AVANT que _armoireDraft ne soit
+  // remplacé par le brouillon serveur restauré) rendait déjà le sélecteur,
+  // mais avec l'ancien compte "Active (0)" — jamais rafraîchi depuis. Ce
+  // point d'entrée central (seul appelé après CHAQUE changement réel de
+  // _armoireDraft) garde le nombre affiché à jour dans tous les cas.
+  _armoireRenderDraftSwitcher();
   if(!_armoireDraft.length){
     el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:24px 8px;">Aucun produit pour l\'instant — cherche à gauche et clique « + ».</div>';
     return;
@@ -630,7 +737,7 @@ function _armoireApi(path, opts){
 
 function _armoireFetchBlocks(){
   return _armoireApi('/configBlocks').then(function(list){
-    _armoireBlocks = Array.isArray(list) ? list : [];
+    _armoireSetBlocksFromServer(list);
     _armoireRenderBlocksList();
   }).catch(function(e){
     // Échec silencieux auparavant — impossible de savoir si la liste
@@ -657,47 +764,491 @@ function _armoireFetchBlocks(){
 // brouillon même si draft/username ne sont pas persistés tels quels.
 var ARMOIRE_DRAFT_NAME_PREFIX = 'Brouillon — ';
 
-// Retour utilisateur : "faudrait ajouter un bouton pour les retrouver au
-// lieu de les pousser dans blocs" — les configurations mises de côté par
-// _armoireReconcileOwnerOnLogin (conflit à la connexion) restent dans
-// /configBlocks (aucune autre collection dédiée côté serveur), mais dans
-// LEUR PROPRE dossier plutôt que mêlées aux vrais blocs à la racine —
-// l'en-tête de ce dossier (déjà cliquable/dépliable pour n'importe quel
-// dossier, voir _armoireRenderBlocksList) sert de "bouton pour les
-// retrouver", sans avoir besoin d'une collection ou d'une vue séparée.
-var ARMOIRE_SETASIDE_FOLDER = 'Mises de côté (connexion)';
-
 // Retrouve, parmi les entrées /configBlocks déjà chargées (_armoireBlocks),
-// celle qui est le brouillon serveur de L'UTILISATEUR CONNECTÉ — jamais
-// celui d'un autre compte, même si le serveur en renvoyait un par erreur.
-// Priorité à draft===true + username (schéma "propre", confirmé par le
-// serveur : draft booléen, username rempli par le serveur lui-même depuis
-// le token, jamais envoyé dans le corps d'une requête — voir
-// _armoireSyncDraftToServer) ; repli sur le NOM exact généré ici si ces deux
-// champs ne reviennent pas fidèlement (voir le retour utilisateur ci-dessus).
-function _armoireFindServerDraft(){
+// celle qui est LE brouillon serveur précis recherché pour L'UTILISATEUR
+// CONNECTÉ — jamais celui d'un autre compte, même si le serveur en
+// renvoyait un par erreur. `name` optionnel : par défaut le nom
+// "principal" (compte à un seul brouillon actif, cas historique) — passer
+// un nom explicite pour retrouver un emplacement PRÉCIS parmi plusieurs
+// (voir _armoireOtherDraftSlots).
+// Retour utilisateur, capture à l'appui (repéré en testant plusieurs
+// emplacements à la fois) : matcher n'IMPORTE QUELLE entrée draft===true de
+// ce compte dès qu'aucun nom précis n'était demandé — un repli hérité de
+// l'époque où un compte n'avait jamais qu'UN SEUL brouillon actif, donc
+// "n'importe lequel" = "le bon" — devenait ambigu et pouvait retomber sur
+// le MAUVAIS emplacement dès que plusieurs coexistaient. Le NOM (le champ
+// qui, lui, revient fidèlement — voir ARMOIRE_DRAFT_NAME_PREFIX plus haut,
+// contrairement à draft/username) est donc désormais TOUJOURS le critère
+// décisif, jamais contournable.
+function _armoireFindServerDraft(name){
   var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
   var username = me && me.username;
   if(!username) return null;
-  var expectedName = ARMOIRE_DRAFT_NAME_PREFIX + username;
-  return _armoireBlocks.find(function(b){
+  var expectedName = name || (ARMOIRE_DRAFT_NAME_PREFIX + username);
+  var matches = _armoireBlocks.filter(function(b){
+    if(!b) return false;
+    // N'exige username QUE s'il est présent sur l'entrée (pour rester
+    // utilisable même si ce champ ne revient pas fidèlement, voir plus haut).
+    return b.name === expectedName && (!b.username || b.username === username);
+  });
+  if(!matches.length) return null;
+  // Retour utilisateur, capture à l'appui : des doublons du même brouillon
+  // peuvent momentanément coexister (voir _armoireDetectOtherDraftSlots, qui
+  // les nettoie mais après coup) — le plus RÉCENT (createdAt) est toujours
+  // celui qui reflète vraiment le dernier contenu enregistré, jamais un
+  // simple premier trouvé arbitraire.
+  return matches.reduce(function(best, b){
+    return (!best || (b.createdAt || 0) > (best.createdAt || 0)) ? b : best;
+  }, null);
+}
+
+// Repère TOUS les brouillons actifs (draft===true) du compte connecté,
+// autres que celui actuellement chargé dans _armoireDraft (identifié par
+// _armoireServerDraftId) — appelée après chaque _armoireFetchBlocks() pour
+// que le sélecteur reste correct même après un rechargement de page (pas
+// seulement juste après une réconciliation "Garder"/"Mettre de côté").
+function _armoireDetectOtherDraftSlots(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username){ _armoireOtherDraftSlots = []; _armoireRenderDraftSwitcher(); return; }
+  var prefix = ARMOIRE_DRAFT_NAME_PREFIX + username;
+  var activeName = _armoireActiveDraftName || prefix;
+  var mine = _armoireBlocks.filter(function(b){
     if(!b) return false;
     if(b.draft === true && b.username === username) return true;
-    // Repli nom : n'exige username QUE s'il est présent sur l'entrée (pour
-    // rester utilisable même si ce champ, lui non plus, ne revient pas).
-    return b.name === expectedName && (!b.username || b.username === username);
-  }) || null;
+    // Même repli nom que _armoireFindServerDraft, pour les mêmes raisons.
+    return typeof b.name === 'string' && b.name.indexOf(prefix) === 0 && (!b.username || b.username === username);
+  });
+  // Retour utilisateur, capture à l'appui : plusieurs pastilles "Autre
+  // config." avec EXACTEMENT le même nombre de références que l'active —
+  // ce ne sont jamais de VRAIES configurations distinctes, mais le même
+  // bug serveur déjà documenté plus haut (draft/username ne reviennent pas
+  // toujours fidèlement une fois enregistrés, si bien que _armoireReplaceEntry
+  // recrée parfois une entrée au lieu de remplacer l'ancienne) qui refaisait
+  // déjà s'empiler des doublons AVANT ce chantier — simplement invisibles
+  // jusqu'ici puisque seul _armoireFindServerDraft (un .find, premier
+  // trouvé) les consultait. Un nom (ARMOIRE_DRAFT_NAME_PREFIX+username, ou
+  // son suffixe "(2)") identifie un SEUL emplacement logique : regrouper par
+  // nom et ne garder que le plus récent élimine les doublons de l'affichage,
+  // et supprimer les autres còté serveur évite qu'ils ne réapparaissent
+  // indéfiniment à chaque ouverture.
+  var byName = {};
+  mine.forEach(function(b){
+    var key = b.name || '';
+    if(!byName[key] || (b.createdAt || 0) > (byName[key].createdAt || 0)) byName[key] = b;
+  });
+  mine.forEach(function(b){
+    if(byName[b.name || ''] === b) return; // le plus récent de son nom : à garder
+    _armoireMarkEntryRetired('/configBlocks', b.id);
+    _armoireApi('/configBlocks/' + encodeURIComponent(b.id), { method: 'DELETE' }).catch(function(e){
+      console.warn('_armoireDetectOtherDraftSlots (nettoyage doublon):', e && e.message);
+    });
+  });
+  _armoireOtherDraftSlots = Object.keys(byName).filter(function(name){
+    var b = byName[name];
+    return name !== activeName && b.id !== _armoireServerDraftId;
+  }).map(function(name){
+    var b = byName[name];
+    // Clé stable (voir _armoireGetOrCreateSlotKey) : réutilise celle déjà
+    // connue pour cet id/nom (ex. déjà vu comme actif ou lors d'un précédent
+    // rafraîchissement), n'en crée une nouvelle que pour un emplacement
+    // JAMAIS encore rencontré cette session — évite qu'un simple
+    // rafraîchissement (après chaque synchro) ne fasse sauter les lignes.
+    return { id: b.id, name: b.name, items: Array.isArray(b.items) ? b.items : [], key: _armoireGetOrCreateSlotKey(b.id, b.name) };
+  });
+  _armoireRenderDraftSwitcher();
+}
+
+// Retour utilisateur : "faudrait pouvoir en avoir plusieurs" — le nombre
+// d'emplacements actifs n'est plus limité à 2 (conflit "Garder"/"Mettre de
+// côté" à la connexion) : ce nom sert à identifier chaque NOUVEAU brouillon
+// créé volontairement (voir _armoireCreateNewDraftSlot, mais aussi
+// _armoireReconcileOwnerOnLogin et _armoireRenameDraftSlot) sans jamais
+// entrer en collision avec un nom déjà pris. Cherche à la fois dans
+// _armoireBlocks (source serveur, déjà rafraîchie par l'appelant) ET dans
+// l'état en mémoire (_armoireActiveDraftName/_armoireOtherDraftSlots) — un
+// emplacement tout juste créé côté page peut ne pas encore être remonté par
+// le serveur.
+// `label` optionnel (retour utilisateur : "faudrait pouvoir mettre un nom
+// sur la config en cours") : un nom choisi par l'utilisateur s'insère après
+// le préfixe technique (ex. "Brouillon — jdupont · Armoire salle 3"),
+// extrait ensuite pour l'affichage par _armoireDraftLabelFromName — sans
+// label, retombe sur l'ancien schéma numéroté (" (2)", " (3)"…). Un
+// éventuel doublon (même label déjà pris, ou aucun label et nom principal
+// déjà pris) reçoit lui aussi un suffixe numérique, jamais de collision
+// silencieuse. `excludeName` : le propre nom actuel de l'emplacement qu'on
+// est en train de renommer (voir _armoireRenameDraftSlot), pour ne pas se
+// considérer soi-même comme "déjà pris" en renommant vers un nom inchangé.
+function _armoireNextDraftSlotName(username, label, excludeName){
+  var prefix = ARMOIRE_DRAFT_NAME_PREFIX + username;
+  var base = label ? (prefix + ' · ' + label) : prefix;
+  var used = {};
+  _armoireBlocks.forEach(function(b){
+    if(!b || typeof b.name !== 'string' || b.name === excludeName) return;
+    if(b.draft === true && b.username === username) used[b.name] = true;
+    else if(b.name.indexOf(prefix) === 0 && (!b.username || b.username === username)) used[b.name] = true;
+  });
+  if(_armoireActiveDraftName && _armoireActiveDraftName !== excludeName) used[_armoireActiveDraftName] = true;
+  _armoireOtherDraftSlots.forEach(function(s){ if(s.name && s.name !== excludeName) used[s.name] = true; });
+  if(!used[base]) return base;
+  var n = 2;
+  while(used[base + ' (' + n + ')']) n++;
+  return base + ' (' + n + ')';
+}
+
+// Extrait le nom choisi par l'utilisateur (voir _armoireNextDraftSlotName)
+// d'un nom serveur complet, pour l'affichage dans le sélecteur — chaîne
+// vide si cet emplacement n'a jamais été nommé (retombe alors sur "Active"/
+// "Config N" côté rendu, voir _armoireRenderDraftSwitcher).
+function _armoireDraftLabelFromName(name, username){
+  if(typeof name !== 'string') return '';
+  var prefix = ARMOIRE_DRAFT_NAME_PREFIX + username;
+  if(name.indexOf(prefix) !== 0) return '';
+  var rest = name.slice(prefix.length).replace(/ \(\d+\)$/, ''); // retire un éventuel " (N)" de désambiguïsation
+  var m = rest.match(/^ · (.+)$/);
+  return m ? m[1] : '';
+}
+
+// Retour utilisateur : "faudrait pouvoir mettre un nom sur la config en
+// cours" — renomme un emplacement (actif si slotIndex===-1, sinon
+// _armoireOtherDraftSlots[slotIndex]) via une simple boîte de saisie
+// (customPrompt, déjà utilisée ailleurs dans ce fichier pour le même genre
+// de question). Laisser le champ vide retire le nom personnalisé et
+// retombe sur l'affichage générique ("Active"/"Config N").
+async function _armoireRenameDraftSlot(slotIndex){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username) return;
+  var isActive = slotIndex === -1;
+  var slot = isActive ? null : _armoireOtherDraftSlots[slotIndex];
+  if(!isActive && !slot) return;
+  var currentName = isActive ? (_armoireActiveDraftName || (ARMOIRE_DRAFT_NAME_PREFIX + username)) : slot.name;
+  var currentLabel = _armoireDraftLabelFromName(currentName, username);
+  var newLabel = await customPrompt(
+    'Nommer cette configuration',
+    'Un nom facultatif pour la reconnaître facilement dans le sélecteur (laisser vide pour revenir au nom générique) :',
+    currentLabel
+  );
+  if(newLabel === null) return; // annulé
+  newLabel = newLabel.trim();
+  var newName = _armoireNextDraftSlotName(username, newLabel, currentName);
+  if(newName === currentName) return; // rien de changé
+  if(isActive){
+    _armoireActiveDraftName = newName;
+    // Le simple changement de nom n'est jamais détecté par
+    // _armoireMarkDraftChanged (qui ne compare que les articles, jamais le
+    // nom) — synchro forcée explicitement ici, même si le contenu, lui,
+    // n'a pas bougé, SEULEMENT si cet emplacement existe déjà côté serveur
+    // (sinon rien à renommer là-bas pour l'instant, le nouveau nom partira
+    // avec sa toute première sauvegarde).
+    if(_armoireServerDraftId) await _armoireSyncDraftToServer();
+    _armoireRenderDraftSwitcher();
+  } else {
+    slot.name = newName;
+    if(slot.id){
+      try{
+        var created = await _armoireReplaceEntry('/configBlocks', slot.id, { draft: true, name: newName, folder: '', items: slot.items });
+        var fresh = await _armoireApi('/configBlocks');
+        _armoireSetBlocksFromServer(fresh);
+        var updated = _armoireFindServerDraft(newName);
+        slot.id = updated ? updated.id : ((created && created.id) || null);
+      }catch(e){ console.warn('_armoireRenameDraftSlot:', e && e.message); }
+    }
+    // Le remplacement ci-dessus change l'id serveur de cet emplacement —
+    // fait le lien vers SA clé stable existante (voir _armoireActiveSlotKey
+    // plus haut) pour que cette ligne ne saute pas de position juste parce
+    // qu'on l'a renommée.
+    _armoireSlotKeyByIdentity[_armoireSlotIdentity(slot.id, slot.name)] = slot.key;
+    _armoireRenderDraftSwitcher();
+  }
+}
+
+// Bouton "+" de la fenêtre de gestion — démarre un tout NOUVEL emplacement
+// vide, sans jamais perdre celui en cours : relégué dans
+// _armoireOtherDraftSlots (seulement s'il contient vraiment quelque chose,
+// pour ne pas faire apparaître une ligne "Configuration (0)" inutile après
+// un simple double clic). Retour utilisateur : "lorsqu'on clique dessus
+// faut demander le nom" — demandé D'ABORD, avant même de créer quoi que ce
+// soit : annuler la boîte de saisie n'ajoute donc aucune configuration
+// vide, contrairement à l'ancien comportement (créée vide, à renommer
+// ensuite via le crayon).
+async function _armoireCreateNewDraftSlot(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(!username) return; // jamais affiché sans compte connecté, gardé par prudence
+  var label = await customPrompt(
+    'Nouvelle configuration',
+    'Un nom facultatif pour la reconnaître facilement dans le sélecteur (laisser vide pour un nom générique) :',
+    ''
+  );
+  if(label === null) return; // annulé : aucune configuration créée
+  label = label.trim();
+  // Même flush préalable que _armoireSwitchDraftSlot, pour la même raison
+  // (ne jamais laisser une modification pas encore partie vers le serveur
+  // derrière soi en changeant d'emplacement) — fait APRÈS la boîte de
+  // saisie, pour ne rien déclencher inutilement si elle est annulée.
+  if(_armoireDraftSyncTimer){
+    clearTimeout(_armoireDraftSyncTimer);
+    _armoireDraftSyncTimer = null;
+    await _armoireSyncDraftToServer();
+  }
+  if(_armoireDraft.length){
+    _armoireOtherDraftSlots.push({
+      id: _armoireServerDraftId,
+      name: _armoireActiveDraftName || (ARMOIRE_DRAFT_NAME_PREFIX + username),
+      items: _armoireDraft.slice(),
+      key: _armoireActiveSlotKey // reste la même ligne, à sa place, juste plus active
+    });
+  }
+  _armoireDraft = [];
+  _armoireServerDraftId = null;
+  _armoireActiveDraftName = _armoireNextDraftSlotName(username, label);
+  // Toute nouvelle identité, jamais une continuité de l'emplacement qu'on
+  // vient de quitter (contrairement à _armoireSwitchDraftSlot/un simple
+  // renommage) — voir _armoireEnsureActiveSlotKey, qui sinon confondrait ce
+  // tout nouvel emplacement avec l'ancien actif.
+  _armoireActiveSlotKey = _armoireSlotKeySeq++;
+  _armoireDraftLastSavedItemsJson = null; // vide, rien à sauvegarder tant qu'aucun produit n'y est ajouté
+  _armoireRenderDraft();
+  _armoireRenderDraftSwitcher();
+}
+
+// Petit "✕" sur chaque pastille "Autre config." — sans ça, un compte qui
+// crée librement de nouveaux emplacements (voir ci-dessus) n'aurait aucun
+// moyen de s'en débarrasser une fois inutiles, contrairement à l'actif
+// (déjà nettoyable via "Vider", voir _armoireMarkDraftChanged).
+async function _armoireDeleteDraftSlot(slotIndex){
+  var slot = _armoireOtherDraftSlots[slotIndex];
+  if(!slot) return;
+  var count = Array.isArray(slot.items) ? slot.items.length : 0;
+  var ok = await customConfirm(
+    'Supprimer cette configuration ?',
+    'Cette configuration (' + count + ' référence' + (count > 1 ? 's' : '') + ') sera définitivement supprimée. Cette opération est irréversible.',
+    { okLabel: 'Supprimer', danger: true }
+  );
+  if(!ok) return;
+  _armoireOtherDraftSlots.splice(slotIndex, 1);
+  _armoireRenderDraftSwitcher();
+  if(slot.id){
+    _armoireMarkEntryRetired('/configBlocks', slot.id);
+    _armoireApi('/configBlocks/' + encodeURIComponent(slot.id), { method: 'DELETE' })
+      .catch(function(e){ console.warn('_armoireDeleteDraftSlot:', e && e.message); });
+  }
+}
+
+// Bouton compact "Configuration en cours" — retour utilisateur : "qu'on
+// puisse naviguer de l'une à l'autre facilement", puis "faudrait pouvoir en
+// avoir plusieurs", puis "pour la liste des config faudrait l'afficher dans
+// une fenêtre car si on en a beaucoup ça devient incompréhensible". Une
+// rangée de pastilles (l'ancien design) redevenait illisible et débordait
+// sur plusieurs lignes dès 4-5 emplacements actifs — remplacée par UN SEUL
+// bouton compact ouvrant la vraie liste dans une fenêtre dédiée (voir
+// _armoireOpenDraftListModal plus bas), qui n'a elle aucune limite de
+// largeur/nombre de lignes.
+// Retour utilisateur : "qu'on puisse créer une nouvelle config lorsqu'on a
+// juste une seule configuration en cours" — ce bouton restait auparavant
+// masqué tant qu'un seul emplacement existait, ce qui rendait le "+" de la
+// fenêtre de gestion (voir _armoireOpenDraftListModal) inatteignable sans
+// déjà en avoir au moins deux. Reste donc désormais visible dès qu'un
+// compte est connecté, même avec une seule configuration.
+function _armoireRenderDraftSwitcher(){
+  // Toujours en premier : garde la clé stable de l'emplacement actif à jour
+  // AVANT toute construction de HTML (bouton compact ou fenêtre de gestion),
+  // qu'un id/nom vienne tout juste de changer (synchro, renommage) ou non
+  // (voir _armoireEnsureActiveSlotKey).
+  _armoireEnsureActiveSlotKey();
+  var el = document.getElementById('armoireDraftSwitcher');
+  if(el){
+    var isLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
+    if(!isLoggedIn){
+      el.style.display = 'none';
+      el.innerHTML = '';
+    } else {
+      el.style.display = 'flex';
+      var total = _armoireOtherDraftSlots.length + 1;
+      el.innerHTML = '<button type="button" id="armoireDraftListOpenBtn" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;">'
+        + '<i class="ti ti-layout-grid" style="font-size:14px;"></i>' + total + ' configuration' + (total > 1 ? 's actives' : ' active')
+        + '</button>';
+    }
+  }
+  // Garde la fenêtre de gestion à jour si elle est déjà ouverte — un seul
+  // point de rafraîchissement pour les deux (voir
+  // _armoireRenderDraftListModalBody), plutôt que de le refaire après
+  // chaque action (bascule/renommage/suppression/création) une par une.
+  _armoireRenderDraftListModalBody();
+}
+
+// Contenu de la fenêtre "Configurations en cours" — une ligne par
+// emplacement, jamais tronquée ni contrainte en largeur contrairement à
+// l'ancienne rangée de pastilles. Retour utilisateur : "faudrait que la
+// config qui devient visible passe en bleu sans devoir tout faire bouger" —
+// les lignes sont triées par CLÉ STABLE (voir _armoireActiveSlotKey plus
+// haut), jamais "l'actif d'abord" : basculer ne fait donc plus que déplacer
+// la couleur cuivre d'une ligne à l'autre, chaque ligne restant à sa place.
+function _armoireDraftListRowsHtml(){
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  var rows = [{
+    key: _armoireActiveSlotKey,
+    isActive: true,
+    arrIndex: -1,
+    label: _armoireDraftLabelFromName(_armoireActiveDraftName || (username ? ARMOIRE_DRAFT_NAME_PREFIX + username : ''), username),
+    count: _armoireDraft.length
+  }];
+  _armoireOtherDraftSlots.forEach(function(slot, i){
+    rows.push({
+      key: slot.key || 0,
+      isActive: false,
+      arrIndex: i,
+      label: _armoireDraftLabelFromName(slot.name, username),
+      count: Array.isArray(slot.items) ? slot.items.length : 0
+    });
+  });
+  rows.sort(function(a, b){ return a.key - b.key; });
+  var html = rows.map(function(row, pos){
+    var num = pos + 1;
+    var name = row.label ? escapeHtml(row.label) : (row.isActive ? 'Configuration active' : ('Configuration ' + num));
+    var countText = row.count + ' référence' + (row.count > 1 ? 's' : '');
+    var info = '<div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>'
+      + '<div style="font-size:11.5px;' + (row.isActive ? 'opacity:.85;' : 'color:var(--ink-soft);') + '">' + countText + '</div>'
+      + '</div>';
+    if(row.isActive){
+      return '<div class="armoire-draft-list-row" data-slot="-1" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--copper);background:var(--copper);color:#fff;cursor:default;">'
+        + '<span style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0;">' + num + '</span>'
+        + info
+        + '<button type="button" class="armoire-draft-list-rename" data-rename="-1" title="Nommer cette configuration" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:none;border-radius:50%;background:none;color:rgba(255,255,255,.9);font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>'
+        + '</div>';
+    }
+    return '<div class="armoire-draft-list-row" data-slot="' + row.arrIndex + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;">'
+      + '<span style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink-soft);font-size:11.5px;font-weight:700;flex-shrink:0;">' + num + '</span>'
+      + info
+      + '<button type="button" class="armoire-draft-list-rename" data-rename="' + row.arrIndex + '" title="Nommer cette configuration" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:none;border-radius:50%;background:none;color:var(--ink-soft);font-size:13px;cursor:pointer;flex-shrink:0;"><i class="ti ti-pencil"></i></button>'
+      + '<button type="button" class="armoire-draft-list-del" data-del="' + row.arrIndex + '" title="Supprimer cette configuration" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:none;border-radius:50%;background:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;">✕</button>'
+      + '</div>';
+  }).join('');
+  // Bouton "+" déplacé dans l'en-tête de la fenêtre (voir
+  // _armoireOpenDraftListModal) — retour utilisateur : "à côté de la
+  // croix", plus facile à trouver qu'une ligne pointillée en bas de liste,
+  // surtout une fois qu'il faut scroller pour l'atteindre.
+  return html;
+}
+
+var _armoireDraftListModalEl = null;
+
+function _armoireDraftListEscHandler(e){ if(e.key === 'Escape') _armoireCloseDraftListModal(); }
+
+// Fenêtre dédiée listant TOUTES les configurations actives — retour
+// utilisateur : "si on en a beaucoup ça devient incompréhensible" avec
+// l'ancienne rangée de pastilles. Reste ouverte pendant qu'on renomme/
+// supprime/bascule/crée plusieurs emplacements d'affilée (voir
+// _armoireRenderDraftListModalBody, rafraîchie automatiquement par
+// _armoireRenderDraftSwitcher après chacune de ces actions) — jamais besoin
+// de la rouvrir entre deux opérations.
+function _armoireOpenDraftListModal(){
+  if(_armoireDraftListModalEl) return; // déjà ouverte
+  var overlay = document.createElement('div');
+  overlay.className = 'spi-popup-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:var(--z-popup,11000);background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML =
+    '<div style="background:var(--paper,#fff);border-radius:12px;padding:20px;max-width:440px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:var(--font-sans,inherit);">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+    + '<div style="font-size:18px;font-weight:700;color:var(--ink,#1e293b);">Configurations en cours</div>'
+    // Retour utilisateur : "le bouton pour créer une nouvelle config à côté
+    // de la croix" — déplacé depuis une ligne pointillée en bas de liste
+    // (moins visible, surtout après avoir scrollé) vers l'en-tête, à côté
+    // du bouton de fermeture, toujours à portée de clic.
+    + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">'
+    + '<button type="button" id="_armoireDraftListNewBtn" title="Démarrer une nouvelle configuration" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:none;border-radius:50%;background:var(--copper);color:#fff;font-size:16px;cursor:pointer;"><i class="ti ti-plus"></i></button>'
+    + '<button type="button" id="_armoireDraftListCloseBtn" style="border:none;background:none;font-size:18px;color:var(--ink-soft,#64748b);cursor:pointer;line-height:1;padding:4px;">✕</button>'
+    + '</div>'
+    + '</div>'
+    + '<div style="font-size:13px;color:var(--ink-soft,#64748b);margin-bottom:14px;">Cliquez sur une configuration pour y basculer.</div>'
+    + '<div id="_armoireDraftListBody" style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  _armoireDraftListModalEl = overlay;
+  _armoireRenderDraftListModalBody();
+  overlay.querySelector('#_armoireDraftListCloseBtn').addEventListener('click', _armoireCloseDraftListModal);
+  overlay.querySelector('#_armoireDraftListNewBtn').addEventListener('click', _armoireCreateNewDraftSlot);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) _armoireCloseDraftListModal(); });
+  overlay.querySelector('#_armoireDraftListBody').addEventListener('click', function(e){
+    // Suppression/renommage vérifiés EN PREMIER : imbriqués dans la même
+    // ligne que la bascule, closest('.armoire-draft-list-row') remonterait
+    // sinon jusqu'à elle et basculerait au lieu de supprimer/renommer.
+    var delBtn = e.target.closest ? e.target.closest('.armoire-draft-list-del') : null;
+    if(delBtn){ _armoireDeleteDraftSlot(parseInt(delBtn.getAttribute('data-del'), 10)); return; }
+    var renameBtn = e.target.closest ? e.target.closest('.armoire-draft-list-rename') : null;
+    if(renameBtn){ _armoireRenameDraftSlot(parseInt(renameBtn.getAttribute('data-rename'), 10)); return; }
+    var row = e.target.closest ? e.target.closest('.armoire-draft-list-row') : null;
+    if(!row) return;
+    var idx = parseInt(row.getAttribute('data-slot'), 10);
+    if(idx >= 0) _armoireSwitchDraftSlot(idx);
+  });
+  document.addEventListener('keydown', _armoireDraftListEscHandler);
+}
+
+function _armoireCloseDraftListModal(){
+  if(!_armoireDraftListModalEl) return;
+  if(_armoireDraftListModalEl.parentNode) document.body.removeChild(_armoireDraftListModalEl);
+  _armoireDraftListModalEl = null;
+  document.removeEventListener('keydown', _armoireDraftListEscHandler);
+}
+
+// Reconstruit le contenu de la fenêtre si elle est ouverte — no-op sinon
+// (appelée depuis _armoireRenderDraftSwitcher à chaque changement réel,
+// qu'elle soit affichée ou non).
+function _armoireRenderDraftListModalBody(){
+  if(!_armoireDraftListModalEl) return;
+  var body = _armoireDraftListModalEl.querySelector('#_armoireDraftListBody');
+  if(body) body.innerHTML = _armoireDraftListRowsHtml();
+}
+
+// Échange l'emplacement actuellement chargé dans _armoireDraft avec l'un
+// des autres emplacements actifs (_armoireOtherDraftSlots[slotIndex]) —
+// flush d'abord toute synchro en attente (pour ne jamais perdre une
+// modification pas encore partie vers le serveur avant de basculer
+// ailleurs), comme le fait déjà _armoireClose().
+async function _armoireSwitchDraftSlot(slotIndex){
+  var target = _armoireOtherDraftSlots[slotIndex];
+  if(!target) return;
+  if(_armoireDraftSyncTimer){
+    clearTimeout(_armoireDraftSyncTimer);
+    _armoireDraftSyncTimer = null;
+    await _armoireSyncDraftToServer();
+  }
+  var current = {
+    id: _armoireServerDraftId,
+    name: _armoireActiveDraftName || ((typeof authGetCurrentUser === 'function' && authGetCurrentUser()) ? (ARMOIRE_DRAFT_NAME_PREFIX + authGetCurrentUser().username) : null),
+    items: _armoireDraft.slice(),
+    // Conserve la clé stable de l'ancien actif (voir _armoireActiveSlotKey
+    // plus haut) — cette ligne doit rester à SA place dans la liste, pas
+    // sauter là où était l'ancienne cible.
+    key: _armoireActiveSlotKey
+  };
+  _armoireOtherDraftSlots.splice(slotIndex, 1, current);
+  _armoireDraft = Array.isArray(target.items) ? target.items.slice() : [];
+  _armoireServerDraftId = target.id;
+  _armoireActiveDraftName = target.name;
+  // La clé de la cible devient la clé active — c'est CETTE ligne qui doit
+  // passer en bleu sur place, jamais en repassant par la position 1.
+  _armoireActiveSlotKey = target.key;
+  // Contenu déjà connu du serveur tel quel : évite qu'un simple
+  // changement d'onglet soit pris pour une modification à resynchroniser
+  // (voir _armoireMarkDraftChanged — null, pas "[]", pour un emplacement
+  // vide : c'est la valeur sentinelle qu'elle attend pour "rien de neuf").
+  _armoireDraftLastSavedItemsJson = _armoireDraft.length ? JSON.stringify(_armoireDraft) : null;
+  _armoireRenderDraft();
+  _armoireRenderDraftSwitcher();
 }
 
 // Appelée après _armoireFetchBlocks() (voir _armoireOpen) — repère le
 // brouillon serveur de l'utilisateur et décide s'il faut l'adopter. Retour
 // utilisateur : "faut que le serveur soit prioritaire" — mais PAS
-// aveuglément : un brouillon local plus RÉCENT que ce qui est sur le
-// serveur (ex. tout juste récupéré après un crash, voir
-// _armoireRestoreDraftFromStorage, jamais eu le temps de partir vers le
-// serveur — voir ARMOIRE_DRAFT_SYNC_DELAY_MS) ne doit jamais être écrasé par
-// une version serveur plus ancienne, sinon le filet de sécurité local perd
-// tout son intérêt. Comparaison par horodatage : serverDraft.createdAt (une
+// aveuglément : une modification plus RÉCENTE faite dans CETTE page (pas
+// encore partie vers le serveur — voir ARMOIRE_DRAFT_SYNC_DELAY_MS) ne doit
+// jamais être écrasée par une version serveur plus ancienne. Comparaison par
+// horodatage : serverDraft.createdAt (une
 // toute nouvelle entrée à chaque sauvegarde — _armoireSyncDraftToServer
 // recrée plutôt que modifie, l'API n'ayant pas de PUT/PATCH, voir
 // _armoireReplaceEntry) contre _armoireDraftLocalSavedAt (mis à jour à
@@ -716,8 +1267,13 @@ function _armoireSyncDraftFromServer(){
   // "plus récent gagne" un cas par défaut, jamais actif tant qu'une
   // réconciliation par propriétaire est en cours de résolution.
   if(_armoireReconcilingOwner) return;
-  var serverDraft = _armoireFindServerDraft();
+  var serverDraft = _armoireFindServerDraft(_armoireActiveDraftName);
   _armoireServerDraftId = serverDraft ? serverDraft.id : null;
+  // Retour utilisateur : "qu'on puisse naviguer de l'une à l'autre
+  // facilement" — reconstruit le sélecteur à CHAQUE ouverture (pas
+  // seulement juste après une réconciliation), pour qu'un second
+  // emplacement créé sur un autre appareil réapparaisse bien ici aussi.
+  _armoireDetectOtherDraftSlots();
   if(!serverDraft || !Array.isArray(serverDraft.items) || !serverDraft.items.length) return;
   var serverSavedAt = typeof serverDraft.createdAt === 'number' ? serverDraft.createdAt : 0;
   if(_armoireDraft.length && _armoireDraftLocalSavedAt >= serverSavedAt) return; // local plus récent (ou égal) : on le garde
@@ -726,17 +1282,31 @@ function _armoireSyncDraftFromServer(){
   });
   if(!restored.length) return;
   _armoireDraft = restored;
-  _armoireRenderDraft(); // met aussi _armoireDraftLocalSavedAt à jour (voir _armoireSaveDraftToStorage)
-  if(typeof showToast === 'function'){
-    showToast('Configuration en cours reprise depuis un autre appareil (' + restored.length + ' référence' + (restored.length > 1 ? 's' : '') + ')', 'ok', 4000);
-  }
+  // Retour utilisateur : "retire les notif pour la récupération local et
+  // celle pour entre différent appareil" — reprise silencieuse, plus de
+  // toast ici.
+  _armoireRenderDraft(); // met aussi _armoireDraftLocalSavedAt à jour (voir _armoireMarkDraftChanged)
 }
 
 // Anti-rafale (voir ARMOIRE_DRAFT_SYNC_DELAY_MS) — appelée à chaque
 // modification réelle du brouillon (_armoireRenderDraft), jamais à chaque
 // caractère tapé/clic +/- individuellement.
 function _armoireScheduleDraftSync(){
-  if(_armoireEditingEntry) return; // même garde que _armoireSaveDraftToStorage — jamais PENDANT l'édition d'un bloc/config existant
+  if(_armoireEditingEntry) return; // même garde que _armoireMarkDraftChanged — jamais PENDANT l'édition d'un bloc/config existant
+  // Retour utilisateur : "je veux que la demande de mise de côté ce fasse
+  // lorsqu'on clique sur le configurateur" — tant que _armoireDraftOwner ne
+  // correspond pas encore au compte connecté (brouillon construit anonyme,
+  // ou par un AUTRE compte, jamais encore réconcilié via
+  // _armoireReconcileOwnerOnLogin, déclenchée à l'ouverture du panneau —
+  // voir _armoireOpen), ne synchronise PAS vers le serveur : sinon un
+  // simple "Ajouter à la configuration" depuis une fiche produit, AVANT
+  // même d'avoir ouvert le configurateur une seule fois après la connexion,
+  // pousserait déjà silencieusement ce brouillon vers le compte tout juste
+  // connecté — exactement ce que la boîte de dialogue "Garder"/"Mettre de
+  // côté" est censée empêcher.
+  var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
+  var username = me && me.username;
+  if(username && _armoireDraftOwner !== username) return;
   clearTimeout(_armoireDraftSyncTimer);
   _armoireDraftSyncTimer = setTimeout(_armoireSyncDraftToServer, ARMOIRE_DRAFT_SYNC_DELAY_MS);
 }
@@ -744,16 +1314,16 @@ function _armoireScheduleDraftSync(){
 function _armoireSyncDraftToServer(){
   var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
   var username = me && me.username;
-  if(!username) return; // pas connecté : rien à synchroniser, le localStorage suffit pour cet appareil
+  if(!username) return; // pas connecté : rien de synchronisable, pas de compte serveur
 
   if(!_armoireDraft.length){
     // Brouillon vidé (enregistré comme bloc/config, ou retiré à la main) —
-    // même geste que _armoireSaveDraftToStorage côté localStorage : supprime
-    // plutôt que de laisser une entrée serveur périmée suggérer, sur un
+    // supprime l'entrée serveur plutôt que de la laisser suggérer, sur un
     // autre appareil, un travail en cours qui n'existe plus.
     if(!_armoireServerDraftId) return;
     var idToDelete = _armoireServerDraftId;
     _armoireServerDraftId = null;
+    _armoireMarkEntryRetired('/configBlocks', idToDelete);
     _armoireApi('/configBlocks/' + encodeURIComponent(idToDelete), { method: 'DELETE' })
       .catch(function(e){ console.warn('_armoireSyncDraftToServer (suppression):', e && e.message); });
     return;
@@ -764,7 +1334,12 @@ function _armoireSyncDraftToServer(){
   // avec l'exemple de POST fourni : aucun champ username dedans, seulement en
   // retour du GET) — l'envoyer serait de toute façon ignoré, voire risqué si
   // le serveur devait un jour le prendre en compte tel quel.
-  var body = { draft: true, name: ARMOIRE_DRAFT_NAME_PREFIX + username, folder: '', items: _armoireDraft };
+  // Nom : _armoireActiveDraftName si un emplacement SECONDAIRE a été
+  // explicitement nommé (voir _armoireReconcileOwnerOnLogin/
+  // _armoireSwitchDraftSlot), sinon le nom "principal" historique — un
+  // compte à un seul brouillon actif ne voit donc aucun changement ici.
+  var draftName = _armoireActiveDraftName || (ARMOIRE_DRAFT_NAME_PREFIX + username);
+  var body = { draft: true, name: draftName, folder: '', items: _armoireDraft };
   var apiCall = _armoireServerDraftId
     ? _armoireReplaceEntry('/configBlocks', _armoireServerDraftId, body)
     : _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify(body) });
@@ -780,9 +1355,10 @@ function _armoireSyncDraftToServer(){
   return apiCall
     .then(function(){ return _armoireApi('/configBlocks'); })
     .then(function(list){
-      _armoireBlocks = Array.isArray(list) ? list : [];
-      var mine = _armoireFindServerDraft();
+      _armoireSetBlocksFromServer(list);
+      var mine = _armoireFindServerDraft(_armoireActiveDraftName);
       _armoireServerDraftId = mine ? mine.id : null;
+      _armoireDetectOtherDraftSlots();
       // Retour utilisateur : "quand j'ouvre le configurateur j'ai toujours
       // la notif [reprise depuis un autre appareil]" — _armoireDraftLocalSavedAt
       // (pris au moment de l'ÉDITION, AVANT l'anti-rafale de
@@ -795,10 +1371,7 @@ function _armoireSyncDraftToServer(){
       // pourtant tout juste d'y envoyer, avec le toast donnant l'impression
       // trompeuse qu'un autre appareil avait modifié la configuration.
       var confirmedAt = (mine && typeof mine.createdAt === 'number') ? mine.createdAt : Date.now();
-      if(confirmedAt > _armoireDraftLocalSavedAt){
-        _armoireDraftLocalSavedAt = confirmedAt;
-        try{ localStorage.setItem(ARMOIRE_DRAFT_STORAGE_KEY, JSON.stringify({ items: _armoireDraft, savedAt: _armoireDraftLocalSavedAt, owner: _armoireDraftOwner })); }catch(e){}
-      }
+      if(confirmedAt > _armoireDraftLocalSavedAt) _armoireDraftLocalSavedAt = confirmedAt;
     })
     .catch(function(e){ console.warn('_armoireSyncDraftToServer:', e && e.message); });
 }
@@ -806,24 +1379,52 @@ function _armoireSyncDraftToServer(){
 // Retour utilisateur : "j'aimerais que le configurateur soit disponible
 // lorsqu'on n'est pas loggé mais comment faire pour pas avoir de problème
 // lorsqu'on se reconnecte avec le système de synchro entre appareils ?" —
-// appelée sur l'évènement 'spi_auth_changed' (déclenché par authLogin(),
-// js/auth.js, uniquement lors d'une CONNEXION interactive — jamais à la
-// déconnexion, qui recharge toute la page). Décisions utilisateur :
+// puis "je veux que la demande de mise de côté ce fasse lorsqu'on clique
+// sur le configurateur" : appelée depuis _armoireOpen() (pas à la connexion
+// elle-même, voir plus bas) — se connecter ne doit rien interrompre si on
+// ne va pas forcément utiliser le configurateur tout de suite ; la question
+// n'apparaît qu'au moment où on clique vraiment dessus. Décisions utilisateur :
 // - Si le brouillon local n'appartient pas déjà à ce compte (anonyme, ou
 //   laissé par un AUTRE compte sur un poste partagé) ET que le compte a
 //   lui-même déjà un brouillon serveur non vide : demander lequel garder
 //   ("Garder celle de cet appareil" / "Mettre de côté celle de cet
 //   appareil") — jamais de choix automatique, jamais de perte silencieuse.
-// - Celle qui n'est PAS gardée est enregistrée comme un bloc nommé et
-//   daté (retrouvable dans "Blocs"), jamais simplement effacée.
+// - Retour utilisateur : "lorsqu'on clique sur mettre de côté ça fasse en
+//   sorte qu'on ait deux config en cours et qu'on puisse naviguer de
+//   l'une à l'autre facilement" (les DEUX boutons, "Garder" compris,
+//   suivant sa réponse à la clarification posée) : celle qui n'est PAS
+//   choisie comme active n'est plus archivée dans Blocs — elle reste, elle
+//   aussi, une configuration EN COURS, à part entière, juste synchronisée
+//   sous un second nom serveur pour ne jamais se confondre avec la
+//   première (voir _armoireActiveDraftName/ARMOIRE_DRAFT_NAME_PREFIX), et
+//   accessible depuis le sélecteur ajouté au-dessus de "Configuration en
+//   cours" (voir _armoireRenderDraftSwitcher/_armoireOtherDraftSlots).
 // - Si le compte n'a PAS encore de brouillon serveur, le brouillon local
-//   est adopté directement (rien à mettre de côté).
+//   est adopté directement (rien à réconcilier, un seul emplacement).
+// Retourne true si une décision de propriétaire a réellement été prise et
+// appliquée (donc déjà synchronisée/en cours de synchronisation vers le
+// compte) — _armoireOpen() (voir plus bas) s'en sert pour savoir s'il doit
+// encore lancer le flux normal _armoireFetchBlocks().then(_armoireSyncDraftFromServer)
+// après coup, ou surtout PAS : ce flux compare juste des horodatages et
+// pourrait retomber sur l'ANCIENNE entrée serveur (celle qu'on vient tout
+// juste de remplacer, si le serveur n'a pas encore digéré le
+// POST+DELETE — voir _armoireReplaceEntry) et défaire silencieusement la
+// décision que l'utilisateur vient de prendre.
 async function _armoireReconcileOwnerOnLogin(){
   var me = (typeof authGetCurrentUser === 'function') ? authGetCurrentUser() : null;
   var username = me && me.username;
-  if(!username) return; // jamais appelé sans connexion réussie, mais gardé par prudence
-  if(_armoireDraftOwner === username) return; // déjà le brouillon de ce compte, rien à réconcilier
-  if(!_armoireDraft.length) return; // rien localement — la prochaine sauvegarde retaguera tout seul
+  if(!username) return false; // jamais appelé sans connexion réussie, mais gardé par prudence
+  if(_armoireDraftOwner === username) return false; // déjà le brouillon de ce compte, rien à réconcilier
+  if(!_armoireDraft.length){
+    // Rien localement à protéger : aucun conflit possible, on peut adopter
+    // l'identité tout de suite plutôt que de laisser _armoireDraftOwner à
+    // null — sinon un ajout ultérieur depuis une fiche produit (sans
+    // rouvrir le configurateur entre-temps) resterait bloqué par le
+    // garde-fou de _armoireScheduleDraftSync (propriétaire encore "null" !==
+    // ce compte), repéré en testant précisément ce cas.
+    _armoireDraftOwner = username;
+    return false;
+  }
 
   // Copie figée AVANT le premier "await" : _armoireDraft (la variable, pas
   // cette copie) reste libre de bouger entre-temps (l'utilisateur peut
@@ -841,39 +1442,78 @@ async function _armoireReconcileOwnerOnLogin(){
       return it && typeof it.ref === 'string' && it.ref && typeof it.qty === 'number' && it.qty > 0;
     }) : [];
 
+    var otherName = null; // nom serveur du SECOND emplacement, s'il en faut un (voir plus bas)
+    var finalAlreadyOnServer = false; // finalItems correspond-il déjà tel quel à une entrée serveur existante ?
     if(serverItems.length){
-      var dateLabel = new Date().toLocaleString('fr-FR');
       var keepLocal = await customConfirm(
         'Deux configurations en cours',
-        'Cet appareil a une configuration en cours (' + localItemsSnapshot.length + ' référence' + (localItemsSnapshot.length > 1 ? 's' : '') + '), et votre compte en a déjà une autre (' + serverItems.length + ' référence' + (serverItems.length > 1 ? 's' : '') + '). Celle qui n\'est pas gardée sera enregistrée comme bloc, pas perdue.',
+        'Cet appareil a une configuration en cours (' + localItemsSnapshot.length + ' référence' + (localItemsSnapshot.length > 1 ? 's' : '') + '), et votre compte en a déjà une autre (' + serverItems.length + ' référence' + (serverItems.length > 1 ? 's' : '') + '). Les deux resteront actives — un sélecteur permettra de passer de l\'une à l\'autre.',
         { okLabel: 'Garder celle de cet appareil', cancelLabel: 'Mettre de côté celle de cet appareil' }
       );
-      var setAsideItems = keepLocal ? serverItems : localItemsSnapshot;
-      var setAsideLabel = (keepLocal ? 'Configuration mise de côté (' : 'Configuration invité mise de côté (') + dateLabel + ')';
-      try{
-        await _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify({ name: setAsideLabel, folder: ARMOIRE_SETASIDE_FOLDER, items: setAsideItems }) });
-      }catch(e){ console.warn('_armoireReconcileOwnerOnLogin (mise de côté):', e && e.message); }
-      finalItems = keepLocal ? localItemsSnapshot : serverItems;
-      if(typeof showToast === 'function') showToast('« ' + setAsideLabel + ' » enregistrée dans Blocs, dossier « ' + ARMOIRE_SETASIDE_FOLDER + ' » ✓', 'ok', 5000);
+      otherName = _armoireNextDraftSlotName(username);
+      if(keepLocal){
+        // Le brouillon déjà sur le compte reste tel quel côté serveur
+        // (même id, même nom "principal") — juste relégué en second
+        // emplacement, retrouvable via le sélecteur. Celui de CET appareil
+        // devient l'actif affiché, mais n'a encore JAMAIS été synchronisé
+        // sous ce second nom : _armoireDraftLastSavedItemsJson=null (voir
+        // plus bas) force sa toute première sauvegarde juste après.
+        _armoireOtherDraftSlots = [{ id: serverDraft.id, name: serverDraft.name, items: serverItems, key: _armoireGetOrCreateSlotKey(serverDraft.id, serverDraft.name) }];
+        finalItems = localItemsSnapshot;
+        _armoireActiveDraftName = otherName;
+        _armoireServerDraftId = null;
+      } else {
+        // Le brouillon de CET appareil n'a lui non plus jamais existé côté
+        // serveur — le créer tout de suite (plutôt que d'attendre un futur
+        // _armoireScheduleDraftSync qui ne partirait que si on rebascule un
+        // jour dessus) pour qu'il soit déjà "fiable" (survit à la
+        // fermeture de l'onglet) dès la fin de cette réconciliation, sans
+        // dépendre d'une action supplémentaire de l'utilisateur.
+        var newOtherId = null;
+        try{
+          await _armoireApi('/configBlocks', { method: 'POST', body: JSON.stringify({ draft: true, name: otherName, folder: '', items: localItemsSnapshot }) });
+          var freshList = await _armoireApi('/configBlocks');
+          _armoireSetBlocksFromServer(freshList);
+          var createdOther = _armoireFindServerDraft(otherName);
+          newOtherId = createdOther ? createdOther.id : null;
+        }catch(e){ console.warn('_armoireReconcileOwnerOnLogin (second emplacement):', e && e.message); }
+        _armoireOtherDraftSlots = [{ id: newOtherId, name: otherName, items: localItemsSnapshot, key: _armoireGetOrCreateSlotKey(newOtherId, otherName) }];
+        finalItems = serverItems;
+        _armoireActiveDraftName = serverDraft.name;
+        _armoireServerDraftId = serverDraft.id;
+        finalAlreadyOnServer = true;
+      }
+      if(typeof showToast === 'function') showToast('Deux configurations actives — utilisez le sélecteur pour passer de l\'une à l\'autre ✓', 'ok', 5000);
     }
   }catch(e){
     console.warn('_armoireReconcileOwnerOnLogin:', e && e.message);
   }
-  // Retombe à false AVANT le rendu final (pas dans un "finally" après) :
-  // _armoireSaveDraftToStorage (voir plus haut) n'accepte de retaguer le
-  // propriétaire QUE lorsque ce drapeau est déjà retombé — sinon cette toute
-  // dernière écriture, pourtant la décision légitime prise ici, se
-  // retrouverait elle-même supprimée par le garde-fou anti-court-circuit.
   _armoireReconcilingOwner = false;
+  // _armoireDraftOwner n'est modifié NULLE PART ailleurs que juste ici
+  // (voir _armoireMarkDraftChanged plus haut) : c'est cette ligne, et
+  // elle seule, qui fait officiellement de ce compte le propriétaire du
+  // brouillon — après quoi les sauvegardes/synchros suivantes (ajout depuis
+  // une fiche produit compris) reprennent normalement sans autre question.
+  _armoireDraftOwner = username;
   _armoireDraft = finalItems;
-  _armoireDraftLastSavedItemsJson = null; // force la ré-écriture (nouveau propriétaire) même si le contenu est resté identique
+  // "Mettre de côté" : finalItems EST déjà le contenu connu du serveur tel
+  // quel (entrée "principale" inchangée) — pas de resynchro immédiate
+  // inutile. Dans tous les autres cas ("Garder", ou pas de conflit du
+  // tout) : finalItems n'a jamais été confirmé sous CE nom, forcer la
+  // sauvegarde (null, jamais "déjà identique") comme avant ce chantier.
+  _armoireDraftLastSavedItemsJson = finalAlreadyOnServer ? JSON.stringify(finalItems) : null;
   _armoireRenderDraft(); // persiste (avec le bon owner), affiche, et programme la synchro vers ce compte
+  _armoireRenderDraftSwitcher();
+  return true;
 }
-document.addEventListener('spi_auth_changed', function(){ _armoireReconcileOwnerOnLogin(); });
+// Retour utilisateur : "je veux que la demande de mise de côté ce fasse
+// lorsqu'on clique sur le configurateur" — appelée depuis _armoireOpen()
+// (voir plus bas), plus sur l'évènement 'spi_auth_changed' comme au tout
+// premier essai.
 
 function _armoireFetchSavedConfigs(){
   return _armoireApi('/configSavedConfigs').then(function(list){
-    _armoireSavedConfigs = Array.isArray(list) ? list : [];
+    _armoireSetSavedConfigsFromServer(list);
     _armoireRenderSavedList();
   }).catch(function(e){
     console.warn('_armoireFetchSavedConfigs:', e && e.message);
@@ -1398,6 +2038,11 @@ function _armoirePromptNameAndFolder(title, nameMessage, existingFolders, defaul
 function _armoireReplaceEntry(basePath, oldId, body){
   return _armoireApi(basePath, { method: 'POST', body: JSON.stringify(body) })
     .then(function(created){
+      // Retirée dès MAINTENANT (pas seulement si le DELETE ci-dessous
+      // réussit) — voir _armoireRetiredEntryIds plus haut : qu'il réussisse,
+      // échoue, ou tarde à se répercuter côté serveur, cette ancienne entrée
+      // ne doit plus jamais réapparaître pour le reste de cette session.
+      _armoireMarkEntryRetired(basePath, oldId);
       return _armoireApi(basePath + '/' + encodeURIComponent(oldId), { method: 'DELETE' })
         .catch(function(e){ console.warn('_armoireReplaceEntry: ancienne entrée non supprimée:', e && e.message); })
         .then(function(){ return created; });
@@ -1540,6 +2185,7 @@ async function _armoireDeleteBlock(id){
   // aucun message du tout (chaîne vide), rien n'indiquait que c'était
   // définitif.
   if(!(await customConfirm('Supprimer ce bloc ?', 'Ce bloc sera supprimé définitivement. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true }))) return;
+  _armoireMarkEntryRetired('/configBlocks', id);
   _armoireApi('/configBlocks/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchBlocks(); })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -1552,6 +2198,7 @@ async function _armoireDeleteSavedConfig(id){
     return;
   }
   if(!(await customConfirm('Supprimer cette configuration ?', 'Cette configuration sera supprimée définitivement. Cette opération est irréversible.', { okLabel: 'Supprimer', danger: true }))) return;
+  _armoireMarkEntryRetired('/configSavedConfigs', id);
   _armoireApi('/configSavedConfigs/' + encodeURIComponent(id), { method: 'DELETE' })
     .then(function(){ _armoireFetchSavedConfigs(); })
     .catch(function(e){ if(typeof showToast === 'function') showToast('Erreur : ' + (e && e.message || e), 'err'); });
@@ -1762,42 +2409,61 @@ function _armoireOpen(){
   _armoireRenderDraft();
   _armoireRenderSearchResults('');
   _armoireSwitchTab(_armoireActiveTab);
-  // Retour utilisateur : "reprendre sur notre tel ou un autre pc avec le
-  // même identifiant" — _armoireBlocks doit être à jour (contient
-  // éventuellement le brouillon serveur) avant de chercher dedans.
-  // Le message "restauré [...] non enregistré" (voir
-  // _armoireWarnIfDraftNotBackedUp plus bas) n'a de sens qu'APRÈS ce
-  // GET/_armoireSyncDraftFromServer : avant, on ne sait pas encore si ce
-  // brouillon est déjà confirmé côté serveur ou pas. Les deux branches
-  // (succès/échec de la requête) doivent y mener : sans serveur configuré ou
-  // en cas d'erreur réseau, le brouillon local reste la seule copie qui
-  // existe — l'avertissement reste pertinent dans ce cas, pas seulement en
-  // cas de succès.
-  _armoireFetchBlocks().then(_armoireSyncDraftFromServer)
-    .then(_armoireWarnIfDraftNotBackedUp, _armoireWarnIfDraftNotBackedUp);
-  _armoireFetchSavedConfigs();
-}
-
-// Retour utilisateur : "comment éviter de perdre la config [...] alors qu'on
-// a pas enregistré ?" (avertissement d'origine) puis "j'ai encore la notif
-// qui dit [...] qu'il a récupéré la config qui n'avait pas été enregistrée"
-// (ce même avertissement, mais devenu trompeur) — _armoireDraftWasRestored
-// se contentait de dire "un brouillon existait déjà en localStorage au
-// chargement de la page", vrai à CHAQUE réouverture de l'app dès que la
-// synchro serveur fonctionne (le brouillon y est alors déjà sauvegardé, ce
-// n'est plus une simple copie de secours locale à risque). Attendre ici la
-// fin de _armoireSyncDraftFromServer et vérifier _armoireServerDraftId (déjà
-// mis à jour par cette fonction, qu'elle ait fini par garder le local ou
-// adopter le serveur) permet de ne prévenir que quand c'est réellement vrai :
-// aucune copie de ce brouillon n'existe sur le serveur pour l'instant.
-function _armoireWarnIfDraftNotBackedUp(){
-  if(!_armoireDraftWasRestored) return;
-  _armoireDraftWasRestored = false;
-  if(!_armoireDraft.length || _armoireServerDraftId) return;
-  if(typeof showToast === 'function') showToast('Configuration en cours restaurée (' + _armoireDraft.length + ' référence' + (_armoireDraft.length > 1 ? 's' : '') + ' non enregistrée' + (_armoireDraft.length > 1 ? 's' : '') + ')', 'ok', 4000);
+  // Retour utilisateur : "pourquoi j'ai cette notif alors que je ne suis pas
+  // connecté ?" (capture à l'appui : "Liste des blocs/configurations non
+  // actualisée — réessayez" dès l'ouverture, en anonyme) — /configBlocks et
+  // /configSavedConfigs exigent un compte côté serveur ; les appeler quand
+  // même pour un visiteur anonyme échoue systématiquement (pas un aléa
+  // réseau ponctuel que "réessayez" pourrait résoudre) et affichait ces deux
+  // avertissements à chaque ouverture. La configuration en cours (locale,
+  // propre à cet appareil, voir plus haut) reste pleinement utilisable sans
+  // connexion ; seuls les Blocs/Configurations partagés de l'équipe
+  // requièrent un compte, et restent donc simplement vides tant qu'on ne
+  // s'est pas connecté, sans essai voué à l'échec ni faux avertissement.
+  if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()){
+    // Retour utilisateur : "je veux que la demande de mise de côté ce fasse
+    // lorsqu'on clique sur le configurateur" — _armoireReconcileOwnerOnLogin
+    // (conflit entre le brouillon de cet appareil et celui déjà sur le
+    // compte, voir plus haut) se résout D'ABORD, avant tout le reste :
+    // _armoireFetchBlocks()/_armoireSyncDraftFromServer juste en dessous ne
+    // doivent chercher/adopter le brouillon serveur qu'une fois cette
+    // décision prise, jamais en même temps (la réconciliation pose déjà son
+    // propre verrou _armoireReconcilingOwner pendant qu'elle attend une
+    // réponse, mais les enchaîner reste plus simple à suivre que les laisser
+    // courir en parallèle).
+    (typeof _armoireReconcileOwnerOnLogin === 'function' ? _armoireReconcileOwnerOnLogin() : Promise.resolve(false)).then(function(handled){
+      // handled === true : une décision "Garder"/"Mettre de côté" vient
+      // d'être prise et déjà appliquée/synchronisée par
+      // _armoireReconcileOwnerOnLogin elle-même. Ne PAS relancer
+      // _armoireSyncDraftFromServer juste après : ce flux ne fait que
+      // comparer des horodatages et pourrait retomber sur l'ANCIENNE entrée
+      // serveur qu'on vient tout juste de remplacer si le serveur n'a pas
+      // encore digéré le POST+DELETE (voir _armoireReplaceEntry) —
+      // repéré en testant précisément ce cas : la décision de l'utilisateur
+      // se faisait silencieusement défaire l'instant d'après. Seul
+      // _armoireFetchBlocks() (pour peupler la liste "Blocs" à parcourir)
+      // reste utile ici.
+      if(handled){
+        _armoireFetchBlocks();
+        _armoireFetchSavedConfigs();
+        return;
+      }
+      // Retour utilisateur : "reprendre sur notre tel ou un autre pc avec le
+      // même identifiant" — _armoireBlocks doit être à jour (contient
+      // éventuellement le brouillon serveur) avant de chercher dedans.
+      _armoireFetchBlocks().then(_armoireSyncDraftFromServer);
+      _armoireFetchSavedConfigs();
+    });
+  } else {
+    _armoireRenderBlocksList();
+    _armoireRenderSavedList();
+  }
 }
 
 function _armoireClose(){
+  // Ne doit jamais rester ouverte par-dessus un configurateur fermé/masqué
+  // (voir _armoireOpenDraftListModal).
+  _armoireCloseDraftListModal();
   // Filet de sécurité : fermer le configurateur en pleine édition d'un
   // bloc/config ne doit jamais laisser la vraie configuration en cours
   // remplacée par le contenu édité — restaure silencieusement (voir
@@ -1901,6 +2567,16 @@ function _armoireClose(){
       e.preventDefault();
       e.target.blur();
     }
+  });
+
+  // Bouton compact "N configurations actives" — délégation sur le
+  // conteneur stable plutôt que sur le bouton lui-même, régénéré à chaque
+  // _armoireRenderDraftSwitcher() (un listener posé directement dessus
+  // serait perdu au premier re-rendu). Ouvre la fenêtre de gestion, voir
+  // _armoireOpenDraftListModal.
+  var switcherEl = document.getElementById('armoireDraftSwitcher');
+  if(switcherEl) switcherEl.addEventListener('click', function(e){
+    if(e.target.closest && e.target.closest('#armoireDraftListOpenBtn')) _armoireOpenDraftListModal();
   });
 
   // Délégation sur le conteneur des stats plutôt que sur la case elle-même :

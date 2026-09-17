@@ -94,7 +94,17 @@
     if(so && so.style.display !== 'none' && typeof _specsHasChanges === 'function' && _specsHasChanges()){
       warnings.push('les caractéristiques techniques en cours');
     }
-    if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
+    // Retour utilisateur : "pourquoi j'ai encore cette fenêtre qui s'affiche
+    // lorsque je veux faire la mise à jour ?" — pour un compte CONNECTÉ, la
+    // configuration en cours est déjà régulièrement synchronisée vers le
+    // serveur (voir js/armoireConfig.js), et la synchro est de toute façon
+    // forcée + attendue juste plus bas AVANT le rechargement : ce n'est donc
+    // plus jamais réellement "effacé" pour lui, ce message devenait un faux
+    // avertissement systématique. Seul un visiteur ANONYME (aucun compte
+    // serveur, aucune sauvegarde possible pour lui) a encore vraiment
+    // quelque chose à perdre à ce rechargement.
+    var armoireLoggedIn = typeof authIsLoggedIn === 'function' && authIsLoggedIn();
+    if(!armoireLoggedIn && Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
       warnings.push('la configuration d\'armoire en cours');
     }
     if(warnings.length && typeof customConfirm === 'function'){
@@ -106,22 +116,21 @@
       if(!ok) return;
     }
 
-    // Retour utilisateur : "j'ai encore la notification [...] restaurée]
-    // lorsque je fais une mise à jour et que j'ai une configuration en
-    // cours" — la configuration d'armoire (window._armoireDraft) survit très
-    // bien au rechargement ci-dessous (copie dans localStorage, voir
-    // js/armoireConfig.js) : rien n'est réellement perdu. Le problème est
-    // ailleurs : le toast "Configuration en cours restaurée" (voir
-    // _armoireWarnIfDraftNotBackedUp) ne s'affiche QUE quand aucune copie de
-    // ce brouillon n'existe encore sur le serveur — or la synchro
-    // automatique est anti-rafale (ARMOIRE_DRAFT_SYNC_DELAY_MS) et n'avait
-    // pas forcément eu le temps de partir avant ce clic sur "Mettre à jour".
-    // Au rechargement, la copie serveur n'existait donc pas encore et le
-    // toast se déclenchait à tort, comme si la configuration avait failli
-    // être perdue. Même geste qu'à la fermeture du configurateur
-    // (_armoireClose) : forcer cette synchro immédiatement — mais cette fois
-    // en l'ATTENDANT avant de recharger (borné à 4s pour ne jamais bloquer
-    // la mise à jour si le serveur ne répond pas).
+    // Retour utilisateur : "je ne veux plus de localstorage pour les config
+    // je veux garder que le serveur en cas de crash" — la configuration
+    // d'armoire (window._armoireDraft) ne survit donc PLUS du tout à ce
+    // rechargement forcé par elle-même (plus de copie locale, voir
+    // js/armoireConfig.js) : seule une synchro déjà partie vers le serveur
+    // AVANT le rechargement permet de la retrouver ensuite. Or la synchro
+    // automatique est anti-rafale (ARMOIRE_DRAFT_SYNC_DELAY_MS) et n'a pas
+    // forcément eu le temps de partir avant ce clic sur "Mettre à jour".
+    // Même geste qu'à la fermeture du configurateur (_armoireClose) : forcer
+    // cette synchro immédiatement — mais cette fois en l'ATTENDANT avant de
+    // recharger (borné à 4s pour ne jamais bloquer la mise à jour si le
+    // serveur ne répond pas). Pour un visiteur non connecté, rien de tout ça
+    // ne s'applique (pas de compte serveur) : sa configuration en cours est
+    // de toute façon perdue par ce rechargement, comme n'importe quel
+    // formulaire web non enregistré — décision utilisateur assumée.
     if(Array.isArray(window._armoireDraft) && window._armoireDraft.length > 0){
       if(window._armoireDraftSyncTimer){
         clearTimeout(window._armoireDraftSyncTimer);
