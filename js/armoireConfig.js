@@ -2431,6 +2431,17 @@ function _armoireOpen(){
   _armoireSyncSearchScopeBtn();
   _armoireCloseBlocksDrawer(true); // remise à zéro silencieuse, le tiroir n'a jamais été visible
   _armoireSetMobileView('browse');
+  // Retour utilisateur : "cache le bouton Enregistrer du configurateur
+  // lorsqu'on n'est pas loggé" — "Enregistrer" poste sur /configBlocks ou
+  // /configSavedConfigs (voir _armoireSaveChoice), qui exigent un compte
+  // côté serveur comme le reste des Blocs/Configurations partagés (voir
+  // juste plus bas) : un clic sans être connecté n'aurait de toute façon
+  // jamais pu aboutir. Recalculé à CHAQUE ouverture plutôt qu'une fois pour
+  // toutes : une connexion/déconnexion referme déjà le panneau au passage
+  // (voir _authCloseSensitiveUI dans js/auth.js), donc rouvrir est le seul
+  // moment où l'état a besoin d'être réévalué.
+  var saveBtnVisibility = document.getElementById('armoireConfigSaveBtn');
+  if(saveBtnVisibility) saveBtnVisibility.style.display = (typeof authIsLoggedIn === 'function' && authIsLoggedIn()) ? '' : 'none';
   _armoireRenderDraft();
   _armoireRenderSearchResults('');
   _armoireSwitchTab(_armoireActiveTab);
