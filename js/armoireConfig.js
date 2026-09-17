@@ -514,12 +514,27 @@ async function _armoireQuoteRequest(){
   if(chosen) _armoireOpenSupplierMailto(chosen);
 }
 
+// Retour utilisateur : "je spam la suppression de produit qui est dans la
+// configuration en cours j'ai un crash site sur mobile" — CE N'EST PAS un
+// spam de requêtes réseau (retirer un article ne parle jamais au serveur
+// dans l'instant : voir ARMOIRE_DRAFT_SYNC_DELAY_MS plus haut, la synchro
+// est anti-rafale). C'est un spam de RENDUS : chaque tap reconstruisait
+// intégralement et de façon SYNCHRONE tout le DOM du panneau (liste,
+// stats, sélecteur, badge) sur le fil principal — sous rafale de taps
+// rapprochés (plusieurs par frame, facile sur mobile où le tactile déclenche
+// souvent plus d'évènements que prévu), ce genre de réécriture répétée du
+// DOM est un déclencheur connu de plantage de Safari iOS. _armoireDraft
+// (l'état) reste mis à jour immédiatement à chaque appel ; seul le rendu
+// visuel est désormais regroupé en un seul par frame (requestAnimationFrame)
+// au lieu d'un par tap.
+var _armoireDraftRenderQueued = false;
 function _armoireRenderDraft(){
   // Appelée à chaque modification réelle du brouillon (ajout/quantité/
   // retrait/vidage/chargement d'une config enregistrée) — le point d'entrée
-  // unique le plus fiable pour garder la synchro serveur à jour, AVANT le
-  // "if(!el) return" ci-dessous pour que ça marche même si le panneau n'a
-  // jamais été affiché cette session (ex. ajout depuis une fiche produit).
+  // unique le plus fiable pour garder la synchro serveur à jour. Fait
+  // TOUJOURS son travail immédiatement (jamais différé), contrairement au
+  // rendu visuel ci-dessous : c'est ce qui détecte un changement réel et
+  // programme la synchro, doit donc refléter CHAQUE appel, même groupés.
   // _armoireScheduleDraftSync() UNIQUEMENT si _armoireMarkDraftChanged() a
   // détecté un changement réel — sinon un simple ré-affichage sans rapport
   // avec une modification (ex. _armoireOpen() qui rend le brouillon déjà en
@@ -528,6 +543,16 @@ function _armoireRenderDraft(){
   // _armoireReplaceEntry — aucun PUT/PATCH disponible côté serveur) pour un
   // contenu pourtant identique.
   if(_armoireMarkDraftChanged()) _armoireScheduleDraftSync();
+  if(_armoireDraftRenderQueued) return;
+  _armoireDraftRenderQueued = true;
+  var raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : function(fn){ setTimeout(fn, 16); };
+  raf(function(){
+    _armoireDraftRenderQueued = false;
+    _armoireRenderDraftNow();
+  });
+}
+
+function _armoireRenderDraftNow(){
   var el = document.getElementById('armoireConfigDraftList');
   if(!el) return;
   _armoireRenderStats();
