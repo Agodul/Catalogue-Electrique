@@ -1144,9 +1144,19 @@
     white-space:pre-wrap;
   }
 
-  /* Prix dans la vue détail — carte .vm-side-card, voir .vm-side plus haut */
+  /* Prix dans la vue détail — carte .vm-side-card, voir .vm-side plus haut.
+     Retour utilisateur : "corrige la section prix des fiches produit pour
+     que toutes les fiches soient identiques peu importe le prix" — même
+     structure toujours empilée que .card .price (css/styles.css, un peu
+     plus haut) : prix catalogue barré, prix affiché, puis les badges
+     remise/hausse côte à côte sur leur PROPRE ligne (.vm-price-badges),
+     plutôt que tout concaténé sur une seule ligne qui cassait n'importe où
+     (y compris au milieu du symbole "€") selon la largeur disponible et le
+     nombre de badges présents. */
   .vm-price-row{ display:flex; align-items:baseline; gap:12px; }
-  .vm-price{ font-size:26px; font-weight:700; }
+  .vm-price{ font-size:26px; font-weight:700; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+  .vm-price-main{ font-weight:700; }
+  .vm-price-badges{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .vm-price-label{ font-size:12.5px; color:var(--ink-soft); margin:2px 0 14px; }
   /* Sélecteur de quantité + CTA "Ajouter à la configuration", même bloc que
      le prix (retour utilisateur : maquette) — .copper (déjà utilisé pour

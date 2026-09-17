@@ -353,16 +353,29 @@ function _productBadgesCompactHtml(p){
     }
 
     // Prix + badge hausse + prix d'origine barré + remise
+    // Retour utilisateur : "corrige la section prix des fiches produit pour
+    // que toutes les fiches soient identiques peu importe le prix" (capture
+    // à l'appui : le symbole "€" et les badges remise/hausse retombaient à
+    // la ligne au milieu du prix quand les deux badges étaient présents en
+    // même temps) — tout était concaténé en un seul bloc de texte inline
+    // (#vmPrice), qui cassait n'importe où selon la largeur disponible et
+    // le nombre de badges. Même correctif déjà appliqué aux cartes du
+    // catalogue (voir renderCard, js/render-card-grid.js, et le commentaire
+    // équivalent juste au-dessus de .price-badges dans css/styles.css) :
+    // structure TOUJOURS empilée (prix catalogue barré, puis prix affiché,
+    // puis les badges côte à côte sur leur propre ligne) plutôt que
+    // dépendante de la largeur et du nombre de chiffres.
     var jumpPct = getLastPriceJumpPct(p);
     var badge = jumpPct!==null && jumpPct>=PRICE_ALERT_THRESHOLD
-      ? ' <span class="price-jump-badge price-jump-badge-lg"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>' : '';
+      ? '<span class="price-jump-badge price-jump-badge-lg"><i class="ti ti-alert-triangle"></i> +'+jumpPct.toFixed(0)+'%</span>' : '';
     var orig = getOriginalPrice(p);
     var discPct = getDiscountPct(p);
     var discBadgeVm = discPct !== null && discPct < 0
-      ? ' <span class="discount-badge discount-badge-lg">-'+Math.abs(discPct).toFixed(0)+' %</span>'
+      ? '<span class="discount-badge discount-badge-lg">-'+Math.abs(discPct).toFixed(0)+' %</span>'
       : '';
     vmPrice.innerHTML = (orig ? '<span class="vm-price-original" title="Prix catalogue fabricant">'+escapeHtml(_displayPrice(orig))+'</span>' : '')+
-                        escapeHtml(_displayPrice(p.price)||'—')+discBadgeVm+badge;
+                        '<span class="vm-price-main">'+(escapeHtml(_displayPrice(p.price)||'—'))+'</span>'+
+                        ((discBadgeVm || badge) ? '<span class="vm-price-badges">'+discBadgeVm+badge+'</span>' : '');
     // Légende sous le prix (retour utilisateur : maquette avec "Prix
     // unitaire (HT)" sous le prix) — affichée seulement s'il y a bien un
     // prix, pas comme légende flottante sur un prix manquant ("—").
