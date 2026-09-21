@@ -583,12 +583,21 @@ function _armoireRenderDraftNow(){
       + '</div>'
       + '<div style="font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(p ? (p.name || '') : 'Référence introuvable dans le catalogue') + '</div>'
       + '</div>'
-      + '<button type="button" class="armoire-qty-minus" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">−</button>'
+      // Retour utilisateur : "ajoute le [bouton i] aussi côté configuration
+      // en cours" — même bouton/même classe CSS que la colonne de gauche
+      // (.armoire-search-info, voir _armoireProductRowHtml et
+      // _armoireOpenProductView plus bas), pour consulter la fiche d'un
+      // article déjà ajouté sans devoir le rechercher à nouveau à gauche.
+      + '<button type="button" class="armoire-search-info" title="Voir la fiche produit"><i class="ti ti-info-circle" aria-hidden="true"></i></button>'
+      + '<button type="button" class="armoire-qty-minus" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;box-sizing:border-box;">−</button>'
       // Quantité modifiable directement (retour utilisateur : cliquer 49
       // fois sur "+" pour atteindre 50 pièces n'est pas praticable). Les
       // boutons +/- restent pour les petits ajustements ponctuels.
-      + '<input type="number" class="armoire-qty-input" inputmode="numeric" min="1" step="1" value="' + it.qty + '" style="width:38px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 2px;flex-shrink:0;background:var(--paper);">'
-      + '<button type="button" class="armoire-qty-plus" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">+</button>'
+      // Retour utilisateur : "fait en sorte que les boutons soit a la même
+      // taille que le bouton i" — même hauteur/rayon que .armoire-search-info
+      // (26px, border-radius:7px) pour les 3 éléments du groupe -/qty/+.
+      + '<input type="number" class="armoire-qty-input" inputmode="numeric" min="1" step="1" value="' + it.qty + '" style="width:38px;height:26px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:2px 2px;flex-shrink:0;background:var(--paper);box-sizing:border-box;">'
+      + '<button type="button" class="armoire-qty-plus" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;box-sizing:border-box;">+</button>'
       + '<button type="button" class="armoire-item-remove" title="Retirer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;">✕</button>'
       + '</div>';
   }).join('');
@@ -2629,7 +2638,8 @@ function _armoireClose(){
     var ref = row.getAttribute('data-ref');
     var item = _armoireDraft.find(function(it){ return it.ref === ref; });
     if(!item) return;
-    if(e.target.closest('.armoire-qty-plus')) _armoireSetQty(ref, item.qty + 1);
+    if(e.target.closest('.armoire-search-info')) _armoireOpenProductView(ref);
+    else if(e.target.closest('.armoire-qty-plus')) _armoireSetQty(ref, item.qty + 1);
     else if(e.target.closest('.armoire-qty-minus')) _armoireSetQty(ref, item.qty - 1);
     else if(e.target.closest('.armoire-item-remove')) _armoireRemoveFromDraft(ref);
   });
