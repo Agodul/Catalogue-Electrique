@@ -4982,6 +4982,26 @@
 .kebab-btn:hover{
   background:var(--paper); border-color:var(--line); color:var(--ink);
 }
+/* Retour utilisateur : "le petit i n'est pas bien visible" — un repos
+   transparent façon .kebab-btn (à l'origine choisi pour rester cohérent
+   avec ce bouton, voir plus haut) se fondait trop dans le fond à côté du
+   "+" plein cuivre. Bordure/fond visibles EN PERMANENCE, comme "Charger"
+   ou les boutons +/- de quantité un peu plus bas dans ce fichier (repos
+   neutre déjà établi pour une action secondaire toujours visible, jamais
+   caché derrière un survol) — mais PAS la classe .kebab-btn elle-même : ce
+   bouton n'ouvre jamais un menu ⋯, il ouvre directement la fiche produit
+   (_armoireOpenProductView) ; le porter aurait fait délégué à tort par
+   _bindKebabMenuOn (js/popup.js), qui recherche un .kebab-menu en frère
+   suivant (absent ici) sur tout clic .kebab-btn dans le panneau. */
+.armoire-search-info{
+  display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; padding:0; border-radius:7px;
+  font-size:15px; cursor:pointer; font-family:inherit; flex-shrink:0;
+  border:1px solid var(--line); background:var(--paper); color:var(--ink);
+}
+.armoire-search-info:hover{
+  border-color:var(--copper); background:#EEF4FF; color:var(--copper-deep);
+}
 /* Retour utilisateur : "il faut que lorsqu'on clique sur les 3 petits
    points il passe en bleu pour montrer qu'on est bien sur ce bouton" — état
    actif (menu ouvert) distinct du survol, en copper plutôt qu'en gris

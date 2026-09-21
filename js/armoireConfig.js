@@ -673,8 +673,53 @@ function _armoireProductRowHtml(p){
     + '<div class="sug-list-ref">' + escapeHtml(p.ref || '') + _productBadgesCompactHtml(p) + '</div>'
     + '<div class="sug-list-name">' + escapeHtml(p.name || '') + (p.family ? ' · ' + escapeHtml(p.family) : '') + '</div>'
     + '</div>'
-    + '<button type="button" class="armoire-search-add" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;">+</button>'
+    // Retour utilisateur : "ajouter un bouton i [...] afin de pouvoir
+    // regarder la fiche produit lors du choix de composant" — voir
+    // _armoireOpenProductView plus bas, qui gère l'affichage par-dessus le
+    // configurateur (jamais fait jusqu'ici pour la fiche produit).
+    // Style en dur dans css/styles.css (.armoire-search-info, apparié à
+    // .kebab-btn) — jamais la classe .kebab-btn elle-même, voir le
+    // commentaire juste au-dessus de .armoire-search-info dans ce fichier.
+    + '<button type="button" class="armoire-search-info" title="Voir la fiche produit"><i class="ti ti-info-circle" aria-hidden="true"></i></button>'
+    // Icône ti-plus (pas un caractère "+" brut) : un glyphe de police de
+    // caractères classique ne tombe pas forcément pile au centre optique
+    // de sa boîte de ligne (retour utilisateur : "+" mal centré) — une
+    // icône, elle, est dessinée pour ça, même principe que le "+" déjà
+    // utilisé ailleurs dans ce fichier (armoire-draft-slot-new,
+    // _armoireListItemHtml).
+    + '<button type="button" class="armoire-search-add" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;"><i class="ti ti-plus" aria-hidden="true"></i></button>'
     + '</div>';
+}
+
+// Ouvre la fiche produit complète (#viewOverlay/openView, voir
+// js/render-view-modal.js) PAR-DESSUS le configurateur d'armoire — jamais
+// nécessaire jusqu'ici : la fiche a le z-index le plus bas de toute
+// l'échelle (--z-overlay, voir css/styles.css), le configurateur un des
+// plus hauts (10600, en dur dans index.html). Sans ajustement, la fiche
+// s'ouvrirait invisible, cachée derrière. Tout reste localisé ICI (jamais
+// une ligne ajoutée dans render-view-modal(-close).js, qui n'ont pas à
+// savoir que le configurateur existe) : un MutationObserver réagit à la
+// fermeture de la fiche (retrait de sa classe "open") pour annuler le
+// rehaussement de z-index, et pour remettre body.modal-open — que
+// closeView() retire sans savoir que le configurateur, lui, reste ouvert
+// derrière, ce qui déverrouillerait sinon le défilement de la page et
+// referait passer l'en-tête au-dessus du panneau encore ouvert.
+function _armoireOpenProductView(ref){
+  var p = _armoireProductByRef(ref);
+  if(!p || typeof openView !== 'function') return;
+  var viewOverlay = document.getElementById('viewOverlay');
+  if(viewOverlay){
+    viewOverlay.style.zIndex = '10650';
+    var observer = new MutationObserver(function(){
+      if(viewOverlay.classList.contains('open')) return;
+      viewOverlay.style.zIndex = '';
+      var armoireOverlay = document.getElementById('armoireConfigOverlay');
+      if(armoireOverlay && armoireOverlay.style.display !== 'none') document.body.classList.add('modal-open');
+      observer.disconnect();
+    });
+    observer.observe(viewOverlay, { attributes: true, attributeFilter: ['class'] });
+  }
+  openView(p.id);
 }
 
 function _armoireRenderFamilyFolders(){
@@ -2560,6 +2605,12 @@ function _armoireClose(){
 
   var searchResultsEl = document.getElementById('armoireConfigSearchResults');
   if(searchResultsEl) searchResultsEl.addEventListener('click', function(e){
+    var infoBtn = e.target.closest ? e.target.closest('.armoire-search-info') : null;
+    if(infoBtn){
+      var infoRow = infoBtn.closest('.armoire-search-row');
+      if(infoRow) _armoireOpenProductView(infoRow.getAttribute('data-ref'));
+      return;
+    }
     var addBtn = e.target.closest ? e.target.closest('.armoire-search-add') : null;
     if(addBtn){
       var row = addBtn.closest('.armoire-search-row');
