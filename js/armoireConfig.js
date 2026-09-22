@@ -719,9 +719,31 @@ function _armoireOpenProductView(ref){
   var viewOverlay = document.getElementById('viewOverlay');
   if(viewOverlay){
     viewOverlay.style.zIndex = '10650';
+    // Retour utilisateur : "quand je clique sur le i et que je veux voir
+    // les caractéristiques ou autre ça s'ouvre pas" — Caractéristiques/
+    // Documents/Produits associés/Pièces de rechange réutilisent tous
+    // #sugOverlay (et Documents #docOverlay, Fiche technique #specsOverlay,
+    // "Choisir un produit" #sugPickerOverlay), qui restent à leur z-index
+    // habituel (10600/10650, voir index.html) — plus bas ou à égalité avec
+    // le viewOverlay rehaussé ci-dessus, donc ils s'ouvraient bien mais
+    // rendaient CACHÉS derrière la fiche produit. On les rehausse aussi le
+    // temps que la fiche est ouverte dans ce contexte, et on restaure leur
+    // z-index d'origine à la fermeture (comme pour viewOverlay).
+    var subOverlayIds = ['sugOverlay', 'docOverlay', 'specsOverlay', 'sugPickerOverlay'];
+    var subOverlayPrevZ = {};
+    subOverlayIds.forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      subOverlayPrevZ[id] = el.style.zIndex;
+      el.style.zIndex = '10700';
+    });
     var observer = new MutationObserver(function(){
       if(viewOverlay.classList.contains('open')) return;
       viewOverlay.style.zIndex = '';
+      subOverlayIds.forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.style.zIndex = subOverlayPrevZ[id] || '';
+      });
       var armoireOverlay = document.getElementById('armoireConfigOverlay');
       if(armoireOverlay && armoireOverlay.style.display !== 'none') document.body.classList.add('modal-open');
       observer.disconnect();
