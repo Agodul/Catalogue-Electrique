@@ -112,6 +112,12 @@ function _armoireOpenProductView(ref){
   var p = _armoireProductByRef(ref);
   if(!p || typeof openView !== 'function') return;
   var viewOverlay = document.getElementById('viewOverlay');
+  // Déclarée ici (pas dans le bloc if juste en dessous, ni en function
+  // déclaration classique) pour rester accessible tout en bas de la
+  // fonction, après openView(p.id) — indépendant du mode strict/sloppy de
+  // ce fichier (les autres fichiers issus du même découpage ont "use
+  // strict", pas celui-ci : mieux vaut ne pas compter dessus).
+  var _armoireHideOwnViewButtons = function(){};
   if(viewOverlay){
     viewOverlay.style.zIndex = '10650';
     // Retour utilisateur : "quand je clique sur le i et que je veux voir
@@ -135,6 +141,33 @@ function _armoireOpenProductView(ref){
       subOverlayPrevZ[id] = el.style.zIndex;
       el.style.zIndex = '10700';
     });
+    // Retour utilisateur : "lorsqu'on veut regarder les infos produit dans
+    // le configurateur faut cacher le bouton du kebab (éditer/supprimer)"
+    // puis "regarde que sa ne sois pas dispo dans le configurateur"
+    // (comparer), puis "regarde avec les suggestions et pièce de rechange"
+    // — cliquer une suggestion/pièce de rechange DEPUIS cette fiche appelle
+    // openView(pid) directement (voir js/render-view-modal.js, sections
+    // Suggestions/Pièces de rechange), qui réaffiche #vmInfoBtn (permissions,
+    // authApplyOnProductModal) à CHAQUE nouvelle fiche de la chaîne, pas
+    // seulement la première — un masquage ponctuel juste après le premier
+    // openView() ci-dessous ne suivait donc pas ces navigations internes
+    // (viewOverlay reste ouvert tout du long, seul son CONTENU change).
+    // #vmInfoBtn/#vmCompareRow restent les MÊMES éléments DOM d'une fiche à
+    // l'autre (openView() ne fait que les muter, jamais les recréer, voir
+    // js/render-view-modal.js) : un observateur posé une seule fois ici les
+    // re-masque à chaque fois qu'ils redeviennent visibles, quel que soit
+    // le produit affiché dans la chaîne suggestion → suggestion, jusqu'à la
+    // fermeture complète de la fiche.
+    var vmInfoBtnEl    = document.getElementById('vmInfoBtn');
+    var vmCompareRowEl = document.getElementById('vmCompareRow');
+    _armoireHideOwnViewButtons = function(){
+      if(vmInfoBtnEl && vmInfoBtnEl.style.display !== 'none') vmInfoBtnEl.style.display = 'none';
+      if(vmCompareRowEl && vmCompareRowEl.style.display !== 'none') vmCompareRowEl.style.display = 'none';
+    };
+    var vmButtonsObserver = new MutationObserver(_armoireHideOwnViewButtons);
+    if(vmInfoBtnEl) vmButtonsObserver.observe(vmInfoBtnEl, { attributes: true, attributeFilter: ['style'] });
+    if(vmCompareRowEl) vmButtonsObserver.observe(vmCompareRowEl, { attributes: true, attributeFilter: ['style'] });
+
     var observer = new MutationObserver(function(){
       if(viewOverlay.classList.contains('open')) return;
       viewOverlay.style.zIndex = '';
@@ -142,15 +175,16 @@ function _armoireOpenProductView(ref){
         var el = document.getElementById(id);
         if(el) el.style.zIndex = subOverlayPrevZ[id] || '';
       });
-      // Retour utilisateur : "lorsqu'on veut regarder les infos produit dans
-      // le configurateur faut cacher le bouton du kebab (éditer/supprimer)"
-      // — voir plus bas où #vmInfoBtn est masqué à l'ouverture. Pour le
-      // réafficher ici, on rappelle authApplyOnProductModal() (js/auth.js)
-      // plutôt qu'un simple style.display='' : elle recalcule la visibilité
-      // depuis les VRAIES permissions de l'utilisateur, sinon quelqu'un sans
-      // canEdit/canDelete/canPropose le reverrait à tort à la prochaine
-      // fiche ouverte hors configurateur.
+      vmButtonsObserver.disconnect();
+      // Réaffiche #vmInfoBtn selon les VRAIES permissions de l'utilisateur
+      // (authApplyOnProductModal, js/auth.js) plutôt qu'un simple
+      // style.display='' : sinon quelqu'un sans canEdit/canDelete/
+      // canPropose le reverrait à tort à la prochaine fiche ouverte hors
+      // configurateur. #vmCompareRow, lui, n'est jamais masqué par
+      // permission (voir js/render-view-modal.js) : un simple
+      // style.display='' suffit à le restaurer.
       if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
+      if(vmCompareRowEl) vmCompareRowEl.style.display = '';
       var armoireOverlay = document.getElementById('armoireConfigOverlay');
       if(armoireOverlay && armoireOverlay.style.display !== 'none') document.body.classList.add('modal-open');
       observer.disconnect();
@@ -158,16 +192,7 @@ function _armoireOpenProductView(ref){
     observer.observe(viewOverlay, { attributes: true, attributeFilter: ['class'] });
   }
   openView(p.id);
-  // Retour utilisateur : "lorsqu'on veut regarder les infos produit dans le
-  // configurateur faut cacher le bouton du kebab (édité/supprimer)" — modifier
-  // ou supprimer un produit du catalogue n'a pas sa place ici, on ne fait que
-  // consulter la fiche pour choisir un composant. openView() vient de rendre
-  // #vmInfoBtn selon les permissions habituelles (voir render-view-modal.js) ;
-  // on le masque juste après, sans toucher à render-view-modal.js qui n'a pas
-  // à savoir que le configurateur existe (même approche que le rehaussement
-  // de z-index ci-dessus).
-  var vmInfoBtn = document.getElementById('vmInfoBtn');
-  if(vmInfoBtn) vmInfoBtn.style.display = 'none';
+  _armoireHideOwnViewButtons();
 }
 
 function _armoireRenderFamilyFolders(){
