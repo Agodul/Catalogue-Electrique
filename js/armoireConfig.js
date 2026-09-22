@@ -720,16 +720,19 @@ function _armoireOpenProductView(ref){
   if(viewOverlay){
     viewOverlay.style.zIndex = '10650';
     // Retour utilisateur : "quand je clique sur le i et que je veux voir
-    // les caractéristiques ou autre ça s'ouvre pas" — Caractéristiques/
-    // Documents/Produits associés/Pièces de rechange réutilisent tous
-    // #sugOverlay (et Documents #docOverlay, Fiche technique #specsOverlay,
-    // "Choisir un produit" #sugPickerOverlay), qui restent à leur z-index
-    // habituel (10600/10650, voir index.html) — plus bas ou à égalité avec
-    // le viewOverlay rehaussé ci-dessus, donc ils s'ouvraient bien mais
-    // rendaient CACHÉS derrière la fiche produit. On les rehausse aussi le
-    // temps que la fiche est ouverte dans ce contexte, et on restaure leur
-    // z-index d'origine à la fermeture (comme pour viewOverlay).
-    var subOverlayIds = ['sugOverlay', 'docOverlay', 'specsOverlay', 'sugPickerOverlay'];
+    // les caractéristiques ou autre ça s'ouvre pas" (puis, même symptôme :
+    // "corrige la position de la fenêtre de commentaire qui s'affiche
+    // derrière les autres") — Caractéristiques/Documents/Produits associés/
+    // Pièces de rechange/Commentaires réutilisent tous une fenêtre commune
+    // (#sugOverlay, #docOverlay, #specsOverlay, #sugPickerOverlay,
+    // #commentsModalOverlay, #commentsNewOverlay pour "Nouveau"/"Modifier"),
+    // qui restent à leur z-index habituel (10100 à 10650, voir index.html)
+    // — plus bas ou à égalité avec le viewOverlay rehaussé ci-dessus, donc
+    // ils s'ouvraient bien mais rendaient CACHÉS derrière la fiche produit.
+    // On les rehausse aussi le temps que la fiche est ouverte dans ce
+    // contexte, et on restaure leur z-index d'origine à la fermeture
+    // (comme pour viewOverlay).
+    var subOverlayIds = ['sugOverlay', 'docOverlay', 'specsOverlay', 'sugPickerOverlay', 'commentsModalOverlay', 'commentsNewOverlay'];
     var subOverlayPrevZ = {};
     subOverlayIds.forEach(function(id){
       var el = document.getElementById(id);
