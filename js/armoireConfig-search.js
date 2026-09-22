@@ -142,6 +142,15 @@ function _armoireOpenProductView(ref){
         var el = document.getElementById(id);
         if(el) el.style.zIndex = subOverlayPrevZ[id] || '';
       });
+      // Retour utilisateur : "lorsqu'on veut regarder les infos produit dans
+      // le configurateur faut cacher le bouton du kebab (éditer/supprimer)"
+      // — voir plus bas où #vmInfoBtn est masqué à l'ouverture. Pour le
+      // réafficher ici, on rappelle authApplyOnProductModal() (js/auth.js)
+      // plutôt qu'un simple style.display='' : elle recalcule la visibilité
+      // depuis les VRAIES permissions de l'utilisateur, sinon quelqu'un sans
+      // canEdit/canDelete/canPropose le reverrait à tort à la prochaine
+      // fiche ouverte hors configurateur.
+      if(typeof authApplyOnProductModal === 'function') authApplyOnProductModal();
       var armoireOverlay = document.getElementById('armoireConfigOverlay');
       if(armoireOverlay && armoireOverlay.style.display !== 'none') document.body.classList.add('modal-open');
       observer.disconnect();
@@ -149,6 +158,16 @@ function _armoireOpenProductView(ref){
     observer.observe(viewOverlay, { attributes: true, attributeFilter: ['class'] });
   }
   openView(p.id);
+  // Retour utilisateur : "lorsqu'on veut regarder les infos produit dans le
+  // configurateur faut cacher le bouton du kebab (édité/supprimer)" — modifier
+  // ou supprimer un produit du catalogue n'a pas sa place ici, on ne fait que
+  // consulter la fiche pour choisir un composant. openView() vient de rendre
+  // #vmInfoBtn selon les permissions habituelles (voir render-view-modal.js) ;
+  // on le masque juste après, sans toucher à render-view-modal.js qui n'a pas
+  // à savoir que le configurateur existe (même approche que le rehaussement
+  // de z-index ci-dessus).
+  var vmInfoBtn = document.getElementById('vmInfoBtn');
+  if(vmInfoBtn) vmInfoBtn.style.display = 'none';
 }
 
 function _armoireRenderFamilyFolders(){
