@@ -1323,6 +1323,22 @@
     padding:24px 20px; z-index:var(--z-overlay);
   }
   .modal-overlay.open{ display:flex; }
+
+  /* Overlay plein écran affiché/masqué via overlay.style.display (JS),
+     pas via une classe .open comme .modal-overlay ci-dessus — factorise les
+     6 propriétés identiques répétées en ligne sur 11 overlays (fiche
+     technique, commentaires, documents, suggestions, configurateur
+     d'armoire...). z-index et padding restent en ligne par élément
+     (valeurs différentes selon l'overlay, voir l'échelle de z-index en tête
+     de fichier) — surtout ne pas déplacer le z-index dans cette classe : du
+     code JS lit/restaure overlay.style.zIndex (valeur EN LIGNE) pour
+     rehausser temporairement certains de ces overlays par-dessus la fiche
+     produit (voir js/armoireConfig-search.js, _armoireOpenProductView). */
+  .overlay-scrim{
+    display:none; position:fixed; inset:0;
+    background:var(--overlay-scrim);
+    align-items:center; justify-content:center;
+  }
   .modal{
     background:var(--paper-card);
     border-radius:12px;
