@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260922064223";
+const CACHE = "spi-catalogue-v20260922070344";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -124,7 +124,15 @@ const FILES = [
   "./js/actions-settings-nav.js",
   "./js/actions-settings-sync.js",
   "./js/actions-sync-core.js",
-  "./js/armoireConfig.js",
+  "./js/armoireConfig-core.js",
+  "./js/armoireConfig-draft.js",
+  "./js/armoireConfig-excel.js",
+  "./js/armoireConfig-init.js",
+  "./js/armoireConfig-open.js",
+  "./js/armoireConfig-save.js",
+  "./js/armoireConfig-search.js",
+  "./js/armoireConfig-server.js",
+  "./js/armoireConfig-ui.js",
   "./js/auth.js",
   "./js/familyIcons.js",
   "./js/init.js",

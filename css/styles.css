@@ -2227,10 +2227,6 @@
     #btnSave{ flex:1; min-width:0; font-size:13px; padding:10px 8px; }
     #btnCancel{ flex:1; font-size:13px; padding:10px 8px; }
 
-    /* ── Filebar ── */
-    .filebar{ padding:7px 10px; gap:5px; flex-wrap:wrap; justify-content:center; }
-    .filebar button{ font-size:11px; padding:4px 9px; }
-
     /* ── FABs ── */
     .fab-stack{ right:12px; bottom:12px; gap:8px; }
     .fab{ width:42px; height:42px; }
@@ -2423,10 +2419,6 @@
     pointer-events:none;
   }
 
-  /* 7 — Point sauvegarde pulse */
-  @keyframes savePulse{ 0%{ transform:scale(1); background:rgba(255,255,255,.4); } 30%{ transform:scale(1.8); background:#86efac; box-shadow:0 0 0 6px rgba(134,239,172,.25); } 65%{ transform:scale(1.2); background:#4ade80; } 100%{ transform:scale(1); background:rgba(255,255,255,.4); } }
-  .filebar .dot.pulsing{ animation:savePulse .9s ease forwards; }
-
   @media(prefers-reduced-motion:reduce){
     .card, .card.card-fade, #viewOverlay.open, #viewOverlay.open #viewModal,
     .modal-overlay.open, .modal-overlay.open .modal,
@@ -2447,7 +2439,7 @@
     .closing #viewModal, .closing .modal, .closing #reqDetailModal, .closing #requestsPanel,
     .closing .compare-box, .closing .icon-picker-box, .closing .auth-box,
     .discount-badge.badge-anim,
-    #btnSave.save-anim, .filebar .dot.pulsing,
+    #btnSave.save-anim,
     .home-stat, .home-stat.card-fade, .home-family-card, .home-family-card.card-fade
     { animation:none !important; opacity:1 !important; transform:none !important; }
   }

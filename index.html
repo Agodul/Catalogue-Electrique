@@ -193,7 +193,19 @@
 <script src="js/init.js" defer></script>
 <script src="js/pwa.js" defer></script>
 <script src="js/requests.js" defer></script>
-<script src="js/armoireConfig.js" defer></script>
+<!-- Configurateur d'armoire : découpé depuis l'ancien js/armoireConfig.js
+     (2827 lignes) pour la lisibilité — ordre de chargement à respecter,
+     -core en premier (état partagé), -init en dernier (branche les
+     écouteurs sur tout le reste). -->
+<script src="js/armoireConfig-core.js" defer></script>
+<script src="js/armoireConfig-draft.js" defer></script>
+<script src="js/armoireConfig-search.js" defer></script>
+<script src="js/armoireConfig-server.js" defer></script>
+<script src="js/armoireConfig-excel.js" defer></script>
+<script src="js/armoireConfig-save.js" defer></script>
+<script src="js/armoireConfig-ui.js" defer></script>
+<script src="js/armoireConfig-open.js" defer></script>
+<script src="js/armoireConfig-init.js" defer></script>
 
 </head>
 <body>
