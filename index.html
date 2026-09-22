@@ -186,6 +186,10 @@
 <script src="js/actions-settings-nav.js" defer></script>
 <script src="js/actions-backup.js" defer></script>
 <script src="js/actions-compare.js" defer></script>
+<!-- Comparaison de PRODUITS du catalogue (retour utilisateur), à ne pas
+     confondre avec js/actions-compare.js juste au-dessus (comparaison de
+     PRIX FOURNISSEURS par import Excel — fonctionnalité différente). -->
+<script src="js/actions-productcompare.js" defer></script>
 <script src="js/actions-import-export.js" defer></script>
 <script src="js/actions-home.js" defer></script>
 <script src="js/actions-conflicts.js" defer></script>
@@ -1040,6 +1044,18 @@
   <button id="btnFabArmoireConfig" class="fab sans" aria-label="Configurateur d'armoire" title="Configurateur d'armoire" style="display:none;">
     <i class="ti ti-tools" style="font-size:18px;"></i>
   </button>
+  <!-- Retour utilisateur : "j'aimerai mettre en place un système de
+       comparaison afin de faire de la comparaison entre plusieurs produits
+       qui auront été sélectionnés par le user" — accès permanent comme
+       #btnFabArmoireConfig juste au-dessus (même raisonnement : rester
+       joignable depuis n'importe où dans le catalogue, pas seulement
+       depuis une fiche produit déjà ouverte), masqué tant qu'aucun produit
+       n'est en comparaison (voir js/actions-productcompare.js,
+       _compareRenderBadge). -->
+  <button id="btnFabCompareProducts" class="fab sans" aria-label="Comparer des produits" title="Comparer des produits" style="display:none;position:relative;">
+    <i class="ti ti-scale" style="font-size:18px;"></i>
+    <span id="productCompareFabBadge" class="fab-badge" style="display:none;"></span>
+  </button>
   <button id="btnFabPropose" class="fab sans" aria-label="Proposer un produit" title="Proposer un produit" style="display:none;">
     <i class="ti ti-edit" style="font-size:18px;"></i>
   </button>
@@ -1267,6 +1283,16 @@
 <!-- ===== MODALE CONFIGURATEUR D'ARMOIRE (admin) ===== -->
 <div id="armoireConfigOverlay" class="overlay-scrim" style="z-index:10600;padding:16px;"></div>
 <!-- ===== FIN MODALE CONFIGURATEUR D'ARMOIRE ===== -->
+
+<!-- ===== MODALE COMPARAISON DE PRODUITS ===== -->
+<!-- Retour utilisateur : "j'aimerai mettre en place un système de
+     comparaison afin de faire de la comparaison entre plusieurs produits
+     qui auront été sélectionnés par le user" — contenu injecté par
+     js/templates.js (voir set("productCompareOverlay", ...) dans ce
+     fichier), même convention que les autres grosses modales listées
+     ci-dessus. Logique dans js/actions-productcompare.js. -->
+<div id="productCompareOverlay" class="overlay-scrim" style="z-index:10600;padding:16px;"></div>
+<!-- ===== FIN MODALE COMPARAISON DE PRODUITS ===== -->
 
 <!-- ===== PDF VIEWER ===== -->
 <div id="pdfViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10700;align-items:center;justify-content:center;padding:12px;"></div>

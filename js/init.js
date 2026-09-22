@@ -402,7 +402,12 @@
     'docOverlay', 'priceModalOverlay', 'commentsModalOverlay', 'commentsNewOverlay', 'specsOverlay', 'sugOverlay',
     'sugPickerOverlay', 'conflictOverlay', 'reqDetailOverlay',
     'xlsxImportOverlay', 'authOverlay', 'iconPickerModal', 'compareOverlay',
-    'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay'
+    'bugReportOverlay', 'armoireConfigOverlay', 'pdfViewerOverlay',
+    // Retour utilisateur : système de comparaison entre plusieurs produits
+    // sélectionnés (voir js/actions-productcompare.js) — même registre
+    // générique, gratuit : _isOtherOverlayOpen et la remise à zéro du
+    // défilement (juste plus bas) fonctionnent sans code supplémentaire.
+    'productCompareOverlay'
   ];
 
   // ── Une fenêtre encore ouverte derrière celle qu'on referme ? ───────────

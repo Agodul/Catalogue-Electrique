@@ -126,6 +126,24 @@ function _productBadgesCompactHtml(p){
                   '<i id="vmAddToConfigIcon" class="ti ti-plus" aria-hidden="true"></i> Ajouter à la configuration' +
                 '</button>' +
               '</div>' +
+              // Retour utilisateur : "j'aimerai mettre en place un système
+              // de comparaison afin de faire de la comparaison entre
+              // plusieurs produits qui auront été sélectionnés par le
+              // user" — ajout uniquement depuis la fiche produit (choix
+              // explicite), pas de limite de nombre, ouvert à tous (pas
+              // une action qui modifie des données, pas de permission à
+              // vérifier contrairement à "Ajouter à la configuration").
+              // Voir js/actions-productcompare.js pour l'état et la fenêtre
+              // de comparaison elle-même. #vmCompareRow reste toujours
+              // visible (pas conditionné à p.ref comme #vmAddToConfigWrap
+              // au-dessus) : _compareToggle gère lui-même le cas où
+              // vmCompareRef n'a pas de ref (bouton désactivé, voir plus
+              // bas dans ce fichier).
+              '<div class="vm-add-config-row" id="vmCompareRow" style="margin-top:10px;">' +
+                '<button type="button" id="vmCompareBtn" class="secondary vm-add-config-btn" title="Comparer ce produit avec d\'autres">' +
+                  '<i id="vmCompareIcon" class="ti ti-scale" aria-hidden="true"></i> <span id="vmCompareLabel">Comparer</span>' +
+                '</button>' +
+              '</div>' +
             '</div>' +
             '<div class="vm-side-card vm-price-history" id="vmPriceHistory"></div>' +
           '</div>' +
@@ -522,6 +540,38 @@ function _productBadgesCompactHtml(p){
       };
     }
     // ── Fin bouton Ajouter à la configuration ───────────────────────
+
+    // ── Bouton Comparer ──────────────────────────────────────────────
+    // Retour utilisateur : "j'aimerai mettre en place un système de
+    // comparaison afin de faire de la comparaison entre plusieurs
+    // produits qui auront été sélectionnés par le user" — voir
+    // js/actions-productcompare.js pour _compareToggle/_compareIsIn (état
+    // + fenêtre de comparaison). Ouvert à tous, jamais masqué par
+    // permission (à l'inverse de "Ajouter à la configuration") : comparer
+    // ne modifie aucune donnée du catalogue.
+    var vmCompareBtn   = document.getElementById('vmCompareBtn');
+    var vmCompareIcon  = document.getElementById('vmCompareIcon');
+    var vmCompareLabel = document.getElementById('vmCompareLabel');
+    function _vmSyncCompareBtn(){
+      if(!vmCompareBtn) return;
+      var inCompare = typeof window._compareIsIn === 'function' && p.ref && window._compareIsIn(p.ref);
+      vmCompareBtn.classList.toggle('vm-compare-active', !!inCompare);
+      if(vmCompareIcon) vmCompareIcon.className = inCompare ? 'ti ti-check' : 'ti ti-scale';
+      if(vmCompareLabel) vmCompareLabel.textContent = inCompare ? 'Dans la comparaison' : 'Comparer';
+      vmCompareBtn.title = inCompare ? 'Retirer de la comparaison' : 'Comparer ce produit avec d\'autres';
+    }
+    _vmSyncCompareBtn();
+    if(vmCompareBtn){
+      vmCompareBtn.onclick = function(){
+        if(typeof window._compareToggle !== 'function' || !p.ref) return;
+        var nowIn = window._compareToggle(p.ref);
+        _vmSyncCompareBtn();
+        if(typeof showToast === 'function'){
+          showToast(nowIn ? 'Ajouté à la comparaison' : 'Retiré de la comparaison', 'ok', 2000);
+        }
+      };
+    }
+    // ── Fin bouton Comparer ──────────────────────────────────────────
 
     // Appliquer permissions sur les boutons de la fiche
     // Par défaut : interdit si non connecté ou permissions non chargées
