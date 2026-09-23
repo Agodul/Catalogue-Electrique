@@ -166,7 +166,7 @@
   }
   .domain-toggle-btn{
     display:flex; align-items:center; gap:5px;
-    padding:6px 11px; font-size:12.5px; font-weight:600;
+    padding:6px 11px; font-size:13px; font-weight:600;
     font-family:inherit; white-space:nowrap;
     background:var(--paper-card); color:var(--ink-soft);
     border:none; cursor:pointer;
@@ -306,7 +306,7 @@
     background:var(--ink);
     color:var(--paper);
     padding:10px 16px;
-    font-size:15px;
+    font-size:13px;
     letter-spacing:.02em;
     transition:transform .08s ease, background .12s ease, background-size .25s cubic-bezier(.4,0,.2,1), box-shadow .18s ease;
   }
@@ -522,7 +522,7 @@
   }
   .grp-btn{
     background:transparent; color:var(--ink-soft);
-    border:1px solid var(--line); padding:6px 12px; font-size:14px;
+    border:1px solid var(--line); padding:6px 12px; font-size:13px;
     border-radius:6px;
   }
   .grp-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
@@ -1184,7 +1184,7 @@
   .vm-add-config-btn{
     width:100%; display:flex; align-items:center; justify-content:center;
     gap:8px; padding:11px 14px; border-radius:9px;
-    font-size:13.5px; font-weight:600; cursor:pointer; color:#fff;
+    font-size:13px; font-weight:600; cursor:pointer; color:#fff;
   }
   .vm-add-config-btn i{ font-size:17px; }
   /* Bouton "Comparer" (id vmCompareBtn) : .secondary + .vm-add-config-btn
@@ -1297,7 +1297,7 @@
     border-bottom:2px solid transparent;
     border-radius:0;
     padding:0 0 8px;
-    font-size:13.5px;
+    font-size:13px;
     font-weight:600;
     /* Retour utilisateur : "mets les 4 boutons en bleu" (capture à l'appui
        — Caractéristiques/Documents/Produits associés/Pièces de rechange en
@@ -1425,7 +1425,7 @@
   .tabs{ display:flex; gap:6px; margin-bottom:14px; }
   .tab-btn{
     flex:1; background:var(--paper); color:var(--ink-soft);
-    border:1px solid var(--line); font-size:13.5px; padding:7px;
+    border:1px solid var(--line); font-size:13px; padding:7px;
   }
   .tab-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   /* Variante cuivre du même .tab-btn — celle utilisée dans le configurateur
@@ -1668,7 +1668,7 @@
      fond neutre, bordure fine, qui vire copper au survol — plutôt qu'un
      nouveau style de bouton de plus. */
   .sec-action{
-    font-size:12px; font-weight:600; color:var(--ink);
+    font-size:13px; font-weight:600; color:var(--ink);
     background:var(--paper-card); border:1px solid var(--line); border-radius:6px;
     padding:6px 12px; cursor:pointer; flex-shrink:0; white-space:nowrap; font-family:var(--font-sans);
   }
@@ -2898,7 +2898,7 @@
     border:1px solid var(--line);
     border-radius:12px;
     cursor:pointer;
-    font-size:14px; font-weight:700;
+    font-size:13px; font-weight:700;
     color:var(--copper);
     font-family:var(--font-sans);
     transition:border-color .15s, background .15s;
@@ -3142,7 +3142,7 @@
   }
   .family-icon-preview svg, .family-icon-preview img{ width:20px; height:20px; flex-shrink:0; }
   .family-icon-picker-btn{
-    font-size:12px; padding:6px 12px;
+    font-size:13px; padding:6px 12px;
     border:1px solid var(--line); border-radius:6px;
     background:var(--paper-card); color:var(--ink);
     cursor:pointer; display:flex; align-items:center; gap:5px;
@@ -3238,7 +3238,7 @@
     box-sizing:border-box;
   }
   .compare-supplier-file-btn{
-    font-size:12px; padding:6px 10px;
+    font-size:13px; padding:6px 10px;
     border:1px solid var(--line); border-radius:6px;
     background:var(--paper-card); color:var(--ink);
     cursor:pointer; display:flex; align-items:center; gap:5px;
@@ -3277,7 +3277,7 @@
   .compare-price-mid{ color:var(--ink); }
   .compare-price-missing{ color:var(--ink-soft); font-style:italic; font-size:12px; }
   .compare-save-btn{
-    font-size:11px; padding:3px 8px;
+    font-size:13px; padding:3px 8px;
     border:1px solid var(--copper); border-radius:5px;
     background:transparent; color:var(--copper);
     cursor:pointer; white-space:nowrap;
@@ -3456,7 +3456,7 @@
     font-size:11px; color:var(--ink-soft);
   }
   .family-icon-change-btn{
-    font-size:12px; padding:5px 10px;
+    font-size:13px; padding:5px 10px;
     border:1px solid var(--line); border-radius:6px;
     background:var(--paper-card); color:var(--ink);
     cursor:pointer; white-space:nowrap;
@@ -3470,7 +3470,7 @@
     padding:10px 12px; flex-shrink:0;
     border:1px solid var(--line); border-radius:6px;
     background:var(--paper-card); color:var(--ink-soft);
-    font-size:15px; font-family:var(--font-sans);
+    font-size:13px; font-family:var(--font-sans);
     cursor:pointer; white-space:nowrap;
     transition:background .12s, border-color .12s, color .12s;
   }
@@ -3821,7 +3821,7 @@
   .btn-load-more{
     background:var(--paper-card); border:1.5px solid var(--line);
     border-radius:10px; padding:10px 28px;
-    font-size:14px; font-weight:500; color:var(--ink);
+    font-size:13px; font-weight:500; color:var(--ink);
     cursor:pointer; font-family:var(--font-sans);
     transition:background .15s;
   }
@@ -3966,7 +3966,7 @@
     #conflictModal > div:last-child button{
       flex:1;
       min-width:80px;
-      font-size:12px;
+      font-size:13px;
       padding:8px 6px;
     }
   }
@@ -3999,19 +3999,19 @@
   .req-actions { display:flex;gap:6px;margin-top:10px; }
   .req-btn-accept {
     padding:5px 12px;border-radius:6px;border:none;
-    background:#194093;color:#fff;font-size:12px;font-weight:600;
+    background:#194093;color:#fff;font-size:13px;font-weight:600;
     cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;
   }
   .req-btn-refuse {
     padding:5px 12px;border-radius:6px;
     border:1px solid var(--line);background:var(--paper-card);
-    color:var(--ink);font-size:12px;font-weight:600;
+    color:var(--ink);font-size:13px;font-weight:600;
     cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;
   }
   .req-btn-cancel {
     padding:5px 12px;border-radius:6px;
     border:1px solid #FECACA;background:#FEF2F2;
-    color:#991B1B;font-size:12px;font-weight:600;
+    color:#991B1B;font-size:13px;font-weight:600;
     cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;
   }
   .req-empty {
@@ -4734,7 +4734,7 @@
 }
 #mobileSearchCancel{
   background: none; border: none; cursor: pointer;
-  color: var(--copper); font-size: 15px; font-weight: 600;
+  color: var(--copper); font-size: 13px; font-weight: 600;
   font-family: var(--font-sans);
   white-space: nowrap; padding: 4px 0;
 }
@@ -4749,6 +4749,31 @@
   #filterSheet, #filterSheetOverlay { display: none !important; }
   #menuSheet, #menuSheetOverlay { display: none !important; }
   #bottomNav { display: none !important; }
+}
+/* Fenêtre desktop/laptop réduite sous le seuil ci-dessus (souris/trackpad,
+   pointer:fine) — TOUS les points d'accès à la recherche/aux filtres
+   étaient gérés en paire mutuellement exclusive selon la largeur SEULE
+   (.toolbar ci-dessus dès 1025px) OU selon pointer:coarse SEUL (bottom-nav/
+   tiroir filtres/recherche flottante, voir leurs règles @media plus haut,
+   toutes qualifiées "and (pointer:coarse)") : un vrai poste de bureau avec
+   souris, fenêtre réduite à moins de 1025px (fenêtre non maximisée, écran
+   côte à côte, petit portable), tombait entre les deux — pointer:fine donc
+   jamais éligible aux bascules tactiles, largeur < 1025px donc jamais
+   éligible à la bascule desktop ci-dessus. Résultat : .toolbar restait à
+   son display:none par défaut (voir plus haut dans ce fichier) ET aucun
+   des remplaçants tactiles ne prenait le relais (tous gardés hors de
+   propos ici, pointer:coarse absent) — recherche et filtres totalement
+   inaccessibles. Même bascule que le bloc ci-dessus, pour pointer:fine
+   cette fois, sans toucher aux règles pointer:coarce existantes (déjà
+   calées pour le tactile, pas de raison de les élargir). */
+@media (max-width: 1024px) and (pointer: fine) {
+  .toolbar { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+  #floatingSearch, #floatingSearchOverlay { display: none !important; }
+  #btnFilterSheet { display: none !important; }
+  #filterSheet, #filterSheetOverlay { display: none !important; }
+  #menuSheet, #menuSheetOverlay { display: none !important; }
+  #bottomNav { display: none !important; }
+  #mobileSearchBar{ display: none !important; }
 }
   .search-field{ order:1; max-width:160px; flex-shrink:1; }
   /* padding-right séparé : laisse la place à la flèche personnalisée du
@@ -5279,7 +5304,7 @@
 .kebab-menu button{
   width:100%; text-align:left; display:flex; align-items:center; gap:8px;
   padding:7px 9px; border:none; background:none; border-radius:6px;
-  font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  font-size:13px; font-weight:600; color:var(--ink); cursor:pointer;
   font-family:inherit; white-space:nowrap;
 }
 .kebab-menu button:hover{ background:var(--paper); }

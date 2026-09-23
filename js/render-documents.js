@@ -128,7 +128,7 @@
       + '<i class="ti ti-plug-connected-x" style="font-size:28px;display:block;margin:0 auto 10px;color:var(--ink-soft);"></i>'
       + '<div style="font-weight:700;color:var(--ink);margin-bottom:4px;font-size:14px;">Connectez-vous à un serveur</div>'
       + '<div style="margin-bottom:16px;">' + escapeHtml(reason) + '</div>'
-      + '<button id="docConnectServerBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Ouvrir les paramètres serveur</button>'
+      + '<button id="docConnectServerBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Ouvrir les paramètres serveur</button>'
       + '</div>';
   }
   function _docWireConnectServerBtn(overlay){
