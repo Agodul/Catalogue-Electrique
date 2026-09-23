@@ -340,7 +340,7 @@ function _armoireRenderDraftSwitcher(){
     } else {
       el.style.display = 'flex';
       var total = _armoireOtherDraftSlots.length + 1;
-      el.innerHTML = '<button type="button" id="armoireDraftListOpenBtn" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;">'
+      el.innerHTML = '<button type="button" id="armoireDraftListOpenBtn" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;">'
         + '<i class="ti ti-layout-grid" style="font-size:14px;"></i>' + total + ' configuration' + (total > 1 ? 's actives' : ' active')
         + '</button>';
     }
@@ -836,8 +836,8 @@ function _armoireListItemHtml(entry, kind){
     + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
     + '<div style="font-size:11px;color:var(--ink-soft);">' + entry.items.length + ' référence' + (entry.items.length > 1 ? 's' : '') + '</div>'
     + '</div>'
-    + '<button type="button" class="' + primaryClass + '" style="padding:6px 12px;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:11.5px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ti ti-plus" aria-hidden="true"></i> ' + primaryLabel + '</button>'
-    + (!isBlock ? '<button type="button" class="armoire-config-load" title="Remplacer la configuration en cours par celle-ci" style="padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;">Charger</button>' : '')
+    + '<button type="button" class="' + primaryClass + '" style="padding:6px 12px;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ti ti-plus" aria-hidden="true"></i> ' + primaryLabel + '</button>'
+    + (!isBlock ? '<button type="button" class="armoire-config-load" title="Remplacer la configuration en cours par celle-ci" style="padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;">Charger</button>' : '')
     + '<div style="position:relative;flex-shrink:0;">'
       + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button>'
       + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'

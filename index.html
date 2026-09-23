@@ -391,7 +391,7 @@
       </div>
       <div class="compare-suppliers" id="compareSuppliers"></div>
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-        <button id="btnAddSupplierSlot" style="font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <button id="btnAddSupplierSlot" style="font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:5px;">
           <i class="ti ti-plus"></i> Ajouter un fournisseur
         </button>
         <button id="btnRunCompare" class="copper" style="font-size:13px;padding:7px 18px;border-radius:6px;cursor:pointer;">
@@ -403,13 +403,13 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);">Résultats</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button id="btnResetCompare" style="font-size:12px;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;">
+            <button id="btnResetCompare" style="font-size:13px;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;">
               ↺ Nouvelle comparaison
             </button>
-            <button id="btnSaveBest" class="copper" style="font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">
+            <button id="btnSaveBest" class="copper" style="font-size:13px;padding:6px 14px;border-radius:6px;cursor:pointer;">
               <i class="ti ti-star"></i> Appliquer tous les meilleurs prix
             </button>
-            <button id="btnExportCompare" style="font-size:12px;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;">
+            <button id="btnExportCompare" style="font-size:13px;padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;">
               <i class="ti ti-file-spreadsheet"></i> Exporter en Excel
             </button>
           </div>
@@ -580,8 +580,8 @@
       <div id="commentsModalError" style="display:none;margin-top:6px;font-size:12px;color:var(--warn);"></div>
     </div>
     <div style="padding:12px 20px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;">
-      <button id="commentsModalCancelBtn" style="padding:8px 16px;border:1px solid var(--line);border-radius:6px;background:var(--paper-card);color:var(--ink);cursor:pointer;font-size:13px;">Annuler</button>
-      <button id="commentsModalAddBtn" class="copper" style="padding:8px 16px;border-radius:6px;font-size:13px;">Ajouter</button>
+      <button id="commentsModalCancelBtn" class="secondary" type="button">Annuler</button>
+      <button id="commentsModalAddBtn" class="copper" type="button">Ajouter</button>
     </div>
   </div>
 </div>
@@ -681,7 +681,7 @@
              mise à jour, appelé depuis les deux endroits. -->
         <div id="appVersionUpdateRow" style="display:none;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;color:#B45309;font-weight:600;">
           <span style="display:flex;align-items:center;gap:5px;"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> Nouvelle version disponible</span>
-          <button type="button" id="appVersionUpdateBtn" style="padding:4px 10px;border-radius:6px;border:none;background:#B45309;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">Mettre à jour</button>
+          <button type="button" id="appVersionUpdateBtn" style="padding:4px 10px;border-radius:6px;border:none;background:#B45309;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">Mettre à jour</button>
         </div>
       </div>
     </div>
@@ -766,10 +766,10 @@
           <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
         </div>
         <div style="display:flex;gap:8px;">
-          <button id="btnAdminChangePassword" style="display:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+          <button id="btnAdminChangePassword" style="display:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
             <i class="ti ti-key" style="font-size:14px;"></i> Mon mot de passe
           </button>
-          <button id="btnAddUserOpen" style="display:none;padding:7px 12px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+          <button id="btnAddUserOpen" style="display:none;padding:7px 12px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
             <i class="ti ti-user-plus" style="font-size:14px;"></i> Ajouter
           </button>
         </div>
@@ -1186,7 +1186,7 @@
     align-items:center;gap:10px;font-family:inherit;">
     <i class="ti ti-refresh" style="font-size:18px;color:var(--copper,#194093);flex-shrink:0;"></i>
     <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink);">Nouvelle version disponible</div>
-    <button id="swUpdateBtn" class="copper" style="font-size:12px;padding:7px 12px;border-radius:8px;flex-shrink:0;white-space:nowrap;">
+    <button id="swUpdateBtn" class="copper" style="font-size:13px;padding:7px 12px;border-radius:8px;flex-shrink:0;white-space:nowrap;">
       Mettre à jour
     </button>
   </div>
@@ -1307,7 +1307,7 @@
       <input id="floatingSearchInput" type="text" placeholder="Rechercher…" autocomplete="off"
         style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:var(--font-sans);outline:none;box-sizing:border-box;">
     </div>
-    <button id="floatingSearchClose" style="background:none;border:none;font-size:15px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:var(--font-sans);white-space:nowrap;">Annuler</button>
+    <button id="floatingSearchClose" style="background:none;border:none;font-size:13px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:var(--font-sans);white-space:nowrap;">Annuler</button>
   </div>
 </div>
 <!-- ===== FIN FLOATING SEARCH ===== -->

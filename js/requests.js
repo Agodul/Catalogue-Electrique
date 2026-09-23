@@ -831,12 +831,12 @@
     var badgeFg   = isBug ? sevColors[1] : (isNew ? '#065F46' : '#92400E');
     var badgeText = isBug ? ('<i class="ti ti-bug"></i> ' + escapeHtml(_reqSeverityLabel(data.severity) || 'Bug')) : (isNew ? 'Nouveau' : 'Modification');
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;">'
-      +   '<div>'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
+      +   '<div style="min-width:0;">'
       +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
       +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · ' + reqAt : '') + '</div>'
       +   '</div>'
-      +   '<div style="display:flex;align-items:center;gap:8px;">'
+      +   '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
       +     '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + badgeBg + ';color:' + badgeFg + ';font-weight:700;">' + badgeText + '</span>'
       +     '<i class="ti ti-chevron-right" style="font-size:14px;color:var(--ink-soft);"></i>'
       +   '</div>'
@@ -908,10 +908,10 @@
         var titleText = isBug ? (data.title || 'Bug signalé') : it.ref;
         var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
         return '<div class="req-item">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;">'
-          +   '<div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
+          + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
+          +   '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
           +   '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · Soumis le ' + reqAt : '') + '</div></div>'
-          +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;">En attente</span>'
+          +   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#FEF3C7;color:#92400E;font-weight:700;flex-shrink:0;">En attente</span>'
           + '</div>'
           + '<div class="req-actions"><button class="req-btn-cancel" data-req-cancel="' + escapeHtml(it.ref) + '" data-req-cancel-id="' + escapeHtml(it.id || '') + '" data-req-cancel-bug="' + (isBug ? '1' : '0') + '" data-req-cancel-attachment="' + escapeHtml(data.attachmentId || '') + '"><i class="ti ti-trash"></i> Annuler</button></div>'
           + '</div>';
