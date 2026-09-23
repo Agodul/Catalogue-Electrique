@@ -4,7 +4,11 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
+<<<<<<< Updated upstream
 const CACHE = "spi-catalogue-v20260923073153";
+=======
+const CACHE = "spi-catalogue-v20260923072338";
+>>>>>>> Stashed changes
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
