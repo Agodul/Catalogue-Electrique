@@ -4396,6 +4396,19 @@
      même technique que .modal ci-dessus (max-height: calc(92vh - var(--nav-h))). */
   #pdfViewerOverlay > div { max-height: calc(94vh - var(--nav-h, 56px)); }
 
+  /* #productCompareOverlay (comparateur de produits) : même bug, même
+     cause, même remède que #pdfViewerOverlay juste au-dessus — boîte
+     centrée (jamais convertie en feuille ancrée en bas), height:min(880px,
+     92vh) en dur (js/templates.js) qui ne retranche pas --nav-h. Sur
+     téléphone, le bas de la boîte déborde donc derrière la bottom nav, qui
+     passe par-dessus (z-index plus élevé) et cache les dernières lignes du
+     tableau/pager (retour utilisateur, capture à l'appui : "on ne voie pas
+     les dernière ligne du tableau car elle sont cacher par la barre de
+     navigation" — même symptôme que le PDF, "je ne vois pas le bas de la
+     dernière page"). */
+  #productCompareOverlay { padding-bottom: var(--nav-h, 56px); }
+  #productCompareModal { max-height: calc(92dvh - var(--nav-h, 56px)); }
+
   /* ── Style uniforme "feuille ancrée en bas" pour toutes les fenêtres
      disponibles sur mobile/tablette ─────────────────────────────────
      Jusqu'ici seules #settingsOverlay et (en dessous de 640px seulement)
