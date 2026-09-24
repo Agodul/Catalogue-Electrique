@@ -609,99 +609,6 @@
     return result;
   }
 
-  // ── Détection iOS → classe sur body ─────────────────────────────
-  // ── État de chargement du bouton d'extraction ──────────────────────
-  // "Extraction automatique" (donc ce bouton) n'est de toute façon plus
-  // jamais affiché sur mobile/tablette (voir #productExtractTabs dans
-  // css/styles.css) — l'ancien bouton "Coller le lien et extraire"
-  // (Android) et la détection iOS qui l'accompagnait n'avaient plus aucun
-  // effet visible, retirés.
-  var btnExtractFromUrl  = document.getElementById('btnExtractFromUrl');
-  var _extractUrlLabel   = btnExtractFromUrl ? btnExtractFromUrl.innerHTML : '';
-  function setExtractLoading(isLoading){
-    if(btnExtractFromUrl){
-      btnExtractFromUrl.disabled = isLoading;
-      btnExtractFromUrl.innerHTML = isLoading
-        ? '<span class="btn-spinner" aria-hidden="true"></span> Extraction…'
-        : _extractUrlLabel;
-    }
-  }
-
-  btnExtractFromUrl.addEventListener('click', function(){
-    var url = fUrl.value.trim();
-    var hintEl = document.getElementById('extractUrlHint');
-    if(!url){
-      showToast('Collez d\'abord une URL dans le champ', 'warn', 2500);
-      return;
-    }
-    setExtractLoading(true);
-    hintEl.style.display = 'block';
-    hintEl.style.color   = 'var(--ink-soft)';
-    hintEl.textContent   = '⏳ Ouverture de la page via l\'extension Chrome…';
-
-    // Extraction via l'extension Chrome (plus de fetch serveur/proxy) —
-    // décision : certains sites fournisseurs (Balluff, se.com…) bloquent
-    // activement toute requête venant d'un serveur (Cloudflare/Akamai
-    // anti-bot), même via un proxy dédié maison — aucun fetch serveur ne
-    // peut passer ces protections. L'extension, elle, ouvre la page dans
-    // une VRAIE fenêtre de navigateur (masquée) : la page passe ces
-    // contrôles normalement, exactement comme si l'utilisateur l'avait
-    // ouverte lui-même. Voir catalogue-bridge.js côté extension pour le
-    // relais spi_extract_url_request → spi_extract_url_result.
-    var settled = false;
-    var timer;
-    function onResult(e){
-      if(settled) return;
-      settled = true;
-      window.removeEventListener('spi_extract_url_result', onResult);
-      clearTimeout(timer);
-      var r = e.detail || {};
-      if(!r.ok || !r.html){
-        setExtractLoading(false);
-        hintEl.style.color = '#DC2626';
-        hintEl.textContent = '✗ ' + (r.error || 'Extraction impossible') + ' — collez le code source manuellement.';
-        return;
-      }
-      fHtml.value = r.html;
-      document.getElementById('btnExtract').click();
-      // Champs/caractéristiques DÉJÀ résolus côté extension (site reconnu
-      // dans sites/*.json, moteur interpreter.js) — retour utilisateur :
-      // "seule l'extension doit choisir la bonne règle [...] j'ai besoin de
-      // tous les éléments". PRIORITAIRES sur ce que btnExtract vient de
-      // trouver via le parsing générique de cette page (même mécanisme de
-      // priorité que le pont localStorage, voir _applyExtractedFields/
-      // _applyExtractedSpecs dans js/init.js, réutilisées ici telles
-      // quelles) — le parsing générique ci-dessus reste la base (photos de
-      // la galerie, repli si l'extension n'a rien trouvé pour ce champ ou
-      // que le site n'est pas dans sites/*.json), pas remplacé, seulement
-      // complété/corrigé champ par champ.
-      if(typeof window._applyExtractedFields === 'function') window._applyExtractedFields(r.fields);
-      if(typeof window._applyExtractedSpecs === 'function') window._applyExtractedSpecs(r.specs, true);
-      setExtractLoading(false);
-      hintEl.style.color  = '#059669';
-      hintEl.textContent  = '✓ Extraction réussie !';
-      setTimeout(function(){ hintEl.style.display = 'none'; }, 8000);
-    }
-    window.addEventListener('spi_extract_url_result', onResult);
-
-    // 22s : le temps qu'une page fournisseur (photos, scripts tiers) charge
-    // entièrement dans la fenêtre ouverte par l'extension, plus une marge.
-    // Si rien ne répond dans ce délai, soit la page met vraiment trop
-    // longtemps, soit l'extension n'est pas installée — dans les deux cas,
-    // spi_extract_url_result ne sera jamais émis, ce timeout est donc le
-    // seul moyen de ne pas rester bloqué en attente indéfiniment.
-    timer = setTimeout(function(){
-      if(settled) return;
-      settled = true;
-      window.removeEventListener('spi_extract_url_result', onResult);
-      setExtractLoading(false);
-      hintEl.style.color = '#DC2626';
-      hintEl.textContent = '✗ Aucune réponse — l\'extension SPI est-elle bien installée ? Sinon, collez le code source manuellement.';
-    }, 22000);
-
-    window.dispatchEvent(new CustomEvent('spi_extract_url_request', { detail: { url: url } }));
-  });
-
   document.getElementById('btnExtract').addEventListener('click', function(){
     var html = fHtml.value;
     if(!html.trim()){
@@ -731,11 +638,9 @@
 
     if(found.length){
       extractStatus.className = 'extract-status ok show';
-      extractStatus.textContent = 'Informations trouvées : ' + found.join(', ') + '. Vérifiez puis complétez à la main si besoin (onglet « Saisie manuelle »).';
-      switchTab('manual');
+      extractStatus.textContent = 'Informations trouvées : ' + found.join(', ') + '. Vérifiez puis complétez à la main si besoin.';
     }else{
       extractStatus.className = 'extract-status warn show';
-      extractStatus.textContent = 'Aucune information standard détectée sur cette page. Passez à l\'onglet « Saisie manuelle » pour remplir les champs vous-même.';
-      switchTab('manual');
+      extractStatus.textContent = 'Aucune information standard détectée sur cette page. Remplissez les champs vous-même.';
     }
   });

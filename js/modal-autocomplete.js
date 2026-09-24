@@ -114,7 +114,6 @@
     fPrice.value = p.price||''; fPhoto.value = p.photo||'';
     updatePhotoPreview();
     renderPriceHistory(p);
-    switchTab('manual');
     if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';
     if(priceDisplayRow) priceDisplayRow.style.display = 'flex';
     if(priceCreateRow)  priceCreateRow.style.display  = 'none';
@@ -218,17 +217,6 @@
       modalTitle.textContent = 'Ajouter un produit';
       modalLeftFoot.textContent = '';
       _formOriginalSnapshot = null;
-
-      // Seuil aligné sur la règle CSS qui masque tout l'onglet "Extraction
-      // automatique" sur mobile/tablette (voir #productExtractTabs dans
-      // css/styles.css) — 1024px ET pointer:coarse, pas juste 768px comme
-      // avant : sans le pointer:coarse, une fenêtre desktop simplement
-      // redimensionnée en dessous de 1024px (souris, pas tactile) aurait
-      // aussi basculé sur "Saisie manuelle" alors que l'extraction
-      // automatique y fonctionne parfaitement.
-      var _isMobileOrTablet = window.innerWidth <= 1024
-        && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      switchTab(_isMobileOrTablet ? 'manual' : 'auto');
 
       // Affiche la zone prix de vente uniquement en mode création
       sellingPriceZoneEl.style.display = 'block';

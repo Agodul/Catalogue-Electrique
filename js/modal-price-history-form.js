@@ -302,5 +302,4 @@
     sellingPriceZoneEl.style.display = 'none';
     fSellingPrice.value = '';
     sellingPriceHint.textContent = '';
-    switchTab('auto');
   }
