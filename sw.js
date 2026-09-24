@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260924130946";
+const CACHE = "spi-catalogue-v20260924135705";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -46,6 +46,7 @@ const FILES = [
   "./",
   "./assets/apple-touch-icon.png",
   "./assets/favicon.ico",
+  "./assets/fonts/tabler-icons.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icons/families/svg-accessoire.png",
@@ -110,6 +111,7 @@ const FILES = [
   "./assets/splash.mp4",
   "./assets/three-d-badge.png",
   "./css/styles.css",
+  "./css/tabler-icons.css",
   "./index.html",
   "./js/actions-backup.js",
   "./js/actions-compare.js",

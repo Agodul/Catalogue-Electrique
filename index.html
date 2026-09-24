@@ -100,7 +100,15 @@
      Aucune image ni réponse fetch en clair ne peut devenir un script. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yYCyxtyu69I8yAhU4lB55XsJVDHPZDP459NKv+DD4io=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https: http:; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src blob:; base-uri 'self'; form-action 'self'; object-src 'none';">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" integrity="sha384-enQOo0dFaqOuACimJrhDH3XtzLk5jDIo5gfCGUvfZWLoiAyi/Jf+Ny5+etklU279" crossorigin="anonymous">
+<!-- Auto-hébergée (css/tabler-icons.css + assets/fonts/tabler-icons.woff2)
+     plutôt que depuis cdn.jsdelivr.net — retour utilisateur : "lorsqu'on
+     accede au catalogue sans internet on a pas les icons sur le bouton".
+     Ce fichier n'était jamais précaché par le service worker (seuls les
+     fichiers de FILES/FILES_DEFERRED dans sw.js, tous internes au site, le
+     sont) : hors ligne, la police d'icônes ne se chargeait jamais et
+     toutes les icônes ti-* restaient invisibles. Même principe déjà en
+     place pour PDF.js/SheetJS/ExcelJS/JSZip (js/*.min.js). -->
+<link rel="stylesheet" href="css/tabler-icons.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/plus-jakarta-sans@5.3.0/index.css" integrity="sha384-CriTXMxa9KSWUY4RPeIP7Xe+CI39CEWYo20uac1eZ4erQw31mZTTxvq6xZdWgidR" crossorigin="anonymous">
 <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
 <!-- interactive-widget=resizes-content (au lieu de resizes-visual) : retour
