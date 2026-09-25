@@ -285,6 +285,13 @@
         } else {
           throw new Error('Format invalide');
         }
+        // Ne jamais afficher une demande encore en attente (data.request:true,
+        // voir js/requests.js) comme si c'était un vrai produit du catalogue —
+        // /pullDatas sans filtre renvoie tout, demandes comprises (retour
+        // utilisateur : une proposition de nouveau produit non encore validée
+        // ne doit être visible que dans "Demandes en attente", pas dans le
+        // catalogue de tout le monde).
+        products = products.filter(function(p){ return !(p && p.request === true); });
         // [] : products vient d'être remplacé par les données DU serveur —
         // les repousser serait un aller-retour inutile (et re-timbrerait
         // inutilement createdAt sur tout le catalogue, voir les autres
@@ -332,6 +339,9 @@
       } else {
         throw new Error('Format invalide');
       }
+      // Voir commentaire équivalent juste au-dessus (import auto au
+      // changement d'URL serveur) : exclure les demandes en attente.
+      products = products.filter(function(p){ return !(p && p.request === true); });
       // [] : voir commentaire équivalent juste au-dessus (import auto au
       // changement d'URL serveur) — products vient d'être remplacé par les
       // données DU serveur, rien à repousser.

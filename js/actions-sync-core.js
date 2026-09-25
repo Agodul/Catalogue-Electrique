@@ -18,6 +18,15 @@
         serverItems = data;
       }
 
+      // Ne jamais fusionner une demande encore en attente (data.request:true,
+      // voir js/requests.js) dans le catalogue local — /pullDatas sans
+      // paramètre "request" renvoie tout, demandes comprises. Sans ce filtre,
+      // une proposition de nouveau produit non encore validée par un admin
+      // deviendrait visible dans le catalogue de TOUT utilisateur synchronisé
+      // (retour utilisateur : cette synchro tourne pour tout le monde, pas
+      // seulement les admins).
+      serverItems = serverItems.filter(function(sp){ return !(sp && sp.request === true); });
+
       // Mettre à jour lastSync
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
       if(serverItems.length === 0) return;

@@ -189,8 +189,15 @@
     // js/modal-request-review.js) passe aussi par ici, mais uniquement pour
     // un admin (isAdmin toujours vrai dans ce cas) — jamais bloquée par ce
     // garde-fou.
+    // Le mode "Proposer un produit/une modification" (_proposeMode, voir
+    // js/modal-specs-editor.js _openProposeModal) doit lui aussi passer sans
+    // canEdit/isAdmin : c'est justement le circuit prévu pour un compte SANS
+    // droit d'édition (retour utilisateur : testé avec un compte sans
+    // aucune permission, "Proposer un produit" affichait à tort "Droit de
+    // modification requis" — ce garde-fou ne distinguait pas encore ce cas
+    // de l'ancien "Ajouter/Modifier" direct qu'il visait).
     var _perms = window._userPerms || {};
-    if(!(_perms.canEdit || _perms.isAdmin)){
+    if(!(_perms.canEdit || _perms.isAdmin) && !window._proposeMode){
       if(typeof showToast === 'function') showToast('Droit de modification requis', 'err', 3000);
       return;
     }

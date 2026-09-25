@@ -31,6 +31,19 @@
   function reqCurrentUser(){ return typeof authGetCurrentUser === 'function' ? authGetCurrentUser() : null; }
   function reqIsAdmin(){ var u = reqCurrentUser(); return u && u.isAdmin; }
 
+  // Défense en profondeur : ne JAMAIS faire confiance aveuglément au filtre
+  // serveur ?request=true de /pullDatas — retour utilisateur, capture à
+  // l'appui : côté admin, le CATALOGUE ENTIER (~598 produits) apparaissait
+  // comme "demandes en attente", chaque produit réel marqué "Nouveau" (le
+  // filtre serveur ne filtrait rien). Sans ce garde-fou, reqRefuse/reqCancel
+  // (_reqDiscardPendingRow) auraient alors purement et simplement SUPPRIMÉ
+  // le produit réel cliqué en pensant traiter une demande — un simple clic
+  // sur "Refuser"/"Tout refuser" aurait vidé le catalogue. Toute liste tirée
+  // de /pullDatas?request=true repasse donc par ce filtre côté CLIENT avant
+  // d'être utilisée nulle part, quel que soit ce que le serveur a vraiment
+  // filtré.
+  function _reqIsPending(it){ return !!(it && it.data && it.data.request === true); }
+
   // ── Badge notification ────────────────────────────────────────
   var _reqLastCount        = 0; // dernier total ABSOLU connu (badge combiné — voir reqUpdateBadge)
   var _reqLastCountProduct = 0; // dernier total ABSOLU des demandes PRODUIT (notif séparée)
@@ -77,26 +90,26 @@
     if(!sUrl || !reqIsAdmin()) return;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      // Toujours le total ABSOLU actuel (pas de timestamp= filtrant sur les
-      // nouvelles entrées) — l'ancienne version cumulait un delta "nouvelles
-      // demandes depuis le dernier check" sans jamais rien soustraire quand
-      // une demande était résolue/acceptée/refusée : le badge ne pouvait que
-      // monter, jamais redescendre (retour utilisateur : badge resté affiché
-      // après avoir tout traité). Le payload {count} reste minuscule, pas de
-      // coût réel à le refaire à chaque poll plutôt qu'un delta.
-      //
-      // checkDocsReq n'est PAS ajouté au total : "refs" y compte les
-      // demandes ayant au moins un document joint — un sous-ensemble des
-      // demandes déjà comptées par checkReq, pas des demandes en plus.
-      // Un document joint appartient à une demande déjà comptée (aucun
-      // fichier_req n'existe sans son catalogue_req correspondant) — les
-      // additionner doublait le compte pour toute demande avec pièce jointe
-      // (retour utilisateur : "4 notifs alors que 2 demandes", les deux
-      // ayant chacune un fichier joint → 2+2).
-      var rData = await fetch(sUrl + '/checkReq', { headers: h, cache: 'no-store' });
-      var dData = rData.ok ? await rData.json() : null;
-      if(!dData) return; // serveur down, on ne met pas à jour
-      var nProduct = (dData && dData.count) || 0;
+      // /checkReq a disparu du serveur (nouveau swagger, retour utilisateur
+      // "il y a des api qui ont été supprimé sur le serveur du dev") : les
+      // demandes produit vivent maintenant dans la MÊME collection que le
+      // catalogue réel (/pushDatas/pullDatas), distinguées par le champ
+      // data.request (true = demande en attente, absent/false = produit
+      // réel) — voir reqSubmit ci-dessous. Aucun endpoint de comptage dédié
+      // pour ce filtre (/checkDatas ne prend qu'un paramètre timestamp, pas
+      // request) : on récupère la liste complète via /pullDatas?request=true
+      // et on compte côté client. Payload plus lourd qu'un simple {count},
+      // mais c'est la seule option que le nouveau swagger expose.
+      var rData = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
+      if(!rData.ok) return; // serveur down, on ne met pas à jour
+      var dData = await rData.json();
+      var reqItems = (dData && Array.isArray(dData.items)) ? dData.items
+                   : Array.isArray(dData) ? dData : [];
+      reqItems = reqItems.filter(_reqIsPending);
+      // Filtre type==="bug" conservé par sécurité (d'éventuelles demandes
+      // historiques d'avant la migration vers l'API bugs dédiée) — voir le
+      // même filtre dans reqLoadAdminList plus bas.
+      var nProduct = reqItems.filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; }).length;
       // + rapports de bug (API dédiée, comptés séparément — voir mémoire
       // "bug-report-api-migration"). Un échec de /checkBugs (pas encore
       // disponible côté serveur, etc.) ne doit pas empêcher d'afficher au
@@ -136,16 +149,14 @@
 
   // ── Polling ───────────────────────────────────────────────────
   // Plus de setInterval dédié ici — doCheckAllSync() (js/actions-settings-sync.js, toutes
-  // les 15s) appelle déjà /checkAll qui inclut catalogueRequests/bugs
+  // les 15s) appelle déjà /checkAll qui inclut catalogue-request/bugs
   // (revision/count/changedAt) ; il relance reqUpdateBadge() UNIQUEMENT
   // quand l'un des deux a changé, via window._reqUpdateBadge ci-dessous,
-  // plutôt qu'un second poll (/checkReq+/checkBugs) totalement indépendant
-  // toutes les 30s qui refaisait le même travail de détection en double
-  // (retour utilisateur : consolider sur /checkAll). reqUpdateBadge()
-  // elle-même continue d'appeler /checkReq et /checkBugs pour le VRAI
-  // décompte (déjà vérifiés contre le Swagger réel — voir mémoire
-  // "bug-report-api-migration") — seul le déclenchement change, pas la
-  // source des chiffres affichés.
+  // plutôt qu'un second poll totalement indépendant toutes les 30s qui
+  // refaisait le même travail de détection en double (retour utilisateur :
+  // consolider sur /checkAll). reqUpdateBadge() elle-même continue
+  // d'appeler /pullDatas?request=true et /checkBugs pour le VRAI décompte —
+  // seul le déclenchement change, pas la source des chiffres affichés.
   function reqStartPolling(){
     reqStopPolling();
     if(!reqServerUrl() || !reqIsAdmin()) return;
@@ -153,11 +164,11 @@
     // immédiat à reqUpdateBadge() qui suivait a été retiré : la connexion
     // (js/auth.js, authLogin) déclenche maintenant doCheckAllSync()
     // directement, qui rappelle déjà window._reqUpdateBadge() lui-même SI
-    // catalogueRequests/bugs a changé depuis le dernier état connu (et
+    // catalogue-request/bugs a changé depuis le dernier état connu (et
     // sinon, l'ancien compte affiché reste juste correct tel quel — pas la
     // peine de refaire la requête pour un résultat identique). Le
-    // faire ici EN PLUS aurait dupliqué le même /checkReq+/checkBugs deux
-    // fois de suite à chaque connexion.
+    // faire ici EN PLUS aurait dupliqué le même poll deux fois de suite à
+    // chaque connexion.
     _reqAskNotifPermission();
   }
   function reqStopPolling(){ _reqLastCount = 0; _reqLastCountProduct = 0; _reqLastCountBug = 0; }
@@ -166,6 +177,35 @@
   window._reqUpdateBadge  = reqUpdateBadge;
 
   // ── Soumettre une demande ─────────────────────────────────────
+  // /pushDatasReq a disparu — une demande est maintenant un item /pushDatas
+  // ordinaire, marqué data.request:true pour le distinguer d'un produit
+  // réel. /pullDatas accepte désormais un paramètre "request" (bool) pour
+  // les retrouver sans les mélanger au catalogue en direct (voir
+  // reqLoadAdminList/reqLoadMineList plus bas).
+  //
+  // ATTENTION ref = clé unique côté serveur (une seule ligne par ref, que ce
+  // soit le produit réel ou sa demande — /pushDatas fait un upsert par ref,
+  // voir catalogue_core.py). Pour une demande de NOUVEAU produit ça ne pose
+  // aucun problème (rien n'existe encore sous cette ref). Mais pour une
+  // demande de MODIFICATION, écraser purement et simplement la ligne avec le
+  // contenu proposé (ancien comportement) fait disparaître le produit réel
+  // du catalogue pendant toute la durée de la revue, et le supprime
+  // définitivement si la demande est refusée/annulée (constaté par test :
+  // reqRefuse/reqCancel ne faisaient qu'un /deleteDatas?ref= sur cette même
+  // ligne). Solution demandée : la ligne garde TOUJOURS les valeurs réelles
+  // actuelles au niveau racine de "data", et seuls les champs proposés
+  // (différents de l'existant) sont isolés dans data.requestFields — annuler
+  // ou refuser la demande n'a alors plus qu'à retirer requestFields/request
+  // pour restaurer le produit, jamais besoin de supprimer la ligne (voir
+  // _reqDiscardPendingRow plus bas, utilisé par reqRefuse/reqCancel).
+  function _reqComputeChangedFields(original, proposed){
+    var out = {};
+    Object.keys(proposed || {}).forEach(function(k){
+      var origVal = original ? original[k] : undefined;
+      if(JSON.stringify(proposed[k]) !== JSON.stringify(origVal)) out[k] = proposed[k];
+    });
+    return out;
+  }
   window.reqSubmit = async function(payload, existingProduct){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     var user = reqCurrentUser(); if(!user) return false;
@@ -173,45 +213,74 @@
     try {
       var h = reqHeaders();
       var now = Date.now();
-      var toSend = Object.assign({}, payload, {
-        id:           payload.id || ('p_' + now + '_' + Math.random().toString(36).substr(2,6)),
-        user:         username,
-        createdAt:    payload.createdAt || now,
-        updatedAt:    now,
-        _reqUser:     username,
-        _reqAt:       now,
-        _reqOriginal: existingProduct || null
+      // Modification : base = valeurs réelles actuelles (jamais écrasées tant
+      // que la demande n'est pas acceptée) + requestFields = uniquement ce
+      // qui change. Nouveau produit : rien de réel à protéger, la ligne EST
+      // la proposition, pas de requestFields.
+      var isModification = !!existingProduct;
+      var base = isModification ? Object.assign({}, existingProduct) : Object.assign({}, payload);
+      var toSend = Object.assign({}, base, {
+        ref:           payload.ref,
+        id:            payload.id || (existingProduct && existingProduct.id) || ('p_' + now + '_' + Math.random().toString(36).substr(2,6)),
+        user:          username,
+        createdAt:     (existingProduct && existingProduct.createdAt) || payload.createdAt || now,
+        updatedAt:     now,
+        request:       true,
+        requestFields: isModification ? _reqComputeChangedFields(existingProduct, payload) : null,
+        _reqUser:      username,
+        _reqAt:        now
       });
-      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
+      var r = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
       return r.ok;
     } catch(e) { console.warn('reqSubmit:', e); return false; }
   };
 
+  // ── Abandonner une demande en attente sans jamais supprimer un produit
+  //     réel (voir le commentaire au-dessus de reqSubmit/requestFields) ──
+  // Une demande de MODIFICATION (data.requestFields présent, même vide) : la
+  // ligne partagée avec le produit réel est simplement restaurée à son état
+  // actuel (requestFields/request retirés) via /pushDatas — jamais de
+  // /deleteDatas dessus, sinon le produit réel disparaîtrait avec la demande.
+  // Une demande de NOUVEAU produit (requestFields absent) : rien de réel
+  // derrière, suppression classique.
+  async function _reqDiscardPendingRow(sUrl, ref, h){
+    var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: h, cache: 'no-store' });
+    if(!r.ok) return false;
+    var d = await r.json();
+    // _reqIsPending : si ce "ref" est en fait un produit réel (filtre serveur
+    // cassé/ignoré, voir son commentaire), on ne le supprime surtout pas —
+    // on se comporte comme s'il n'y avait rien à annuler/refuser.
+    var items = ((d && d.items) || []).filter(_reqIsPending);
+    if(!items.length) return true; // déjà absent (annulé/refusé entretemps), ou jamais une vraie demande : rien à faire
+    var item = items[0].data || {};
+    if(item.requestFields){
+      delete item._reqUser; delete item._reqAt; delete item.user; delete item.requestFields;
+      item.request = false;
+      item.updatedAt = Date.now();
+      var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
+      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
+      return r2.ok;
+    }
+    var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:h });
+    return r3.ok;
+  }
+
   // ── Annuler une demande ───────────────────────────────────────
-  // id : identifiant propre de la demande — voir commentaire équivalent sur
-  // reqRefuse ci-dessous. Même repli si absent (compat arrière).
+  // /deleteDatasReq a disparu — la demande EST l'entrée /pushDatas
+  // elle-même (data.request:true), identifiée par sa "ref" comme n'importe
+  // quel /deleteDatas au niveau de l'API, mais voir _reqDiscardPendingRow
+  // ci-dessus : plus un simple /deleteDatas direct pour une modification.
+  // Plus de requestId/uuid distinct à résoudre au préalable (voir l'ancien
+  // _reqResolveId, retiré). "id" reste accepté en 2e argument par compat
+  // arrière avec les appelants existants mais n'est plus utilisé.
   window.reqCancel = async function(ref, id){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     var user = reqCurrentUser(); if(!user) return false;
-    var username = user.username || user.name || 'user';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      if(!id) id = await _reqResolveId(sUrl, ref, username, h);
-      // /deleteDatasReq ne prend QUE id désormais (confirmé avec le
-      // développeur serveur — ref/user ne servaient plus qu'à le retrouver
-      // ci-dessus quand il manquait).
-      var r = await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
-      // Même id que /deleteDatasReq ci-dessus (confirmé avec le développeur
-      // serveur) — aucun id distinct par document n'est jamais suivi côté
-      // client pour ce flux (contrairement aux rapports de bug, qui ont leur
-      // propre attachmentId) — confirmé par le Swagger : /deleteDocsReq ne
-      // prend que requestId, ni ref ni user. Uniquement s'il y en a
-      // vraiment un (retour utilisateur : ne pas appeler /deleteDocsReq
-      // sinon).
-      if(await _reqHasDocs(sUrl, ref, username, h)){
-        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h }).catch(function(){});
-      }
-      return r.ok;
+      var ok = await _reqDiscardPendingRow(sUrl, ref, h);
+      await _reqDeleteAttachedDocs(sUrl, ref, h);
+      return ok;
     } catch(e) { return false; }
   };
 
@@ -234,79 +303,81 @@
     } catch(e) { return false; }
   };
 
+  // ── Documents joints à une demande ──────────────────────────────
+  // /pushDocsReq, /pullDocsReq et /deleteDocsReq ont tous disparu : un
+  // document joint à une demande est maintenant un /pushDocs ordinaire,
+  // marqué metadata.request:true (retour utilisateur : "pour les docsReq tu
+  // dois ajouter dans le champs metadata 'request' avec true ou false").
+  // /pullDocs et /deleteDocs n'ont PAS de paramètre "request" pour filtrer —
+  // contrairement à /pullDatas ci-dessus. Un simple /deleteDocs?ref=
+  // (pluriel, tout supprimer d'un coup) serait donc dangereux pour une
+  // demande de MODIFICATION d'un produit déjà réel : la demande partage
+  // alors la même ref que ses documents déjà en place, et /deleteDocs?ref=
+  // les supprimerait TOUS, y compris les documents réels. Les fonctions
+  // ci-dessous énumèrent donc chaque document un par un (nofile=true, léger,
+  // pas de téléchargement du fichier) et ne touchent, via /deleteDoc?uuid=
+  // (singulier), qu'à ceux dont metadata.request vaut true.
+  function _reqParseDocMetadata(f){
+    try { return typeof f.metadata === 'string' ? (JSON.parse(f.metadata) || {}) : (f.metadata || {}); }
+    catch(e){ return {}; }
+  }
+  async function _reqListAttachedDocs(sUrl, ref, h){
+    try {
+      var r = await fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(ref), { headers: h, cache: 'no-store' });
+      if(!r.ok) return [];
+      var d = await r.json();
+      var files = (d && d.items) || [];
+      return files.filter(function(f){ return _reqParseDocMetadata(f).request === true; });
+    } catch(e){ return []; }
+  }
+
+  // Supprime, un par un, les documents marqués metadata.request:true pour
+  // cette ref — voir le commentaire en tête de section sur pourquoi pas de
+  // suppression groupée par ref.
+  async function _reqDeleteAttachedDocs(sUrl, ref, h){
+    var files = await _reqListAttachedDocs(sUrl, ref, h);
+    for(var i = 0; i < files.length; i++){
+      if(files[i].uuid){
+        await fetch(sUrl + '/deleteDoc?uuid=' + encodeURIComponent(files[i].uuid), { method:'DELETE', headers:h }).catch(function(){});
+      }
+    }
+  }
+
   // ── Transfère les docs/images joints à une demande vers le vrai produit ──
-  // reqRef/reqUser : identifient la demande côté _req. productRef : ref du
-  // produit réel une fois accepté (généralement identique à reqRef, sauf cas
-  // rares de ref changée par l'admin en éditant avant validation).
-  // Limite connue : pullDocsReq renvoie un ZIP quand il y a 2+ fichiers, et
-  // ce codebase n'a pas de lib de dézippage côté client — seul le cas
-  // "1 fichier joint" (de très loin le plus courant) est migré automatique-
-  // ment ; au-delà, un avertissement est affiché plutôt que d'échouer en
-  // silence ou de risquer une migration incorrecte.
+  // reqRef : ref de la demande. productRef : ref du produit réel une fois
+  // accepté (généralement identique à reqRef, sauf cas rares de ref changée
+  // par l'admin en éditant avant validation). Chaque document est
+  // retéléchargé puis repoussé SANS metadata.request (donc plus marqué comme
+  // une demande) — /pushDocs n'offrant pas de mise à jour de métadonnées
+  // seule sans réenvoyer le fichier, un aller-retour complet reste
+  // nécessaire même si productRef === reqRef. Réutilise _fetchPdfByName
+  // (js/render-documents.js, gère déjà le cas ZIP multi-fichiers) plutôt que
+  // de dupliquer cette logique — contrairement à l'ancienne version limitée
+  // à 1 seul fichier joint.
   // Retourne true si la demande avait au moins un document joint (qu'il ait
   // pu être migré intégralement ou non) — réutilisé par reqAccept juste en
-  // dessous pour ne PAS appeler /deleteDocsReq quand il n'y a rien à
-  // nettoyer (retour utilisateur : n'appeler /deleteDocsReq que s'il y a
-  // vraiment un document associé).
+  // dessous pour ne PAS appeler _reqDeleteAttachedDocs quand il n'y a rien à
+  // nettoyer.
   async function _reqMigrateDocsToProduct(reqRef, reqUser, productRef){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     try {
       var hGet = Object.assign({}, reqHeaders()); delete hGet['Content-Type'];
-      var rList = await fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
-      if(!rList.ok) return false;
-      var dList = await rList.json();
-      var files = dList && dList.items ? dList.items : [];
+      var files = await _reqListAttachedDocs(sUrl, reqRef, hGet);
       if(!files.length) return false;
-      if(files.length > 1){
-        console.warn('_reqMigrateDocsToProduct: ' + files.length + ' fichiers joints, migration auto limitée à 1 — à récupérer manuellement si besoin.');
-        if(typeof showToast === 'function') showToast(files.length + ' fichiers joints à cette demande — un seul a pu être transféré automatiquement', 'warn', 5000);
-      }
-      var rFile = await fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: hGet, cache: 'no-store' });
-      if(!rFile.ok) return true; // fichier(s) confirmé(s) plus haut, juste la récupération qui échoue — nettoyage encore nécessaire
-      var blob = await rFile.blob();
-      var cd = rFile.headers.get('Content-Disposition') || '';
-      var m = /filename="([^"]*)"/.exec(cd);
-      var filename = m ? m[1] : (files[0].filename || 'document');
-      if(/\.zip$/i.test(filename)) return true; // 2+ fichiers : cas non géré, déjà signalé ci-dessus — nettoyage quand même nécessaire
-      var fd = new FormData();
-      fd.append('ref', productRef);
-      fd.append('document', blob, filename);
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      await fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd });
+      for(var i = 0; i < files.length; i++){
+        await new Promise(function(resolve){
+          _fetchPdfByName(sUrl, reqRef, files[i].filename, hGet, function(err, ab, filename){
+            if(err){ console.warn('_reqMigrateDocsToProduct:', err); resolve(); return; }
+            var fd = new FormData();
+            fd.append('ref', productRef);
+            fd.append('document', new Blob([ab]), filename);
+            fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd }).catch(function(){}).then(resolve);
+          });
+        });
+      }
       return true;
     } catch(e) { console.warn('_reqMigrateDocsToProduct:', e); return false; }
-  }
-
-  // Un document est-il joint à cette demande ? — évite d'appeler
-  // /deleteDocsReq quand il n'y en a aucun (retour utilisateur). Léger :
-  // nofile=true, pas de téléchargement du fichier lui-même.
-  async function _reqHasDocs(sUrl, ref, user, h){
-    try {
-      var r = await fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
-      if(!r.ok) return false;
-      var d = await r.json();
-      return !!(d.items && d.items.length);
-    } catch(e){ return false; }
-  }
-
-  // ── Résout le VRAI id serveur d'une demande (uuid, ex.
-  // "ebe656a1-ebf0-418f-ae46-eebdae984996" — confirmé par le développeur
-  // serveur) ─────────────────────────────────────────────────────
-  // Cet id vit au SOMMET de chaque entrée de /pullDatasReq (à côté de
-  // "ref"/"user", PAS dans "data") — data.id, lui, est l'id généré côté
-  // CLIENT pour le produit proposé (ex. "p_1735600000_ab12cd", voir
-  // reqSubmit), sans aucun rapport avec celui-ci. Les avoir confondus est
-  // la cause exacte du "la suppression d'une demande ne fonctionne
-  // toujours pas" alors que le format id+ref+user semblait pourtant bon
-  // (retour utilisateur, avec un exemple réel de réponse serveur à
-  // l'appui).
-  async function _reqResolveId(sUrl, ref, user, h){
-    try {
-      var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h, cache: 'no-store' });
-      if(!r.ok) return '';
-      var d = await r.json();
-      return (d.items && d.items[0] && d.items[0].id) || '';
-    } catch(e){ return ''; }
   }
 
   // ── Accepter une demande ──────────────────────────────────────
@@ -317,21 +388,23 @@
     try {
       var h = reqHeaders();
       var hGet = Object.assign({}, h); delete hGet['Content-Type'];
-      var item, reqId;
+      var item;
       if(overrideData){
-        // Données déjà éditées côté admin — on les utilise directement,
-        // mais elles ne portent que le PRODUIT édité, jamais l'id réel de
-        // la demande côté serveur — à résoudre séparément.
+        // Données déjà éditées côté admin — on les utilise directement.
         item = Object.assign({}, overrideData);
-        reqId = await _reqResolveId(sUrl, ref, user, hGet);
       } else {
-        // Cas normal : récupérer depuis le serveur
-        var r = await fetch(sUrl + '/pullDatasReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: hGet, cache: 'no-store' });
+        // Cas normal : récupérer depuis le serveur. /pullDatasReq a disparu
+        // — même remplacement que reqLoadAdminList/reqLoadMineList plus bas
+        // (/pullDatas?request=true).
+        var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: hGet, cache: 'no-store' });
         if(!r.ok) return false;
         var d = await r.json();
-        if(!d.items || !d.items.length) return false;
-        item = d.items[0].data || {};
-        reqId = d.items[0].id || '';
+        // _reqIsPending : filtre défensif, voir son commentaire — ne jamais
+        // traiter un produit réel (filtre serveur cassé/ignoré) comme une
+        // demande à "accepter".
+        var items = ((d && d.items) || []).filter(_reqIsPending);
+        if(!items.length) return false;
+        item = items[0].data || {};
       }
       // Garde-fou : un rapport de bug (type:"bug") n'est PAS un produit — ne
       // doit jamais être poussé dans le vrai catalogue via /pushDatas.
@@ -339,29 +412,39 @@
       // sur toutes les demandes sans distinction (voir btnAcceptAllRequests) :
       // un garde-fou seulement dans l'UI de détail n'aurait pas suffi. Ne
       // devrait normalement plus jamais se déclencher depuis la migration
-      // vers l'API bugs dédiée (les rapports ne transitent plus par
-      // /pullDatasReq) — conservé par sécurité pour d'éventuels rapports
-      // historiques encore présents côté serveur dans l'ancien stockage.
+      // vers l'API bugs dédiée (les rapports ne transitent plus par ici) —
+      // conservé par sécurité pour d'éventuels rapports historiques encore
+      // présents côté serveur dans l'ancien stockage.
       if(item.type === 'bug') return await window.reqResolveBug(ref, item.attachmentId || null);
-      delete item._reqUser; delete item._reqAt; delete item._reqOriginal; delete item.user;
+      // Applique les champs proposés (data.requestFields, voir reqSubmit)
+      // par-dessus les valeurs réelles avant de valider — absent quand
+      // overrideData vient déjà du formulaire (état final déjà résolu par
+      // l'admin) ou pour une nouvelle proposition (rien à fusionner).
+      if(item.requestFields) Object.assign(item, item.requestFields);
+      delete item._reqUser; delete item._reqAt; delete item.user; delete item.requestFields;
+      // N'est plus une demande : redevient un produit réel du catalogue.
+      item.request = false;
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
       if(!r2.ok) return false;
+      var finalRef = item.ref || ref;
       // Transférer les documents/images joints à la demande vers le vrai
-      // produit avant de les supprimer côté _req — sinon ils disparaissent
+      // produit avant de les supprimer — sinon ils disparaissent
       // silencieusement à l'acceptation (retour utilisateur : les fichiers
       // joints doivent suivre le produit une fois validé, pas se perdre).
-      var hadDocs = await _reqMigrateDocsToProduct(ref, user, item.ref || ref);
-      // reqId : le vrai id serveur de la demande, résolu plus haut — voir
-      // _reqResolveId. /deleteDatasReq ne prend QUE id désormais (confirmé
-      // avec le développeur serveur).
-      await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet });
-      // hadDocs (renvoyé par _reqMigrateDocsToProduct juste au-dessus) :
-      // uniquement s'il y avait vraiment un document joint (retour
-      // utilisateur : ne pas appeler /deleteDocsReq sinon) — évite un
-      // second appel à /pullDocsReq pour la même vérification.
-      if(hadDocs){
-        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(reqId || ''), { method:'DELETE', headers:hGet }).catch(function(){});
+      var hadDocs = await _reqMigrateDocsToProduct(ref, user, finalRef);
+      if(hadDocs) await _reqDeleteAttachedDocs(sUrl, ref, hGet);
+      // La demande d'origine (ref) n'a besoin d'être supprimée séparément
+      // que si l'admin a changé la ref pendant la revue (overrideData) :
+      // sinon, le /pushDatas ci-dessus a déjà remplacé la même ligne EN
+      // PLACE (même ref, request passé à false juste au-dessus) — un
+      // /deleteDatas supplémentaire sur cette même ref supprimerait alors le
+      // produit qu'on vient tout juste d'accepter. Hypothèse de travail sur
+      // le nouveau modèle "une seule collection, ref comme clé" (nouveau
+      // swagger) — à confirmer avec le développeur serveur si un doublon ou
+      // une suppression inattendue apparaît en pratique.
+      if(finalRef !== ref){
+        await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:hGet }).catch(function(){});
       }
       return true;
     } catch(e) { console.warn('reqAccept:', e); return false; }
@@ -369,30 +452,23 @@
 
   // ── Joindre des fichiers (PDF/images) à une demande produit déjà envoyée ──
   // Utilisé après reqSubmit() côté "Proposer un produit/une modification"
-  // (voir btnSave dans actions.js) — même endpoint et même logique
-  // d'upload différé que reqSubmitBug ci-dessous, réutilisé pour éviter la
-  // duplication. Un échec d'upload ne remet pas en cause la demande déjà
+  // (voir btnSave dans actions.js). /pushDocsReq a disparu — un document
+  // joint à une demande est maintenant un /pushDocs ordinaire (ref = celle
+  // de la demande), marqué metadata.request:true pour le distinguer d'un
+  // document déjà réel (voir la section "Documents joints à une demande"
+  // plus haut). Un échec d'upload ne remet pas en cause la demande déjà
   // enregistrée, juste signalé en console.
   window.reqUploadAttachedFiles = async function(ref, files){
     var sUrl = reqServerUrl(); if(!sUrl || !files || !files.length) return;
     var user = reqCurrentUser(); if(!user) return;
-    var username = user.username || user.name || 'user';
     var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-    // /pushDocsReq attend "requestId" (uuid de la demande), ni "ref" ni
-    // "req_user" — confirmé par le Swagger. La demande vient d'être créée
-    // par reqSubmit() juste avant cet appel (voir btnSave dans actions.js),
-    // qui ne renvoie pas cet id — on le résout via _reqResolveId.
-    var requestId = await _reqResolveId(sUrl, ref, username, h);
-    if(!requestId){
-      console.warn('reqUploadAttachedFiles: id de la demande introuvable, envoi annulé');
-      return;
-    }
     for(var i = 0; i < files.length; i++){
       try {
         var fd = new FormData();
-        fd.append('requestId', requestId);
+        fd.append('ref', ref);
         fd.append('document', files[i], files[i].name);
-        var r = await fetch(sUrl + '/pushDocsReq', { method:'POST', headers:h, body:fd });
+        fd.append('metadata', JSON.stringify({ request: true }));
+        var r = await fetch(sUrl + '/pushDocs', { method:'POST', headers:h, body:fd });
         if(!r.ok) console.warn('reqUploadAttachedFiles: échec pour', files[i].name, 'HTTP', r.status);
       } catch(e) { console.warn('reqUploadAttachedFiles:', e); }
     }
@@ -532,24 +608,17 @@
   };
 
   // ── Refuser une demande ───────────────────────────────────────
-  // id : le VRAI id serveur de la demande (uuid — voir _reqResolveId
-  // ci-dessus, PAS data.id). Confirmé par le Swagger : /deleteDatasReq et
-  // /deleteDocsReq attendent tous les deux un paramètre "requestId" (et
-  // rien d'autre — pas ref/user). Optionnel pour compatibilité arrière : si
-  // absent (appelant pas encore
-  // mis à jour), on le récupère nous-mêmes.
+  // id : n'est plus utilisé (conservé en 3e argument par compat arrière avec
+  // les appelants existants) — voir reqCancel/_reqDiscardPendingRow juste
+  // au-dessus, même logique : une demande de modification refusée restaure
+  // le produit réel plutôt que de le supprimer avec la ligne.
   window.reqRefuse = async function(ref, user, id){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      if(!id) id = await _reqResolveId(sUrl, ref, user, h);
-      await fetch(sUrl + '/deleteDatasReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h });
-      // Uniquement s'il y a vraiment un document joint (retour utilisateur :
-      // ne pas appeler /deleteDocsReq sinon).
-      if(await _reqHasDocs(sUrl, ref, user, h)){
-        await fetch(sUrl + '/deleteDocsReq?requestId=' + encodeURIComponent(id || ''), { method:'DELETE', headers:h }).catch(function(){});
-      }
-      return true;
+      var ok = await _reqDiscardPendingRow(sUrl, ref, h);
+      await _reqDeleteAttachedDocs(sUrl, ref, h);
+      return ok;
     } catch(e) { return false; }
   };
 
@@ -711,13 +780,14 @@
 
 
   // ── Charger les demandes admin ────────────────────────────────
-  // Deux sources désormais séparées : /pullDatasReq (demandes produit) et
-  // /pullBugs (rapports de bug, API dédiée — voir mémoire
-  // "bug-report-api-migration") — combinées côté client pour l'affichage.
-  // Le filtre type==="bug" sur les items de /pullDatasReq est conservé par
-  // sécurité (d'éventuels anciens rapports encore présents côté serveur
-  // depuis avant cette migration), mais ne devrait plus jamais rien
-  // attraper pour les nouveaux rapports, tous envoyés via /pushBugs.
+  // Deux sources désormais séparées : /pullDatas?request=true (demandes
+  // produit — /pullDatasReq a disparu, voir reqSubmit) et /pullBugs
+  // (rapports de bug, API dédiée — voir mémoire "bug-report-api-migration")
+  // — combinées côté client pour l'affichage. Le filtre type==="bug" sur les
+  // items de /pullDatas?request=true est conservé par sécurité (d'éventuels
+  // anciens rapports encore présents côté serveur depuis avant cette
+  // migration), mais ne devrait plus jamais rien attraper pour les nouveaux
+  // rapports, tous envoyés via /pushBugs.
   // type : 'product' (par défaut) ou 'bug' — deux pages distinctes plutôt
   // qu'une liste combinée avec des en-têtes de section (retour utilisateur :
   // demandes produit et bugs signalés n'ont rien à voir, ne devraient même
@@ -730,10 +800,10 @@
     body.innerHTML = '<div class="req-empty"><i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;"></i></div>';
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var rProd = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
+      var rProd = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
       if(!rProd.ok) throw new Error('HTTP ' + rProd.status);
       var dProd = await rProd.json();
-      var prodRaw = dProd.items || [];
+      var prodRaw = ((dProd && dProd.items) || (Array.isArray(dProd) ? dProd : [])).filter(_reqIsPending);
 
       // Forme de la réponse non confirmée par la doc Swagger (au-delà des
       // champs de chaque bug) — lecture défensive : tableau brut, {items:},
@@ -779,21 +849,27 @@
       // marque résolu individuellement), donc pas de footer sur cet onglet.
       if(footer) footer.style.display = (type === 'bug') ? 'none' : 'flex';
 
+      // Map (pas un objet brut) : un nom d'utilisateur "__proto__"/
+      // "constructor"/"toString"/etc. réécrirait silencieusement le
+      // prototype de l'objet au lieu d'ajouter une entrée — la demande de
+      // CET utilisateur disparaissait alors totalement de la liste admin,
+      // sans erreur (trouvé en stress-testant, même piège déjà évité par
+      // localMap dans js/actions-sync-core.js pour les refs produit).
       function groupByUser(list){
-        var byUser = {};
+        var byUser = new Map();
         list.forEach(function(it){
           var data = it.data || {};
           var u = data._reqUser || it.user || '?';
-          if(!byUser[u]) byUser[u] = [];
-          byUser[u].push({ ref: it.ref, data: data });
+          if(!byUser.has(u)) byUser.set(u, []);
+          byUser.get(u).push({ ref: it.ref, data: data });
         });
         return byUser;
       }
       var byUser = groupByUser(items);
       var html = '';
-      Object.keys(byUser).forEach(function(u){
-        html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + byUser[u].length + '</div>';
-        byUser[u].forEach(function(item){ html += reqRenderAdminItem(item, u); });
+      byUser.forEach(function(userItems, u){
+        html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + userItems.length + '</div>';
+        userItems.forEach(function(item){ html += reqRenderAdminItem(item, u); });
       });
       body.innerHTML = html;
 
@@ -817,7 +893,7 @@
     var refKey = escapeHtml(item.ref);
     var userKey = escapeHtml(user);
     var isBug  = data.type === 'bug';
-    var isNew  = !data._reqOriginal;
+    var isNew  = !data.requestFields;
     var titleText = isBug ? (data.title || 'Bug signalé') : item.ref;
     var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
     // Badge coloré par GRAVITÉ pour un bug (plutôt qu'un badge "Bug"
@@ -860,22 +936,29 @@
     if(footer) footer.style.display = 'none'; // jamais d'action groupée sur "Mes demandes"
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var rProd = await fetch(sUrl + '/pullDatasReq?user=' + encodeURIComponent(username), { headers: h, cache: 'no-store' });
+      // /pullDatasReq?user= a disparu avec le reste de l'API _req —
+      // /pullDatas?request=true n'a pas de paramètre "user" équivalent (voir
+      // le nouveau swagger) : on récupère TOUTES les demandes en attente et
+      // on filtre côté client sur data._reqUser, le champ qui portait déjà
+      // l'auteur (voir reqSubmit) — même principe défensif que le filtre
+      // déjà en place ci-dessous pour /pullBugs.
+      var rProd = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
       if(!rProd.ok) throw new Error('HTTP ' + rProd.status);
       var dProd = await rProd.json();
-      var prodRaw = dProd.items || [];
+      var prodAll = ((dProd && dProd.items) || (Array.isArray(dProd) ? dProd : [])).filter(_reqIsPending);
+      var prodRaw = prodAll.filter(function(it){ return ((it && it.data) || {})._reqUser === username; });
 
-      // /pullBugs ne documente aucun paramètre "user" (seulement id/date) —
-      // contrairement à /pullDatasReq. L'hypothèse de départ était que le
-      // serveur scope déjà la réponse via le token d'auth envoyé dans les
-      // headers (admin = tout, utilisateur normal = ses propres rapports) —
-      // CONFIRMÉE FAUSSE en pratique (retour utilisateur : connecté avec un
-      // compte non-admin, la fenêtre "Demandes en attente" est identique à
-      // celle d'un admin) : le serveur renvoie TOUS les bugs à TOUT le monde,
-      // sans tenir compte du token. Filtre client ajouté ci-dessous en filet
-      // de sécurité, sur le même principe que le "?user=" déjà envoyé à
-      // /pullDatasReq — sans lui, un utilisateur normal verrait les bugs
-      // signalés par les AUTRES en plus des siens dans "Mes demandes".
+      // /pullBugs ne documente aucun paramètre "user" (seulement id/date).
+      // L'hypothèse de départ était que le serveur scope déjà la réponse via
+      // le token d'auth envoyé dans les headers (admin = tout, utilisateur
+      // normal = ses propres rapports) — CONFIRMÉE FAUSSE en pratique
+      // (retour utilisateur : connecté avec un compte non-admin, la fenêtre
+      // "Demandes en attente" est identique à celle d'un admin) : le serveur
+      // renvoie TOUS les bugs à TOUT le monde, sans tenir compte du token.
+      // Filtre client ajouté ci-dessous en filet de sécurité, même principe
+      // que le filtre par _reqUser juste au-dessus — sans lui, un
+      // utilisateur normal verrait les bugs signalés par les AUTRES en plus
+      // des siens dans "Mes demandes".
       var bugItemsRaw = [];
       try {
         var rBugs = await fetch(sUrl + '/pullBugs', { headers: h, cache: 'no-store' });
@@ -1288,10 +1371,14 @@
       if(!(await customConfirm('Accepter toutes les demandes ?', '', { okLabel: 'Accepter tout' }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
+      // /pullDatasReq a disparu — /pullDatas?request=true (voir reqSubmit).
+      // Filtre type!=="bug" par sécurité, même raison que reqLoadAdminList.
+      var r = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
       if(!r.ok) return;
       var d = await r.json();
-      var items = d.items || [];
+      var items = ((d && d.items) || (Array.isArray(d) ? d : []))
+        .filter(_reqIsPending)
+        .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
         var user = (it.data || {})._reqUser || it.user || '';
@@ -1306,10 +1393,18 @@
       if(!(await customConfirm('Refuser toutes les demandes ?', 'Toutes les demandes en attente seront rejetées. Cette opération est irréversible.', { okLabel: 'Refuser tout', danger: true }))) return;
       var sUrl = reqServerUrl();
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var r = await fetch(sUrl + '/pullDatasReq', { headers: h, cache: 'no-store' });
+      // /pullDatasReq a disparu — /pullDatas?request=true (voir reqSubmit).
+      var r = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
       if(!r.ok) return;
       var d = await r.json();
-      var items = d.items || [];
+      // _reqIsPending d'abord : voir son commentaire — sans ce filtre, "Tout
+      // refuser" aurait bouclé sur le catalogue entier via reqRefuse (chaque
+      // appel individuel reste protégé par _reqDiscardPendingRow, mais
+      // autant ne même pas tenter l'appel sur des centaines de vrais
+      // produits).
+      var items = ((d && d.items) || (Array.isArray(d) ? d : []))
+        .filter(_reqIsPending)
+        .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
         var user = (it.data || {})._reqUser || it.user || '';
