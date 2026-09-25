@@ -11,7 +11,15 @@
 
   // Fetch un fichier PDF par ref, extrait du ZIP si nécessaire par nom de fichier
   // Détecte si un ArrayBuffer est un ZIP via magic bytes (PK = 0x50 0x4B)
+  // Garde-fou < 4 octets : trouvé en testant la migration de documents d'une
+  // demande acceptée (js/requests.js, _reqMigrateDocsToProduct) avec un
+  // fichier minuscule — new Uint8Array(ab, 0, 4) lève un RangeError dès que
+  // le buffer fait moins de 4 octets, ce qui cassait silencieusement toute
+  // la migration (le document n'était jamais repoussé, puis supprimé quand
+  // même par le nettoyage qui suit — perte du fichier). Un fichier de moins
+  // de 4 octets ne peut de toute façon pas être un ZIP valide.
   function _isZipBuffer(ab){
+    if(ab.byteLength < 4) return false;
     var view = new Uint8Array(ab, 0, 4);
     return view[0] === 0x50 && view[1] === 0x4B;
   }

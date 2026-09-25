@@ -223,6 +223,17 @@
     height:34px; padding:0 16px; box-sizing:border-box;
     display:inline-flex; align-items:center; justify-content:center;
   }
+  /* #btnProposeProduct — même bouton .copper que #btnAdd juste au-dessus
+     (jamais affiché en même temps, voir js/auth.js canPropose/canEdit), mais
+     hérite lui aussi du <button> de base (padding:10px 16px) faute d'un
+     correctif équivalent : mesuré 37.5px de haut contre 34px pour #btnAdd
+     (retour utilisateur : "le bouton proposer un produit ne fait pas la
+     même taille que les autres"). Même correctif, plus gap pour l'icône
+     ti-edit absente de #btnAdd. */
+  #btnProposeProduct{
+    height:34px; padding:0 16px; box-sizing:border-box;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  }
   /* Retour utilisateur : "faire en sorte que le bouton menu passe en bleu
      lorsqu'on a cliqué dessus pour desktop" — même état actif que .kebab-btn
      ailleurs dans l'app (configurateur d'armoire, liste des utilisateurs) :
@@ -376,6 +387,22 @@
      juste avec une teinte plus sombre du même bleu plutôt qu'une couleur
      différente. */
   button.copper:hover{ background-size:100% 100%; }
+  /* Boutons de la vue "demande produit" verrouillée (#modalFoot, voir
+     js/modal-request-review.js) — retour utilisateur : "corrige moi les
+     largeur des bouton annuler modifier et accepté". Chacun se dimensionnait
+     à son seul contenu (icône+texte, sans display:flex — même bug que
+     #btnProposeProduct déjà corrigé plus haut), donc "Refuser" (texte le
+     plus court) ressortait visiblement plus étroit que "Modifier"/
+     "Accepter" côte à côte. min-width commune calée sur le plus large des
+     trois (mesuré ~102px pour "Accepter"). #btnReviewRefuse avait
+     auparavant un habillage rouge "danger" dédié (couleur inline + survol
+     spécifique) — retiré à la demande (retour utilisateur : "retire le
+     rouge de annuler et mets la même animation que modifier") : c'est
+     maintenant un .secondary tout à fait ordinaire, strictement identique à
+     #btnReviewUnlock. */
+  #btnReviewRefuse, #btnReviewUnlock, #btnReviewAccept{
+    min-width:104px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  }
   button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
     outline:2px solid var(--copper);
     outline-offset:2px;

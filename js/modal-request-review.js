@@ -1,89 +1,38 @@
   // ── Documents joints à une demande (mode révision, visionnage seul) ────
-  // Réutilise window._openPdfViewerWithBuffer (js/render-pdf-viewer.js) pour
-  // l'affichage — il gère déjà PDF et image selon l'extension — mais la
-  // récupération du buffer est propre à ce fichier : /pullDocsReq
-  // (stockage des documents de DEMANDE) est distinct de /pullDocs
-  // (documents d'un produit déjà au catalogue), avec sa propre logique.
-  // Même limite connue que _reqMigrateDocsToProduct dans js/requests.js :
-  // /pullDocsReq sans nofile renvoie un ZIP dès qu'il y a 2+ fichiers
-  // joints, sans moyen d'en cibler un seul par nom — on télécharge donc le
-  // ZIP une seule fois (mis en cache) et on en extrait le fichier demandé
-  // au clic sur "Voir".
-  var _reqDocsBufferCache = {}; // clé = ref::user → ArrayBuffer (brut, PDF/image ou ZIP)
-  function _reqLoadJSZipLib(cb){
-    if(window.JSZip){ cb(); return; }
-    var s = document.createElement('script');
-    s.src = 'js/jszip.min.js';
-    s.onload = cb;
-    document.head.appendChild(s);
-  }
-  function _fetchReqDocBuffer(sUrl, ref, user, filename, h, cb){
-    var cacheKey = ref + '::' + user;
-    var rawPromise = _reqDocsBufferCache[cacheKey]
-      ? Promise.resolve(_reqDocsBufferCache[cacheKey])
-      : fetch(sUrl + '/pullDocsReq?ref=' + encodeURIComponent(ref) + '&user=' + encodeURIComponent(user), { headers: h })
-          .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-          .then(function(ab){ _reqDocsBufferCache[cacheKey] = ab; return ab; });
-    rawPromise.then(function(ab){
-      var view = new Uint8Array(ab, 0, 4);
-      var isZip = view[0] === 0x50 && view[1] === 0x4B;
-      if(!isZip){ cb(null, ab); return; }
-      _reqLoadJSZipLib(function(){
-        JSZip.loadAsync(ab).then(function(zip){
-          var target = null;
-          zip.forEach(function(path, f){
-            if(path === filename || path.split('/').pop() === filename) target = f;
-          });
-          if(!target) zip.forEach(function(path, f){ if(!target) target = f; });
-          if(target) target.async('arraybuffer').then(function(buf){ cb(null, buf); });
-          else cb(new Error('Fichier non trouvé dans l\'archive'));
-        }).catch(function(e){ cb(e); });
-      });
-    }).catch(function(e){ cb(e); });
-  }
-  function _reqDocRenderItem(docList, file, sUrl, reqRef, reqUser){
-    var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
-    delete h['Content-Type'];
-    var docName = file.filename || 'Document';
-    var isImg = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(docName);
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);';
-    row.innerHTML = '<div style="width:30px;height:30px;background:'+(isImg?'#FFF7ED':'#FEF2F2')+';border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-      + (isImg ? '<i class="ti ti-photo" style="font-size:16px;color:var(--copper);"></i>' : '<i class="ti ti-file-type-pdf" style="font-size:16px;color:#E53E3E;"></i>')
-      + '</div>'
-      + '<div style="flex:1;min-width:0;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(docName)+'</div>';
-    var btnVoir = document.createElement('button');
-    btnVoir.type = 'button';
-    btnVoir.style.cssText = 'padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:inherit;display:flex;align-items:center;gap:5px;';
-    btnVoir.innerHTML = '<i class="ti ti-eye" style="font-size:14px;"></i> Voir';
-    btnVoir.onclick = function(){
-      window._openPdfViewerWithBuffer(docName, function(onBuffer, onError){
-        _fetchReqDocBuffer(sUrl, reqRef, reqUser, docName, h, function(err, ab){
-          if(err) onError(err); else onBuffer(ab);
-        });
-      });
-    };
-    row.appendChild(btnVoir);
-    docList.appendChild(row);
-  }
+  // /pullDocsReq a disparu (voir js/requests.js, section "Documents joints à
+  // une demande") : un document joint à une demande est maintenant un
+  // /pullDocs ordinaire (même ref que la demande), marqué
+  // metadata.request:true. Plutôt que de dupliquer toute la logique de
+  // récupération/mise en cache/dézippage (_fetchPdfRawByRef/_fetchPdfByName,
+  // js/render-documents.js — qui gère déjà le cas ZIP multi-fichiers, sans
+  // la limite "1 seul fichier" que ce fichier avait avant), on la réutilise
+  // telle quelle, et _docRenderItem pour le rendu de chaque ligne — les deux
+  // globales (scripts classiques, pas de modules isolés).
   function _reqLoadDocsSection(reqRef, reqUser){
     var section = document.getElementById('modalReqDocsSection');
     var list    = document.getElementById('modalReqDocsList');
     if(!section || !list) return;
     section.style.display = 'none';
     list.innerHTML = '';
-    _reqDocsBufferCache = {};
     var sUrl = localStorage.getItem('cat_server_url');
     if(!sUrl || !reqRef) return;
     var h = typeof window.authHeaders === 'function' ? Object.assign({}, window.authHeaders()) : {};
     delete h['Content-Type'];
-    fetch(sUrl + '/pullDocsReq?nofile=true&ref=' + encodeURIComponent(reqRef) + '&user=' + encodeURIComponent(reqUser), { headers: h, cache: 'no-store' })
+    fetch(sUrl + '/pullDocs?nofile=true&ref=' + encodeURIComponent(reqRef), { headers: h, cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
-        var files = d && d.items ? d.items : [];
+        var allFiles = (d && d.items) || [];
+        // Ne garder que les documents de CETTE demande — pas ceux déjà
+        // réels sur le produit, si la ref est partagée (demande de
+        // modification d'un produit existant).
+        var files = allFiles.filter(function(f){
+          var meta = {};
+          try { meta = typeof f.metadata === 'string' ? (JSON.parse(f.metadata) || {}) : (f.metadata || {}); } catch(e){}
+          return meta.request === true;
+        });
         if(!files.length) return;
         section.style.display = '';
-        files.forEach(function(f){ _reqDocRenderItem(list, f, sUrl, reqRef, reqUser); });
+        files.forEach(function(f){ _docRenderItem(list, f, sUrl); });
       })
       .catch(function(){});
   }
@@ -93,10 +42,14 @@
   // pour déverrouiller SUR CETTE MÊME fenêtre plutôt que d'en ouvrir une
   // autre.
   window._openReviewModal = function(item, user, locked){
-    var data     = item.data || {};
-    var original = data._reqOriginal;
-    var isNew    = !original;
-    var p = isNew ? Object.assign({}, data) : Object.assign({}, original, data);
+    var data          = item.data || {};
+    // data reste toujours les valeurs réelles actuelles (voir js/requests.js,
+    // commentaire au-dessus de reqSubmit) ; data.requestFields (présent même
+    // vide) porte uniquement ce qui a été proposé en plus — absent pour une
+    // nouvelle proposition (rien de réel à fusionner par-dessus).
+    var changedFields = data.requestFields || null;
+    var isNew         = !changedFields;
+    var p = isNew ? Object.assign({}, data) : Object.assign({}, data, changedFields);
 
     window._proposeMode = false;
     window._reviewMode  = true;

@@ -300,15 +300,20 @@
       }
       if(hasChanged('configBlocks') && typeof _armoireFetchBlocks === 'function') jobs.push(_armoireFetchBlocks());
       if(hasChanged('savedConfigs') && typeof _armoireFetchSavedConfigs === 'function') jobs.push(_armoireFetchSavedConfigs());
-      // catalogueRequests/bugs : avant, js/requests.js faisait tourner son
+      // catalogue-request/bugs : avant, js/requests.js faisait tourner son
       // propre poll indépendant (/checkReq+/checkBugs) toutes les 30s, sans
       // aucun rapport avec ce cycle-ci — deux détections de changement en
       // parallèle pour la même info (retour utilisateur : consolider sur
       // /checkAll). reqUpdateBadge() reste la source des VRAIS chiffres
-      // (/checkReq+/checkBugs, déjà vérifiés contre le Swagger réel), on ne
+      // (désormais /pullDatas?request=true + /checkBugs, voir js/requests.js
+      // — /checkReq a disparu avec le reste de l'ancienne API _req), on ne
       // fait que réutiliser CE signal-ci pour décider QUAND la relancer —
       // se neutralise déjà seule si personne n'est admin/connecté.
-      if((hasChanged('catalogueRequests') || hasChanged('bugs')) && typeof window._reqUpdateBadge === 'function'){
+      // Clé "catalogue-request" (pas "catalogueRequests") : nom confirmé par
+      // le développeur serveur pour la collection des demandes dans la
+      // réponse /checkAll, distinct de la clé "catalogue" du vrai catalogue
+      // juste au-dessus.
+      if((hasChanged('catalogue-request') || hasChanged('bugs')) && typeof window._reqUpdateBadge === 'function'){
         jobs.push(window._reqUpdateBadge());
       }
       if(jobs.length) await Promise.allSettled(jobs);
