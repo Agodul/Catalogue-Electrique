@@ -72,6 +72,7 @@ function _armoireOpen(){
   } else {
     _armoireRenderBlocksList();
     _armoireRenderSavedList();
+    _armoireRenderOrdersList();
   }
 }
 

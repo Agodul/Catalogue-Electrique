@@ -45,17 +45,13 @@ function _armoireSanitizeExcelRow(row){
   });
 }
 
-async function _armoireExportExcel(){
-  if(!_armoireDraft.length){
-    if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'exporter.', 'warn');
-    return;
-  }
-  var name = await customPrompt('Exporter en Excel', 'Nom de la configuration (utilisé pour le fichier) :', 'Configuration armoire');
-  if(name === null) return; // annulé
-  name = (name || '').trim() || 'Configuration armoire';
-
-  try{ await ensureExcelJS(); }catch(err){ if(typeof showToast === 'function') showToast(err.message, 'err'); return; }
-
+// Calcule le modèle de données (regroupement par fournisseur, totaux,
+// délais) partagé par l'aperçu web (_armoireOpenExcelPreview) ET la
+// génération du classeur (_armoireBuildAndDownloadWorkbook) — évite de
+// dupliquer cette logique entre les deux (retour utilisateur : "faire en
+// sorte que le contenu du tableau excel se retrouve dans une fenêtre du
+// site", en remplacement du téléchargement direct).
+function _armoireComputeExportData(name){
   var groups = {};
   var allItems = [];
   var grandTotal = 0, grandHasPrice = false, grandQty = 0;
@@ -92,7 +88,158 @@ async function _armoireExportExcel(){
   });
   var supplierNames = Object.keys(groups).sort();
   var grandAvgLead = allLeadDays.length ? (allLeadDays.reduce(function(a, b){ return a + b; }, 0) / allLeadDays.length) : null;
-  var stamp = new Date().toISOString().slice(0, 10);
+  return {
+    name: name, stamp: new Date().toISOString().slice(0, 10),
+    groups: groups, supplierNames: supplierNames, allItems: allItems,
+    grandTotal: grandTotal, grandHasPrice: grandHasPrice, grandQty: grandQty,
+    grandAvgLead: grandAvgLead, grandMaxLead: grandMaxLead, grandMaxLeadItem: grandMaxLeadItem
+  };
+}
+
+// Prix formaté cohérent avec _armoireRenderStats (js/armoireConfig-draft.js) —
+// '—' plutôt qu'un "0,00 €" trompeur quand aucun produit du groupe n'a de
+// prix connu.
+function _armoireFmtPreviewPrice(n){
+  return n != null ? n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' : '—';
+}
+
+// Corps de l'aperçu : une section par fournisseur, même découpage que les
+// feuilles Excel individuelles (ref/désignation/marque/qté/prix/délai) —
+// sans les colonnes de suivi de commande (Commandé/Livré/Statut), qui
+// n'ont de sens que dans le fichier téléchargé, jamais cochables ici
+// (retour utilisateur : aperçu en LECTURE SEULE, pas un suivi interactif).
+function _armoireExcelPreviewRowsHtml(data){
+  return data.supplierNames.map(function(supplier){
+    var rows = data.groups[supplier];
+    var supTotal = 0, supHasPrice = false, supQty = 0;
+    var rowsHtml = rows.map(function(r){
+      if(r.total != null){ supTotal += r.total; supHasPrice = true; }
+      supQty += r.qty;
+      return '<tr style="border-bottom:1px solid var(--line);">'
+        + '<td style="padding:5px 6px;white-space:nowrap;">' + escapeHtml(r.ref) + '</td>'
+        + '<td style="padding:5px 6px;">' + escapeHtml(r.name) + '</td>'
+        + '<td style="padding:5px 6px;white-space:nowrap;">' + escapeHtml(r.brand) + '</td>'
+        + '<td style="padding:5px 6px;text-align:right;white-space:nowrap;">' + r.qty + '</td>'
+        + '<td style="padding:5px 6px;text-align:right;white-space:nowrap;">' + _armoireFmtPreviewPrice(r.unitPrice) + '</td>'
+        + '<td style="padding:5px 6px;text-align:right;white-space:nowrap;font-weight:600;">' + _armoireFmtPreviewPrice(r.total) + '</td>'
+        + '<td style="padding:5px 6px;white-space:nowrap;">' + escapeHtml(r.leadTime) + '</td>'
+        + '</tr>';
+    }).join('');
+    return '<div style="margin-bottom:20px;">'
+      + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:6px;">'
+        + escapeHtml(supplier) + ' — ' + rows.length + ' référence' + (rows.length > 1 ? 's' : '') + ' · ' + supQty + ' pièce' + (supQty > 1 ? 's' : '')
+        + (supHasPrice ? ' · ' + _armoireFmtPreviewPrice(supTotal) : '')
+      + '</div>'
+      + '<div style="overflow-x:auto;">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12.5px;color:var(--ink);">'
+        + '<thead><tr style="border-bottom:2px solid var(--line);">'
+          + '<th style="padding:5px 6px;text-align:left;">Référence</th>'
+          + '<th style="padding:5px 6px;text-align:left;">Désignation</th>'
+          + '<th style="padding:5px 6px;text-align:left;">Marque</th>'
+          + '<th style="padding:5px 6px;text-align:right;">Qté</th>'
+          + '<th style="padding:5px 6px;text-align:right;">Prix unit.</th>'
+          + '<th style="padding:5px 6px;text-align:right;">Total</th>'
+          + '<th style="padding:5px 6px;text-align:left;">Délai</th>'
+        + '</tr></thead>'
+        + '<tbody>' + rowsHtml + '</tbody>'
+      + '</table>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+// Fenêtre d'aperçu — même famille de popup générée en JS que
+// _armoirePromptSupplierChoice (js/armoireConfig-draft.js), mais en grand
+// (max-width 900px, hauteur quasi pleine) pour accueillir un vrai tableau,
+// plutôt qu'agrandir _popupOverlay (js/popup.js, plafonné à 380px pour les
+// petites boîtes de dialogue confirm/alert/prompt). --z-popup (au-dessus de
+// TOUTE autre fenêtre, voir css/styles.css) garantit qu'elle s'affiche
+// par-dessus le configurateur lui-même.
+function _armoireOpenExcelPreview(data){
+  var overlay = document.createElement('div');
+  overlay.className = 'spi-popup-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:var(--z-popup,11000);background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML =
+    '<div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:900px;height:min(760px,88vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);font-family:var(--font-sans,inherit);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);flex-shrink:0;">'
+        + '<div style="min-width:0;">'
+          + '<div style="font-size:15px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(data.name) + '</div>'
+          + '<div style="font-size:11.5px;color:var(--ink-soft);">' + data.stamp + ' · ' + data.supplierNames.length + ' fournisseur' + (data.supplierNames.length > 1 ? 's' : '') + ' · ' + data.allItems.length + ' référence' + (data.allItems.length > 1 ? 's' : '') + '</div>'
+        + '</div>'
+        + '<button type="button" id="_armoireExcelPreviewClose" class="close sans" style="flex-shrink:0;">✕</button>'
+      + '</div>'
+      // Même gabarit compact (padding/font-size) que #armoireConfigStats
+      // (_armoireRenderStats, js/armoireConfig-draft.js) — 15px/8px 12px
+      // débordait sur mobile ("3 semaines" tronqué en "3 semai…", retour
+      // utilisateur : "améliore le responsive"), alors que ce gabarit plus
+      // compact, déjà utilisé pour les mêmes 3 statistiques ailleurs dans ce
+      // même configurateur, tient sans troncature à 375px de large.
+      + '<div style="display:flex;gap:8px;padding:12px 20px;border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap;">'
+        + '<div style="flex:1;min-width:88px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;">'
+          + '<div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;">Prix total</div>'
+          + '<div style="font-size:13.5px;font-weight:700;color:var(--copper-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (data.grandHasPrice ? _armoireFmtPreviewPrice(data.grandTotal) : '—') + '</div>'
+        + '</div>'
+        + '<div style="flex:1;min-width:88px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;">'
+          + '<div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;">Délai moyen</div>'
+          + '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (data.grandAvgLead != null ? '~' + _armoireFormatLeadDays(data.grandAvgLead) : '—') + '</div>'
+        + '</div>'
+        + '<div style="flex:1;min-width:88px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;">'
+          + '<div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;">Délai max</div>'
+          + '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (data.grandMaxLead != null ? _armoireFormatLeadDays(data.grandMaxLead) : '—') + '</div>'
+        + '</div>'
+      + '</div>'
+      + '<div style="flex:1;min-height:0;overflow-y:auto;padding:16px 20px;">' + (data.allItems.length ? _armoireExcelPreviewRowsHtml(data) : '<div style="text-align:center;color:var(--ink-soft);font-size:12.5px;padding:24px 8px;">Rien à afficher.</div>') + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line);flex-shrink:0;">'
+        + '<button type="button" id="_armoireExcelPreviewCancel" class="secondary">Fermer</button>'
+        + '<button type="button" id="_armoireExcelPreviewDownload" class="copper" style="display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-download" aria-hidden="true"></i> Télécharger le fichier Excel</button>'
+      + '</div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  function close(){ if(overlay.parentNode) document.body.removeChild(overlay); }
+  overlay.querySelector('#_armoireExcelPreviewClose').addEventListener('click', close);
+  overlay.querySelector('#_armoireExcelPreviewCancel').addEventListener('click', close);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) close(); });
+  document.addEventListener('keydown', function onKey(e){
+    if(e.key === 'Escape'){ document.removeEventListener('keydown', onKey); close(); }
+  });
+
+  var downloadBtn = overlay.querySelector('#_armoireExcelPreviewDownload');
+  downloadBtn.addEventListener('click', async function(){
+    downloadBtn.disabled = true; downloadBtn.style.opacity = '.6';
+    try { await _armoireBuildAndDownloadWorkbook(data); }
+    finally { downloadBtn.disabled = false; downloadBtn.style.opacity = ''; }
+  });
+}
+
+// Bouton "Excel" du configurateur — ouvre désormais un aperçu dans une
+// fenêtre du site (_armoireOpenExcelPreview) plutôt que de télécharger
+// directement le fichier ; le téléchargement reste disponible depuis un
+// bouton DANS cette fenêtre (_armoireBuildAndDownloadWorkbook), qui ne
+// charge ExcelJS qu'à ce moment-là (l'aperçu, purement HTML, s'affiche
+// instantanément sans attendre le chargement de la librairie).
+async function _armoireExportExcel(){
+  if(!_armoireDraft.length){
+    if(typeof showToast === 'function') showToast('Ajoute au moins un produit avant d\'exporter.', 'warn');
+    return;
+  }
+  var name = await customPrompt('Aperçu de la configuration', 'Nom de la configuration (utilisé pour le fichier Excel) :', 'Configuration armoire');
+  if(name === null) return; // annulé
+  name = (name || '').trim() || 'Configuration armoire';
+  _armoireOpenExcelPreview(_armoireComputeExportData(name));
+}
+
+// Construit le classeur Excel à partir du modèle déjà calculé par
+// _armoireComputeExportData et déclenche son téléchargement — inchangé par
+// rapport à l'ancien _armoireExportExcel, seulement déplacé ici et prenant
+// son "data" en paramètre au lieu de le recalculer.
+async function _armoireBuildAndDownloadWorkbook(data){
+  var name = data.name, stamp = data.stamp, groups = data.groups, supplierNames = data.supplierNames,
+      allItems = data.allItems, grandTotal = data.grandTotal, grandHasPrice = data.grandHasPrice,
+      grandQty = data.grandQty, grandAvgLead = data.grandAvgLead, grandMaxLead = data.grandMaxLead,
+      grandMaxLeadItem = data.grandMaxLeadItem;
+
+  try{ await ensureExcelJS(); }catch(err){ if(typeof showToast === 'function') showToast(err.message, 'err'); return; }
 
   var wb = new ExcelJS.Workbook();
 

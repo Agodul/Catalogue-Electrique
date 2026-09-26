@@ -8,8 +8,10 @@ function _armoireSwitchTab(tab){
   });
   var blocksEl = document.getElementById('armoireConfigBlocksList');
   var savedEl = document.getElementById('armoireConfigSavedList');
+  var ordersEl = document.getElementById('armoireConfigOrdersList');
   if(blocksEl) blocksEl.style.display = tab === 'blocks' ? '' : 'none';
   if(savedEl) savedEl.style.display = tab === 'configs' ? '' : 'none';
+  if(ordersEl) ordersEl.style.display = tab === 'orders' ? '' : 'none';
 }
 
 // ── Tiroir "Blocs / Configurations" — partagés

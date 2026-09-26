@@ -288,7 +288,7 @@ var _armoireActiveTab = 'blocks';
 // clé = nom du dossier ('' = "Sans dossier"), true = replié. En mémoire
 // seulement (pas persisté), séparé par kind pour ne pas lier l'état des
 // blocs à celui des configurations.
-var _armoireCollapsedFolders = { block: {}, config: {} };
+var _armoireCollapsedFolders = { block: {}, config: {}, order: {} };
 // Bloc/config en cours de modification (retour utilisateur : pouvoir
 // éditer un bloc/une config existant, pas juste renommer) — { id, kind
 // ('block'|'config'), name, folder } le temps de l'édition, sinon null.

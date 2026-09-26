@@ -211,6 +211,31 @@
     else if(e.target.closest('.armoire-config-del')) _armoireDeleteSavedConfig(id);
     else if(e.target.closest('.armoire-config-info')) _armoireShowEntryDetails(config);
     else if(e.target.closest('.armoire-config-edit')) _armoireStartEditEntry(config, 'config');
+    else if(e.target.closest('.armoire-config-neworder')) _armoireCreateOrderFromConfig(config);
+  });
+
+  // ── Onglet "Commandes" — mêmes actions repliage/suppression que Blocs/
+  // Configurations ci-dessus, mais "Ouvrir" (au lieu d'Insérer/Ajouter)
+  // lance directement le suivi (voir js/armoireConfig-tracking.js) : une
+  // commande n'est jamais fusionnée dans le brouillon en cours, ce n'est
+  // pas un gabarit réutilisable.
+  var ordersListEl = document.getElementById('armoireConfigOrdersList');
+  if(ordersListEl) ordersListEl.addEventListener('click', function(e){
+    var folderHeaderOrder = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
+    if(folderHeaderOrder){
+      var fKeyOrder = folderHeaderOrder.getAttribute('data-folder');
+      _armoireCollapsedFolders.order[fKeyOrder] = !_armoireCollapsedFolders.order[fKeyOrder];
+      _armoireRenderOrdersList();
+      return;
+    }
+    var row = e.target.closest ? e.target.closest('.armoire-list-row') : null;
+    if(!row) return;
+    var id = row.getAttribute('data-id');
+    var order = _armoireSavedConfigs.find(function(c){ return c.id === id && _armoireIsOrderEntry(c); });
+    if(!order) return;
+    if(e.target.closest('.armoire-order-open')) _armoireOpenOrderTracking(order);
+    else if(e.target.closest('.armoire-order-info')) _armoireShowEntryDetails(order);
+    else if(e.target.closest('.armoire-order-del')) _armoireDeleteSavedConfig(id);
   });
 
   var editingCancelBtn = document.getElementById('armoireEditingCancelBtn');

@@ -789,13 +789,41 @@ function _armoireFetchSavedConfigs(){
   return _armoireApi('/configSavedConfigs').then(function(list){
     _armoireSetSavedConfigsFromServer(list);
     _armoireRenderSavedList();
+    _armoireRenderOrdersList();
   }).catch(function(e){
     console.warn('_armoireFetchSavedConfigs:', e && e.message);
     if(typeof showToast === 'function') showToast('Liste des configurations non actualisée — réessayez', 'warn', 3000);
   });
 }
 
+// Ligne dédiée pour l'onglet "Commandes" (kind === 'order') — action
+// principale = ouvrir directement le suivi (jamais de fusion dans le
+// brouillon en cours : une commande est le suivi d'UN projet précis, pas un
+// gabarit réutilisable comme un bloc/une configuration). Sous-titre =
+// avancement en un coup d'œil (voir _armoireOrderSummary,
+// js/armoireConfig-tracking.js).
+function _armoireOrderListItemHtml(entry){
+  var perms = window._userPerms || {};
+  var canDeleteEntry = !!(perms.canDelete || perms.isAdmin);
+  var summary = (typeof _armoireOrderSummary === 'function') ? _armoireOrderSummary(entry) : null;
+  return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
+    + '<div style="flex:1;min-width:0;">'
+    + '<div style="font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(entry.name) + '</div>'
+    + '<div style="font-size:11px;color:' + (summary ? summary.color : 'var(--ink-soft)') + ';">' + entry.items.length + ' référence' + (entry.items.length > 1 ? 's' : '') + (summary ? ' · ' + escapeHtml(summary.text) : '') + '</div>'
+    + '</div>'
+    + '<button type="button" class="armoire-order-open" style="padding:6px 12px;border-radius:7px;border:none;background:var(--copper);color:#fff;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ti ti-truck-delivery" aria-hidden="true"></i> Ouvrir</button>'
+    + '<div style="position:relative;flex-shrink:0;">'
+      + '<button type="button" class="kebab-btn" title="Plus d\'actions" aria-haspopup="true" aria-expanded="false"><i class="ti ti-dots" aria-hidden="true"></i></button>'
+      + '<div class="kebab-menu" role="menu" style="position:absolute;right:0;top:30px;z-index:5;">'
+        + '<button type="button" class="armoire-order-info" role="menuitem"><i class="ti ti-info-circle" aria-hidden="true"></i> Voir le contenu</button>'
+        + (canDeleteEntry ? '<button type="button" class="armoire-order-del kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>' : '')
+      + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
 function _armoireListItemHtml(entry, kind){
+  if(kind === 'order') return _armoireOrderListItemHtml(entry);
   var isBlock = kind === 'block';
   // "Insérer"/"Ajouter" : la seule action qu'on utilise vraiment en
   // parcourant la liste, reste donc seule visible en plein (copper) — les
@@ -827,8 +855,19 @@ function _armoireListItemHtml(entry, kind){
   // contenu"/"Modifier"/"Supprimer" (consultées ponctuellement, pas à
   // chaque ligne) rejoignent désormais un menu ⋯, seules les actions
   // qu'on utilise en parcourant la liste restent des boutons visibles.
+  // "Nouvelle commande" (retour utilisateur : "comment faire pour que sa
+  // puisse servire de suivi de commande ?", puis "une config peux etre
+  // reutilisé pour d'autre projet") — configurations uniquement (jamais un
+  // bloc, simple gabarit réutilisable jamais réellement commandé tel quel).
+  // Crée une COPIE indépendante des articles dans l'onglet "Commandes"
+  // (voir _armoireCreateOrderFromConfig, js/armoireConfig-tracking.js) au
+  // lieu de suivre directement sur cette configuration : sinon recharger la
+  // même configuration pour un AUTRE projet ramènerait le suivi (coché/n°
+  // commande) du projet précédent, et deux projets la réutilisant
+  // partageraient à tort le même suivi.
   var menuItems =
       '<button type="button" class="' + infoClass + '" role="menuitem"><i class="ti ti-info-circle" aria-hidden="true"></i> Voir le contenu</button>'
+    + (!isBlock ? '<button type="button" class="armoire-config-neworder" role="menuitem"><i class="ti ti-truck-delivery" aria-hidden="true"></i> Nouvelle commande</button>' : '')
     + (canEditEntry ? '<button type="button" class="' + editClass + '" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i> Modifier</button>' : '')
     + (canDeleteEntry ? '<button type="button" class="' + delClass + ' kebab-menu-danger" role="menuitem"><i class="ti ti-trash" aria-hidden="true"></i> Supprimer</button>' : '');
   return '<div class="armoire-list-row" data-id="' + escapeHtml(entry.id) + '" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line);">'
@@ -932,7 +971,8 @@ function _armoireGroupByFolder(list){
 // le texte des lignes (_armoireListItemHtml) et pour isoler l'état replié
 // de chaque liste (_armoireCollapsedFolders).
 function _armoireRenderGroupedList(list, kind, emptyMessage){
-  var el = document.getElementById(kind === 'block' ? 'armoireConfigBlocksList' : 'armoireConfigSavedList');
+  var containerId = kind === 'block' ? 'armoireConfigBlocksList' : (kind === 'order' ? 'armoireConfigOrdersList' : 'armoireConfigSavedList');
+  var el = document.getElementById(containerId);
   if(!el) return;
   if(!list.length){
     el.innerHTML = '<div style="text-align:center;color:var(--ink-soft);font-size:12px;padding:14px 8px;">' + emptyMessage + '</div>';
@@ -980,7 +1020,21 @@ function _armoireRenderBlocksList(){
   _armoireRenderGroupedList(realBlocks, 'block', 'Aucun bloc enregistré pour l\'instant.');
 }
 
+// Exclut les commandes de suivi — stockées dans /configSavedConfigs pour
+// réutiliser le même endpoint (order===true, voir js/armoireConfig-tracking.js),
+// mais jamais destinées à apparaître dans la liste "Configurations" (un
+// gabarit réutilisable, pas un suivi d'une commande précise) : retour
+// utilisateur — une configuration doit pouvoir être réutilisée pour
+// plusieurs projets sans traîner le suivi d'une commande passée. Chaque
+// commande créée à partir d'elle vit désormais comme une entrée à part,
+// visible uniquement dans l'onglet "Commandes" (_armoireRenderOrdersList).
 function _armoireRenderSavedList(){
-  _armoireRenderGroupedList(_armoireSavedConfigs, 'config', 'Aucune configuration enregistrée pour l\'instant.');
+  var realConfigs = _armoireSavedConfigs.filter(function(c){ return !_armoireIsOrderEntry(c); });
+  _armoireRenderGroupedList(realConfigs, 'config', 'Aucune configuration enregistrée pour l\'instant.');
+}
+
+function _armoireRenderOrdersList(){
+  var orders = _armoireSavedConfigs.filter(_armoireIsOrderEntry);
+  _armoireRenderGroupedList(orders, 'order', 'Aucune commande en cours de suivi pour l\'instant — ouvre "Nouvelle commande" depuis une configuration enregistrée.');
 }
 

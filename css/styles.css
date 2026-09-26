@@ -5182,6 +5182,29 @@
      tout en donnant de la place au dernier bouton. */
   .armoire-cfg-footer{ padding-bottom:20px !important; }
 }
+
+/* ── Fenêtre "Suivi de commande" (js/armoireConfig-tracking.js) — tableau
+   à 10 colonnes sur étroit ─────────────────────────────────────────────
+   Retour utilisateur : "améliore le responsive" puis, sur le premier essai
+   (une transformation CSS pure du même tableau en carte "un champ par
+   ligne") : "revoie pour les tableau car en superposition c'est pas tres
+   jolie et pas tres pratique" — dix lignes empilées par article restait
+   long à parcourir. Remplacé par une VRAIE liste repliable (option choisie
+   parmi 5 propositions) : .armoire-track-table (le tableau desktop) et
+   .armoire-track-cards (les cartes mobile, une par article, repliées par
+   défaut — voir _armoireTrackingCardHtml) coexistent en permanence dans le
+   DOM sous #_armoireTrackingBody ; seule la visibilité change ici selon la
+   largeur. Simple largeur (pas de garde pointer:coarse, contrairement à la
+   modale du configurateur juste au-dessus) : cette fenêtre est un popup
+   indépendant, pas imbriqué dans #armoireConfigOverlay, toujours aussi
+   étroite qu'une fenêtre de navigateur redimensionnée — un problème de
+   LARGEUR de contenu, pas d'ergonomie tactile. */
+.armoire-track-cards{ display:none; }
+@media (max-width:640px){
+  .armoire-track-table{ display:none; }
+  .armoire-track-cards{ display:block; }
+}
+
 #armoireMobileDraftBadge{
   display:inline-block; margin-left:5px; padding:1px 6px;
   border-radius:9px; background:rgba(255,255,255,.25);
