@@ -1,0 +1,490 @@
+/* =========================================================================
+   commandes.css — Commandes IMMO, styles PROPRES à cet outil.
+
+   Tout ce qui est commun avec le Catalogue Électrique (jetons de couleur,
+   en-tête, menu ⋮, boutons de base .secondary/.copper, toasts…) vient
+   directement de ../../css/styles.css (voir index.html) — pas dupliqué ici.
+   Ce fichier ne contient que ce que cette feuille partagée ne connaît pas :
+   cartes, formulaires, éditeurs riches, bandeaux d'alerte, étiquettes,
+   tableau des commandes, dépôt de captures et fenêtres modales.
+   ========================================================================= */
+
+/* --------------------------------------------------- 1. Jetons spécifiques */
+/* Couleurs de badge/état propres à cet outil (bandeaux, étiquettes) — sans
+   équivalent dans la charte partagée. */
+:root {
+  --bg-succes: #DCFCE7; --fg-succes: #065F46;
+  --bg-erreur: #FEF2F2; --fg-erreur: #991B1B;
+  --bd-erreur: #FCA5A5;
+  --bg-info: #EFF6FF; --fg-info: #194093;
+  --bg-neutre: #E5E7EB; --fg-neutre: #374151;
+}
+
+body { font-size: 13px; }
+
+/* --------------------------------------------------------- 1b. En-tête */
+/* css/styles.css masque #hdrMenuWrap sur les écrans tactiles
+   (@media (max-width:1024px) and (pointer:coarse), voir ce fichier) : sur le
+   Catalogue Électrique, le menu ⋮ desktop est alors remplacé par une barre
+   de navigation basse et un tiroir #menuSheet dédiés au mobile — toute une
+   autre UI, propre à ce site-là, pas reprise ici (voir la décision
+   d'intégration : page séparée, pas fusion en SPA). Cet outil n'a que le
+   menu ⋮ : sans ce contre-réglage, Configuration/Export/Import
+   deviendraient inaccessibles au tactile. */
+@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  #hdrMenuWrap { display: block !important; }
+}
+
+/* ------------------------------------------------------------ 2. Boutons */
+/* .secondary/.copper viennent de la charte partagée — seules les variantes
+   propres à cet outil sont définies ici. */
+
+/* Danger — toute action destructive, selon la convention de la charte. */
+button.danger {
+  background: var(--bg-erreur); border: 1px solid var(--bd-erreur);
+  color: var(--fg-erreur); font-weight: 600;
+}
+button.danger:hover:not(:disabled) { border-color: var(--warn); color: var(--warn); }
+
+/* Variante teintée, même principe que .danger mais pour une action non
+   destructive qu'on veut quand même distinguer d'un coup d'œil — utilisée
+   pour consulter/ouvrir dans la liste des commandes (voir
+   app/js/60-vue-liste.js). */
+button.succes {
+  background: var(--bg-succes); border: 1px solid rgba(6,95,70,.3);
+  color: var(--fg-succes); font-weight: 600;
+}
+button.succes:hover:not(:disabled) { border-color: var(--moss); }
+
+/* .word et .pdf : pas les jetons génériques de la charte mais les vraies
+   couleurs de marque des deux formats, pour que l'œil associe directement
+   l'icône au type de fichier — bleu Word (#2B579A), rouge Adobe/PDF
+   (#EC1C24). */
+button.word {
+  background: rgba(43,87,154,.08); border: 1px solid rgba(43,87,154,.35);
+  color: #2B579A; font-weight: 600;
+}
+button.word:hover:not(:disabled) { border-color: #2B579A; background: rgba(43,87,154,.14); }
+button.pdf {
+  background: rgba(236,28,36,.08); border: 1px solid rgba(236,28,36,.35);
+  color: #EC1C24; font-weight: 600;
+}
+button.pdf:hover:not(:disabled) { border-color: #EC1C24; background: rgba(236,28,36,.14); }
+
+/* Déclinaison compacte, pour les actions en ligne dans un tableau. */
+button.small { padding: 5px 10px; font-size: 12.5px; border-radius: 6px; gap: 5px; }
+/* Icône seule, sans texte : padding resserré et symétrique (sans lui, le
+   padding horizontal du bouton normal — pensé pour un texte à côté de
+   l'icône — laisse un glyphe isolé flotter dans un bouton trop large). */
+button.icon-only { padding: 12px; }
+/* Variante compacte (tableaux, vignettes) : hauteur explicite, sans quoi un
+   icon-only rend un peu plus bas que .etiquette (le badge « Brouillon » à
+   côté, voir table.liste) — même écart que celui déjà corrigé entre
+   <select> et <input type=text> (§4). */
+button.small.icon-only { padding: 5px 7px; height: 25px; }
+
+/* ----------------------------------------------------------- 3. Panneaux */
+/* Nommé .panneau et non .card : le Catalogue Électrique utilise déjà .card
+   pour ses propres fiches produit (photo, tags, animation d'entrée en
+   opacité pilotée par son JS, voir css/styles.css) — un nom générique
+   partagé par coïncidence avec un composant sans rapport aurait hérité de
+   son opacity:0 initial (jamais levé ici, aucun JS du Catalogue ne tourne
+   sur cette page) et rendu ces conteneurs invisibles malgré un balisage
+   correct. */
+
+main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 72px; }
+
+.panneau {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+/* Le survol « soulevé » de la charte n'a de sens que sur un panneau
+   cliquable ; les panneaux de cet outil sont sinon de simples conteneurs. */
+.panneau--clickable {
+  padding: 0; overflow: hidden; cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.panneau--clickable:hover {
+  border-color: var(--copper);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.panneau > h2 {
+  margin: 0 0 4px; font-size: 13px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 8px;
+}
+.panneau > h2 .ti { font-size: 15px; color: var(--copper); }
+.panneau > .aide { margin: 0 0 16px; color: var(--ink-soft); font-size: 12.5px; }
+
+.entete-vue { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.entete-vue h1 { font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+.entete-vue .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* -------------------------------------------------------- 4. Formulaires */
+
+.grille { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px 16px; }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+.c6 { grid-column: span 6; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+
+label.champ { display: block; }
+label.champ > span {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-soft); margin-bottom: 5px;
+  /* Réserve la hauteur de 2 lignes même si le libellé tient sur une seule :
+     sans ça, un intitulé court (« Fournisseur ») laisse son champ démarrer
+     plus haut qu'un intitulé qui passe sur 2 lignes (« Commercial (nom
+     porté sur la commande) ») dans la même rangée de la grille — les champs
+     ne s'alignaient plus entre eux. */
+  min-height: 3em; line-height: 1.5;
+}
+input[type=text], input[type=date], input[type=number], select, textarea {
+  width: 100%; padding: 9px 11px;
+  font-family: inherit; font-size: 13px; color: var(--ink);
+  background: var(--paper-card);
+  border: 1px solid var(--line); border-radius: 8px;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+/* Même padding/police, mais `<select>` rend malgré tout un peu plus haut que
+   `<input type=text>` (chrome natif de la flèche) — sans hauteur explicite,
+   les deux ne s'alignaient pas pile sur une même ligne (2px d'écart,
+   perceptible côte à côte). Exclu de textarea : son min-height (plus bas)
+   pilote sa hauteur, pas cette règle. */
+input[type=text], input[type=date], input[type=number], select { height: 39px; }
+input::placeholder, textarea::placeholder { color: var(--ink-soft); opacity: .75; }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--copper);
+  box-shadow: 0 0 0 3px rgba(25,64,147,.12);
+}
+input:disabled, select:disabled, textarea:disabled {
+  background: var(--paper); color: var(--ink-soft); cursor: not-allowed;
+}
+textarea { resize: vertical; min-height: 74px; line-height: 1.45; }
+
+/* Zone éditable de App.saisirTexteRiche (99-app.js) — gras/italique/souligné/
+   couleur/taille pour les paragraphes de texte libre d'une commande. Même
+   gabarit qu'un textarea ci-dessus, mais un <div contenteditable> n'hérite
+   d'aucune des règles précédentes (elles ciblent des tags de formulaire
+   précis, pas contenteditable). */
+.editeur-riche {
+  width: 100%; min-height: 140px; max-height: 42vh; overflow-y: auto;
+  padding: 9px 11px; font-family: inherit; font-size: 13px; line-height: 1.5;
+  color: var(--ink); background: var(--paper-card);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.editeur-riche:focus {
+  outline: none; border-color: var(--copper);
+  box-shadow: 0 0 0 3px rgba(25,64,147,.12);
+}
+.editeur-riche div { min-height: 1.4em; } /* ligne vide toujours visible/cliquable */
+
+/* Éditeur de App.saisirTableau (99-app.js) — cellules en texte brut avec
+   alignement par cellule, Tab/Maj+Tab pour se déplacer d'une cellule à
+   l'autre (voir allerCellule). Largeurs de colonnes et hauteurs de lignes :
+   uniquement à la souris, voir .poignee-colonne/.poignee-ligne ci-dessous.
+   Une cellule = <td class="cellule"> (position:relative, juste le support
+   des poignées) contenant la vraie zone éditable <div class="cellule-texte">
+   — les deux sont séparées pour que les poignées, épinglées en CSS pur sur
+   les bords du <td> (voir plus bas), ne soient jamais des descendantes du
+   contenteditable lui-même (elles restent contenteditable="false" quand
+   même, par sécurité). */
+.editeur-tableau { width: 100%; border-collapse: collapse; }
+.editeur-tableau td.cellule {
+  position: relative; border: 1px solid var(--line); min-width: 60px; padding: 0;
+}
+.editeur-tableau .cellule-texte {
+  /* .cellule-texte remplit TOUTE la hauteur du <td> (height:100%, padding
+     inclus dedans grâce à border-box) — sans quoi, dans une ligne agrandie à
+     la souris (voir demarrerRedimLigne), la zone cliquable/éditable restait
+     cantonnée à la hauteur du texte lui-même : cliquer dans l'espace vide en
+     dessous ne posait le curseur nulle part, impossible d'y taper. */
+  height: 100%; box-sizing: border-box;
+  padding: 6px 8px; font-size: 13px; outline: none;
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+.editeur-tableau .cellule-texte:focus {
+  outline: 2px solid var(--copper); outline-offset: -2px; background: var(--bg-info);
+}
+
+/* Poignées de glissé — épinglées en CSS pur sur les bords de LEUR PROPRE
+   cellule (jamais de position calculée en JS à partir d'une mesure prise à
+   un instant donné). Pour redimensionner à la souris toute une colonne/ligne
+   comme dans Excel/Word ; double-clic sur une poignée de ligne : revient à
+   une hauteur automatique, ajustée au contenu (comme Excel). */
+.poignee-colonne {
+  position: absolute; top: 0; bottom: 0; right: -4px; width: 7px;
+  cursor: col-resize; z-index: 1;
+}
+.poignee-ligne {
+  position: absolute; left: 0; right: 0; bottom: -4px; height: 7px;
+  cursor: row-resize; z-index: 1;
+}
+.poignee-colonne:hover, .poignee-ligne:hover { background: rgba(25,64,147,.18); }
+
+.indice { font-size: 11.5px; color: var(--ink-soft); margin-top: 5px; }
+.indice-alerte { color: var(--warn); font-weight: 600; }
+
+.numero-affiche {
+  font-family: 'Consolas', 'SF Mono', ui-monospace, monospace;
+  font-size: 15px; font-weight: 700; letter-spacing: .5px;
+  padding: 9px 11px; color: var(--copper);
+  background: var(--bg-info); border: 1px solid rgba(25,64,147,.18);
+  border-radius: 8px;
+}
+
+/* -------------------------------------------------------- 6. Étiquettes */
+
+.etiquette {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 4px; height: 25px; box-sizing: border-box;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+}
+/* Bordure assortie sur les trois, pas juste un fond plat : au survol d'une
+   ligne du tableau (table.liste tbody tr:hover), le fond devient
+   var(--bg-info) — exactement le fond de .etiquette-entite, qui devenait
+   alors une pastille invisible, juste du texte flottant sans contour. */
+.etiquette-brouillon { background: var(--bg-neutre); color: var(--fg-neutre); border: 1px solid rgba(55,65,81,.18); }
+.etiquette-signee    { background: var(--bg-succes); color: var(--fg-succes); border: 1px solid rgba(6,95,70,.18); }
+.etiquette-entite    { background: var(--bg-info);   color: var(--fg-info);   border: 1px solid rgba(25,64,147,.18); }
+.compteur {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  background: var(--bg-neutre); color: var(--fg-neutre);
+  font-size: 11.5px; font-weight: 700;
+}
+
+/* ---------------------------------------------------------- 7. Tableaux */
+
+/* Le tableau peut être plus large que la carte : il défile à l'intérieur
+   de celle-ci, jamais la page entière. */
+.table-defilante { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+
+table.liste { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 13px; }
+table.liste th {
+  text-align: left; padding: 9px 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-soft); border-bottom: 1px solid var(--line);
+}
+table.liste td { padding: 10px; border-bottom: 1px solid #EEF1F5; vertical-align: middle; }
+table.liste tbody tr { transition: background .12s ease; }
+table.liste tbody tr:hover td { background: var(--bg-info); }
+td.num { font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; font-weight: 700; color: var(--copper); }
+td.montant { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.actions-cel { text-align: right; white-space: nowrap; }
+td.actions-cel button { margin-left: 5px; }
+
+.vide { text-align: center; padding: 46px 20px; color: var(--ink-soft); }
+.vide .ti { font-size: 30px; display: block; margin: 0 auto 10px; color: var(--line); }
+
+/* --------------------------------------------------------- 8. Captures */
+
+.depot {
+  border: 2px dashed var(--line); border-radius: 12px;
+  padding: 24px; text-align: center; font-size: 13px;
+  color: var(--ink-soft); background: var(--paper); cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.depot .ti { font-size: 22px; display: block; margin: 0 auto 8px; }
+.depot:hover, .depot.survol {
+  border-color: var(--copper); background: var(--bg-info); color: var(--copper);
+}
+
+.vignettes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.vignette {
+  width: 172px; background: var(--paper-card);
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  transition: border-color .15s ease;
+}
+.vignette:hover { border-color: var(--copper); }
+.vignette img { width: 100%; height: 106px; object-fit: contain; background: var(--paper); display: block; }
+/* Aperçu d'un bloc de texte libre — même hauteur que la vignette image
+   pour que les deux s'alignent dans la même grille, texte tronqué au-delà
+   de 6 lignes (voir modifierTexte, app/js/70-vue-commande.js, pour l'ouvrir
+   en entier). */
+.vignette-texte {
+  height: 106px; padding: 8px; background: var(--paper); cursor: pointer;
+  font-size: 11.5px; line-height: 1.4; color: var(--ink); white-space: pre-wrap;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical;
+}
+/* Aperçu d'un bloc tableau — même gabarit que .vignette-texte, mais un
+   résumé (nombre de lignes/colonnes) plutôt que le contenu : un vrai
+   tableau, même réduit, ne tiendrait pas lisiblement dans 172×106px au-delà
+   de 2-3 colonnes. */
+.vignette-tableau {
+  height: 106px; padding: 8px; background: var(--paper); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; color: var(--ink-soft); text-align: center;
+}
+.vignette-tableau .ti { font-size: 22px; color: var(--copper); }
+.vignette-pied {
+  display: flex; align-items: center; gap: 3px;
+  padding: 6px; border-top: 1px solid var(--line);
+}
+.vignette-nom {
+  flex: 1; font-size: 11px; color: var(--ink-soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* --------------------------------------------------------- 9. Fenêtres */
+/* Système de fenêtres propre à cet outil (confirmations, Nouvelle commande,
+   Configuration…) — fond masqué par défaut, affiché et animé via la classe
+   .open (fond qui s'éclaircit, fenêtre qui glisse depuis le bas), fermeture
+   symétrique par .closing qui rejoue l'animation à l'envers avant le vrai
+   masquage — voir ouvrirModale/fermerModale dans app/js/99-app.js. Les
+   jetons utilisés (--overlay-scrim, --shadow-modal, --z-modal-top) sont ceux
+   de la charte partagée. Un clic sur le fond n'y ferme pas la fenêtre non
+   plus : seuls la croix, Échap ou un bouton du pied y ferment. */
+
+.modale-fond {
+  position: fixed; inset: 0;
+  background: rgba(100,100,100,0);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px; z-index: var(--z-modal-top);
+}
+.modale-fond.open { display: flex; animation: fenetre-fond-in .25s ease forwards; }
+/* !important : la fenêtre garde .open jusqu'à la fin de l'animation de
+   fermeture (voir fermerFenetreAnimee, app/js/99-app.js), donc .open et
+   .closing sont posées en même temps — !important met à l'abri d'une règle
+   plus spécifique ajoutée plus tard. */
+.modale-fond.closing { animation: fenetre-fond-out .22s ease forwards !important; }
+
+body.modale-ouverte { overflow: hidden; }
+
+.modale {
+  position: relative;
+  background: var(--paper-card); border-radius: 14px;
+  box-shadow: var(--shadow-modal);
+  width: 100%; max-width: 520px; max-height: calc(100vh - 40px);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.modale-fond.open .modale { animation: fenetre-entree .35s cubic-bezier(.32,0,.15,1) forwards; }
+.modale-fond.closing .modale { animation: fenetre-sortie .22s cubic-bezier(.32,0,.15,1) forwards !important; }
+/* Sans ça, #modale-contenu (bloc anonyme, pas de règle CSS jusqu'ici) ne
+   transmet pas la hauteur contrainte de .modale à .win-corps : flex:1 n'a
+   plus de hauteur de référence, .win-corps grandit à la taille de son
+   contenu au lieu de s'arrêter et de défiler. min-height:0 est ce qui
+   autorise un enfant flex à rétrécir sous sa taille de contenu. */
+#modale-contenu { display: flex; flex-direction: column; min-height: 0; }
+
+/* Variante large : Nouvelle commande et Configuration s'ouvrent dans la même
+   fenêtre que les confirmations (voir App.ouvrirFenetre, app/js/99-app.js),
+   juste plus large — ces deux vues ont déjà leur propre entête, donc pas de
+   bandeau de titre ici, seulement une croix flottante au-dessus du contenu. */
+.modale-fond--large .modale { max-width: 960px; }
+
+@keyframes fenetre-fond-in  { from { background: rgba(100,100,100,0); } to { background: var(--overlay-scrim); } }
+@keyframes fenetre-fond-out { from { background: var(--overlay-scrim); } to { background: rgba(100,100,100,0); } }
+@keyframes fenetre-entree   { from { opacity: 0; transform: translateY(40px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fenetre-sortie   { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(40px) scale(.98); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .modale-fond.open, .modale-fond.closing,
+  .modale-fond.open .modale, .modale-fond.closing .modale { animation: none; }
+}
+
+.win-entete {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding: 18px 20px; border-bottom: 1px solid var(--line);
+}
+.win-entete .ti-titre { font-size: 20px; color: var(--copper); }
+.win-entete h3 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; }
+.win-fermer {
+  background: none; border: none; padding: 0; color: var(--ink-soft);
+  font-size: 22px; line-height: 1;
+}
+.win-fermer:hover { transform: none; color: var(--ink); }
+.win-corps {
+  padding: 18px 20px; overflow-y: auto; flex: 1; min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.win-corps .indice { margin-top: 0; font-size: 13px; line-height: 1.55; }
+/* Variante « fenêtre de vue » (Nouvelle commande, Configuration) : un peu
+   plus de respiration, gabarit proche du <main> qu'elle remplace — même
+   bandeau .win-entete que les autres fenêtres, donc pas de dégagement
+   particulier à prévoir en haut. */
+.win-corps--vue { padding: 22px 24px 26px; }
+.modale-actions {
+  display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;
+  flex-wrap: wrap; padding: 0 20px 18px;
+}
+
+/* Aperçu PDF avant génération (voir ouvrirApercu, app/js/99-app.js) : même
+   dialogue que App.confirmer/App.choisir, juste en grand format. Fond gris
+   neutre des visionneuses PDF habituelles — les pages (blanches) y restent
+   lisibles quel que soit leur format. */
+.apercu-pdf {
+  display: block; width: 100%; height: 70vh;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: #525659;
+}
+@media (max-width: 640px) {
+  .apercu-pdf { height: 55vh; }
+}
+
+/* ------------------------------------------------------ 10. Spécifiques */
+
+.ligne-site {
+  display: grid; grid-template-columns: 156px 106px 1fr 1.4fr;
+  gap: 10px; align-items: start;
+  padding: 10px 0; border-bottom: 1px solid #EEF1F5;
+}
+.ligne-site.entete {
+  border-bottom: 1px solid var(--line); padding-bottom: 7px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.nom-site { padding-top: 8px; font-weight: 700; }
+.incomplet { color: var(--warn); font-weight: 700; }
+
+.liste-simple { list-style: none; margin: 0; padding: 0; }
+.liste-simple li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid #EEF1F5;
+}
+.liste-simple li > span:first-child { flex: 1; }
+
+.apercu-tampon {
+  width: 226px; min-height: 96px; padding: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+}
+.apercu-tampon img { max-width: 100%; max-height: 124px; }
+
+/* ----------------------------------------------------- 11. Adaptations */
+/* Points de rupture de la charte — plages jamais chevauchantes. */
+
+@media (max-width: 1024px) {
+  .c3, .c4, .c5 { grid-column: span 6; }
+}
+
+@media (max-width: 768px) {
+  .ligne-site { grid-template-columns: 1fr; }
+  .ligne-site.entete { display: none; }
+  .nom-site { padding-top: 0; }
+  /* Fenêtres : même feuille plein écran ancrée en bas que le Catalogue
+     Électrique, plutôt qu'une boîte centrée. */
+  .modale-fond { align-items: flex-end; padding: 0; }
+  .modale { border-radius: 16px 16px 0 0; max-width: 100%; max-height: 92vh; }
+  /* Même spécificité que .modale-fond--large .modale (§9) : sans ce
+     doublon, la règle desktop (960px), plus spécifique, l'emporterait
+     malgré son ordre antérieur dans la feuille. */
+  .modale-fond--large .modale { max-width: 100%; }
+  .win-entete { padding: 14px 16px 12px; }
+  .win-corps { padding: 12px 16px 16px; }
+  .modale-actions { padding: 0 16px 16px; flex-wrap: wrap; }
+  .modale-actions button { flex: 1; justify-content: center; }
+}
+
+@media (max-width: 640px) {
+  main { padding: 16px 14px 60px; }
+  .c3, .c4, .c5, .c6, .c8 { grid-column: span 12; }
+  .entete-vue .actions { margin-left: 0; width: 100%; }
+  .entete-vue .actions button { flex: 1; justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .vignette { width: 100%; }
+}

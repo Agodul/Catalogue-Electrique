@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260925171346";
+const CACHE = "spi-catalogue-v20260926165858";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -15,7 +15,7 @@ const CACHE = "spi-catalogue-v20260925171346";
 // ci-dessous est réécrit par ./bump-sw-version.sh à partir d'une empreinte
 // des fichiers eux-mêmes : il ne bouge que s'ils bougent.
 // >>> CACHE_LIBS >>>
-const CACHE_LIBS = "spi-catalogue-libs-1129883938d28c46";
+const CACHE_LIBS = "spi-catalogue-libs-93c38f24d9ffb3bb";
 // <<< CACHE_LIBS <<<
 
 // ── Listes de précache ───────────────────────────────────────────────────
@@ -110,6 +110,25 @@ const FILES = [
   "./assets/icons/families/svg-vision.png",
   "./assets/splash.mp4",
   "./assets/three-d-badge.png",
+  "./commande.html",
+  "./commandes-immo/css/commandes.css",
+  "./commandes-immo/js/app.js",
+  "./commandes-immo/js/config.js",
+  "./commandes-immo/js/docx.js",
+  "./commandes-immo/js/modele-infos.js",
+  "./commandes-immo/js/modeles.js",
+  "./commandes-immo/js/numerotation.js",
+  "./commandes-immo/js/pdf.js",
+  "./commandes-immo/js/pwa.js",
+  "./commandes-immo/js/serveur.js",
+  "./commandes-immo/js/signature.js",
+  "./commandes-immo/js/utils.js",
+  "./commandes-immo/js/vue-commande.js",
+  "./commandes-immo/js/vue-config.js",
+  "./commandes-immo/js/vue-fournisseurs.js",
+  "./commandes-immo/js/vue-liste.js",
+  "./commandes-immo/js/vue-signature.js",
+  "./commandes-immo/lib/imagemodule.js",
   "./css/styles.css",
   "./css/tabler-icons.css",
   "./index.html",
@@ -172,6 +191,10 @@ const FILES = [
 
 // >>> FILES_DEFERRED >>>
 const FILES_DEFERRED = [
+  "./commandes-immo/lib/docxtemplater.min.js",
+  "./commandes-immo/lib/pdf-lib.min.js",
+  "./commandes-immo/lib/pizzip-utils.min.js",
+  "./commandes-immo/lib/pizzip.min.js",
   "./js/cmaps/78-EUC-H.bcmap",
   "./js/cmaps/78-EUC-V.bcmap",
   "./js/cmaps/78-H.bcmap",
