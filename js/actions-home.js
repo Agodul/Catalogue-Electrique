@@ -488,6 +488,12 @@
     btnPneu.addEventListener('click', function(){ switchDomain('pneumatique'); });
     syncDomainToggleUI();
     syncDomainToggleEnabled();
+    // Exposée pour la préférence de domaine dans "Mon compte" (voir
+    // openChangePasswordModal, js/auth.js) : même bascule que les boutons du
+    // header (applique le domaine, nettoie les filtres devenus incohérents,
+    // re-rend la page, remet les boutons du header à jour), plutôt que
+    // dupliquer cette logique ailleurs.
+    window._switchDomain = switchDomain;
   })();
 
   document.getElementById('brandmarkLogo').addEventListener('click', function(){

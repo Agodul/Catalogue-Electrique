@@ -307,6 +307,17 @@ async function authLogin(username, password) {
       // qu'il regardait (retour utilisateur : "corriger l'affichage du
       // catalogue complet lors de la connexion").
       var _wasViewAllBeforeLogin = sessionStorage.getItem('cat_view_all') === '1';
+      // Applique le domaine préféré du COMPTE (voir "Domaine préféré" dans
+      // openChangePasswordModal plus bas) avant les rendus juste en dessous,
+      // pour que la première vue affichée soit déjà la bonne — utile
+      // surtout sur un appareil qui n'a jamais ouvert l'app (pas de domaine
+      // mémorisé en local, voir window._getActiveDomain/js/storage.js).
+      // Seulement au LOGIN, pas à chaque rafraîchissement périodique
+      // (authRefreshMe) — sinon un changement de domaine fait localement en
+      // cours de session serait silencieusement annulé au prochain sondage.
+      if (serverUser.preferences && serverUser.preferences.domaine && typeof window._switchDomain === 'function') {
+        window._switchDomain(serverUser.preferences.domaine);
+      }
       closeAuthModal();
       applyAuthUI();
       showAuthToast('Connecté en tant que ' + (serverUser.displayName || username));
@@ -435,6 +446,45 @@ async function authChangeOwnPassword(username, newPassword) {
       // Littéral construit sur place : aucun autre champ ne peut s'y glisser.
       body: JSON.stringify({ password: String(newPassword) })
     });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+// Changement de SES PROPRES préférences (ex. domaine catalogue préféré —
+// voir "Domaine préféré" dans openChangePasswordModal ci-dessous). Même
+// précaution qu'authChangeOwnPassword juste au-dessus : le corps envoyé ne
+// peut contenir qu'un objet { preferences } construit ici, jamais fusionné
+// avec un objet fourni par l'appelant — PUT /users/<username> reste la même
+// route d'administration des comptes (isAdmin/permissions), voir le
+// commentaire détaillé plus haut.
+// currentPreferences : préférences déjà connues côté client (user.preferences
+// tel que reçu du serveur), fusionnées avec les nouvelles valeurs plutôt que
+// remplacées en bloc — pour ne jamais écraser une préférence future qui
+// existerait déjà sous une autre clé.
+async function authSetOwnPreferences(username, currentPreferences, newValues) {
+  var sUrl  = localStorage.getItem(AUTH_SERVER_KEY);
+  var token = authGetToken();
+  if (!sUrl || !token || !username) return false;
+  var merged = Object.assign({}, currentPreferences || {}, newValues || {});
+  try {
+    var r = await fetch(sUrl + '/users/' + encodeURIComponent(username), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ preferences: merged })
+    });
+    if (r.ok) {
+      // Reflète immédiatement en session locale (sans attendre le prochain
+      // /me) — authGetCurrentUser() est relu ailleurs (ex. à chaque
+      // ouverture de "Mon compte") et doit déjà voir la nouvelle valeur.
+      var s = _authGetSession();
+      if (s && s.user) {
+        s.user.preferences = merged;
+        authSetSession(s.token, s.user);
+      }
+    }
     return r.ok;
   } catch(e) { return false; }
 }
@@ -1363,9 +1413,26 @@ function openChangePasswordModal() {
   // cohérence entre fenêtres).
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  // Retour utilisateur : "ajoute la possibilité de choisir la préférence
+  // entre le catalogue électrique et pneumatique dans Mon compte" — liée au
+  // COMPTE (pas seulement à cet appareil, voir authSetOwnPreferences), donc
+  // logée ici, dans l'unique fenêtre "Mon compte" existante (jusqu'ici
+  // seulement le changement de mot de passe) plutôt que dans une nouvelle
+  // fenêtre séparée. Réutilise .domain-toggle/.domain-toggle-btn (mêmes
+  // classes que les boutons du header, css/styles.css) pour un rendu
+  // cohérent avec la bascule déjà connue de l'utilisateur.
+  var currentDomain = (user.preferences && user.preferences.domaine)
+    || (typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : 'electrique');
   ov.innerHTML = '<div class="modal" style="max-width:380px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Changer mon mot de passe</h3></div>'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3></div>'
     + '<div class="modal-body">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px;">Domaine préféré</div>'
+    + '<div class="domain-toggle" id="_myAccDomainToggle" role="group" aria-label="Domaine préféré" style="width:100%;margin-bottom:10px;">'
+    + '<button type="button" class="domain-toggle-btn' + (currentDomain === 'electrique' ? ' active' : '') + '" id="_myAccDomainElec" style="flex:1;justify-content:center;"><i class="ti ti-bolt" aria-hidden="true"></i><span class="domain-toggle-label">Électrique</span></button>'
+    + '<button type="button" class="domain-toggle-btn' + (currentDomain === 'pneumatique' ? ' active' : '') + '" id="_myAccDomainPneu" style="flex:1;justify-content:center;"><i class="ti ti-wind" aria-hidden="true"></i><span class="domain-toggle-label">Pneumatique</span></button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--ink-soft);margin-bottom:16px;">Ce choix suit votre compte, quel que soit l\'appareil utilisé.</div>'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px;border-top:1px solid var(--line);padding-top:14px;">Changer mon mot de passe</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
     + _authPasswordFieldHtml('_cpCurrent', 'Mot de passe actuel', 'current-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + _authPasswordFieldHtml('_cpNew', 'Nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
@@ -1379,6 +1446,31 @@ function openChangePasswordModal() {
     + '</div></div></div>';
   document.body.appendChild(ov);
   _authWirePasswordToggles(ov);
+
+  // Domaine préféré : appliqué immédiatement au clic (pas de mot de passe à
+  // revérifier pour ça, contrairement au changement de mot de passe ci-
+  // dessous) — window._switchDomain (js/actions-home.js) applique le
+  // changement local (localStorage, filtres, re-rendu, boutons du header),
+  // puis authSetOwnPreferences persiste côté compte. _switchDomain reste
+  // sans effet si un filtre catalogue est actif (même garde-fou que les
+  // boutons du header) — signalé par toast plutôt que de laisser croire à
+  // tort que la préférence a changé.
+  var domainElecBtn = ov.querySelector('#_myAccDomainElec');
+  var domainPneuBtn = ov.querySelector('#_myAccDomainPneu');
+  function _myAccSetDomain(d){
+    var before = typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : null;
+    if(typeof window._switchDomain === 'function') window._switchDomain(d);
+    var after = typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : null;
+    if(before !== null && before === after && before !== d){
+      showAuthToast('Réinitialisez les filtres du catalogue pour changer de domaine');
+      return;
+    }
+    domainElecBtn.classList.toggle('active', d === 'electrique');
+    domainPneuBtn.classList.toggle('active', d === 'pneumatique');
+    authSetOwnPreferences(user.username, user.preferences, { domaine: d });
+  }
+  if(domainElecBtn) domainElecBtn.addEventListener('click', function(){ _myAccSetDomain('electrique'); });
+  if(domainPneuBtn) domainPneuBtn.addEventListener('click', function(){ _myAccSetDomain('pneumatique'); });
 
   // Même comportement que la modale "Ajouter un utilisateur" (openAddUserModal) :
   // bordure rouge sur le champ fautif en plus du message d'erreur, qui repasse
