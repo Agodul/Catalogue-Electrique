@@ -44,12 +44,17 @@
   window._openReviewModal = function(item, user, locked){
     var data          = item.data || {};
     // data reste toujours les valeurs réelles actuelles (voir js/requests.js,
-    // commentaire au-dessus de reqSubmit) ; data.requestFields (présent même
-    // vide) porte uniquement ce qui a été proposé en plus — absent pour une
-    // nouvelle proposition (rien de réel à fusionner par-dessus).
-    var changedFields = data.requestFields || null;
-    var isNew         = !changedFields;
-    var p = isNew ? Object.assign({}, data) : Object.assign({}, data, changedFields);
+    // commentaire au-dessus de reqSubmit) ; data.request_field (nom de champ
+    // confirmé côté serveur — capture Swagger, PAS "requestFields") porte ce
+    // qui a été proposé en plus. isNew : présence du ref dans le catalogue
+    // déjà chargé localement — PAS (l')absence de request_field, qui est
+    // toujours renvoyé par le serveur, vide ou non, pour une modification
+    // COMME pour une nouvelle proposition (retour utilisateur : "la fenêtre
+    // affiche nouveau produit" pour une modification — c'est cette
+    // confusion qui en était la cause).
+    var changedFields = data.request_field || null;
+    var isNew         = !(typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === item.ref; });
+    var p = Object.assign({}, data, changedFields || {});
 
     window._proposeMode = false;
     window._reviewMode  = true;
@@ -80,7 +85,17 @@
     window._reviewIsExistingProduct = !isNew;
     if(typeof window._setFRefLocked === 'function') window._setFRefLocked(!isNew);
     modalTitle.textContent = (isNew ? 'Nouveau produit : ' : 'Modification proposée : ') + (p.ref || '');
-    modalLeftFoot.textContent = 'Soumis par ' + user + (data._reqAt ? ' · ' + new Date(data._reqAt).toLocaleString('fr-FR') : '');
+    // Retour utilisateur : "ça ne dit pas qui a fait la demande" — vérifié
+    // sur la réponse réelle du serveur (capture) : aucun champ utilisateur
+    // nulle part pour une demande produit. "Soumis par X" seulement quand
+    // on a vraiment cette info (bug signalé — voir _reqNormalizeBugItem) ;
+    // sinon juste la date, sans laisser croire à tort qu'on sait qui.
+    // updatedAt, pas createdAt : createdAt reste celui du PRODUIT réel pour
+    // une modification (racine = valeurs réelles, voir js/requests.js) —
+    // updatedAt est bumpé à chaque envoi (voir reqSubmit), le plus proche
+    // d'une date de soumission qu'on puisse afficher ici.
+    var reqAtMs = data._reqAt || data.updatedAt;
+    modalLeftFoot.textContent = 'Soumis' + (user ? ' par ' + user : '') + (reqAtMs ? ' · ' + new Date(reqAtMs).toLocaleString('fr-FR') : '');
     var btnSave = document.getElementById('btnSave');
     if(btnSave) btnSave.textContent = 'Valider et accepter';
     // Documents joints à CETTE demande (ref+user de la demande, pas du

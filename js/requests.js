@@ -408,12 +408,12 @@
       // conservé par sécurité pour d'éventuels rapports historiques encore
       // présents côté serveur dans l'ancien stockage.
       if(item.type === 'bug') return await window.reqResolveBug(ref, item.attachmentId || null);
-      // Applique les champs proposés (data.requestFields, voir reqSubmit)
-      // par-dessus les valeurs réelles avant de valider — absent quand
-      // overrideData vient déjà du formulaire (état final déjà résolu par
-      // l'admin) ou pour une nouvelle proposition (rien à fusionner).
-      if(item.requestFields) Object.assign(item, item.requestFields);
-      delete item._reqUser; delete item._reqAt; delete item.user; delete item.requestFields;
+      // Applique les champs proposés (data.request_field, nom de champ
+      // confirmé côté serveur — voir reqSubmit) par-dessus les valeurs
+      // réelles avant de valider — absent quand overrideData vient déjà du
+      // formulaire (état final déjà résolu par l'admin).
+      if(item.request_field) Object.assign(item, item.request_field);
+      delete item.request_field;
       // N'est plus une demande : redevient un produit réel du catalogue.
       item.request = false;
       item.updatedAt = Date.now();
@@ -841,37 +841,22 @@
       // marque résolu individuellement), donc pas de footer sur cet onglet.
       if(footer) footer.style.display = (type === 'bug') ? 'none' : 'flex';
 
-      // Map (pas un objet brut) : un nom d'utilisateur "__proto__"/
-      // "constructor"/"toString"/etc. réécrirait silencieusement le
-      // prototype de l'objet au lieu d'ajouter une entrée — la demande de
-      // CET utilisateur disparaissait alors totalement de la liste admin,
-      // sans erreur (trouvé en stress-testant, même piège déjà évité par
-      // localMap dans js/actions-sync-core.js pour les refs produit).
-      function groupByUser(list){
-        var byUser = new Map();
-        list.forEach(function(it){
-          var data = it.data || {};
-          var u = data._reqUser || it.user || '?';
-          if(!byUser.has(u)) byUser.set(u, []);
-          byUser.get(u).push({ ref: it.ref, data: data });
-        });
-        return byUser;
-      }
-      var byUser = groupByUser(items);
-      var html = '';
-      byUser.forEach(function(userItems, u){
-        html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + userItems.length + '</div>';
-        userItems.forEach(function(item){ html += reqRenderAdminItem(item, u); });
-      });
+      // Retour utilisateur : "ça ne dit pas qui a fait la demande" — vérifié
+      // sur la réponse réelle du serveur (capture) : aucun champ utilisateur
+      // nulle part (ni "user", ni "_reqUser") sur une demande produit. Plus
+      // de regroupement par utilisateur ni d'en-tête "? — N" trompeur tant
+      // que le serveur ne renvoie pas cette info — liste à plat.
+      var html = items.map(function(item){ return reqRenderAdminItem(item); }).join('');
       body.innerHTML = html;
 
-      // Clic → modale détail
+      // Clic → modale détail. matchItem.user : présent pour un bug (voir
+      // _reqNormalizeBugItem), absent pour une demande produit (le serveur
+      // ne renvoie aucune info d'auteur pour celles-ci, voir plus haut).
       body.querySelectorAll('[data-req-detail]').forEach(function(el){
         el.addEventListener('click', function(){
           var ref  = el.getAttribute('data-req-detail');
-          var user = el.getAttribute('data-req-user-detail');
           var matchItem = items.find(function(it){ return it.ref === ref; });
-          if(matchItem) reqOpenDetail(matchItem, user);
+          if(matchItem) reqOpenDetail(matchItem, matchItem.user || null);
         });
       });
     } catch(e){
@@ -879,13 +864,24 @@
     }
   }
 
-  function reqRenderAdminItem(item, user){
+  function reqRenderAdminItem(item){
     var data   = item.data || {};
-    var reqAt  = data._reqAt ? new Date(data._reqAt).toLocaleString('fr-FR') : '';
-    var refKey = escapeHtml(item.ref);
-    var userKey = escapeHtml(user);
     var isBug  = data.type === 'bug';
-    var isNew  = !data.requestFields;
+    // Bugs : _reqAt (voir _reqNormalizeBugItem). Demandes produit : le
+    // serveur ne renvoie que createdAt/updatedAt, jamais _reqAt — et
+    // createdAt reste celui du PRODUIT réel pour une modification (racine
+    // = valeurs réelles), pas celui de la demande. updatedAt, lui, est
+    // bumpé à chaque envoi (voir reqSubmit) : le plus proche d'une date de
+    // soumission qu'on puisse afficher ici.
+    var reqAtMs = isBug ? data._reqAt : data.updatedAt;
+    var reqAt  = reqAtMs ? new Date(reqAtMs).toLocaleString('fr-FR') : '';
+    var refKey = escapeHtml(item.ref);
+    // isNew : présence du ref dans le catalogue déjà chargé localement —
+    // PAS data.requestFields/request_field (toujours présent côté serveur,
+    // vide ou non, pour une modification COMME pour une nouvelle
+    // proposition — s'y fier affichait "Nouveau produit" pour une
+    // modification, retour utilisateur, capture à l'appui).
+    var isNew  = isBug ? false : !(typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === item.ref; });
     var titleText = isBug ? (data.title || 'Bug signalé') : item.ref;
     var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
     // Badge coloré par GRAVITÉ pour un bug (plutôt qu'un badge "Bug"
@@ -898,7 +894,7 @@
     var badgeBg   = isBug ? sevColors[0] : (isNew ? '#DCFCE7' : '#FEF3C7');
     var badgeFg   = isBug ? sevColors[1] : (isNew ? '#065F46' : '#92400E');
     var badgeText = isBug ? ('<i class="ti ti-bug"></i> ' + escapeHtml(_reqSeverityLabel(data.severity) || 'Bug')) : (isNew ? 'Nouveau' : 'Modification');
-    return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '" data-req-user-detail="' + userKey + '">'
+    return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '">'
       + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
       +   '<div style="min-width:0;">'
       +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
