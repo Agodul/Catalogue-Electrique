@@ -1092,10 +1092,18 @@
        l'autre pour une même taille de police. */
     display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   }
+  /* Retour utilisateur : "les texte en gras ne sont pas aligné" (capture à
+     l'appui) — sans largeur fixe, la valeur (en gras) démarre juste après
+     son libellé, à une position différente sur chaque ligne selon la
+     longueur du libellé ("MARQUE" court vs "FOURNISSEUR" long). Largeur
+     calée sur "FOURNISSEUR" (le plus long, mesuré ~83px à cette taille de
+     police), pour que toutes les valeurs démarrent à la même position —
+     même correctif déjà appliqué côté mobile (media query plus bas dans ce
+     fichier), ici pour la version desktop/tablette. */
   .vm-meta-item label{
     font-size:11px; letter-spacing:.05em;
     text-transform:uppercase; color:var(--ink-soft);
-    flex-shrink:0;
+    flex-shrink:0; min-width:86px;
   }
   .vm-meta-item span{ font-weight:600; }
 

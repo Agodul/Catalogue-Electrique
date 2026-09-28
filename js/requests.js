@@ -11,6 +11,10 @@
   // reqLoadAdminList/reqLoadMineList), pas de paramètre serveur dédié pour
   // ça dans /pullBugs.
   var _reqSeverityFilter = '';
+  // Recherche texte, les deux onglets (retour utilisateur : "trier/filtrer
+  // la liste admin") — '' = pas de filtre. Toujours en minuscules, comparé
+  // à des champs déjà passés en minuscules au moment du filtre.
+  var _reqSearchFilter = '';
 
   // Mêmes libellés FR que le <select> du formulaire d'envoi (voir
   // bugReportOverlay, js/templates.js) — retour utilisateur : "les remontées
@@ -24,6 +28,30 @@
   // masquer (mieux vaut un mot en anglais visible qu'une gravité qui
   // disparaît silencieusement si l'API renvoie un jour autre chose).
   function _reqSeverityLabel(sev){ return REQ_SEVERITY_LABELS[sev] || sev || ''; }
+
+  // ── Bugs vus / non lus (retour utilisateur : "distinguer vu de non lu") ──
+  // Le seul état qui existait avant était "en attente" jusqu'à suppression
+  // complète (Marquer résolu) — rien pour dire "pris en compte, en cours"
+  // sans le faire disparaître. Suivi CÔTÉ APPAREIL
+  // (localStorage, pas le serveur — aucun endpoint pour ça) : chaque admin a
+  // son propre historique de bugs déjà consultés, jamais synchronisé entre
+  // appareils/comptes admin — acceptable, l'essentiel est de distinguer "je
+  // ne l'ai jamais ouvert" de "déjà vu, pas encore résolu".
+  var REQ_SEEN_BUGS_KEY = 'cat_req_seen_bugs';
+  function _reqSeenBugsSet(){
+    try {
+      var arr = JSON.parse(localStorage.getItem(REQ_SEEN_BUGS_KEY) || '[]');
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch(e){ return new Set(); }
+  }
+  function _reqMarkBugSeen(ref){
+    if(!ref) return;
+    var seen = _reqSeenBugsSet();
+    if(seen.has(ref)) return;
+    seen.add(ref);
+    try { localStorage.setItem(REQ_SEEN_BUGS_KEY, JSON.stringify(Array.from(seen))); } catch(e){}
+  }
+  function _reqIsBugSeen(ref){ return _reqSeenBugsSet().has(ref); }
 
   // ── Helpers ───────────────────────────────────────────────────
   function reqServerUrl(){ return localStorage.getItem('cat_server_url') || ''; }
@@ -210,6 +238,42 @@
       if(JSON.stringify(proposed[k]) !== JSON.stringify(origVal)) out[k] = proposed[k];
     });
     return out;
+  }
+
+  // Nom affiché pour une demande produit : le vrai produit déjà en cache
+  // local (modification) sinon les champs proposés eux-mêmes (nouveau
+  // produit, voir reqSubmit — ils portent alors tout, y compris "name").
+  function _reqProductDisplayName(item){
+    var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === item.ref; });
+    var data = item.data || {};
+    return (real && real.name) || data.name || '';
+  }
+
+  // ── Recherche + tri, communs aux listes admin et "mes demandes" ────────
+  // Retour utilisateur : "trier/filtrer la liste admin" — recherche texte
+  // (ref/nom pour une demande produit, titre/description pour un bug) et
+  // tri du plus récent au plus ancien (le serveur ne garantit aucun ordre
+  // particulier, voir reqLoadAdminList/reqLoadMineList).
+  function _reqSearchAndSort(items, type){
+    var q = _reqSearchFilter;
+    if(q){
+      items = items.filter(function(it){
+        var data = it.data || {};
+        if(type === 'bug'){
+          return (data.title||'').toLowerCase().indexOf(q) !== -1
+              || (data.description||'').toLowerCase().indexOf(q) !== -1;
+        }
+        return (it.ref||'').toLowerCase().indexOf(q) !== -1
+            || _reqProductDisplayName(it).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    items = items.slice().sort(function(a, b){
+      var da = a.data || {}, db = b.data || {};
+      var ta = type === 'bug' ? (da._reqAt || 0) : (da.updatedAt || da.createdAt || 0);
+      var tb = type === 'bug' ? (db._reqAt || 0) : (db.updatedAt || db.createdAt || 0);
+      return tb - ta;
+    });
+    return items;
   }
   window.reqSubmit = async function(payload, existingProduct){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
@@ -523,6 +587,32 @@
     return { ref: b.id, user: authorName || '—', data: data, attachmentId: attId };
   }
 
+  // Retour utilisateur : "les bugs liés au code ou même aux réponses du
+  // serveur soient également remontés" — le journal d'erreurs JS existe déjà
+  // (window._bugErrorLog, voir js/popup.js, alimenté en continu par des
+  // écouteurs error/unhandledrejection globaux déjà posés) mais n'était
+  // JAMAIS envoyé au serveur : _reqOpenBugDetail l'affichait (ctx.recentLogs)
+  // en s'attendant à un champ "context" qu'aucun code n'a jamais réellement
+  // renseigné — bug d'implémentation incomplète, corrigé ici. /pushBugs n'a
+  // qu'un schéma FIXE (title/description/severity/stepsToReproduce/
+  // appVersion, voir plus bas) sans champ "context" documenté — plutôt que
+  // de risquer un 422 en ajoutant un champ non prévu par le serveur, ce
+  // contexte est inséré en texte lisible DANS la description elle-même
+  // (toujours un champ confirmé), sous un séparateur clair.
+  function _reqTechContextText(){
+    var lines = ['Page : ' + location.pathname + location.search,
+      'Navigateur : ' + navigator.userAgent,
+      'Fenêtre : ' + window.innerWidth + 'x' + window.innerHeight];
+    var log = (typeof window._bugErrorLog !== 'undefined' && Array.isArray(window._bugErrorLog)) ? window._bugErrorLog : [];
+    if(log.length){
+      lines.push('', 'Erreurs JS récentes (' + log.length + ') :');
+      log.forEach(function(l){
+        lines.push('[' + l.type + '] ' + (l.message||'') + (l.source ? ' (' + l.source + ')' : ''));
+      });
+    }
+    return lines.join('\n');
+  }
+
   // ── Signaler un bug ───────────────────────────────────────────
   // API dédiée aux bugs (checkBugs/pushBugs/pullBugs/deleteBugs +
   // pushBugsFiles/pullBugsFiles/deleteBugsFiles), séparée de celle des
@@ -544,13 +634,16 @@
       // au mieux de la description, une ligne = une étape. Le champ étant
       // probablement requis côté API (tableau, pas nullable), on retombe
       // sur la description entière comme étape unique si elle tient sur
-      // une seule ligne.
+      // une seule ligne. Calculé sur la description D'ORIGINE, avant l'ajout
+      // du contexte technique ci-dessous — sinon "étapes" se remplirait des
+      // lignes du journal d'erreurs.
       var steps = (description || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
       if(!steps.length) steps = [description || ''];
+      var fullDescription = (description || '') + '\n\n── Contexte technique ──\n' + _reqTechContextText();
       var appVersion = await _reqAppVersion();
       var toSend = {
         title: title,
-        description: description,
+        description: fullDescription,
         severity: severity || 'medium',
         stepsToReproduce: steps,
         appVersion: appVersion
@@ -583,6 +676,96 @@
       return true;
     } catch(e) { console.warn('reqSubmitBug:', e); return false; }
   };
+
+  // ── Remontée automatique (retour utilisateur : "les bugs liés au code ou
+  //     même aux réponses du serveur soient également remontés") ──────────
+  // Deux sources : erreurs JS non gérées (déjà captées par les écouteurs
+  // globaux de js/popup.js, qui appelle window._reqAutoReportJsError défini
+  // ici si présent) et requêtes vers NOTRE serveur qui échouent franchement
+  // (5xx ou aucune réponse du tout — PAS 401/403/404, des statuts normaux de
+  // l'app, voir le filtre plus bas). Toujours silencieux (aucun toast) :
+  // l'utilisateur n'a rien demandé, ça ne doit jamais l'interrompre.
+  //
+  // Déduplication par SIGNATURE, en sessionStorage (survit aux rechargements
+  // de la session en cours, se vide à la fermeture de l'onglet) : la même
+  // erreur/le même endpoint en échec ne doit pas spammer un rapport à
+  // chaque nouvel essai — un seul rapport par signature et par session.
+  var REQ_AUTOREPORT_SEEN_KEY = 'cat_autoreport_seen';
+  var _reqAutoReportSeen = (function(){
+    try {
+      var arr = JSON.parse(sessionStorage.getItem(REQ_AUTOREPORT_SEEN_KEY) || '[]');
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch(e){ return new Set(); }
+  })();
+  function _reqAutoReportMarkSeen(sig){
+    _reqAutoReportSeen.add(sig);
+    try { sessionStorage.setItem(REQ_AUTOREPORT_SEEN_KEY, JSON.stringify(Array.from(_reqAutoReportSeen))); } catch(e){}
+  }
+  // Chemins de l'API bugs elle-même : jamais auto-signalés, sous peine de
+  // boucle (un /pushBugs qui échoue déclencherait un nouveau /pushBugs...).
+  var REQ_AUTOREPORT_EXCLUDED_PATHS = ['/pushBugs', '/pushBugsFiles', '/pullBugs', '/checkBugs', '/deleteBugs', '/deleteBugsFiles', '/pullBugsFiles'];
+
+  window._reqAutoReportJsError = function(entry){
+    try {
+      if(!reqServerUrl() || !reqCurrentUser()) return;
+      var sig = 'js:' + entry.type + ':' + (entry.message||'').slice(0, 150) + ':' + (entry.source||'');
+      if(_reqAutoReportSeen.has(sig)) return;
+      _reqAutoReportMarkSeen(sig);
+      var title = '[Auto] ' + (entry.message || 'Erreur JS').slice(0, 90);
+      var desc = 'Erreur JavaScript détectée automatiquement (pas de rapport manuel de l\'utilisateur).\n\n'
+        + 'Type : ' + entry.type
+        + '\nMessage : ' + (entry.message || '')
+        + (entry.source ? '\nSource : ' + entry.source : '')
+        + (entry.stack ? '\nPile :\n' + entry.stack : '');
+      window.reqSubmitBug(title, desc, 'high', null);
+    } catch(e){}
+  };
+
+  function _reqAutoReportServerError(method, url, status, statusText){
+    try {
+      if(!reqServerUrl() || !reqCurrentUser()) return;
+      var sig = 'server:' + method + ':' + url + ':' + status;
+      if(_reqAutoReportSeen.has(sig)) return;
+      _reqAutoReportMarkSeen(sig);
+      var shortUrl = url.indexOf(reqServerUrl()) === 0 ? url.slice(reqServerUrl().length) : url;
+      var title = '[Auto] Échec serveur : ' + method + ' ' + shortUrl + ' → ' + (status || 'réseau');
+      var desc = 'Requête vers le serveur en échec, détectée automatiquement.\n\n'
+        + 'Méthode : ' + method
+        + '\nURL : ' + url
+        + '\nStatut : ' + (status ? status + (statusText ? ' ' + statusText : '') : 'aucune réponse (réseau ou serveur injoignable)');
+      window.reqSubmitBug(title, desc, 'high', null);
+    } catch(e){}
+  }
+
+  // Compose par-dessus le fetch déjà en place (voir js/auth.js —
+  // _installAuthFetchGuard s'exécute avant celui-ci, script chargé plus tôt)
+  // plutôt que de le remplacer, pour ne perdre aucun des deux comportements.
+  (function _installBugAutoReportFetchGuard(){
+    var _orig = window.fetch.bind(window);
+    window.fetch = function(input, init){
+      var method = (init && init.method) || 'GET';
+      var urlStr = typeof input === 'string' ? input : (input && input.url) || '';
+      return _orig(input, init).then(function(res){
+        try {
+          var sUrl = reqServerUrl();
+          if(sUrl && urlStr.indexOf(sUrl) === 0 && res.status >= 500
+             && !REQ_AUTOREPORT_EXCLUDED_PATHS.some(function(p){ return urlStr.indexOf(p) !== -1; })){
+            _reqAutoReportServerError(method, urlStr, res.status, res.statusText);
+          }
+        } catch(e){}
+        return res;
+      }, function(err){
+        try {
+          var sUrl2 = reqServerUrl();
+          if(sUrl2 && urlStr.indexOf(sUrl2) === 0
+             && !REQ_AUTOREPORT_EXCLUDED_PATHS.some(function(p){ return urlStr.indexOf(p) !== -1; })){
+            _reqAutoReportServerError(method, urlStr, null, err && err.message);
+          }
+        } catch(e){}
+        throw err;
+      });
+    };
+  })();
 
   // ── Marquer un bug comme résolu (supprime le rapport ET l'image jointe le
   //     cas échéant, sans jamais toucher au catalogue produit — API bugs
@@ -647,7 +830,7 @@
     var data    = item.data || {};
     var overlay = document.getElementById('reqDetailOverlay');
     if(!overlay) return;
-    var ctx = data.context || {};
+    _reqMarkBugSeen(item.ref);
 
     var titleEl = document.getElementById('reqDetailTitle');
     var subtitleEl = document.getElementById('reqDetailSubtitle');
@@ -662,37 +845,11 @@
 
     var body = document.getElementById('reqDetailBody');
     if(!body) return;
-    var ctxRows = [
-      ['PAGE', ctx.page],
-      ['NAVIGATEUR', ctx.userAgent],
-      ['FENÊTRE', ctx.viewport]
-    ].filter(function(r){ return !!r[1]; });
-    var ctxHtml = ctxRows.length
-      ? '<div class="vm-meta" style="margin-top:16px;">' + ctxRows.map(function(r){
-          return '<div class="vm-meta-item"><label>' + escapeHtml(r[0]) + '</label><span style="word-break:break-all;">' + escapeHtml(r[1]) + '</span></div>';
-        }).join('') + '</div>'
-      : '';
-    // Journal d'erreurs JS capturées juste avant l'envoi (voir popup.js) —
-    // utile pour diagnostiquer un vrai bug de code, pas juste un souci
-    // d'ergonomie. Vide si rien d'anormal ne s'est produit récemment.
-    // Toujours affiché (même vide) : sinon rien ne distingue "le mécanisme a
-    // tourné et n'a rien trouvé d'anormal" de "le mécanisme n'a pas marché",
-    // ce qui donnait l'impression que la capture de logs était cassée
-    // (retour utilisateur, capture à l'appui).
-    var logs = Array.isArray(ctx.recentLogs) ? ctx.recentLogs : [];
-    var logsHtml = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin:16px 0 6px;">Journal technique (' + logs.length + ')</div>';
-    if(logs.length){
-      logsHtml += '<div style="background:#0F172A;color:#E2E8F0;border-radius:8px;padding:10px 12px;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:1.6;max-height:220px;overflow-y:auto;">'
-        + logs.map(function(l){
-            var color = l.type === 'error' || l.type === 'unhandledrejection' || l.type === 'console.error' ? '#FCA5A5' : '#FCD34D';
-            return '<div style="margin-bottom:6px;"><span style="color:#64748B;">[' + escapeHtml(l.type) + ']</span> <span style="color:' + color + ';">' + escapeHtml(l.message||'') + '</span>'
-              + (l.source ? '<br><span style="color:#64748B;">' + escapeHtml(l.source) + '</span>' : '')
-              + '</div>';
-          }).join('')
-        + '</div>';
-    } else {
-      logsHtml += '<div style="color:var(--ink-soft);font-size:12px;font-style:italic;">Aucune erreur ni avertissement récent au moment de l\'envoi.</div>';
-    }
+    // Pas de section "contexte"/"journal technique" séparée ici : /pushBugs
+    // n'a pas de champ dédié pour ça côté serveur (schéma fixe, voir
+    // reqSubmitBug) — le contexte technique (page, navigateur, erreurs JS
+    // récentes) est maintenant inclus directement DANS la description
+    // envoyée (voir _reqTechContextText), donc déjà visible ci-dessous.
     var imageHtml = data.hasImage
       ? '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin:16px 0 6px;">Capture d\'écran</div>'
         + '<div id="reqBugImageWrap" style="color:var(--ink-soft);font-size:12.5px;"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i> Chargement…</div>'
@@ -700,9 +857,7 @@
     body.innerHTML =
       '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);margin-bottom:6px;">Description</div>'
       + '<div class="vm-desc" style="white-space:pre-wrap;">' + escapeHtml(data.description || '(aucune description)') + '</div>'
-      + imageHtml
-      + ctxHtml
-      + logsHtml;
+      + imageHtml;
 
     // L'image n'est jamais dans le JSON (voir reqSubmitBug) — récupérée à
     // part depuis l'API fichiers dédiée aux bugs, via l'UUID de la pièce
@@ -822,16 +977,19 @@
       if(type === 'bug' && _reqSeverityFilter){
         items = items.filter(function(it){ return (it.data||{}).severity === _reqSeverityFilter; });
       }
+      items = _reqSearchAndSort(items, type);
 
       var footer = document.getElementById('requestsFooter');
       if(items.length === 0){
-        // Distingue "rien à afficher parce que le filtre exclut tout" de
-        // "vraiment aucun bug" — sinon le message laisse croire à tort que
-        // la boîte est vide alors qu'un filtre de gravité est juste actif
-        // (retour utilisateur : filtre par gravité).
-        var emptyMsg = (type === 'bug')
-          ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
-          : 'Aucune demande en attente';
+        // Distingue "rien à afficher parce qu'un filtre exclut tout" de
+        // "vraiment aucune demande/aucun bug" — sinon le message laisse
+        // croire à tort que la boîte est vide (retour utilisateur : filtre
+        // par gravité, puis recherche texte).
+        var emptyMsg = _reqSearchFilter
+          ? 'Aucun résultat pour cette recherche'
+          : (type === 'bug'
+              ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
+              : 'Aucune demande en attente');
         body.innerHTML = '<div class="req-empty"><i class="ti ti-bell-off" style="font-size:32px;display:block;margin-bottom:8px;"></i>' + emptyMsg + '</div>';
         if(footer) footer.style.display = 'none';
         return;
@@ -883,7 +1041,13 @@
     // modification, retour utilisateur, capture à l'appui).
     var isNew  = isBug ? false : !(typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === item.ref; });
     var titleText = isBug ? (data.title || 'Bug signalé') : item.ref;
-    var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : (data.name || '');
+    var subText   = isBug ? ((data.description||'').slice(0,80) + ((data.description||'').length > 80 ? '…' : '')) : _reqProductDisplayName(item);
+    // Retour utilisateur : "distinguer vu de non lu" — pastille sur un bug
+    // jamais ouvert (voir _reqMarkBugSeen dans _reqOpenBugDetail). N'a de
+    // sens que pour un bug (une demande produit n'a pas cet état "vu/pas
+    // vu", elle est juste en attente jusqu'à traitement).
+    var isUnread = isBug && !_reqIsBugSeen(item.ref);
+    var unreadDot = isUnread ? '<span title="Non consulté" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--copper);margin-right:6px;flex-shrink:0;"></span>' : '';
     // Badge coloré par GRAVITÉ pour un bug (plutôt qu'un badge "Bug"
     // générique identique pour tous) — retour utilisateur : voir la gravité
     // d'un coup d'œil dans la liste, pas seulement en ouvrant le détail.
@@ -897,7 +1061,7 @@
     return '<div class="req-item" style="cursor:pointer;" data-req-detail="' + refKey + '">'
       + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
       +   '<div style="min-width:0;">'
-      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + escapeHtml(titleText) + '</div>'
+      +     '<div style="font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;">' + unreadDot + escapeHtml(titleText) + '</div>'
       +     '<div style="font-size:11px;color:var(--ink-soft);margin-top:1px;">' + escapeHtml(subText) + (reqAt ? ' · ' + reqAt : '') + '</div>'
       +   '</div>'
       +   '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
@@ -964,11 +1128,14 @@
       if(type === 'bug' && _reqSeverityFilter){
         items = items.filter(function(it){ return (it.data||{}).severity === _reqSeverityFilter; });
       }
+      items = _reqSearchAndSort(items, type);
 
       if(items.length === 0){
-        var emptyMsgMine = (type === 'bug')
-          ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
-          : 'Aucune demande en attente';
+        var emptyMsgMine = _reqSearchFilter
+          ? 'Aucun résultat pour cette recherche'
+          : (type === 'bug'
+              ? (_reqSeverityFilter ? 'Aucun bug avec cette gravité' : 'Aucun bug signalé')
+              : 'Aucune demande en attente');
         body.innerHTML = '<div class="req-empty"><i class="ti ti-check-circle" style="font-size:32px;display:block;margin-bottom:8px;color:#059669;"></i>' + emptyMsgMine + '</div>';
         return;
       }
@@ -1352,6 +1519,21 @@
     if(reqSeverityFilterEl) reqSeverityFilterEl.addEventListener('change', function(){
       _reqSeverityFilter = reqSeverityFilterEl.value;
       reqRefreshPanel();
+    });
+
+    // Retour utilisateur : "trier/filtrer la liste admin" — recherche texte,
+    // les deux onglets (ref/nom pour les demandes produit, titre/description
+    // pour les bugs — voir le filtre appliqué dans reqLoadAdminList/
+    // reqLoadMineList). Debounce léger : pas de rafraîchissement à chaque
+    // frappe, seulement une fois la saisie arrêtée.
+    var reqSearchInputEl = document.getElementById('reqSearchInput');
+    var _reqSearchDebounce = null;
+    if(reqSearchInputEl) reqSearchInputEl.addEventListener('input', function(){
+      clearTimeout(_reqSearchDebounce);
+      _reqSearchDebounce = setTimeout(function(){
+        _reqSearchFilter = reqSearchInputEl.value.trim().toLowerCase();
+        reqRefreshPanel();
+      }, 200);
     });
 
     var btnAccept = document.getElementById('btnAcceptAllRequests');

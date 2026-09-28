@@ -98,6 +98,12 @@ function _bugLogPush(entry){
   window._bugErrorLog.push(entry);
   if(window._bugErrorLog.length > 25) window._bugErrorLog.shift();
   try { sessionStorage.setItem(_BUG_LOG_KEY, JSON.stringify(window._bugErrorLog)); } catch(e){}
+  // Remontée automatique (retour utilisateur : "les bugs liés au code...
+  // soient également remontés") — définie dans js/requests.js, chargé après
+  // ce fichier ; simple no-op tant que ce n'est pas encore le cas (une
+  // erreur survenant avant l'initialisation complète reste de toute façon
+  // dans le journal ci-dessus pour un rapport manuel).
+  if(typeof window._reqAutoReportJsError === 'function') window._reqAutoReportJsError(entry);
 }
 window.addEventListener('error', function(e){
   _bugLogPush({
