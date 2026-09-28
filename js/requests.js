@@ -214,64 +214,48 @@
   window.reqSubmit = async function(payload, existingProduct){
     var sUrl = reqServerUrl(); if(!sUrl) return false;
     var user = reqCurrentUser(); if(!user) return false;
-    var username = user.username || user.name || 'user';
     try {
       var h = reqHeaders();
       var now = Date.now();
-      // Modification : base = valeurs réelles actuelles (jamais écrasées tant
-      // que la demande n'est pas acceptée) + requestFields = uniquement ce
       // qui change. Nouveau produit : rien de réel à protéger, la ligne EST
-      // la proposition, pas de requestFields.
-      var isModification = !!existingProduct;
-      var base = isModification ? Object.assign({}, existingProduct) : Object.assign({}, payload);
-      var toSend = Object.assign({}, base, {
-        ref:           payload.ref,
-        id:            payload.id || (existingProduct && existingProduct.id) || ('p_' + now + '_' + Math.random().toString(36).substr(2,6)),
-        user:          username,
-        createdAt:     (existingProduct && existingProduct.createdAt) || payload.createdAt || now,
-        updatedAt:     now,
-        request:       true,
-        requestFields: isModification ? _reqComputeChangedFields(existingProduct, payload) : null,
-        _reqUser:      username,
-        _reqAt:        now
-      });
-      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
+      // Schéma confirmé par le Swagger réel du serveur (capture) : /pushDatasReq
+      // prend un OBJET UNIQUE {ref, request_field}, pas un tableau comme
+      // /pushDatas — et request_field ne porte QUE les champs proposés, pas
+      // le produit entier ni user/createdAt/request/_reqUser/_reqAt (le
+      // serveur s'en charge lui-même à réception : identité déduite du
+      // token, request:true posé côté serveur — voir retour utilisateur
+      // "c'est le serveur qui va ajouter le req true").
+      var requestField = _reqComputeChangedFields(existingProduct || null, payload);
+      // "id" : jamais un champ modifiable du formulaire (payload n'en porte
+      // pas), donc jamais dans requestField — à générer nous-mêmes pour une
+      // proposition de NOUVEAU produit (existingProduct absent), sinon
+      // acceptée sans identifiant. Pour une modification, l'id existant est
+      // conservé tel quel côté produit réel, pas besoin de le proposer.
+      if(!existingProduct){
+        requestField.id = payload.id || ('p_' + now + '_' + Math.random().toString(36).substr(2,6));
+      }
+      var toSend = { ref: payload.ref, request_field: requestField };
+      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify(toSend) });
       return r.ok;
     } catch(e) { console.warn('reqSubmit:', e); return false; }
   };
 
-  // ── Abandonner une demande en attente sans jamais supprimer un produit
-  //     réel (voir le commentaire au-dessus de reqSubmit/requestFields) ──
-  // Une demande de MODIFICATION (data.requestFields présent, même vide) : la
-  // ligne partagée avec le produit réel est simplement restaurée à son état
-  // actuel (requestFields/request retirés) via /pushDatasReq — jamais de
-  // /deleteDatas dessus, sinon le produit réel disparaîtrait avec la demande.
-  // Une demande de NOUVEAU produit (requestFields absent) : rien de réel
-  // derrière, suppression classique.
+  // ── Abandonner une demande en attente ──────────────────────────
+  // Retour utilisateur : "pour le refusé on fait comme avant on retire
+  // juste le req-field et on repasse le req à false" — un /pushDatasReq
+  // avec request_field VIDE (voir reqSubmit pour le schéma exact du
+  // Swagger : {ref, request_field}), plutôt qu'un /deleteDatas : le produit
+  // réel (s'il existe déjà, cas d'une modification) n'est jamais touché,
+  // et le serveur repasse lui-même son indicateur "req" à false côté
+  // catalogue_req puisqu'il ne reste plus aucun champ proposé.
+  // /pushDatasReq (pas /pushDatas) : cette fonction est aussi appelée par
+  // reqCancel, utilisable par un compte SANS droit d'édition pour annuler
+  // SA PROPRE demande — /pushDatas exigerait canEdit (voir reqSubmit) et
+  // échouerait pour ce même compte.
   async function _reqDiscardPendingRow(sUrl, ref, h){
-    var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: h, cache: 'no-store' });
-    if(!r.ok) return false;
-    var d = await r.json();
-    // _reqIsPending : si ce "ref" est en fait un produit réel (filtre serveur
-    // cassé/ignoré, voir son commentaire), on ne le supprime surtout pas —
-    // on se comporte comme s'il n'y avait rien à annuler/refuser.
-    var items = ((d && d.items) || []).filter(_reqIsPending);
-    if(!items.length) return true; // déjà absent (annulé/refusé entretemps), ou jamais une vraie demande : rien à faire
-    var item = items[0].data || {};
-    if(item.requestFields){
-      delete item._reqUser; delete item._reqAt; delete item.user; delete item.requestFields;
-      item.request = false;
-      item.updatedAt = Date.now();
-      var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
-      // /pushDatasReq (pas /pushDatas) : cette fonction est aussi appelée
-      // par reqCancel, utilisable par un compte SANS droit d'édition pour
-      // annuler SA PROPRE demande — /pushDatas exigerait canEdit (voir
-      // reqSubmit) et échouerait pour ce même compte.
-      var r2 = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
-      return r2.ok;
-    }
-    var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:h });
-    return r3.ok;
+    var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
+    var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers: hPost, body: JSON.stringify({ ref: ref, request_field: {} }) });
+    return r.ok;
   }
 
   // ── Annuler une demande ───────────────────────────────────────
