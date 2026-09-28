@@ -177,10 +177,15 @@
   window._reqUpdateBadge  = reqUpdateBadge;
 
   // ── Soumettre une demande ─────────────────────────────────────
-  // /pushDatasReq a disparu — une demande est maintenant un item /pushDatas
-  // ordinaire, marqué data.request:true pour le distinguer d'un produit
-  // réel. /pullDatas accepte désormais un paramètre "request" (bool) pour
-  // les retrouver sans les mélanger au catalogue en direct (voir
+  // Retour dev : un compte sans droit d'édition reçoit un 403 ("Permission
+  // requise: canEdit") sur /pushDatas — la soumission d'une demande passe
+  // donc par /pushDatasReq à la place (même table catalogue que /pushDatas,
+  // AUCUN autre endpoint _Req derrière : pas de /pullDatasReq ni
+  // /deleteDatasReq — seul ce point d'entrée d'écriture change, uniquement
+  // pour ne pas exiger canEdit). Le reste ne change pas : une demande est
+  // un item /pushDatas(Req) ordinaire, marqué data.request:true pour le
+  // distinguer d'un produit réel. /pullDatas accepte un paramètre "request"
+  // (bool) pour les retrouver sans les mélanger au catalogue en direct (voir
   // reqLoadAdminList/reqLoadMineList plus bas).
   //
   // ATTENTION ref = clé unique côté serveur (une seule ligne par ref, que ce
@@ -230,7 +235,7 @@
         _reqUser:      username,
         _reqAt:        now
       });
-      var r = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
+      var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify([toSend]) });
       return r.ok;
     } catch(e) { console.warn('reqSubmit:', e); return false; }
   };
@@ -239,7 +244,7 @@
   //     réel (voir le commentaire au-dessus de reqSubmit/requestFields) ──
   // Une demande de MODIFICATION (data.requestFields présent, même vide) : la
   // ligne partagée avec le produit réel est simplement restaurée à son état
-  // actuel (requestFields/request retirés) via /pushDatas — jamais de
+  // actuel (requestFields/request retirés) via /pushDatasReq — jamais de
   // /deleteDatas dessus, sinon le produit réel disparaîtrait avec la demande.
   // Une demande de NOUVEAU produit (requestFields absent) : rien de réel
   // derrière, suppression classique.
@@ -258,7 +263,11 @@
       item.request = false;
       item.updatedAt = Date.now();
       var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
-      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
+      // /pushDatasReq (pas /pushDatas) : cette fonction est aussi appelée
+      // par reqCancel, utilisable par un compte SANS droit d'édition pour
+      // annuler SA PROPRE demande — /pushDatas exigerait canEdit (voir
+      // reqSubmit) et échouerait pour ce même compte.
+      var r2 = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
       return r2.ok;
     }
     var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:h });
