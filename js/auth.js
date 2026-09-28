@@ -549,15 +549,20 @@ function applyAuthUI() {
   var btnClean = document.getElementById('btnCleanDescs');
   if (btnClean) btnClean.style.display = isAdmin ? '' : 'none';
 
-  // Bouton Mon compte : visible pour les non-admins connectés
+  // Bouton Mon compte : visible pour tout compte connecté, admin compris —
+  // retour utilisateur : "le compte admin n'a pas de Mon compte". Avant,
+  // seul btnAdminChangePassword (dans la page Utilisateurs, admin
+  // uniquement) permettait à un admin de changer son propre mot de passe —
+  // retiré depuis (retour utilisateur : "le mon mot de passe doit être
+  // retiré de Utilisateur", devenu redondant avec ce bouton, qui couvre
+  // aussi la préférence de domaine ajoutée depuis dans la même fenêtre,
+  // openChangePasswordModal).
   var btnMyAccount2 = document.getElementById('btnOpenMyAccount');
-  if (btnMyAccount2) btnMyAccount2.style.display = (loggedIn && !isAdmin) ? 'flex' : 'none';
+  if (btnMyAccount2) btnMyAccount2.style.display = loggedIn ? 'flex' : 'none';
 
-  // Boutons dans l'en-tête de la page utilisateurs (admin uniquement)
-  var btnAdminPw = document.getElementById('btnAdminChangePassword');
+  // Bouton dans l'en-tête de la page utilisateurs (admin uniquement)
   var btnAddUserOpenBtn = document.getElementById('btnAddUserOpen');
   var sUrlPw2 = localStorage.getItem(AUTH_SERVER_KEY);
-  if (btnAdminPw) btnAdminPw.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
   if (btnAddUserOpenBtn) btnAddUserOpenBtn.style.display = (isAdmin && sUrlPw2) ? 'flex' : 'none';
 
 
@@ -1410,7 +1415,8 @@ function openChangePasswordModal() {
 
   // Même structure/traitement que openAddUserModal() plus haut dans ce
   // fichier — voir son commentaire pour le détail (retour utilisateur :
-  // cohérence entre fenêtres).
+  // cohérence entre fenêtres). Mise en page (deux cartes, icônes rondes,
+  // liste d'exigences du mot de passe) : maquette fournie par l'utilisateur.
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
   // Retour utilisateur : "ajoute la possibilité de choisir la préférence
@@ -1423,33 +1429,58 @@ function openChangePasswordModal() {
   // cohérent avec la bascule déjà connue de l'utilisateur.
   var currentDomain = (user.preferences && user.preferences.domaine)
     || (typeof window._getActiveDomain === 'function' ? window._getActiveDomain() : 'electrique');
-  ov.innerHTML = '<div class="modal" style="max-width:380px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3></div>'
+  var ICON_WRAP = 'width:36px;height:36px;border-radius:50%;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+  var CARD = 'background:var(--paper);border-radius:12px;padding:16px;';
+  var FIELD_LABEL = 'display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;';
+  var FIELD_STYLE = 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;';
+  ov.innerHTML = '<div class="modal" style="max-width:420px;">'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3><button class="close sans" id="_cpClose" aria-label="Fermer">&times;</button></div>'
     + '<div class="modal-body">'
-    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px;">Domaine préféré</div>'
-    + '<div class="domain-toggle" id="_myAccDomainToggle" role="group" aria-label="Domaine préféré" style="width:100%;margin-bottom:10px;">'
-    + '<button type="button" class="domain-toggle-btn' + (currentDomain === 'electrique' ? ' active' : '') + '" id="_myAccDomainElec" style="flex:1;justify-content:center;"><i class="ti ti-bolt" aria-hidden="true"></i><span class="domain-toggle-label">Électrique</span></button>'
-    + '<button type="button" class="domain-toggle-btn' + (currentDomain === 'pneumatique' ? ' active' : '') + '" id="_myAccDomainPneu" style="flex:1;justify-content:center;"><i class="ti ti-wind" aria-hidden="true"></i><span class="domain-toggle-label">Pneumatique</span></button>'
+    + '<div style="' + CARD + 'margin-bottom:14px;">'
+    +   '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">'
+    +     '<span style="' + ICON_WRAP + '"><i class="ti ti-settings" style="font-size:18px;color:var(--copper);"></i></span>'
+    +     '<div><div style="font-size:14px;font-weight:700;color:var(--ink);">Domaine préféré</div>'
+    +     '<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Choisissez le domaine affiché par défaut sur votre compte.</div></div>'
+    +   '</div>'
+    +   '<div class="domain-toggle" id="_myAccDomainToggle" role="group" aria-label="Domaine préféré" style="width:100%;margin-bottom:10px;">'
+    +     '<button type="button" class="domain-toggle-btn' + (currentDomain === 'electrique' ? ' active' : '') + '" id="_myAccDomainElec" style="flex:1;justify-content:center;"><i class="ti ti-bolt" aria-hidden="true"></i><span class="domain-toggle-label">Électrique</span></button>'
+    +     '<button type="button" class="domain-toggle-btn' + (currentDomain === 'pneumatique' ? ' active' : '') + '" id="_myAccDomainPneu" style="flex:1;justify-content:center;"><i class="ti ti-wind" aria-hidden="true"></i><span class="domain-toggle-label">Pneumatique</span></button>'
+    +   '</div>'
+    +   '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#059669;"><i class="ti ti-circle-check" style="font-size:15px;"></i> Configuration enregistrée automatiquement.</div>'
     + '</div>'
-    + '<div style="font-size:11px;color:var(--ink-soft);margin-bottom:16px;">Ce choix suit votre compte, quel que soit l\'appareil utilisé.</div>'
-    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px;border-top:1px solid var(--line);padding-top:14px;">Changer mon mot de passe</div>'
-    + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + _authPasswordFieldHtml('_cpCurrent', 'Mot de passe actuel', 'current-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
-    + _authPasswordFieldHtml('_cpNew', 'Nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
-    + _authPasswordFieldHtml('_cpConfirm', 'Confirmer le nouveau mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
+    + '<div style="' + CARD + '">'
+    +   '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;">'
+    +     '<span style="' + ICON_WRAP + '"><i class="ti ti-lock" style="font-size:18px;color:var(--copper);"></i></span>'
+    +     '<div><div style="font-size:14px;font-weight:700;color:var(--ink);">Changer mon mot de passe</div>'
+    +     '<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Pour sécuriser votre compte, choisissez un nouveau mot de passe.</div></div>'
+    +   '</div>'
+    +   '<div style="display:flex;flex-direction:column;gap:12px;">'
+    +     '<div><label for="_cpCurrent" style="' + FIELD_LABEL + '">Mot de passe actuel</label>'
+    +     _authPasswordFieldHtml('_cpCurrent', 'Saisissez votre mot de passe actuel', 'current-password', FIELD_STYLE) + '</div>'
+    +     '<div><label for="_cpNew" style="' + FIELD_LABEL + '">Nouveau mot de passe</label>'
+    +     _authPasswordFieldHtml('_cpNew', 'Saisissez un nouveau mot de passe', 'new-password', FIELD_STYLE) + '</div>'
+    +     '<div id="_cpReqList" style="display:flex;flex-direction:column;gap:5px;">'
+    +       '<div class="_cpReq" data-req="len" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);"><i class="ti ti-circle" style="font-size:14px;flex-shrink:0;"></i> ' + AUTH_PASSWORD_MIN + ' caractères minimum</div>'
+    +       '<div class="_cpReq" data-req="letter" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);"><i class="ti ti-circle" style="font-size:14px;flex-shrink:0;"></i> Au moins une lettre</div>'
+    +       '<div class="_cpReq" data-req="digit" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);"><i class="ti ti-circle" style="font-size:14px;flex-shrink:0;"></i> Au moins un chiffre</div>'
+    +     '</div>'
+    +     '<div><label for="_cpConfirm" style="' + FIELD_LABEL + '">Confirmer le nouveau mot de passe</label>'
+    +     _authPasswordFieldHtml('_cpConfirm', 'Répétez votre mot de passe', 'new-password', FIELD_STYLE) + '</div>'
+    +   '</div>'
+    +   '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:10px;min-height:16px;"></div>'
     + '</div>'
-    + '<div id="_cpError" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>'
     + '</div>'
     + '<div class="modal-foot"><div class="left-foot"></div><div style="display:flex;gap:8px;">'
     + '<button id="_cpCancel" class="secondary" type="button">Annuler</button>'
-    + '<button id="_cpSubmit" class="copper" type="button">Enregistrer</button>'
+    + '<button id="_cpSubmit" class="copper" type="button">Mettre à jour</button>'
     + '</div></div></div>';
   document.body.appendChild(ov);
   _authWirePasswordToggles(ov);
 
   // Domaine préféré : appliqué immédiatement au clic (pas de mot de passe à
   // revérifier pour ça, contrairement au changement de mot de passe ci-
-  // dessous) — window._switchDomain (js/actions-home.js) applique le
+  // dessous, voir "Configuration enregistrée automatiquement." dans la
+  // maquette) — window._switchDomain (js/actions-home.js) applique le
   // changement local (localStorage, filtres, re-rendu, boutons du header),
   // puis authSetOwnPreferences persiste côté compte. _switchDomain reste
   // sans effet si un filtre catalogue est actif (même garde-fou que les
@@ -1486,7 +1517,29 @@ function openChangePasswordModal() {
     el.addEventListener('input', function(){ this.style.border = OK_BORDER; });
   });
 
-  ov.querySelector('#_cpCancel').onclick = function() { document.body.removeChild(ov); };
+  // Liste d'exigences (maquette) : coche en direct pendant la saisie du
+  // nouveau mot de passe, plutôt qu'une simple longueur minimale — pour
+  // CETTE fenêtre uniquement (pas touché ailleurs : "Ajouter un
+  // utilisateur"/"Modifier l'utilisateur" gardent leur règle existante,
+  // changement non demandé là).
+  function _cpReqMet(pw){
+    return { len: pw.length >= AUTH_PASSWORD_MIN, letter: /[a-zA-Z]/.test(pw), digit: /[0-9]/.test(pw) };
+  }
+  function _cpUpdateReqList(){
+    var met = _cpReqMet(cpNewEl.value);
+    ov.querySelectorAll('._cpReq').forEach(function(row){
+      var ok = met[row.getAttribute('data-req')];
+      var icon = row.querySelector('i');
+      icon.className = ok ? 'ti ti-circle-check' : 'ti ti-circle';
+      row.style.color = ok ? '#059669' : 'var(--ink-soft)';
+    });
+    return met;
+  }
+  cpNewEl.addEventListener('input', _cpUpdateReqList);
+
+  function _cpClose(){ document.body.removeChild(ov); }
+  ov.querySelector('#_cpCancel').onclick = _cpClose;
+  ov.querySelector('#_cpClose').onclick = _cpClose;
   ov.querySelector('#_cpSubmit').onclick = async function() {
     var pwCur  = cpCurrentEl.value;
     var pw1    = cpNewEl.value;
@@ -1497,9 +1550,17 @@ function openChangePasswordModal() {
     cpNewEl.style.border     = OK_BORDER;
     cpConfirmEl.style.border = OK_BORDER;
 
+    // Le domaine préféré s'applique déjà tout seul au clic (ci-dessus) —
+    // "Mettre à jour" ne concerne donc plus que le mot de passe. Retour
+    // utilisateur : "lorsque je fais valider ça demande de changer mon mot
+    // de passe" alors que seul le domaine avait été touché — ne rien exiger
+    // ici tant qu'aucun des trois champs n'a été rempli.
+    if (!pwCur && !pw1 && !pw2) { _cpClose(); return; }
+
     if (!pwCur) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; cpCurrentEl.style.border = REQ_BORDER; return; }
     if (!pw1)   { errEl.textContent = 'Saisissez un nouveau mot de passe.'; cpNewEl.style.border = REQ_BORDER; return; }
-    if (pw1.length < AUTH_PASSWORD_MIN) { errEl.textContent = 'Minimum ' + AUTH_PASSWORD_MIN + ' caractères.'; cpNewEl.style.border = REQ_BORDER; return; }
+    var met = _cpUpdateReqList();
+    if (!met.len || !met.letter || !met.digit) { errEl.textContent = 'Le nouveau mot de passe ne respecte pas les exigences ci-dessus.'; cpNewEl.style.border = REQ_BORDER; return; }
     if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; cpNewEl.style.border = REQ_BORDER; cpConfirmEl.style.border = REQ_BORDER; return; }
 
     try {
@@ -1513,7 +1574,7 @@ function openChangePasswordModal() {
 
     var ok = await authChangeOwnPassword(user.username, pw1);
     if (ok) {
-      document.body.removeChild(ov);
+      _cpClose();
       showAuthToast('Mot de passe modifié ✓');
     } else {
       errEl.textContent = 'Erreur serveur.';
@@ -1615,10 +1676,6 @@ function initAuth() {
   if (authIsLoggedIn() && authGetToken()) {
     authRefreshMe();
   }
-
-  // Bouton "Mon mot de passe" dans l'en-tête de la page utilisateurs
-  var btnAdminChangePw = document.getElementById('btnAdminChangePassword');
-  if (btnAdminChangePw) btnAdminChangePw.addEventListener('click', function() { openChangePasswordModal(); });
 
   // Bouton "Ajouter" dans l'en-tête de la page utilisateurs
   var btnAddUserOpen = document.getElementById('btnAddUserOpen');

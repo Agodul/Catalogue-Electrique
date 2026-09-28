@@ -623,14 +623,14 @@
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
-      <!-- Bouton Mon compte - visible pour les non-admins connectés -->
+      <!-- Bouton Mon compte - visible pour tout compte connecté, admin compris (voir js/auth.js, applyAuthUI) -->
       <button id="btnOpenMyAccount" class="settings-row-btn" style="display:none;flex-direction:row;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
         <span style="width:38px;height:38px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-user-circle" style="font-size:20px;color:#7C3AED;"></i>
         </span>
         <span>
           <span style="display:block;font-size:13px;font-weight:700;color:var(--ink);">Mon compte</span>
-          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Modifier mon mot de passe</span>
+          <span style="display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;">Domaine préféré et mot de passe</span>
         </span>
         <i class="ti ti-chevron-right" style="margin-left:auto;color:var(--ink-soft);font-size:16px;"></i>
       </button>
@@ -774,9 +774,6 @@
           <span style="font-size:15px;font-weight:700;color:var(--ink);">Utilisateurs</span>
         </div>
         <div style="display:flex;gap:8px;">
-          <button id="btnAdminChangePassword" style="display:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper-card);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
-            <i class="ti ti-key" style="font-size:14px;"></i> Mon mot de passe
-          </button>
           <button id="btnAddUserOpen" style="display:none;padding:7px 12px;border-radius:8px;border:none;background:#194093;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
             <i class="ti ti-user-plus" style="font-size:14px;"></i> Ajouter
           </button>
