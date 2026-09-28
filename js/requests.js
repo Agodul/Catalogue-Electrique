@@ -518,7 +518,7 @@
       // N'est plus une demande : redevient un produit réel du catalogue.
       delete item.request;
       item.updatedAt = Date.now();
-      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([{ ref: itemFull.ref, data: item }]) });
+      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
       if(!r2.ok) return false;
       var finalRef = item.ref || ref;
       // Transférer les documents/images joints à la demande vers le vrai
@@ -836,16 +836,32 @@
   // request_field est ici explicitement restauré à sa valeur réelle
   // (cache local products) ; pour une proposition de NOUVEAU produit (rien
   // de réel derrière), la ligne est supprimée plutôt que "vidée".
-  async function _reqRefuseViaPushDatas(sUrl, ref, h){
+  // overrideData : demande déjà chargée en mémoire (voir window._reviewItem
+  // dans js/modal-request-review.js, ou la boucle "Tout refuser" plus bas),
+  // à utiliser directement au lieu de re-fetcher via /pullDatas?...&ref=.
+  // Ce re-fetch filtré par "&ref=" s'est avéré peu fiable en pratique
+  // (retour utilisateur : "quand je clique sur refuser/accepter ça ne
+  // pousse rien" — items.length valait 0 alors que la demande existait bel
+  // et bien, /pullDatas?request=true SANS "&ref=" la retrouvant sans
+  // problème, voir reqLoadAdminList) — même défiance déjà connue pour
+  // "?request=true" seul (voir _reqIsPending) qui semble s'étendre au
+  // filtre "&ref=". Éviter ce second aller-retour reste le correctif le
+  // plus sûr : la donnée que l'appelant a déjà en main vient justement de
+  // la liste chargée SANS "&ref=", donc fiable.
+  async function _reqRefuseViaPushDatas(sUrl, ref, h, overrideData){
     var hGet = Object.assign({}, h); delete hGet['Content-Type'];
-    var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: hGet, cache: 'no-store' });
-    if(!r.ok) return false;
-    var d = await r.json();
-    var items = ((d && d.items) || []).filter(_reqIsPending);
-    if(!items.length) return true; // déjà traitée entretemps : rien à faire
-    var itemFull = items[0];
-    var ref = itemFull.ref;
-    var item = Object.assign({}, itemFull.data || {});
+    var item;
+    if(overrideData){
+      item = Object.assign({}, overrideData);
+    } else {
+      var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: hGet, cache: 'no-store' });
+      if(!r.ok) return false;
+      var d = await r.json();
+      var items = ((d && d.items) || []).filter(_reqIsPending);
+      if(!items.length) return true; // déjà traitée entretemps : rien à faire
+      item = Object.assign({}, items[0].data || {});
+    }
+    var proposedFields = item.request_field || {};
 
     var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === ref; });
     if(!real){
@@ -854,24 +870,31 @@
       return r3.ok;
     }
 
-    // Modification : on retire les marqueurs de demande pour restaurer le produit réel
+    // Modification : chaque champ proposé est explicitement restauré à sa
+    // valeur réelle (cache local products) avant de retirer les marqueurs
+    // de demande — /pushDatasReq fusionne déjà request_field DANS LA RACINE
+    // de "data" à l'envoi (constaté sur une vraie réponse serveur), donc se
+    // contenter de retirer request_field/request en gardant la racine telle
+    // quelle laisserait le changement REFUSÉ appliqué quand même.
+    Object.keys(proposedFields).forEach(function(k){ item[k] = real[k]; });
     delete item.request_field;
     delete item.request;
     item.updatedAt = Date.now();
 
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
-    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: ref, data: item }]) });
+    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
     return r2.ok;
   }
 
   // ── Refuser une demande ───────────────────────────────────────
   // id : n'est plus utilisé (conservé en 3e argument par compat arrière avec
-  // les appelants existants).
-  window.reqRefuse = async function(ref, user, id){
+  // les appelants existants). overrideData (4e argument) : voir le
+  // commentaire de _reqRefuseViaPushDatas ci-dessus.
+  window.reqRefuse = async function(ref, user, id, overrideData){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var ok = await _reqRefuseViaPushDatas(sUrl, ref, h);
+      var ok = await _reqRefuseViaPushDatas(sUrl, ref, h, overrideData);
       await _reqDeleteAttachedDocs(sUrl, ref, h);
       return ok;
     } catch(e) { return false; }
@@ -1667,7 +1690,10 @@
         .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
-        await window.reqAccept(it.ref, _reqProductAuthor(it));
+        // it.data vient de la liste SANS "&ref=" (fiable, voir le
+        // commentaire de _reqRefuseViaPushDatas) — passé en overrideData
+        // pour éviter tout re-fetch individuel filtré par ref.
+        await window.reqAccept(it.ref, _reqProductAuthor(it), it.data);
       }
       showToast(items.length + ' demande(s) acceptée(s) ✓', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();
@@ -1692,7 +1718,9 @@
         .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
-        await window.reqRefuse(it.ref, _reqProductAuthor(it), it.id);
+        // it.data vient de la liste SANS "&ref=" (fiable) — passé en
+        // overrideData, même principe que "Tout accepter" ci-dessus.
+        await window.reqRefuse(it.ref, _reqProductAuthor(it), it.id, it.data);
       }
       showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();

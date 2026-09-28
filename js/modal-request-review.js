@@ -145,7 +145,14 @@
   if(btnReviewRefuseEl) btnReviewRefuseEl.addEventListener('click', async function(){
     if(!window._reviewItem) return;
     btnReviewRefuseEl.disabled = true;
-    var ok = await window.reqRefuse(window._reviewItem.ref, window._reviewUser, window._reviewItem.id);
+    // window._reviewItem.data : demande déjà chargée via la liste
+    // fonctionnelle (/pullDatas?request=true SANS "&ref=", voir
+    // reqLoadAdminList) — passée en overrideData pour éviter le re-fetch
+    // interne filtré par "&ref=", peu fiable côté serveur (retour
+    // utilisateur : "quand je clique sur refuser/accepter ça ne pousse
+    // rien", voir le commentaire de _reqRefuseViaPushDatas dans
+    // js/requests.js).
+    var ok = await window.reqRefuse(window._reviewItem.ref, window._reviewUser, window._reviewItem.id, window._reviewItem.data);
     btnReviewRefuseEl.disabled = false;
     if(ok){
       showToast('Demande refusée', 'ok', 2500);
@@ -160,7 +167,9 @@
   if(btnReviewAcceptEl) btnReviewAcceptEl.addEventListener('click', async function(){
     if(!window._reviewItem) return;
     btnReviewAcceptEl.disabled = true;
-    var ok = await window.reqAccept(window._reviewItem.ref, window._reviewUser);
+    // window._reviewItem.data en overrideData : même raison que pour
+    // reqRefuse ci-dessus.
+    var ok = await window.reqAccept(window._reviewItem.ref, window._reviewUser, window._reviewItem.data);
     btnReviewAcceptEl.disabled = false;
     if(ok){
       showToast('Demande acceptée ✓', 'ok', 2500);
