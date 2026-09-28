@@ -516,7 +516,7 @@
       if(item.request_field) Object.assign(item, item.request_field);
       delete item.request_field;
       // N'est plus une demande : redevient un produit réel du catalogue.
-      item.request = false;
+      delete item.request;
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([{ ref: itemFull.ref, data: item }]) });
       if(!r2.ok) return false;
@@ -854,7 +854,7 @@
     }
 
     delete item.request_field;
-    item.request = false;
+    delete item.request;
 
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
     var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: ref, data: item }]) });
