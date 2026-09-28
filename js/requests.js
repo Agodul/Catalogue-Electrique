@@ -253,9 +253,13 @@
   // (et updated_by) sur la ligne à réception (retour utilisateur, suite au
   // constat qu'aucun champ auteur n'existait avant) — created_by préféré
   // (qui a soumis la demande), updated_by en repli si jamais absent.
+  // AU MÊME NIVEAU que "ref"/"data" dans chaque item de /pullDatas, PAS
+  // dans data — vérifié sur une vraie réponse serveur (capture) après un
+  // premier essai raté en le cherchant dans data.created_by, qui restait
+  // toujours vide ("?" affiché à la place du nom, retour utilisateur).
   function _reqProductAuthor(item){
-    var data = item.data || {};
-    return data.created_by || data.updated_by || '';
+    return item.created_by || item.updated_by
+      || (item.data && (item.data.created_by || item.data.updated_by)) || '';
   }
 
   // ── Recherche + tri, communs aux listes admin et "mes demandes" ────────
