@@ -312,22 +312,45 @@
       }
       var toSend = { ref: payload.ref, request_field: requestField };
       var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers:h, body:JSON.stringify(toSend) });
+      // Retour utilisateur : "ajouter une popup pour dire qu'une demande est
+      // déjà en attente" — 409 Conflict (doc serveur : "la donnée contient
+      // déjà request:true et request_field") signalé à part de tout autre
+      // échec, pour que l'appelant (voir actions-save.js) puisse afficher un
+      // message dédié plutôt que l'erreur générique "Erreur lors de l'envoi".
+      if(r.status === 409) return 'conflict';
       return r.ok;
     } catch(e) { console.warn('reqSubmit:', e); return false; }
   };
 
+  // Vérifie si une demande est DÉJÀ en attente pour cette ref, sans en
+  // soumettre une nouvelle — utilisé pour prévenir l'utilisateur AVANT
+  // d'ouvrir "Proposer une modification" (retour utilisateur : même
+  // principe que le verrou "produit en cours de modification", voir
+  // _tryLockProductForEdit dans js/actions-editlock.js) plutôt que de le
+  // laisser remplir tout le formulaire pour finir sur un 409 à l'envoi.
+  async function _reqIsAlreadyPending(ref){
+    var sUrl = reqServerUrl(); if(!sUrl) return false;
+    try {
+      var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
+      var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: h, cache: 'no-store' });
+      if(!r.ok) return false;
+      var d = await r.json();
+      var items = ((d && d.items) || []).filter(_reqIsPending);
+      return items.length > 0;
+    } catch(e){ return false; }
+  }
+
   // ── Abandonner une demande en attente ──────────────────────────
-  // Retour utilisateur : "pour le refusé on fait comme avant on retire
-  // juste le req-field et on repasse le req à false" — un /pushDatasReq
-  // avec request_field VIDE (voir reqSubmit pour le schéma exact du
-  // Swagger : {ref, request_field}), plutôt qu'un /deleteDatas : le produit
-  // réel (s'il existe déjà, cas d'une modification) n'est jamais touché,
-  // et le serveur repasse lui-même son indicateur "req" à false côté
-  // catalogue_req puisqu'il ne reste plus aucun champ proposé.
-  // /pushDatasReq (pas /pushDatas) : cette fonction est aussi appelée par
-  // reqCancel, utilisable par un compte SANS droit d'édition pour annuler
-  // SA PROPRE demande — /pushDatas exigerait canEdit (voir reqSubmit) et
-  // échouerait pour ce même compte.
+  // ⚠ Doc serveur pour /pushDatasReq (partagée par l'utilisateur) : 409
+  // Conflict "dès que la donnée contient déjà request:true ET
+  // request_field" — c'est-à-dire dès qu'une demande existe déjà pour cette
+  // ref, EXACTEMENT le cas ici. Repousser {ref, request_field:{}} pour la
+  // "vider" (ce que fait cette fonction) échouera donc très probablement en
+  // pratique avec un 409. Utilisée par reqCancel (compte SANS droit
+  // d'édition, ne peut pas passer par /pushDatas comme reqRefuse le fait
+  // maintenant — voir _reqRefuseViaPushDatas plus bas) : aucune alternative
+  // confirmée pour l'instant pour qu'un utilisateur annule SA PROPRE
+  // demande sans droit d'édition — à vérifier avec le développeur serveur.
   async function _reqDiscardPendingRow(sUrl, ref, h){
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
     var r = await fetch(sUrl + '/pushDatasReq', { method:'POST', headers: hPost, body: JSON.stringify({ ref: ref, request_field: {} }) });
@@ -795,16 +818,54 @@
     } catch(e) { console.warn('reqResolveBug:', e); return false; }
   };
 
+  // Réservé à l'ADMIN (canEdit requis par /pushDatas, voir reqAccept).
+  // Utilisé par reqRefuse à la place de _reqDiscardPendingRow : la doc
+  // serveur pour /pushDatasReq confirme un 409 Conflict "dès que la donnée
+  // contient déjà request:true ET request_field" — exactement l'état d'une
+  // demande déjà soumise, donc impossible de la "vider" en repassant par
+  // /pushDatasReq une seconde fois. Repasse par /pushDatas comme reqAccept,
+  // qui n'est pas soumis à cette règle.
+  // ⚠ /pushDatasReq fusionne déjà request_field DANS LA RACINE de "data" à
+  // l'envoi (constaté sur une vraie réponse serveur, retour utilisateur :
+  // une ref jamais proposée avec "brand"/"supplier" dans request_field les
+  // avait quand même à la racine, hérités d'un envoi précédent) — se
+  // contenter de retirer request_field/request en gardant la racine telle
+  // quelle (comme un premier essai l'a fait ici) laisserait donc le
+  // changement REFUSÉ appliqué quand même. Chaque champ qui était dans
+  // request_field est ici explicitement restauré à sa valeur réelle
+  // (cache local products) ; pour une proposition de NOUVEAU produit (rien
+  // de réel derrière), la ligne est supprimée plutôt que "vidée".
+  async function _reqRefuseViaPushDatas(sUrl, ref, h){
+    var hGet = Object.assign({}, h); delete hGet['Content-Type'];
+    var r = await fetch(sUrl + '/pullDatas?request=true&ref=' + encodeURIComponent(ref), { headers: hGet, cache: 'no-store' });
+    if(!r.ok) return false;
+    var d = await r.json();
+    var items = ((d && d.items) || []).filter(_reqIsPending);
+    if(!items.length) return true; // déjà traitée entretemps : rien à faire
+    var item = items[0].data || {};
+    var proposedFields = item.request_field || {};
+    var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === ref; });
+    if(!real){
+      var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:hGet });
+      return r3.ok;
+    }
+    Object.keys(proposedFields).forEach(function(k){ item[k] = real[k]; });
+    delete item.request_field;
+    item.request = false;
+    item.updatedAt = Date.now();
+    var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
+    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
+    return r2.ok;
+  }
+
   // ── Refuser une demande ───────────────────────────────────────
   // id : n'est plus utilisé (conservé en 3e argument par compat arrière avec
-  // les appelants existants) — voir reqCancel/_reqDiscardPendingRow juste
-  // au-dessus, même logique : une demande de modification refusée restaure
-  // le produit réel plutôt que de le supprimer avec la ligne.
+  // les appelants existants).
   window.reqRefuse = async function(ref, user, id){
     var sUrl = reqServerUrl(); if(!sUrl || !reqIsAdmin()) return false;
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      var ok = await _reqDiscardPendingRow(sUrl, ref, h);
+      var ok = await _reqRefuseViaPushDatas(sUrl, ref, h);
       await _reqDeleteAttachedDocs(sUrl, ref, h);
       return ok;
     } catch(e) { return false; }
@@ -1518,10 +1579,26 @@
     // ── "Proposer une modification" (fiche produit) — item du menu ⓘ,
     // à la place de "Modifier la fiche" quand canEdit est absent ──
     var vmProposeMenuBtn = document.getElementById('vmProposeMenuBtn');
-    if(vmProposeMenuBtn) vmProposeMenuBtn.addEventListener('click', function(){
+    if(vmProposeMenuBtn) vmProposeMenuBtn.addEventListener('click', async function(){
       var vmInfoMenuEl = document.getElementById('vmInfoMenu');
       if(vmInfoMenuEl) vmInfoMenuEl.classList.remove('open');
       var productId = window._viewingId || null;
+      var p = productId ? products.find(function(x){ return x.id === productId; }) : null;
+      // Retour utilisateur : "ajouter une popup (comme celle pour une
+      // modification déjà en cours) pour dire qu'une demande est déjà en
+      // attente de validation" — même principe que le verrou d'édition
+      // (_tryLockProductForEdit, js/actions-editlock.js) : vérifier AVANT
+      // d'ouvrir le formulaire plutôt que de laisser l'utilisateur le
+      // remplir pour finir sur un 409 à l'envoi (doc serveur).
+      if(p && p.ref){
+        vmProposeMenuBtn.disabled = true;
+        var alreadyPending = await _reqIsAlreadyPending(p.ref);
+        vmProposeMenuBtn.disabled = false;
+        if(alreadyPending){
+          customAlert('Demande déjà en attente', 'Une demande est déjà en attente de validation pour ce produit — attendez qu\'elle soit traitée avant d\'en proposer une nouvelle.');
+          return; // n'ouvre pas le formulaire
+        }
+      }
       if(typeof window._openProposeModal === 'function') window._openProposeModal(productId);
     });
 

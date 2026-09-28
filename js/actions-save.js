@@ -220,18 +220,27 @@
         var original = window._proposeOriginal || null;
         if(original) payload.ref = original.ref; // garder la ref originale pour la modif
         var ok = await window.reqSubmit(payload, original);
-        if(ok && Array.isArray(window._proposeAttachedFiles) && window._proposeAttachedFiles.length && typeof window.reqUploadAttachedFiles === 'function'){
+        if(ok === true && Array.isArray(window._proposeAttachedFiles) && window._proposeAttachedFiles.length && typeof window.reqUploadAttachedFiles === 'function'){
           await window.reqUploadAttachedFiles(payload.ref, window._proposeAttachedFiles);
         }
         window._proposeAttachedFiles = [];
         if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
-        if(ok){
+        if(ok === true){
           showToast('Demande envoyée ✓', 'ok', 3000);
           // Fermeture directe : la demande est déjà envoyée, il n'y a rien à
           // "perdre" — pas besoin de la confirmation "Annuler la saisie".
           if(typeof window._resetProposeModeUI === 'function') window._resetProposeModeUI();
           if(typeof closeModal === 'function') closeModal();
           else document.getElementById('modalOverlay').classList.remove('open');
+        } else if(ok === 'conflict'){
+          // Retour utilisateur : "ajouter une popup pour dire qu'une demande
+          // est déjà en attente" — filet de sécurité en plus du contrôle
+          // fait AVANT l'ouverture du formulaire (voir vmProposeMenuBtn dans
+          // js/requests.js) : une autre demande a pu être soumise entretemps
+          // pendant que ce formulaire était ouvert. Formulaire laissé
+          // ouvert (pas de closeModal) : la saisie n'est pas perdue, rien
+          // n'a été envoyé.
+          customAlert('Demande déjà en attente', 'Une demande est déjà en attente de validation pour ce produit — attendez qu\'elle soit traitée avant d\'en proposer une nouvelle.');
         } else {
           showToast('Erreur lors de l\'envoi', 'warn', 3000);
         }

@@ -71,10 +71,29 @@
   document.getElementById('vmEditBtn').addEventListener('click', async function(){
     var id = viewingId;
     var p = products.find(function(x){ return x.id === id; });
+    var vmEditBtnEl = document.getElementById('vmEditBtn');
+    // Retour utilisateur : "qu'est-ce qui se passe si une demande de modif
+    // est en cours et qu'un user avec canEdit modifie la même ref ?" —
+    // vérifié en conditions réelles : la modification directe (ci-dessous,
+    // /pushDatas) REMPLACE toute la ligne, request/request_field compris —
+    // la demande en attente disparaît silencieusement, sans jamais être
+    // acceptée ni refusée (le cache local de l'admin ne voit jamais ces
+    // champs, filtrés exprès de la synchro normale, voir
+    // js/actions-sync-core.js). Bloqué ici en amont, même principe que le
+    // verrou "en cours d'édition" juste en dessous — popup, pas de
+    // formulaire ouvert tant que la demande n'a pas été traitée.
+    if(p && typeof _reqIsAlreadyPending === 'function'){
+      if(vmEditBtnEl) vmEditBtnEl.disabled = true;
+      var pending = await _reqIsAlreadyPending(p.ref);
+      if(vmEditBtnEl) vmEditBtnEl.disabled = false;
+      if(pending){
+        customAlert('Demande en attente sur ce produit', 'Traitez-la (Demandes en attente) avant de modifier ce produit, sinon elle sera perdue.');
+        return; // ne ferme pas la vue, n'ouvre pas le formulaire
+      }
+    }
     // Empêche deux utilisateurs de modifier le même produit en même temps
     // (retour utilisateur) — voir _tryLockProductForEdit dans js/actions-editlock.js.
     if(p && typeof window._tryLockProductForEdit === 'function'){
-      var vmEditBtnEl = document.getElementById('vmEditBtn');
       if(vmEditBtnEl) vmEditBtnEl.disabled = true;
       var lock = await window._tryLockProductForEdit(p);
       if(vmEditBtnEl) vmEditBtnEl.disabled = false;
