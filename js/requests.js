@@ -849,10 +849,12 @@
 
     var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === ref; });
     if(!real){
+      // Nouveau produit : on supprime simplement la ligne de demande
       var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:hGet });
       return r3.ok;
     }
 
+    // Modification : on retire les marqueurs de demande pour restaurer le produit réel
     delete item.request_field;
     delete item.request;
 
