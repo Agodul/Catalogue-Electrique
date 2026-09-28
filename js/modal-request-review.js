@@ -85,11 +85,12 @@
     window._reviewIsExistingProduct = !isNew;
     if(typeof window._setFRefLocked === 'function') window._setFRefLocked(!isNew);
     modalTitle.textContent = (isNew ? 'Nouveau produit : ' : 'Modification proposée : ') + (p.ref || '');
-    // Retour utilisateur : "ça ne dit pas qui a fait la demande" — vérifié
-    // sur la réponse réelle du serveur (capture) : aucun champ utilisateur
-    // nulle part pour une demande produit. "Soumis par X" seulement quand
-    // on a vraiment cette info (bug signalé — voir _reqNormalizeBugItem) ;
-    // sinon juste la date, sans laisser croire à tort qu'on sait qui.
+    // Retour utilisateur : "le serveur ajoute maintenant created_by/
+    // updated_by" — user (2e argument, voir reqOpenDetail dans
+    // js/requests.js) vient maintenant de _reqProductAuthor pour une
+    // demande produit, ou de .user pour un bug (_reqNormalizeBugItem).
+    // "Soumis par X" seulement quand cette info est réellement connue
+    // (jamais "par ?" ou "par undefined").
     // updatedAt, pas createdAt : createdAt reste celui du PRODUIT réel pour
     // une modification (racine = valeurs réelles, voir js/requests.js) —
     // updatedAt est bumpé à chaque envoi (voir reqSubmit), le plus proche

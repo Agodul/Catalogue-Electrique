@@ -249,6 +249,15 @@
     return (real && real.name) || data.name || '';
   }
 
+  // Auteur d'une demande produit : le serveur pose maintenant created_by
+  // (et updated_by) sur la ligne à réception (retour utilisateur, suite au
+  // constat qu'aucun champ auteur n'existait avant) — created_by préféré
+  // (qui a soumis la demande), updated_by en repli si jamais absent.
+  function _reqProductAuthor(item){
+    var data = item.data || {};
+    return data.created_by || data.updated_by || '';
+  }
+
   // ── Recherche + tri, communs aux listes admin et "mes demandes" ────────
   // Retour utilisateur : "trier/filtrer la liste admin" — recherche texte
   // (ref/nom pour une demande produit, titre/description pour un bug) et
@@ -999,22 +1008,39 @@
       // marque résolu individuellement), donc pas de footer sur cet onglet.
       if(footer) footer.style.display = (type === 'bug') ? 'none' : 'flex';
 
-      // Retour utilisateur : "ça ne dit pas qui a fait la demande" — vérifié
-      // sur la réponse réelle du serveur (capture) : aucun champ utilisateur
-      // nulle part (ni "user", ni "_reqUser") sur une demande produit. Plus
-      // de regroupement par utilisateur ni d'en-tête "? — N" trompeur tant
-      // que le serveur ne renvoie pas cette info — liste à plat.
-      var html = items.map(function(item){ return reqRenderAdminItem(item); }).join('');
+      // Retour utilisateur : "le serveur ajoute maintenant created_by/
+      // updated_by, on peut corriger le bug de pas savoir qui a fait la
+      // demande" — regroupement par auteur restauré (créé_by pour une
+      // demande produit, voir _reqProductAuthor ; .user pour un bug, voir
+      // _reqNormalizeBugItem). Map (pas un objet brut) : un nom
+      // d'utilisateur "__proto__"/"constructor"/"toString"/etc. réécrirait
+      // silencieusement le prototype de l'objet au lieu d'ajouter une
+      // entrée — la demande de CET utilisateur disparaissait alors
+      // totalement de la liste admin, sans erreur (même piège déjà évité
+      // par localMap dans js/actions-sync-core.js pour les refs produit).
+      function groupByUser(list){
+        var byUser = new Map();
+        list.forEach(function(it){
+          var u = (type === 'bug' ? it.user : _reqProductAuthor(it)) || '?';
+          if(!byUser.has(u)) byUser.set(u, []);
+          byUser.get(u).push(it);
+        });
+        return byUser;
+      }
+      var byUser = groupByUser(items);
+      var html = '';
+      byUser.forEach(function(userItems, u){
+        html += '<div style="padding:8px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);background:var(--paper);"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(u) + ' — ' + userItems.length + '</div>';
+        userItems.forEach(function(item){ html += reqRenderAdminItem(item); });
+      });
       body.innerHTML = html;
 
-      // Clic → modale détail. matchItem.user : présent pour un bug (voir
-      // _reqNormalizeBugItem), absent pour une demande produit (le serveur
-      // ne renvoie aucune info d'auteur pour celles-ci, voir plus haut).
+      // Clic → modale détail.
       body.querySelectorAll('[data-req-detail]').forEach(function(el){
         el.addEventListener('click', function(){
           var ref  = el.getAttribute('data-req-detail');
           var matchItem = items.find(function(it){ return it.ref === ref; });
-          if(matchItem) reqOpenDetail(matchItem, matchItem.user || null);
+          if(matchItem) reqOpenDetail(matchItem, (type === 'bug' ? matchItem.user : _reqProductAuthor(matchItem)) || null);
         });
       });
     } catch(e){
@@ -1088,17 +1114,20 @@
     if(footer) footer.style.display = 'none'; // jamais d'action groupée sur "Mes demandes"
     try {
       var h = Object.assign({}, reqHeaders()); delete h['Content-Type'];
-      // /pullDatasReq?user= a disparu avec le reste de l'API _req —
-      // /pullDatas?request=true n'a pas de paramètre "user" équivalent (voir
-      // le nouveau swagger) : on récupère TOUTES les demandes en attente et
-      // on filtre côté client sur data._reqUser, le champ qui portait déjà
-      // l'auteur (voir reqSubmit) — même principe défensif que le filtre
-      // déjà en place ci-dessous pour /pullBugs.
+      // Pas de paramètre "user" côté /pullDatas?request=true : on récupère
+      // TOUTES les demandes en attente et on filtre côté client sur
+      // data.created_by — le serveur pose maintenant ce champ à la
+      // réception d'une demande (retour utilisateur : "le serveur ajoute
+      // maintenant created_by/updated_by, on peut corriger le bug de pas
+      // savoir qui a fait la demande"). Avant ça, aucun champ utilisateur
+      // n'existait ici (vérifié sur une vraie réponse serveur) — "Mes
+      // demandes" restait toujours vide, même correctif que ci-dessous pour
+      // /pullBugs.
       var rProd = await fetch(sUrl + '/pullDatas?request=true', { headers: h, cache: 'no-store' });
       if(!rProd.ok) throw new Error('HTTP ' + rProd.status);
       var dProd = await rProd.json();
       var prodAll = ((dProd && dProd.items) || (Array.isArray(dProd) ? dProd : [])).filter(_reqIsPending);
-      var prodRaw = prodAll.filter(function(it){ return ((it && it.data) || {})._reqUser === username; });
+      var prodRaw = prodAll.filter(function(it){ return _reqProductAuthor(it) === username; });
 
       // /pullBugs ne documente aucun paramètre "user" (seulement id/date).
       // L'hypothèse de départ était que le serveur scope déjà la réponse via
@@ -1551,8 +1580,7 @@
         .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
-        var user = (it.data || {})._reqUser || it.user || '';
-        await window.reqAccept(it.ref, user);
+        await window.reqAccept(it.ref, _reqProductAuthor(it));
       }
       showToast(items.length + ' demande(s) acceptée(s) ✓', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();
@@ -1577,8 +1605,7 @@
         .filter(function(it){ return ((it && it.data) || {}).type !== 'bug'; });
       for(var i = 0; i < items.length; i++){
         var it = items[i];
-        var user = (it.data || {})._reqUser || it.user || '';
-        await window.reqRefuse(it.ref, user, it.id);
+        await window.reqRefuse(it.ref, _reqProductAuthor(it), it.id);
       }
       showToast(items.length + ' demande(s) refusée(s)', 'ok', 3000);
       reqOpenPanel(); reqUpdateBadge();
