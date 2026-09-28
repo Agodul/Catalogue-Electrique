@@ -217,7 +217,6 @@
     try {
       var h = reqHeaders();
       var now = Date.now();
-      // qui change. Nouveau produit : rien de réel à protéger, la ligne EST
       // Schéma confirmé par le Swagger réel du serveur (capture) : /pushDatasReq
       // prend un OBJET UNIQUE {ref, request_field}, pas un tableau comme
       // /pushDatas — et request_field ne porte QUE les champs proposés, pas
