@@ -496,7 +496,8 @@
         // demande à "accepter".
         var items = ((d && d.items) || []).filter(_reqIsPending);
         if(!items.length) return false;
-        item = items[0].data || {};
+        var itemFull = items[0];
+        var item = itemFull.data || {};
       }
       // Garde-fou : un rapport de bug (type:"bug") n'est PAS un produit — ne
       // doit jamais être poussé dans le vrai catalogue via /pushDatas.
@@ -517,7 +518,7 @@
       // N'est plus une demande : redevient un produit réel du catalogue.
       item.request = false;
       item.updatedAt = Date.now();
-      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
+      var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([{ ref: itemFull.ref, data: item }]) });
       if(!r2.ok) return false;
       var finalRef = item.ref || ref;
       // Transférer les documents/images joints à la demande vers le vrai
@@ -842,7 +843,8 @@
     var d = await r.json();
     var items = ((d && d.items) || []).filter(_reqIsPending);
     if(!items.length) return true; // déjà traitée entretemps : rien à faire
-    var item = items[0].data || {};
+    var itemFull = items[0];
+    var item = itemFull.data || {};
     var proposedFields = item.request_field || {};
     var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === ref; });
     if(!real){
@@ -854,7 +856,7 @@
     item.request = false;
     item.updatedAt = Date.now();
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
-    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([item]) });
+    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: itemFull.ref, data: item }]) });
     return r2.ok;
   }
 
