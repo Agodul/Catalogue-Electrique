@@ -844,19 +844,20 @@
     var items = ((d && d.items) || []).filter(_reqIsPending);
     if(!items.length) return true; // déjà traitée entretemps : rien à faire
     var itemFull = items[0];
-    var item = itemFull.data || {};
-    var proposedFields = item.request_field || {};
+    var ref = itemFull.ref;
+    var item = Object.assign({}, itemFull.data || {});
+
     var real = (typeof products !== 'undefined' ? products : []).find(function(p){ return p.ref === ref; });
     if(!real){
       var r3 = await fetch(sUrl + '/deleteDatas?ref=' + encodeURIComponent(ref), { method:'DELETE', headers:hGet });
       return r3.ok;
     }
-    Object.keys(proposedFields).forEach(function(k){ item[k] = real[k]; });
+
     delete item.request_field;
     item.request = false;
-    item.updatedAt = Date.now();
+
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
-    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: itemFull.ref, data: item }]) });
+    var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: ref, data: item }]) });
     return r2.ok;
   }
 
