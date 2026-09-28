@@ -857,6 +857,7 @@
     // Modification : on retire les marqueurs de demande pour restaurer le produit réel
     delete item.request_field;
     delete item.request;
+    item.updatedAt = Date.now();
 
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
     var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers: hPost, body: JSON.stringify([{ ref: ref, data: item }]) });
