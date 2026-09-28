@@ -517,6 +517,15 @@
       delete item.request_field;
       // N'est plus une demande : redevient un produit réel du catalogue.
       delete item.request;
+      // "createdAt" bumpé à maintenant, pas seulement "updatedAt" — même
+      // principe que pushToServer (js/actions-settings-sync.js, flux normal
+      // d'enregistrement) : "le serveur accepte le plus récent (createdAt)
+      // par ref" pour l'upsert. item.createdAt hérite ici de l'ancienne date
+      // de création du produit réel (voir data.createdAt) — sans ce bump, le
+      // serveur pouvait juger ce push "pas le plus récent" et l'ignorer
+      // silencieusement (retour utilisateur : "ça ne push pas la
+      // validation" — 200 OK renvoyé mais rien de changé côté serveur).
+      item.createdAt = Date.now();
       item.updatedAt = Date.now();
       var r2 = await fetch(sUrl + '/pushDatas', { method:'POST', headers:h, body:JSON.stringify([item]) });
       if(!r2.ok) return false;
@@ -879,6 +888,11 @@
     Object.keys(proposedFields).forEach(function(k){ item[k] = real[k]; });
     delete item.request_field;
     delete item.request;
+    // "createdAt" bumpé, pas seulement "updatedAt" — même correctif que
+    // reqAccept ci-dessus, voir son commentaire ("le serveur accepte le
+    // plus récent (createdAt) par ref", pushToServer dans
+    // js/actions-settings-sync.js).
+    item.createdAt = Date.now();
     item.updatedAt = Date.now();
 
     var hPost = Object.assign({}, h, { 'Content-Type': 'application/json' });
