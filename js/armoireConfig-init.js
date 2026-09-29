@@ -135,11 +135,17 @@
 
   var blocksListEl = document.getElementById('armoireConfigBlocksList');
   if(blocksListEl) blocksListEl.addEventListener('click', async function(e){
-    var folderHeader = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
+    // Même mécanisme que le dossier famille (_armoireRenderFamilyFolders,
+    // js/armoireConfig-search.js) : simple bascule de la classe .open, pas
+    // de re-rendu complet de la liste (retour utilisateur : "comme la liste
+    // de famille").
+    var folderHeader = e.target.closest ? e.target.closest('.sug-picker-group-title') : null;
     if(folderHeader){
-      var fKey = folderHeader.getAttribute('data-folder');
-      _armoireCollapsedFolders.block[fKey] = !_armoireCollapsedFolders.block[fKey];
-      _armoireRenderBlocksList();
+      var groupEl = folderHeader.parentNode;
+      var fKey = groupEl.getAttribute('data-folder');
+      var nowOpen = !groupEl.classList.contains('open');
+      groupEl.classList.toggle('open', nowOpen);
+      _armoireCollapsedFolders.block[fKey] = !nowOpen;
       return;
     }
     var row = e.target.closest ? e.target.closest('.armoire-list-row') : null;
@@ -178,11 +184,13 @@
 
   var savedListEl = document.getElementById('armoireConfigSavedList');
   if(savedListEl) savedListEl.addEventListener('click', async function(e){
-    var folderHeaderCfg = e.target.closest ? e.target.closest('.armoire-folder-header') : null;
+    var folderHeaderCfg = e.target.closest ? e.target.closest('.sug-picker-group-title') : null;
     if(folderHeaderCfg){
-      var fKeyCfg = folderHeaderCfg.getAttribute('data-folder');
-      _armoireCollapsedFolders.config[fKeyCfg] = !_armoireCollapsedFolders.config[fKeyCfg];
-      _armoireRenderSavedList();
+      var groupElCfg = folderHeaderCfg.parentNode;
+      var fKeyCfg = groupElCfg.getAttribute('data-folder');
+      var nowOpenCfg = !groupElCfg.classList.contains('open');
+      groupElCfg.classList.toggle('open', nowOpenCfg);
+      _armoireCollapsedFolders.config[fKeyCfg] = !nowOpenCfg;
       return;
     }
     var row = e.target.closest ? e.target.closest('.armoire-list-row') : null;

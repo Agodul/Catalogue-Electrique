@@ -207,6 +207,13 @@ document.addEventListener('error', function(e){
 function _showImageLightbox(url){
   if(!url) return;
   var overlay = document.createElement('div');
+  // Même classe repère que _popupOverlay (voir son commentaire) — permet à
+  // _initModalEscape (js/init.js) de savoir qu'une popup flottante est
+  // ouverte par-dessus tout le reste et de lui laisser gérer Échap seule,
+  // plutôt que de fermer EN PLUS une fenêtre "connue" en dessous (retour
+  // utilisateur : "Echap ferme toutes les fenêtres ouvertes au lieu d'une
+  // seule").
+  overlay.className = 'spi-popup-overlay';
   overlay.style.cssText =
     'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.85);' +
     'display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';

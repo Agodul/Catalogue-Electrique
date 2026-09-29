@@ -21,9 +21,12 @@
     if(e.target === viewOverlay && window.innerWidth > 1024) closeView();
   });
 
-  document.addEventListener('keydown', function(e){
-    if(e.key==='Escape' && viewOverlay.classList.contains('open')){ closeView(); }
-  });
+  // Échap : géré centralement par _initModalEscape (js/init.js), qui
+  // connaît déjà viewOverlay (voir MODALS, close: 'vmCloseBtn') et
+  // déclenche closeView() via un clic sur ce même bouton — un second
+  // listener ici fermait la fiche EN PLUS d'une autre fenêtre gérée
+  // ailleurs sur le même appui (retour utilisateur : "Echap ferme toutes
+  // les fenêtres ouvertes au lieu d'une seule").
   if(vmCloseBtn) vmCloseBtn.addEventListener('click', closeView);
 
   // Retour utilisateur : "fais en sorte que quand la description affiche le

@@ -390,7 +390,7 @@
         <button id="compareBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
         <h3><i class="ti ti-scale" style="margin-right:8px;color:#EA580C;"></i>Comparer les offres fournisseurs</h3>
       </div>
-      <button class="close sans" id="compareClose">&times;</button>
+      <button class="close sans" id="compareClose">✕</button>
     </div>
     <div class="compare-body">
       <!-- Slots fournisseurs -->
@@ -464,7 +464,7 @@
         </div>
         <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;" id="priceModalRef"></div>
       </div>
-      <button id="priceModalClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+      <button id="priceModalClose" class="close sans" aria-label="Fermer">✕</button>
     </div>
     <!-- Corps -->
     <div style="overflow-y:auto;flex:1;padding:0;">
@@ -563,7 +563,7 @@
         <button id="commentsModalNewBtn" class="copper" style="padding:7px 14px;border-radius:6px;font-size:13px;white-space:nowrap;">
           Nouveau
         </button>
-        <button id="commentsModalClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+        <button id="commentsModalClose" class="close sans" aria-label="Fermer">✕</button>
       </div>
     </div>
     <!-- Corps -->
@@ -580,7 +580,7 @@
   <div style="background:var(--paper-card);border-radius:14px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--line);">
       <div id="commentsNewTitle" style="font-weight:700;font-size:15px;color:var(--ink);">Nouveau commentaire</div>
-      <button id="commentsNewClose" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);padding:0 4px;line-height:1;">✕</button>
+      <button id="commentsNewClose" class="close sans" aria-label="Fermer">✕</button>
     </div>
     <div style="padding:16px 20px;">
       <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Votre commentaire</label>
@@ -610,7 +610,7 @@
         <button id="settingsBackBtn" class="win-back-btn" aria-label="Retour au menu"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
         <h3>Paramètres</h3>
       </div>
-      <button class="close sans" id="settingsClose" aria-label="Fermer">&times;</button>
+      <button class="close sans" id="settingsClose" aria-label="Fermer">✕</button>
     </div>
     <div class="settings-body" id="settingsMainBody">
       <button id="btnOpenFamilyIcons" class="settings-row-btn" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;background:var(--paper-card);cursor:pointer;text-align:left;transition:border-color .15s;margin-bottom:8px;">
@@ -828,7 +828,7 @@
   <div class="icon-picker-box">
     <div class="icon-picker-header">
       <h4>Choisir une icône</h4>
-      <button class="close sans" id="iconPickerClose">&times;</button>
+      <button class="close sans" id="iconPickerClose">✕</button>
     </div>
     <input type="text" class="icon-picker-search" id="iconPickerSearch" placeholder="Rechercher une icône…">
     <div class="icon-picker-grid" id="iconPickerGrid"></div>
@@ -1326,7 +1326,7 @@
     <!-- class="close sans" : même bouton fermer que #settingsClose
          (index.html, #settingsOverlay) — retour utilisateur : "la fenêtre
          menu [doit être] le même style que la fenêtre paramètre". -->
-    <button class="close sans" id="menuSheetClose" aria-label="Fermer">&times;</button>
+    <button class="close sans" id="menuSheetClose" aria-label="Fermer">✕</button>
   </div>
   <div class="menu-sheet-body">
 

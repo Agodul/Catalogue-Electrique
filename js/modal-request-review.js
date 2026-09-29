@@ -184,17 +184,12 @@
   // Un clic sur le fond gris ne ferme plus la fenêtre : seul un clic explicite
   // sur « Annuler » ou la croix peut fermer la fiche, pour éviter de perdre
   // une saisie en cours par erreur.
-  document.addEventListener('keydown', function(e){
-    if(e.key !== 'Escape' || !overlay.classList.contains('open')) return;
-    // Des fenêtres s'ouvrent PAR-DESSUS la fiche produit (caractéristiques
-    // techniques, historique des prix, aperçu photo) sans se fermer elles-
-    // mêmes avant que ce listener ne s'exécute — sans ce garde-fou, Échap
-    // fermait/demandait confirmation sur la fenêtre imbriquée ET sur la
-    // fiche produit en dessous en même temps (retour utilisateur).
-    var nestedOpen = (specsOverlay && specsOverlay.style.display !== 'none')
-      || (priceModalOverlay && priceModalOverlay.style.display !== 'none')
-      || (imgPreviewOverlay && imgPreviewOverlay.classList.contains('show'));
-    if(nestedOpen) return;
-    requestCloseModal();
-  });
+  //
+  // Échap : géré centralement par _initModalEscape (js/init.js), qui connaît
+  // déjà modalOverlay (voir MODALS, close: 'modalClose' → requestCloseModal,
+  // voir plus haut) ET les fenêtres imbriquées au-dessus (specsOverlay,
+  // priceModalOverlay, imgPreviewOverlay) — un second listener ici fermait
+  // la fiche EN PLUS d'une autre fenêtre gérée ailleurs sur le même appui
+  // (retour utilisateur : "Echap ferme toutes les fenêtres ouvertes au lieu
+  // d'une seule").
 

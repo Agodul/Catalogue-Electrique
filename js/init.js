@@ -370,6 +370,22 @@
     // Escape : ferme la modale la plus haute (z-index) visible
     document.addEventListener('keydown', function(e){
       if(e.key !== 'Escape') return;
+      // Une popup flottante (customAlert/Confirm/Prompt, aperçu image,
+      // "Configurations en cours" du configurateur d'armoire — toutes
+      // créées à la volée avec la classe .spi-popup-overlay, voir
+      // _popupOverlay/js/popup.js) est TOUJOURS au-dessus de tout le reste
+      // et gère déjà Échap elle-même (son propre listener, posé à
+      // l'ouverture) — sans ce garde-fou, CE gestionnaire fermait EN PLUS
+      // une fenêtre "connue" en dessous sur le même appui, sans savoir
+      // qu'une popup était ouverte par-dessus (retour utilisateur : "Echap
+      // ferme toutes les fenêtres ouvertes au lieu d'une seule"). Même
+      // chose pour l'aperçu image plein écran d'une fiche produit
+      // (#imgPreviewOverlay, js/modal-tag-suggestions.js) — un élément
+      // statique du DOM plutôt qu'une popup créée à la volée, donc pas
+      // .spi-popup-overlay, vérifié séparément.
+      if(document.querySelector('.spi-popup-overlay')) return;
+      var imgPrev = document.getElementById('imgPreviewOverlay');
+      if(imgPrev && imgPrev.classList.contains('show')) return;
       // Trier par z-index décroissant pour fermer la plus haute en premier
       var visible = MODALS.filter(function(m){
         return isVisible(document.getElementById(m.overlay));

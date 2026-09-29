@@ -434,7 +434,7 @@ function _armoireOpenDraftListModal(){
     // du bouton de fermeture, toujours à portée de clic.
     + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">'
     + '<button type="button" id="_armoireDraftListNewBtn" title="Démarrer une nouvelle configuration" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:none;border-radius:50%;background:var(--copper);color:#fff;font-size:16px;cursor:pointer;"><i class="ti ti-plus"></i></button>'
-    + '<button type="button" id="_armoireDraftListCloseBtn" style="border:none;background:none;font-size:18px;color:var(--ink-soft,#64748b);cursor:pointer;line-height:1;padding:4px;">✕</button>'
+    + '<button type="button" id="_armoireDraftListCloseBtn" class="close sans" aria-label="Fermer">✕</button>'
     + '</div>'
     + '</div>'
     + '<div style="font-size:13px;color:var(--ink-soft,#64748b);margin-bottom:14px;">Cliquez sur une configuration pour y basculer.</div>'
@@ -931,6 +931,17 @@ function _armoireGroupByFolder(list){
 // utilisateur). kind : 'block' ou 'config', utilisé pour le libellé vide,
 // le texte des lignes (_armoireListItemHtml) et pour isoler l'état replié
 // de chaque liste (_armoireCollapsedFolders).
+//
+// Même coquille accordéon (.sug-picker-group/-title/-chevron/-count) que la
+// liste des familles (_armoireRenderFamilyFolders, js/armoireConfig-search.js)
+// et "Parcourir le catalogue" (js/modal-browse-catalogue.js) — retour
+// utilisateur : "fait en sorte que la liste de bloc et configuration soit
+// comme la liste de famille". Toutes les lignes sont toujours dans le DOM,
+// repliage géré en CSS pur via .sug-picker-group.open (.armoire-folder-rows,
+// css/styles.css) — le clic sur un dossier (armoireConfig-init.js) ne
+// touche plus qu'une classe + l'état mémorisé, sans re-rendu complet de la
+// liste (même différence déjà entre le comportement famille et l'ancien
+// comportement ici).
 function _armoireRenderGroupedList(list, kind, emptyMessage){
   var el = document.getElementById(kind === 'block' ? 'armoireConfigBlocksList' : 'armoireConfigSavedList');
   if(!el) return;
@@ -951,20 +962,16 @@ function _armoireRenderGroupedList(list, kind, emptyMessage){
   el.innerHTML = g.order.map(function(folderKey){
     var entries = g.groups[folderKey];
     var label = folderKey || 'Sans dossier';
-    var isCollapsed = !!collapsedMap[folderKey];
-    var header = '<div class="armoire-folder-header" data-folder="' + escapeHtml(folderKey) + '" style="display:flex;align-items:center;gap:6px;padding:8px 4px 4px;cursor:pointer;user-select:none;">'
-      + '<i class="ti ti-chevron-' + (isCollapsed ? 'right' : 'down') + '" style="font-size:13px;color:var(--ink-soft);flex-shrink:0;"></i>'
-      // Icône dossier en bleu — retour utilisateur : "ajoute les icônes de
-      // dossier en bleu pour les blocs et Configuration comme pour la liste
-      // de famille" (voir même traitement, var(--copper), dans
-      // _armoireRenderFamilyFolders/js/armoireConfig-search.js et
-      // js/modal-browse-catalogue.js).
-      + '<i class="ti ti-folder" style="font-size:13px;color:var(--copper);flex-shrink:0;"></i>'
-      + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);">' + escapeHtml(label) + '</span>'
-      + '<span style="font-size:11px;color:var(--ink-soft);">— ' + entries.length + '</span>'
+    var open = !collapsedMap[folderKey];
+    var rows = entries.map(function(entry){ return _armoireListItemHtml(entry, kind); }).join('');
+    return '<div class="sug-picker-group' + (open ? ' open' : '') + '" data-folder="' + escapeHtml(folderKey) + '">'
+      + '<div class="sug-picker-group-title">'
+      +   '<i class="ti ti-chevron-right sug-picker-group-chevron"></i>'
+      +   '<i class="ti ti-folder" style="color:var(--copper);flex-shrink:0;"></i>'
+      +   escapeHtml(label) + ' <span class="sug-picker-group-count">(' + entries.length + ')</span>'
+      + '</div>'
+      + '<div class="armoire-folder-rows">' + rows + '</div>'
       + '</div>';
-    var rows = isCollapsed ? '' : entries.map(function(entry){ return _armoireListItemHtml(entry, kind); }).join('');
-    return header + rows;
   }).join('');
 }
 

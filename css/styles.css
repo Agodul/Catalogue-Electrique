@@ -3126,6 +3126,13 @@
   .armoire-family-list{ display:none; padding-top:6px; }
   .sug-picker-group.open .armoire-family-list{ display:block; }
 
+  /* Listes "Blocs"/"Configuration" du configurateur d'armoire — même
+     coquille accordéon que ci-dessus (retour utilisateur : "fait en sorte
+     que la liste de bloc et configuration soit comme la liste de famille"),
+     voir _armoireRenderGroupedList (js/armoireConfig-server.js). */
+  .armoire-folder-rows{ display:none; padding-top:6px; }
+  .sug-picker-group.open .armoire-folder-rows{ display:block; }
+
   /* ── Picker icône famille ── */
   .family-icon-row{
     display:none; align-items:center; gap:8px;

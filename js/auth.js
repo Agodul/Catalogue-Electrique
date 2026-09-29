@@ -1438,7 +1438,7 @@ function openChangePasswordModal() {
   var FIELD_LABEL = 'display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;';
   var FIELD_STYLE = 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;';
   ov.innerHTML = '<div class="modal" style="max-width:420px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3><button class="close sans" id="_cpClose" aria-label="Fermer">&times;</button></div>'
+    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3><button class="close sans" id="_cpClose" aria-label="Fermer">✕</button></div>'
     + '<div class="modal-body">'
     + '<div style="' + CARD + 'margin-bottom:14px;">'
     +   '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">'

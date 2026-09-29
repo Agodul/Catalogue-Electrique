@@ -448,7 +448,17 @@ function _compareClose(){
     });
   }
   document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape' && overlay && getComputedStyle(overlay).display !== 'none') _compareClose();
+    if(e.key !== 'Escape' || !overlay || getComputedStyle(overlay).display === 'none') return;
+    // productCompareOverlay n'est pas dans la coquille centralisée
+    // _initModalEscape (js/init.js — MODALS y référence un tout autre
+    // #compareOverlay, voir js/actions-compare.js) : ce listener reste donc
+    // nécessaire, mais doit s'effacer devant une popup flottante ouverte
+    // par-dessus (même garde-fou que _initModalEscape) — sinon Échap
+    // fermait le comparateur EN PLUS d'une popup au-dessus sur le même
+    // appui (retour utilisateur : "Echap ferme toutes les fenêtres
+    // ouvertes au lieu d'une seule").
+    if(document.querySelector('.spi-popup-overlay')) return;
+    _compareClose();
   });
 
   // Retour utilisateur : "je veux que tu me bétonne tout ça, fonctionne
