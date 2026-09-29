@@ -439,7 +439,7 @@
   <div class="mobile-search-inner">
     <div class="mobile-search-field">
       <i class="ti ti-search" style="color:var(--ink-soft);font-size:16px;"></i>
-      <input id="mobileSearchInput" type="text" placeholder="Rechercher…" autocomplete="off" inputmode="search" enterkeyhint="search">
+      <input id="mobileSearchInput" type="text" placeholder="Rechercher…" aria-label="Rechercher un produit" autocomplete="off" inputmode="search" enterkeyhint="search">
       <button id="mobileSearchClear" style="display:none;"><i class="ti ti-x"></i></button>
     </div>
     <button id="mobileSearchCancel">Annuler</button>
@@ -508,16 +508,16 @@
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
           <div style="flex:2;min-width:130px;">
             <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Prix catalogue (€)</label>
-            <input type="text" id="priceModalNewCatalogue" placeholder="ex. 18 500,00" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+            <input type="text" id="priceModalNewCatalogue" placeholder="ex. 18 500,00" aria-label="Nouveau prix catalogue" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
           </div>
           <div style="flex:2;min-width:130px;">
             <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Prix remisé (€) <span style="color:var(--ink-soft);font-style:italic;">laisser vide si pas de remise</span></label>
-            <input type="text" id="priceModalNewRemise" placeholder="ex. 14 800,00" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+            <input type="text" id="priceModalNewRemise" placeholder="ex. 14 800,00" aria-label="Nouveau prix remisé" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
           </div>
           <div style="flex:2;min-width:220px;display:flex;gap:8px;align-items:flex-end;">
             <div style="flex:1;min-width:0;">
               <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Date</label>
-              <input type="date" id="priceModalNewDate" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
+              <input type="date" id="priceModalNewDate" aria-label="Date du nouveau prix" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);">
             </div>
             <button id="priceModalAddBtn" class="copper" style="flex:0 0 auto;padding:8px 16px;border-radius:6px;font-size:13px;white-space:nowrap;height:38px;">
               <i class="ti ti-plus" aria-hidden="true"></i> Ajouter
@@ -584,7 +584,7 @@
     </div>
     <div style="padding:16px 20px;">
       <label style="font-size:11px;color:var(--ink-soft);display:block;margin-bottom:4px;">Votre commentaire</label>
-      <textarea id="commentsModalNewText" rows="4" placeholder="Info absente de la fiche fabricant, retour après utilisation…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);resize:vertical;font-family:inherit;"></textarea>
+      <textarea id="commentsModalNewText" rows="4" aria-label="Commentaire" placeholder="Info absente de la fiche fabricant, retour après utilisation…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink);resize:vertical;font-family:inherit;"></textarea>
       <div id="commentsModalError" style="display:none;margin-top:6px;font-size:12px;color:var(--warn);"></div>
     </div>
     <div style="padding:12px 20px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;">
@@ -715,7 +715,7 @@
                #mobileSearchBar/#mobileSearchClear) pour que le bouton
                semble posé DANS le champ plutôt qu'à côté. -->
           <div class="server-url-field" style="margin:0 0 22px 0;">
-            <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000">
+            <input type="text" id="serverUrlInput" placeholder="ex: http://192.168.1.10:3000" aria-label="URL du serveur">
             <button type="button" class="vm-copy-btn" id="btnCopyServerUrl" title="Copier l'URL du serveur" aria-label="Copier l'URL du serveur"><i class="ti ti-copy" aria-hidden="true"></i><i class="ti ti-check" aria-hidden="true"></i></button>
           </div>
         </div>
@@ -830,7 +830,7 @@
       <h4>Choisir une icône</h4>
       <button class="close sans" id="iconPickerClose">✕</button>
     </div>
-    <input type="text" class="icon-picker-search" id="iconPickerSearch" placeholder="Rechercher une icône…">
+    <input type="text" class="icon-picker-search" id="iconPickerSearch" placeholder="Rechercher une icône…" aria-label="Rechercher une icône">
     <div class="icon-picker-grid" id="iconPickerGrid"></div>
   </div>
 </div>
@@ -861,7 +861,7 @@
   <div class="home-search-row">
     <div class="home-search-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="homeSearchInput" placeholder="Rechercher un produit (réf, nom, description)…" autocomplete="off">
+      <input type="text" id="homeSearchInput" placeholder="Rechercher un produit (réf, nom, description)…" aria-label="Rechercher un produit" autocomplete="off">
     </div>
     <button class="home-all-btn" id="homeAllBtn">
       <i class="ti ti-layout-grid" aria-hidden="true"></i>
@@ -881,16 +881,16 @@
   <div class="toolbar">
     <div class="search-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="searchInput" placeholder="Rechercher (réf, nom, description)…">
+      <input type="text" id="searchInput" placeholder="Rechercher (réf, nom, description)…" aria-label="Rechercher un produit">
     </div>
 
-    <select id="brandFilter">
+    <select id="brandFilter" aria-label="Filtrer par marque">
       <option value="">Toutes les marques</option>
     </select>
-    <select id="familyFilter">
+    <select id="familyFilter" aria-label="Filtrer par famille">
       <option value="">Toutes les familles</option>
     </select>
-    <select id="seriesFilter">
+    <select id="seriesFilter" aria-label="Filtrer par série">
       <option value="">Toutes les séries</option>
     </select>
     <!-- Filtres case à cocher — retour utilisateur : "ajouter dans les
@@ -954,19 +954,19 @@
     </div>
     <div class="filter-sheet-body">
       <label class="filter-sheet-label">Marque</label>
-      <select id="filterSheetBrand" class="filter-sheet-select">
+      <select id="filterSheetBrand" class="filter-sheet-select" aria-label="Filtrer par marque">
         <option value="">Toutes les marques</option>
       </select>
       <label class="filter-sheet-label">Famille</label>
-      <select id="filterSheetFamily" class="filter-sheet-select">
+      <select id="filterSheetFamily" class="filter-sheet-select" aria-label="Filtrer par famille">
         <option value="">Toutes les familles</option>
       </select>
       <label class="filter-sheet-label">Série</label>
-      <select id="filterSheetSeries" class="filter-sheet-select">
+      <select id="filterSheetSeries" class="filter-sheet-select" aria-label="Filtrer par série">
         <option value="">Toutes les séries</option>
       </select>
       <label class="filter-sheet-label">Trier par prix</label>
-      <select id="filterSheetSort" class="filter-sheet-select">
+      <select id="filterSheetSort" class="filter-sheet-select" aria-label="Trier par">
         <option value="">Pertinence</option>
         <option value="asc">Prix croissant</option>
         <option value="desc">Prix décroissant</option>
@@ -1319,7 +1319,7 @@
   <div style="display:flex;align-items:center;gap:10px;">
     <div style="flex:1;position:relative;">
       <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;opacity:.45;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="floatingSearchInput" type="text" placeholder="Rechercher…" autocomplete="off"
+      <input id="floatingSearchInput" type="text" placeholder="Rechercher…" aria-label="Rechercher un produit" autocomplete="off"
         style="width:100%;padding:12px 14px 12px 38px;border:1.5px solid var(--copper);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;font-family:var(--font-sans);outline:none;box-sizing:border-box;">
     </div>
     <button id="floatingSearchClose" style="background:none;border:none;font-size:13px;font-weight:600;color:var(--copper);cursor:pointer;padding:4px 8px;font-family:var(--font-sans);white-space:nowrap;">Annuler</button>
