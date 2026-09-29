@@ -91,6 +91,14 @@ async function authLoginServer(username, password) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username, password: password })
     });
+    // Retour utilisateur : "si on se trompe dans la saisie on a le droit à
+    // 5 essais puis un blocage de 1 min... le serveur envoie 429 (Too Many
+    // Requests)" — jusqu'ici traité comme un échec de connexion ordinaire,
+    // message trompeur ("Identifiants ou mot de passe incorrects") affiché
+    // alors que le problème n'a rien à voir avec ce qui a été saisi.
+    // 'rate-limited' propagé tel quel jusqu'à doLogin() (plus bas dans ce
+    // fichier), qui affiche un message dédié.
+    if (r.status === 429) return 'rate-limited';
     if (!r.ok) return null;
     var data = await r.json();
     if (data && data.token && data.user) {
@@ -299,6 +307,7 @@ async function authLogin(username, password) {
   // 1. Essayer le serveur si configuré
   if (sUrl) {
     var serverUser = await authLoginServer(username, password);
+    if (serverUser === 'rate-limited') return 'rate-limited';
     if (serverUser) {
       // Capturé AVANT showHome() plus bas, qui remet toujours ce drapeau à
       // "0" (voir window._setViewAll, js/storage.js) — sinon un utilisateur
@@ -1579,6 +1588,10 @@ function openChangePasswordModal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username, password: pwCur })
       });
+      // Même distinction que doLogin() plus bas dans ce fichier — un 429
+      // (trop de tentatives, blocage 1 min côté serveur) n'a rien à voir
+      // avec un mot de passe actuel erroné.
+      if (r.status === 429) { errEl.textContent = 'Trop de tentatives — réessayez dans 1 minute.'; return; }
       if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; cpCurrentEl.style.border = REQ_BORDER; return; }
     } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
 
@@ -1639,7 +1652,11 @@ function initAuth() {
     var errEl    = document.getElementById('authError');
     if (errEl) errEl.textContent = '';
     var ok = await authLogin(username, password);
-    if (!ok && errEl) errEl.textContent = 'Identifiants ou mot de passe incorrects.';
+    if (ok === 'rate-limited') {
+      if (errEl) errEl.textContent = 'Trop de tentatives — réessayez dans 1 minute.';
+    } else if (!ok && errEl) {
+      errEl.textContent = 'Identifiants ou mot de passe incorrects.';
+    }
   }
 
   // Identifiant/mot de passe dans un vrai <form> désormais (retour
