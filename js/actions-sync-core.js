@@ -1,6 +1,16 @@
   // ── Pull différentiel : récupère les nouveautés serveur et fusionne par ref ──
+  // Retourne le nombre d'éléments renvoyés par le serveur pour cette requête
+  // ({count, items}, confirmé sur une vraie réponse) — null si l'appel a
+  // échoué (réseau/HTTP), pour que l'appelant (doCheckAllSync,
+  // js/actions-settings-sync.js) puisse distinguer "rien de nouveau" (0) de
+  // "on ne sait pas" (null, ex. serveur injoignable), et savoir s'il doit
+  // basculer sur un pull complet pour détecter d'éventuelles suppressions
+  // (protocole confirmé par le développeur serveur : un /checkAll qui
+  // annonce le catalogue changé, mais un /pullDatas?date=... qui revient
+  // avec count:0, ne peut s'expliquer que par une suppression — seul type
+  // de changement invisible via un pull filtré par date).
   async function syncFromServer(silent){
-    if(!serverUrl) return;
+    if(!serverUrl) return null;
     try{
       var lastSync = localStorage.getItem(SERVER_LAST_SYNC_KEY) || '0';
       var pullUrl  = serverUrl+'/pullDatas' + (lastSync !== '0' ? '?date='+lastSync : '');
@@ -10,6 +20,8 @@
       var r = await fetch(pullUrl, fetchOpts);
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data = await r.json();
+      var rawCount = (data && typeof data.count === 'number') ? data.count
+        : (data && Array.isArray(data.items) ? data.items.length : 0);
 
       var serverItems = [];
       if(data && Array.isArray(data.items)){
@@ -29,7 +41,7 @@
 
       // Mettre à jour lastSync
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
-      if(serverItems.length === 0) return;
+      if(serverItems.length === 0) return rawCount;
 
       // Index local par ref — Map et pas objet nu : une référence produit qui
       // s'appelle « __proto__ », « constructor » ou « toString » interroge
@@ -163,7 +175,8 @@
       if(staleLockCleanups.length > 0){
         pushToServer(staleLockCleanups);
       }
-    }catch(e){ console.warn('syncFromServer:', e.message); }
+      return rawCount;
+    }catch(e){ console.warn('syncFromServer:', e.message); return null; }
   }
 
   // Envoie products au serveur (POST /pushDatas) puis retire un pull différentiel

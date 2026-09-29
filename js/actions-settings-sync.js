@@ -59,17 +59,24 @@
         // sur son dernier état connu tant qu'on n'est pas reconnecté : choix
         // assumé, au prix de la précision temps réel de ce point pour un
         // utilisateur déconnecté.
+        //
+        // Retour utilisateur : "il ne faut plus passer ça, seul le checkAll
+        // permet de faire les bonnes requêtes" — appelait ici syncDeletions()
+        // (donc un /pullDatas complet) SANS CONDITION à chaque chargement de
+        // page, plus une seconde fois toutes les 5 min via un setInterval
+        // séparé — même quand /checkAll indique que le catalogue n'a pas
+        // changé depuis la dernière visite. doCheckAllSync() ci-dessous fait
+        // déjà tourner syncFromServer()+syncDeletions() lui-même, mais
+        // seulement quand hasChanged('catalogue') est vrai (voir plus bas) —
+        // et startSyncPolling() le relance toutes les 15s, largement plus
+        // fréquent que les 5 min d'avant. Les deux appels inconditionnels
+        // sont donc retirés : /checkAll reste désormais le seul à décider
+        // quand un /pullDatas est réellement nécessaire.
         if(typeof authIsLoggedIn === 'function' && authIsLoggedIn()){
           doCheckAllSync();
           startSyncPolling();
-          syncDeletions();
         }
       }, 1500);
-      // Sync suppressions toutes les 5 minutes (si connecté)
-      setInterval(function(){
-        if(typeof authIsLoggedIn === 'function' && !authIsLoggedIn()) return;
-        syncDeletions();
-      }, 5 * 60 * 1000);
     }
   }
 
@@ -290,13 +297,20 @@
         // syncFromServer fait un pull DIFFÉRENTIEL ("/pullDatas?date=...") :
         // par nature, il ne peut jamais voir une suppression (un produit
         // supprimé disparaît juste des résultats, aucun marqueur renvoyé).
-        // syncDeletions() fait le pull complet nécessaire pour ça. Avant,
-        // elle ne tournait que toutes les 5 min — un produit supprimé par
-        // un collègue pouvait donc rester visible jusqu'à 5 min, alors que
-        // les ajouts/modifs sont maintenant détectés en ~15s. On la lance
-        // ici aussi pour que suppressions et ajouts soient au même rythme.
-        jobs.push(syncFromServer(false));
-        jobs.push(syncDeletions());
+        // syncDeletions() fait le pull complet nécessaire pour ça — mais
+        // coûte une seconde requête /pullDatas à chaque fois si on la lance
+        // systématiquement en parallèle. Protocole confirmé avec le
+        // développeur serveur : faire d'abord le pull différentiel, et ne
+        // basculer sur le pull complet QUE s'il revient vide (count:0) alors
+        // que /checkAll vient d'annoncer un changement — ce cas ne peut
+        // s'expliquer que par une suppression (le seul type de changement
+        // invisible via ?date=...). Si le différentiel a ramené quelque
+        // chose (count > 0), on considère le changement expliqué, sans
+        // second pull complet.
+        jobs.push((async function(){
+          var pullCount = await syncFromServer(false);
+          if(pullCount === 0) await syncDeletions();
+        })());
       }
       if(hasChanged('configBlocks') && typeof _armoireFetchBlocks === 'function') jobs.push(_armoireFetchBlocks());
       if(hasChanged('savedConfigs') && typeof _armoireFetchSavedConfigs === 'function') jobs.push(_armoireFetchSavedConfigs());
