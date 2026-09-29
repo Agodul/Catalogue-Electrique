@@ -726,9 +726,10 @@
       // Miroir exact de btnRequestsMenuTitle côté desktop (js/auth.js).
       var msRequestsTitle = document.getElementById('msRequestsTitle');
       if(msRequestsTitle) msRequestsTitle.textContent = isAdmin ? 'Demandes en attente' : 'Mes demandes en attente';
-      // Miroir exact de btnSettingsSub côté desktop (js/auth.js).
+      // Miroir exact de btnSettingsSub côté desktop (js/auth.js) — "Mon
+      // compte" seulement si connecté, retour utilisateur.
       var msSettingsSub = document.getElementById('msSettingsSub');
-      if(msSettingsSub) msSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
+      if(msSettingsSub) msSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : (loggedIn ? 'Mon compte, Serveur' : 'Serveur');
 
       // Cacher sections vides
       function allHidden(ids){ return ids.every(function(id){ var el=document.getElementById(id); return !el||el.style.display==='none'; }); }

@@ -577,11 +577,15 @@ function applyAuthUI() {
 
   // Sous-titre du menu "Paramètres" adapté à ce que CET utilisateur y voit
   // réellement — "Icônes des familles" n'est visible que pour un admin
-  // (juste au-dessus) ; un non-admin n'y trouve que "Mon compte" et le
-  // serveur (retour utilisateur : le sous-titre restait figé, pas à jour
-  // avec les permissions, contrairement aux autres déjà corrigés).
+  // (juste au-dessus) ; un non-admin connecté n'y trouve que "Mon compte" et
+  // le serveur (retour utilisateur : le sous-titre restait figé, pas à jour
+  // avec les permissions, contrairement aux autres déjà corrigés). "Mon
+  // compte" lui-même n'est visible QUE connecté (btnMyAccount2 plus haut) —
+  // retour utilisateur : "retirer le sous-titre Mon compte ... lorsqu'on
+  // est pas login", sinon le sous-titre annonçait une option absente du
+  // menu tant qu'on n'était pas connecté.
   var btnSettingsSub = document.getElementById('btnSettingsSub');
-  if (btnSettingsSub) btnSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : 'Mon compte, Serveur';
+  if (btnSettingsSub) btnSettingsSub.textContent = isAdmin ? 'Icônes des familles, Serveur' : (loggedIn ? 'Mon compte, Serveur' : 'Serveur');
 
   // Sync serveur manuelle ("Charger depuis le serveur"/"Envoyer le catalogue
   // local au serveur") — désormais scindée en deux niveaux d'accès distincts
