@@ -1237,28 +1237,38 @@
       </div>
       <p>Accès réservé</p>
     </div>
-    <div class="auth-fields">
-      <div class="auth-field-wrap">
-        <label for="authUsername">Identifiant</label>
-        <input type="text" id="authUsername" autocomplete="username" placeholder="Votre identifiant">
-      </div>
-      <div class="auth-field-wrap">
-        <label for="authPassword">Mot de passe</label>
-        <!-- Bouton œil : retour utilisateur — "ajoute le moyen de voir le
-             mot de passe écrit en ajoutant un œil", puis précisé : maintien
-             enfoncé pour afficher, relâchement pour remasquer (pas un
-             bouton à bascule classique). .auth-password-wrap
-             (position:relative) + bouton en position:absolute, même
-             principe que .search-field/.search-field svg — voir js/auth.js
-             pour la logique mousedown/mouseup/touchstart/touchend. -->
-        <div class="auth-password-wrap">
-          <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
-          <button type="button" id="authPasswordToggle" class="auth-password-toggle" tabindex="-1" title="Maintenir pour afficher" aria-label="Maintenir pour afficher"><i class="ti ti-eye" aria-hidden="true"></i></button>
+    <!-- Champs identifiant/mot de passe dans un vrai <form> — retour
+         utilisateur : avertissement Chrome DevTools "Password field is not
+         contained in a form", qui empêche le gestionnaire de mots de passe
+         du navigateur de fiabiliser sa détection (proposition d'enregistrer/
+         autocompléter). La soumission est interceptée en JS (voir
+         submitBtn/doLogin dans js/auth.js), comme avant — aucun rechargement
+         de page, juste un vrai <form> autour des champs pour ce repère natif
+         en plus des attributs autocomplete déjà en place. -->
+    <form id="authForm">
+      <div class="auth-fields">
+        <div class="auth-field-wrap">
+          <label for="authUsername">Identifiant</label>
+          <input type="text" id="authUsername" autocomplete="username" placeholder="Votre identifiant">
+        </div>
+        <div class="auth-field-wrap">
+          <label for="authPassword">Mot de passe</label>
+          <!-- Bouton œil : retour utilisateur — "ajoute le moyen de voir le
+               mot de passe écrit en ajoutant un œil", puis précisé : maintien
+               enfoncé pour afficher, relâchement pour remasquer (pas un
+               bouton à bascule classique). .auth-password-wrap
+               (position:relative) + bouton en position:absolute, même
+               principe que .search-field/.search-field svg — voir js/auth.js
+               pour la logique mousedown/mouseup/touchstart/touchend. -->
+          <div class="auth-password-wrap">
+            <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+            <button type="button" id="authPasswordToggle" class="auth-password-toggle" tabindex="-1" title="Maintenir pour afficher" aria-label="Maintenir pour afficher"><i class="ti ti-eye" aria-hidden="true"></i></button>
+          </div>
         </div>
       </div>
-    </div>
-    <p class="auth-error" id="authError"></p>
-    <button id="authSubmitBtn">Se connecter</button>
+      <p class="auth-error" id="authError"></p>
+      <button id="authSubmitBtn" type="submit">Se connecter</button>
+    </form>
   </div>
 </div>
 

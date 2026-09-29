@@ -3725,6 +3725,13 @@
   .auth-box-header h2{ margin:0 0 4px; font-size:18px; font-weight:700; color:#111827; }
   .auth-box-header p{ margin:0; font-size:13px; color:#6B7280; }
 
+  /* #authForm : enveloppe désormais .auth-fields/#authError/#authSubmitBtn
+     (retour utilisateur : avertissement Chrome "Password field is not
+     contained in a form", voir index.html) — reprend le même display:flex +
+     gap que .auth-box appliquait avant directement à ces trois éléments,
+     pour ne rien changer visuellement (le <form> prend juste leur place
+     dans cet enchaînement flex). */
+  #authForm{ display:flex; flex-direction:column; gap:16px; }
   .auth-fields{ display:flex; flex-direction:column; gap:12px; }
   .auth-field-wrap{ display:flex; flex-direction:column; gap:5px; }
   .auth-field-wrap label{

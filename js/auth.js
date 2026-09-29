@@ -1636,23 +1636,29 @@ function initAuth() {
     if (!ok && errEl) errEl.textContent = 'Identifiants ou mot de passe incorrects.';
   }
 
-  var submitBtn = document.getElementById('authSubmitBtn');
-  if (submitBtn) submitBtn.addEventListener('click', doLogin);
-
-  // Touche Entrée dans les champs
-  // Retour utilisateur (très long historique, "de pire en pire" au fil des
-  // rustines) : voir le commentaire au-dessus de _authIsMobileKeyboardDevice
-  // plus haut dans ce fichier — plus rien à recaler ici à la main
-  // (position, hauteur, réserve, sondage de scroll…) depuis le passage à
-  // interactive-widget=resizes-content (index.html) : Safari fait
-  // maintenant tout seul défiler le champ qui prend le focus au-dessus du
-  // clavier, comme #authOverlay (position:fixed; inset:0) suit tout seul la
-  // zone réellement visible.
-  ['authUsername', 'authPassword'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') doLogin();
-    });
+  // Identifiant/mot de passe dans un vrai <form> désormais (retour
+  // utilisateur : avertissement Chrome "Password field is not contained in
+  // a form", voir index.html) — un seul écouteur "submit" couvre à la fois
+  // le clic sur #authSubmitBtn (type="submit") ET la touche Entrée dans
+  // n'importe quel champ du formulaire, plutôt que les deux mécanismes
+  // séparés d'avant (clic direct + Entrée par champ, qui auraient sinon
+  // fini par déclencher doLogin() deux fois pour un même clic une fois le
+  // bouton passé en type="submit"). preventDefault() : jamais de vraie
+  // soumission HTTP/rechargement de page, la connexion reste gérée ici en
+  // JS comme avant.
+  //
+  // Touche Entrée dans les champs — retour utilisateur (très long
+  // historique, "de pire en pire" au fil des rustines) : voir le commentaire
+  // au-dessus de _authIsMobileKeyboardDevice plus haut dans ce fichier —
+  // plus rien à recaler ici à la main (position, hauteur, réserve, sondage
+  // de scroll…) depuis le passage à interactive-widget=resizes-content
+  // (index.html) : Safari fait maintenant tout seul défiler le champ qui
+  // prend le focus au-dessus du clavier, comme #authOverlay
+  // (position:fixed; inset:0) suit tout seul la zone réellement visible.
+  var authFormEl = document.getElementById('authForm');
+  if (authFormEl) authFormEl.addEventListener('submit', function(e) {
+    e.preventDefault();
+    doLogin();
   });
 
   var closeBtn = document.getElementById('authCloseBtn');
