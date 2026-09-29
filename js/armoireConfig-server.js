@@ -954,7 +954,12 @@ function _armoireRenderGroupedList(list, kind, emptyMessage){
     var isCollapsed = !!collapsedMap[folderKey];
     var header = '<div class="armoire-folder-header" data-folder="' + escapeHtml(folderKey) + '" style="display:flex;align-items:center;gap:6px;padding:8px 4px 4px;cursor:pointer;user-select:none;">'
       + '<i class="ti ti-chevron-' + (isCollapsed ? 'right' : 'down') + '" style="font-size:13px;color:var(--ink-soft);flex-shrink:0;"></i>'
-      + '<i class="ti ti-folder" style="font-size:13px;color:var(--ink-soft);flex-shrink:0;"></i>'
+      // Icône dossier en bleu — retour utilisateur : "ajoute les icônes de
+      // dossier en bleu pour les blocs et Configuration comme pour la liste
+      // de famille" (voir même traitement, var(--copper), dans
+      // _armoireRenderFamilyFolders/js/armoireConfig-search.js et
+      // js/modal-browse-catalogue.js).
+      + '<i class="ti ti-folder" style="font-size:13px;color:var(--copper);flex-shrink:0;"></i>'
       + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);">' + escapeHtml(label) + '</span>'
       + '<span style="font-size:11px;color:var(--ink-soft);">— ' + entries.length + '</span>'
       + '</div>';
