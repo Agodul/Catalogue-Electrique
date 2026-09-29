@@ -393,10 +393,16 @@ function customConfirm(title, message, opts){
 function customPrompt(title, message, defaultValue){
   return new Promise(function(resolve){
     var safeDefault = defaultValue ? String(defaultValue).replace(/"/g, '&quot;') : '';
+    // aria-label dérivé du titre (débarrassé d'éventuelles balises/guillemets
+    // — title est inséré tel quel plus bas, voir le commentaire en tête de
+    // section sur les popups à contenu HTML volontaire) — retour utilisateur :
+    // avertissement Chrome "No label associated with a form field", ce champ
+    // n'ayant qu'un simple <input> sans label visible ni implicite.
+    var safeAriaTitle = String(title || 'Réponse').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;');
     var overlay = _popupOverlay(
       '<div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:8px;">' + title + '</div>' +
       (message ? '<div style="font-size:13px;color:#64748b;margin-bottom:14px;">' + message + '</div>' : '') +
-      '<input id="_popupInput" type="text" value="' + safeDefault + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--line,#C9D0D8);font-size:14px;font-family:inherit;margin-bottom:20px;" />' +
+      '<input id="_popupInput" type="text" value="' + safeDefault + '" aria-label="' + safeAriaTitle + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--line,#C9D0D8);font-size:14px;font-family:inherit;margin-bottom:20px;" />' +
       '<div style="display:flex;gap:8px;">' +
         '<button id="_popupCancel" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;background:transparent;color:#64748b;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>' +
         '<button id="_popupOk" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--copper,#194093);background:var(--copper,#194093);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">OK</button>' +

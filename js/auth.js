@@ -901,8 +901,14 @@ function _authIsMobileKeyboardDevice(){
 // css/styles.css) qui suffit pour le champ statique de la connexion, mais
 // pas pour ces champs générés en JS avec leur propre padding inline.
 function _authPasswordFieldHtml(id, placeholder, autocomplete, inputStyle) {
+  // aria-label toujours posé (dérivé du placeholder, déjà descriptif partout
+  // où cette fonction est appelée) — retour utilisateur : avertissement
+  // Chrome "No label associated with a form field". Pour les 3 appels qui
+  // ont DÉJÀ un <label for="..."> visible à côté (openChangePasswordModal),
+  // ceci ne fait que fournir un nom accessible essentiellement équivalent
+  // (aria-label prime sur le <label> associé), pas une régression.
   return '<div class="auth-password-wrap">'
-    + '<input id="' + id + '" type="password" placeholder="' + placeholder + '" autocomplete="' + autocomplete + '" style="' + inputStyle + '">'
+    + '<input id="' + id + '" type="password" placeholder="' + placeholder + '" aria-label="' + placeholder + '" autocomplete="' + autocomplete + '" style="' + inputStyle + '">'
     + '<button type="button" class="auth-password-toggle" tabindex="-1" title="Maintenir pour afficher" aria-label="Maintenir pour afficher"><i class="ti ti-eye" aria-hidden="true"></i></button>'
     + '</div>';
 }
@@ -1206,8 +1212,8 @@ function openAddUserModal() {
     + '<div class="modal-body">'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_nuUsername" type="text" placeholder="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
-    + '<input id="_nuDisplay" type="text" placeholder="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuUsername" type="text" placeholder="Identifiant" aria-label="Identifiant" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_nuDisplay" type="text" placeholder="Nom affich\u00e9" aria-label="Nom affich\u00e9" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + _authPasswordFieldHtml('_nuPassword', 'Mot de passe', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '</div>'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg></span><h4>Acc\u00e8s et permissions</h4></div></div>'
@@ -1344,7 +1350,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     + '<div class="modal-body">'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
-    + '<input id="_euDisplay" type="text" placeholder="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
+    + '<input id="_euDisplay" type="text" placeholder="Nom affiché" aria-label="Nom affiché" value="' + safeDisplayValue + '" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">'
     + _authPasswordFieldHtml('_euPassword', 'Nouveau mot de passe (vide = inchangé)', 'new-password', 'padding:9px 40px 9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;')
     + '</div>'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg></span><h4>Accès et permissions</h4></div></div>'

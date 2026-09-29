@@ -20,7 +20,7 @@
     compareSuppliers.innerHTML = supplierSlots.map(function(s, i){
       var loaded = Object.keys(s.data).length > 0;
       return '<div class="compare-supplier-slot'+(loaded?' loaded':'')+'" data-idx="'+i+'">'
-        + '<input class="compare-supplier-name" type="text" placeholder="Nom du fournisseur" value="'+escapeHtml(s.name)+'" data-idx="'+i+'">'
+        + '<input class="compare-supplier-name" type="text" placeholder="Nom du fournisseur" aria-label="Nom du fournisseur" value="'+escapeHtml(s.name)+'" data-idx="'+i+'">'
         + '<button class="compare-supplier-file-btn" data-idx="'+i+'"><i class="ti ti-upload"></i> Importer fichier</button>'
         + '<div class="compare-supplier-status">'+(loaded ? '✓ '+Object.keys(s.data).length+' référence(s)' : 'Aucun fichier')+'</div>'
         + '<input type="file" accept=".xlsx,.xls,.csv" style="display:none;" class="compare-file-input" data-idx="'+i+'">'

@@ -286,7 +286,7 @@ function _armoireRenderDraftNow(){
       // Retour utilisateur : "fait en sorte que les boutons soit a la même
       // taille que le bouton i" — même hauteur/rayon que .armoire-search-info
       // (26px, border-radius:7px) pour les 3 éléments du groupe -/qty/+.
-      + '<input type="number" class="armoire-qty-input" inputmode="numeric" min="1" step="1" value="' + it.qty + '" style="width:38px;height:26px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:2px 2px;flex-shrink:0;background:var(--paper);box-sizing:border-box;">'
+      + '<input type="number" class="armoire-qty-input" inputmode="numeric" min="1" step="1" value="' + it.qty + '" aria-label="Quantité" style="width:38px;height:26px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:2px 2px;flex-shrink:0;background:var(--paper);box-sizing:border-box;">'
       + '<button type="button" class="armoire-qty-plus" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;box-sizing:border-box;">+</button>'
       + '<button type="button" class="armoire-item-remove" title="Retirer" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;">✕</button>'
       + '</div>';

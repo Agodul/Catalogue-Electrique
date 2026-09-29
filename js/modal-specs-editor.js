@@ -77,14 +77,14 @@
     if(colHeaders) colHeaders.style.display = _specsRows.length ? 'grid' : 'none';
     specsRowsEl.innerHTML = _specsRows.map(function(row, ri){
       return '<div class="spec-row" data-ri="'+ri+'" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:8px;align-items:start;">'
-        + '  <input type="text" class="spec-key" data-ri="'+ri+'" placeholder="Nom (ex: Entrées)" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
+        + '  <input type="text" class="spec-key" data-ri="'+ri+'" placeholder="Nom (ex: Entrées)" aria-label="Nom de la caractéristique" autocomplete="off" value="'+escapeHtml(row.key||'')+'" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;">'
         // textarea (pas input) : permet le retour à la ligne (Entrée) dans la
         // valeur — utile pour une caractéristique qui regroupe plusieurs
         // sous-valeurs (ex. une puissance différente par tension) qui
         // formaient sinon un seul long paragraphe illisible d'un bloc
         // (retour utilisateur, capture à l'appui). rows="1" + resize
         // vertical : reste compact par défaut, s'agrandit à la demande.
-        + '  <textarea class="spec-value" data-ri="'+ri+'" placeholder="Valeur (ex: 8) — Entrée pour un retour à la ligne" rows="1" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:34px;">'+escapeHtml(row.value||'')+'</textarea>'
+        + '  <textarea class="spec-value" data-ri="'+ri+'" placeholder="Valeur (ex: 8) — Entrée pour un retour à la ligne" aria-label="Valeur de la caractéristique" rows="1" style="min-width:0;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:34px;">'+escapeHtml(row.value||'')+'</textarea>'
         + '  <button type="button" class="spec-row-del" data-ri="'+ri+'" aria-label="Supprimer" style="width:32px;height:32px;flex-shrink:0;background:none;border:1.5px solid var(--line);border-radius:7px;color:var(--ink-soft);cursor:pointer;font-size:13px;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>'
         + '</div>';
     }).join('');
@@ -218,8 +218,8 @@
     if(!tr || !row) return;
     tr.innerHTML =
       '<td colspan="2" style="padding:6px 8px;">' +
-        '<input type="text" class="specs-inline-key" value="'+escapeHtml(row.key||'')+'" placeholder="Nom" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:5px;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;">' +
-        '<textarea class="specs-inline-value" rows="1" placeholder="Valeur" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:32px;">'+escapeHtml(row.value||'')+'</textarea>' +
+        '<input type="text" class="specs-inline-key" value="'+escapeHtml(row.key||'')+'" placeholder="Nom" aria-label="Nom de la caractéristique" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:5px;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;">' +
+        '<textarea class="specs-inline-value" rows="1" placeholder="Valeur" aria-label="Valeur de la caractéristique" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12.5px;font-family:inherit;resize:vertical;min-height:32px;">'+escapeHtml(row.value||'')+'</textarea>' +
       '</td>' +
       '<td style="vertical-align:top;white-space:nowrap;padding:6px 4px;">' +
         '<button type="button" class="specs-inline-save" title="Enregistrer" aria-label="Enregistrer" style="width:26px;height:26px;border:none;background:none;color:#15803d;cursor:pointer;padding:0;"><i class="ti ti-check" aria-hidden="true"></i></button>' +
