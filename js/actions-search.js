@@ -1,5 +1,5 @@
   // ---------- Search / filter ----------
-  var _searchRenderDebounced = debounce(function(){ render(true); }, 180);
+  var _searchRenderDebounced = debounce(function(){ render(); }, 180);
   searchInputEl.addEventListener('input', function(){
     // Si on est sur la home et qu'on tape, basculer vers le catalogue
     var homePage = document.getElementById('homePage');

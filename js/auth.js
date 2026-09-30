@@ -1215,9 +1215,26 @@ function openAddUserModal() {
   // au .modal par d\u00e9faut (660px) : ce formulaire n'a que 3 champs, pas
   // besoin de la m\u00eame largeur qu'une fiche produit.
   var ov = document.createElement('div');
+  // .modal-overlay (retour utilisateur : "la fenêtre mon compte mobile ne
+  // respecte pas le style des autre fenêtre de menu") — cette fenêtre créée
+  // à la volée n'avait ni id ni classe, seulement les styles inline
+  // ci-dessous : aucune règle CSS ne pouvait donc l'atteindre pour la
+  // transformer en feuille ancrée en bas sur mobile (comme #modalOverlay/
+  // #bugReportOverlay, voir css/styles.css @media max-width:1024px and
+  // (pointer:coarse), ~ligne 4497) — elle restait une carte centrée par-
+  // dessus la bottom nav. Les styles inline ci-dessous restent le repli
+  // desktop (la règle mobile est en !important, donc prioritaire sur eux).
+  ov.id = '_nuOverlay';
+  ov.className = 'modal-overlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  // Retour utilisateur : "regarde pour mettre le style de la fenêtre Mon
+  // compte sur les autres fenetre de menu" — cette fenêtre est ouverte
+  // depuis la sous-page "Utilisateurs" de Paramètres (elle aussi jamais
+  // masquée en dessous), donc la refermer y revient déjà : même flèche ←
+  // que "Mon compte"/les autres sous-pages plutôt qu'un en-tête sans aucun
+  // bouton (seul "Annuler" en pied de page fermait jusqu'ici).
   ov.innerHTML = '<div class="modal" style="max-width:420px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Ajouter un utilisateur</h3></div>'
+    + '<div class="modal-head"><div class="win-header-titlewrap"><button class="win-back-btn" id="_nuBack" aria-label="Retour" style="display:inline-flex;"><i class="ti ti-arrow-left" aria-hidden="true"></i></button><h3 style="margin:0;">Ajouter un utilisateur</h3></div></div>'
     + '<div class="modal-body">'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
@@ -1243,6 +1260,7 @@ function openAddUserModal() {
   _authWirePasswordToggles(ov);
 
   ov.querySelector('#_nuCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_nuBack').onclick = function() { document.body.removeChild(ov); };
 
   ov.querySelector('#_nuAdmin').addEventListener('change', function() {
     var sec = ov.querySelector('#_nuPermsSection');
@@ -1353,9 +1371,23 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   // ce fichier — voir son commentaire pour le détail (retour utilisateur :
   // cohérence entre fenêtres).
   var ov = document.createElement('div');
+  // .modal-overlay (retour utilisateur : "la fenêtre mon compte mobile ne
+  // respecte pas le style des autre fenêtre de menu") — cette fenêtre créée
+  // à la volée n'avait ni id ni classe, seulement les styles inline
+  // ci-dessous : aucune règle CSS ne pouvait donc l'atteindre pour la
+  // transformer en feuille ancrée en bas sur mobile (comme #modalOverlay/
+  // #bugReportOverlay, voir css/styles.css @media max-width:1024px and
+  // (pointer:coarse), ~ligne 4497) — elle restait une carte centrée par-
+  // dessus la bottom nav. Les styles inline ci-dessous restent le repli
+  // desktop (la règle mobile est en !important, donc prioritaire sur eux).
+  ov.id = '_euOverlay';
+  ov.className = 'modal-overlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
+  // Retour utilisateur : "regarde pour mettre le style de la fenêtre Mon
+  // compte sur les autres fenetre de menu" — même flèche ← qu'ailleurs, voir
+  // openAddUserModal() juste au-dessus dans ce fichier pour le détail.
   ov.innerHTML = '<div class="modal" style="max-width:420px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Modifier — ' + safeTitleName + '</h3></div>'
+    + '<div class="modal-head"><div class="win-header-titlewrap"><button class="win-back-btn" id="_euBack" aria-label="Retour" style="display:inline-flex;"><i class="ti ti-arrow-left" aria-hidden="true"></i></button><h3 style="margin:0;">Modifier — ' + safeTitleName + '</h3></div></div>'
     + '<div class="modal-body">'
     + '<div class="sec-head"><div class="sec-head-left"><span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><h4>Identifiants</h4></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;">'
@@ -1386,6 +1418,7 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
   });
 
   ov.querySelector('#_euCancel').onclick = function() { document.body.removeChild(ov); };
+  ov.querySelector('#_euBack').onclick = function() { document.body.removeChild(ov); };
   ov.querySelector('#_euSubmit').onclick = async function() {
     var displayNew  = ov.querySelector('#_euDisplay').value.trim();
     var passwordNew = ov.querySelector('#_euPassword').value;
@@ -1437,6 +1470,17 @@ function openChangePasswordModal() {
   // cohérence entre fenêtres). Mise en page (deux cartes, icônes rondes,
   // liste d'exigences du mot de passe) : maquette fournie par l'utilisateur.
   var ov = document.createElement('div');
+  // .modal-overlay (retour utilisateur : "la fenêtre mon compte mobile ne
+  // respecte pas le style des autre fenêtre de menu") — cette fenêtre créée
+  // à la volée n'avait ni id ni classe, seulement les styles inline
+  // ci-dessous : aucune règle CSS ne pouvait donc l'atteindre pour la
+  // transformer en feuille ancrée en bas sur mobile (comme #modalOverlay/
+  // #bugReportOverlay, voir css/styles.css @media max-width:1024px and
+  // (pointer:coarse), ~ligne 4497) — elle restait une carte centrée par-
+  // dessus la bottom nav. Les styles inline ci-dessous restent le repli
+  // desktop (la règle mobile est en !important, donc prioritaire sur eux).
+  ov.id = '_cpOverlay';
+  ov.className = 'modal-overlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--overlay-scrim);display:flex;align-items:center;justify-content:center;padding:16px;';
   // Retour utilisateur : "ajoute la possibilité de choisir la préférence
   // entre le catalogue électrique et pneumatique dans Mon compte" — liée au
@@ -1453,7 +1497,19 @@ function openChangePasswordModal() {
   var FIELD_LABEL = 'display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;';
   var FIELD_STYLE = 'padding:9px 40px 9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;';
   ov.innerHTML = '<div class="modal" style="max-width:420px;">'
-    + '<div class="modal-head"><h3 style="margin:0;font-size:17px;font-weight:600;">Mon compte</h3><button class="close sans" id="_cpClose" aria-label="Fermer">✕</button></div>'
+    // Retour utilisateur : "il manque la fleche de retour" — cette fenêtre
+    // (fraîchement appendue par-dessus #settingsOverlay, jamais masqué en
+    // dessous, voir plus haut) se comporte déjà EXACTEMENT comme une sous-
+    // page de Paramètres (Serveur de données, Utilisateurs…) : la refermer
+    // révèle Paramètres, jamais tout le reste. Seule la croix ✕ dans l'en-
+    // tête laissait croire le contraire (fermeture "complète"). Remplacée
+    // par la même flèche ← que ces autres sous-pages (.win-back-btn,
+    // display:inline-flex forcé en ligne comme index.html #btnServerPageBack
+    // — cette classe est display:none par défaut, réservée ailleurs à
+    // window._setHeaderBackMode, non utilisé ici puisque cette fenêtre n'a
+    // qu'un seul point d'entrée), même bouton _cpClose qu'avant (id conservé
+    // — code JS plus bas inchangé).
+    + '<div class="modal-head"><div class="win-header-titlewrap"><button class="win-back-btn" id="_cpClose" aria-label="Retour" style="display:inline-flex;"><i class="ti ti-arrow-left" aria-hidden="true"></i></button><h3 style="margin:0;">Mon compte</h3></div></div>'
     + '<div class="modal-body">'
     + '<div style="' + CARD + 'margin-bottom:14px;">'
     +   '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">'

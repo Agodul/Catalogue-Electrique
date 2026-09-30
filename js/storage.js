@@ -375,6 +375,14 @@
     // qu'on regarde l'électrique (et inversement) — exactement le mélange
     // que ce champ doit éviter.
     var scoped = window._getActiveDomainProducts();
+    // Scopé également à la recherche texte en cours (retour utilisateur :
+    // "quand je recherche un disjoncteur puis que je vais dans filtre je
+    // retrouve toute les marque et serie") — sans ça, les listes montraient
+    // TOUJOURS l'intégralité des marques/séries du domaine, même en pleine
+    // recherche qui n'en concerne que 2 ou 3. _searchMatchList (ci-dessus)
+    // applique la même correspondance stricte-puis-floue que les résultats
+    // affichés, pour que les deux restent toujours cohérents entre eux.
+    scoped = _searchMatchList(scoped, normalizeSearch(searchInputEl.value));
     var brandsInScope = {};
     scoped.forEach(function(p){
       var mf = !currentFamily || (p.family||'') === currentFamily;
@@ -661,6 +669,41 @@
     return score;
   }
 
+  // Recherche texte réutilisable, extraite de getFilteredProducts() —
+  // retour utilisateur : "quand je recherche par exemple un disjoncteur
+  // puis que je vais dans filtre je retrouve toute les marque et serie" :
+  // computeCascadeOptions() (les listes déroulantes Marque/Famille/Série)
+  // ignorait complètement le texte tapé, ne se scopant qu'au domaine actif —
+  // les listes montraient donc TOUJOURS toutes les marques/séries du
+  // catalogue, même en pleine recherche qui n'en concerne que 2 ou 3.
+  // Factorisée ici pour être appelée à l'identique depuis les deux endroits
+  // (résultats affichés ET options des listes), sans dupliquer la logique de
+  // correspondance (stricte puis floue en dernier recours).
+  function _searchMatchList(list, raw){
+    if(!raw) return list;
+    var terms = raw.split(/\s+/).filter(Boolean);
+    function matchAll(allowFuzzy){
+      return list.filter(function(p){
+        var ref      = normalizeSearch(p.ref || '');
+        var name     = normalizeSearch(p.name || '');
+        var tags     = normalizeSearch((p.tags||[]).join(' '));
+        var brandN   = normalizeSearch(p.brand || '');
+        var familyN  = normalizeSearch(p.family || '');
+        var seriesN  = normalizeSearch(p.series || '');
+        var supplierN= normalizeSearch(p.supplier || '');
+        var specsN   = normalizeSearch(productSpecsText(p));
+        return terms.every(function(t){
+          return termMatchesField(t, ref, allowFuzzy) || termMatchesField(t, name, allowFuzzy) || termMatchesField(t, tags, allowFuzzy)
+            || termMatchesField(t, brandN, allowFuzzy) || termMatchesField(t, familyN, allowFuzzy)
+            || termMatchesField(t, seriesN, allowFuzzy) || termMatchesField(t, supplierN, allowFuzzy) || termMatchesField(t, specsN, allowFuzzy);
+        });
+      });
+    }
+    var matched = matchAll(false);
+    if(matched.length === 0) matched = matchAll(true);
+    return matched;
+  }
+
   function getFilteredProducts(){
     var raw = normalizeSearch(searchInputEl.value);
     var brand  = brandFilterEl.value;
@@ -810,38 +853,45 @@
     return isPhone ? 20 : 40;
   }
 
-  // fastPath=true : appelé depuis la recherche texte, qui ne change jamais
-  // le périmètre des marques/familles/séries → on saute leur reconstruction.
-  function render(fastPath){
+  // fastPath n'existe plus (retour utilisateur : "quand je recherche un
+  // disjoncteur puis que je vais dans filtre je retrouve toute les marque et
+  // serie") — ce paramètre sautait la reconstruction des listes Marque/
+  // Famille/Série pour tout appel venant de la recherche texte, sur la
+  // prémisse que le texte tapé "ne change jamais leur périmètre" : faux
+  // depuis que computeCascadeOptions() tient compte de la recherche (voir son
+  // commentaire) — les listes doivent au contraire être reconstruites à
+  // CHAQUE appel venant de la recherche. Reconstruire 3 <select> reste bon
+  // marché (quelques dizaines d'options, pas des centaines de produits) et
+  // l'appel lui-même reste limité par le debounce de 180ms de la recherche
+  // (js/actions-search.js) — jamais "à chaque frappe" au sens littéral.
+  function render(){
     _cardIdx = 0;
     refreshFilterCache();
     // Réévalue à chaque rendu si le sélecteur de domaine doit être verrouillé
     // (voir window._isCatalogueFiltered ci-dessus) — couvre en un seul
-    // endroit tous les déclencheurs (selects, cases 3D/Standard, recherche
-    // avec ou sans fastPath, tiroir de filtres mobile Appliquer/Réinitialiser).
+    // endroit tous les déclencheurs (selects, cases 3D/Standard, recherche,
+    // tiroir de filtres mobile Appliquer/Réinitialiser).
     if(typeof window._syncDomainToggleEnabled === 'function') window._syncDomainToggleEnabled();
 
-    if(!fastPath){
-      var origBrand  = brandFilterEl.value;
-      var origFamily = familyFilterEl.value;
-      var origSeries = seriesFilterEl.value;
-      var opts = computeCascadeOptions(origBrand, origFamily, origSeries);
+    var origBrand  = brandFilterEl.value;
+    var origFamily = familyFilterEl.value;
+    var origSeries = seriesFilterEl.value;
+    var opts = computeCascadeOptions(origBrand, origFamily, origSeries);
 
-      brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + opts.brands.map(function(b){
-        return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
-      }).join('');
-      brandFilterEl.value = opts.effectiveBrand;
+    brandFilterEl.innerHTML = '<option value="">Toutes les marques</option>' + opts.brands.map(function(b){
+      return '<option value="'+escapeHtml(b)+'">'+escapeHtml(b)+'</option>';
+    }).join('');
+    brandFilterEl.value = opts.effectiveBrand;
 
-      familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + opts.families.map(function(f){
-        return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
-      }).join('');
-      familyFilterEl.value = opts.effectiveFamily;
+    familyFilterEl.innerHTML = '<option value="">Toutes les familles</option>' + opts.families.map(function(f){
+      return '<option value="'+escapeHtml(f)+'">'+escapeHtml(f)+'</option>';
+    }).join('');
+    familyFilterEl.value = opts.effectiveFamily;
 
-      seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + opts.series.map(function(s){
-        return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>';
-      }).join('');
-      seriesFilterEl.value = opts.series.indexOf(origSeries) !== -1 ? origSeries : '';
-    }
+    seriesFilterEl.innerHTML = '<option value="">Toutes les séries</option>' + opts.series.map(function(s){
+      return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>';
+    }).join('');
+    seriesFilterEl.value = opts.series.indexOf(origSeries) !== -1 ? origSeries : '';
 
     // Ignorer un rendu strictement identique au précédent (même filtre/
     // recherche/tri déjà affiché) — _lastRenderKey est explicitement remis

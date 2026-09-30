@@ -387,8 +387,15 @@
           if(si){ si.value = _mobileSearchInput.value; if(typeof render==='function') render(); }
           if(_mobileSearchClear) _mobileSearchClear.style.display = _mobileSearchInput.value ? '' : 'none';
         });
+        // Retour utilisateur : "la zone de texte ne ce referme pas lorsque
+        // je clique sur entrée" — blur() seul ferme le clavier mais laisse
+        // la barre de recherche mobile affichée à l'écran (contrairement au
+        // bouton "Annuler", qui appelle _closeMobileSearchBar). Même fermeture
+        // ici, sans réinitialiser le texte tapé (false) : Entrée veut dire
+        // "j'ai fini de taper", pas "annuler ma recherche" — le catalogue
+        // reste filtré sur ce qui a été saisi.
         _mobileSearchInput.addEventListener('keydown', function(e){
-          if(e.key === 'Enter'){ _mobileSearchInput.blur(); }
+          if(e.key === 'Enter'){ _closeMobileSearchBar(false); }
         });
       }
       if(_mobileSearchClear) _mobileSearchClear.addEventListener('click', function(){
@@ -936,16 +943,14 @@
     handleEl.addEventListener('touchcancel', onEnd);
   }
 
+  // Retour utilisateur : "retire les poignées des fenetres de menu et
+  // parametre" — Menu (#menuSheet) et Paramètres (.settings-box) ont perdu
+  // leur poignée visuelle (index.html) ; ne reste donc que #filterSheet, la
+  // seule des trois à garder glisser-pour-fermer via une poignée dédiée.
   window._initSheetDragHandles = function(){
     try {
       var filterSheet = document.getElementById('filterSheet');
       if(filterSheet) _initDragHandle(filterSheet.querySelector('.filter-sheet-handle'), filterSheet, 'filterSheetClose');
-
-      var menuSheet = document.getElementById('menuSheet');
-      if(menuSheet) _initDragHandle(menuSheet.querySelector('.filter-sheet-handle'), menuSheet, 'menuSheetClose');
-
-      var settingsBox = document.querySelector('#settingsOverlay .settings-box');
-      if(settingsBox) _initDragHandle(settingsBox.querySelector('.sheet-handle-bar'), settingsBox, 'settingsClose');
     } catch(e){ console.error('[SheetDragHandles]', e); }
   };
 

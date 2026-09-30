@@ -221,7 +221,7 @@
      fragile si la police de base change un jour). */
   #btnAdd{
     height:34px; padding:0 16px; box-sizing:border-box;
-    display:inline-flex; align-items:center; justify-content:center;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
   }
   /* #btnProposeProduct — même bouton .copper que #btnAdd juste au-dessus
      (jamais affiché en même temps, voir js/auth.js canPropose/canEdit), mais
@@ -3382,7 +3382,14 @@
   .settings-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 20px;
-    border-bottom:1px solid var(--line);
+    /* Ombre plutôt qu'un simple trait — retour utilisateur : "tu a oublier
+       les ombres" (après avoir aligné flèche/hauteur de "Mon compte" sur les
+       autres fenêtres de menu, cet en-tête gardait encore son ancien
+       border-bottom plat). Même traitement que .modal-head (voir plus haut
+       dans ce fichier), pour un rendu identique entre les deux familles de
+       fenêtres. */
+    box-shadow:0 4px 10px -6px rgba(17,24,39,.16);
+    position:relative; z-index:1;
   }
   .settings-header h3{ font-size:16px; font-weight:700; color:var(--ink); margin:0; }
 
@@ -3416,7 +3423,8 @@
      — ciblé par sa position dans le DOM plutôt que d'ajouter une classe
      rien que pour ça. */
   .compare-header, .settings-header,
-  #bugReportOverlay .modal-head,
+  #bugReportOverlay .modal-head, #_cpOverlay .modal-head,
+  #_nuOverlay .modal-head, #_euOverlay .modal-head,
   #requestsPanel > div:first-child{
     min-height:59px;
   }
@@ -3424,10 +3432,15 @@
   .win-header-titlewrap{ display:flex; align-items:center; gap:10px; min-width:0; }
   /* .modal-head est une classe générique partagée par de nombreuses autres
      fenêtres (documents, suggestions, prix…) — non touchée globalement pour
-     ne pas les affecter ; seule "Signaler un bug" (qui a la flèche retour)
-     est recalée ici sur le même padding/min-height que les autres. */
-  #bugReportOverlay .modal-head{ padding:18px 20px; }
-  #bugReportOverlay .modal-head h3{ font-size:16px; font-weight:700; }
+     ne pas les affecter ; seules celles qui ont la flèche retour (Signaler un
+     bug, Mon compte #_cpOverlay, Ajouter/Modifier un utilisateur #_nuOverlay/
+     #_euOverlay — retour utilisateur : "mettre le style de la fenêtre Mon
+     compte sur les autres fenetre de menu") sont recalées ici sur le même
+     padding/min-height que les autres. */
+  #bugReportOverlay .modal-head, #_cpOverlay .modal-head,
+  #_nuOverlay .modal-head, #_euOverlay .modal-head{ padding:18px 20px; }
+  #bugReportOverlay .modal-head h3, #_cpOverlay .modal-head h3,
+  #_nuOverlay .modal-head h3, #_euOverlay .modal-head h3{ font-size:16px; font-weight:700; }
   /* overflow-y:auto sans barre visible : sur certains navigateurs
      "scrollbar-gutter:stable" seul ne suffit pas à empêcher un décalage —
      retour utilisateur avec captures à l'appui montrant la fenêtre
@@ -4828,6 +4841,39 @@
   header{ height:auto; min-height:70px; flex-wrap:wrap; row-gap:8px; }
   .header-actions{ flex-wrap:wrap; justify-content:flex-end; }
 }
+/* Retour utilisateur : "corrige le header desktop qui sempile quans on
+   reduit la fenetre" — le repli ci-dessus (flex-wrap:wrap) empêche bien le
+   débordement, mais bascule sur 2 lignes dès ~985px (mesuré en vrai), ce qui
+   reste le comportement attendu pour une fenêtre VRAIMENT trop étroite, mais
+   pas idéal comme PREMIER réflexe : le header a largement la place de rester
+   sur une seule ligne jusqu'à ~768px s'il cède un peu de texte d'abord.
+   Masque donc, dans cet ordre, le texte le moins essentiel du bouton
+   Électrique/Pneumatique (l'icône suffit, déjà utilisée seule ailleurs dans
+   l'app) puis le nom du compte connecté (son rôle n'est qu'indicatif ici,
+   pas une info qu'on vient chercher) — mesuré en vrai : ça libère largement
+   plus que les ~50px qui manquaient à 920px, avec de la marge jusqu'à
+   768px. Le repli 2 lignes ci-dessus reste un filet de sécurité pour un nom
+   de compte anormalement long ou un futur bouton supplémentaire, mais ne se
+   déclenche plus en pratique dans la plage normale d'une fenêtre desktop
+   réduite. Seuil (1120px) volontairement large au-dessus du point de
+   débordement réel (~985-1024px) — même logique que le commentaire
+   au-dessus sur l'angle mort 1024/1061px : mieux vaut céder du texte un peu
+   trop tôt (aucun coût visuel, la place existe) que de retomber pile dans
+   la même marge d'erreur. */
+@media (max-width: 1120px) and (pointer: fine) {
+  .domain-toggle-label{ display:none; }
+  #hdrUsername{ display:none !important; }
+  /* Retour utilisateur : "a partir d'une certaine taille faut changer bouton
+     ajouter un produit en + pour gagné de la place" — même principe que les
+     deux masquages ci-dessus (le libellé disparaît, l'icône seule suffit à
+     comprendre l'action, "+" étant déjà une convention universelle pour
+     "ajouter"). padding resserré en plus : à vide de texte, le padding
+     16px de la règle de base (#btnAdd/#btnProposeProduct plus haut dans ce
+     fichier) laissait un bouton disproportionné par rapport à sa seule
+     icône. */
+  .btn-add-label{ display:none; }
+  #btnAdd, #btnProposeProduct{ padding:0 10px; }
+}
   .search-field{ order:1; max-width:160px; flex-shrink:1; }
   /* padding-right séparé : laisse la place à la flèche personnalisée du
      sélecteur (voir la règle de base select#brandFilter plus haut). */
@@ -5074,22 +5120,6 @@
 }
 .sug-list-chevron{
   flex-shrink:0; color:var(--ink-soft); font-size:16px;
-}
-
-/* ── Poignée drag pour les bottom sheets (mobile) ────────────── */
-.sheet-handle-bar{
-  display: none;
-}
-@media(max-width: 640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
-  .sheet-handle-bar{
-    display: block;
-    width: 40px; height: 4px;
-    background: var(--line);
-    border-radius: 4px;
-    margin: 10px auto 4px;
-    flex-shrink: 0;
-    touch-action: none; /* glisser-pour-fermer (js/actions-mobile-chrome.js, _initSheetDragHandles) */
-  }
 }
 
 /* ── Configurateur d'armoire — tiroir "Mes blocs / Mes configurations" ──
