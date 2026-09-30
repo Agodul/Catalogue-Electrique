@@ -4797,6 +4797,37 @@
   #bottomNav { display: none !important; }
   #mobileSearchBar{ display: none !important; }
 }
+/* Même angle mort que ci-dessus, pour le header cette fois (retour
+   utilisateur : "regarde le responsive desktop qui est bugger lorsqu'on
+   réduit la taille de ma fenêtre") : `header{flex-wrap:nowrap}` et
+   `.header-actions{flex-shrink:0}` (règles desktop de base, plus haut dans
+   ce fichier) ne cédaient jamais de place hors tactile — rien n'absorbait
+   la largeur manquante, donc #btnAdd ("Ajouter un produit") sortait de
+   l'écran et toute la page gagnait un défilement horizontal au lieu que le
+   header passe simplement sur 2 lignes comme .toolbar ci-dessus.
+   Volontairement PAS de max-width ici (contrairement au bloc .toolbar
+   au-dessus, calé sur 1024px pour la bascule vers la mise en page tactile) :
+   un premier correctif limité à max-width:1024px laissait un angle mort
+   résiduel entre 1024px et ~1060px (largeur naturelle du contenu du
+   header — measuré en vrai, pas une constante stable dans le temps si de
+   nouveaux boutons s'ajoutent un jour), où le débordement revenait. Sans
+   seuil, flex-wrap:wrap ne change RIEN visuellement tant que le contenu
+   tient sur une ligne (grand écran) ; il ne prend effet que si la largeur
+   réelle du contenu dépasse la fenêtre, quelle que soit cette largeur —
+   plus robuste qu'un seuil en dur qui doit être deviné puis re-deviné à
+   chaque ajout de bouton. height:auto (au lieu du height:70px fixe de la
+   règle de base) laisse la seconde ligne s'afficher sans rogner son
+   contenu. */
+@media (pointer: fine) {
+  /* padding volontairement absent d'ici : la valeur de la règle de base
+     (0 28px) ne pose aucun problème même une fois repliée sur 2 lignes —
+     seules height/flex-wrap ont besoin d'être assouplies, et les changer
+     "sans condition" comme ci-dessus n'a d'effet visible que si le contenu
+     déborde ; toucher aussi le padding ici l'aurait changé en permanence,
+     même sur un grand écran où le header tient déjà sur une seule ligne. */
+  header{ height:auto; min-height:70px; flex-wrap:wrap; row-gap:8px; }
+  .header-actions{ flex-wrap:wrap; justify-content:flex-end; }
+}
   .search-field{ order:1; max-width:160px; flex-shrink:1; }
   /* padding-right séparé : laisse la place à la flèche personnalisée du
      sélecteur (voir la règle de base select#brandFilter plus haut). */

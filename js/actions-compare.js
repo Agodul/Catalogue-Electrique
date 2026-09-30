@@ -57,7 +57,14 @@
         reader.onload = function(e){
           var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
           var ws = wb.Sheets[wb.SheetNames[0]];
-          var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+          // raw:false : lit le texte formaté de la cellule (ex. "000061")
+          // plutôt que la valeur numérique sous-jacente (61) — une référence
+          // qui ressemble à un nombre perdait ses zéros de tête sans ça,
+          // cassant le rattachement au produit catalogue (retour terrain :
+          // ligne "Nom produit : Inconnu" alors que les prix comparaient
+          // correctement entre fournisseurs, preuve que seule la jointure
+          // avec le catalogue échouait).
+          var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
           var data = {};
           // Chercher colonnes Référence et Prix
           var headerRow = -1;

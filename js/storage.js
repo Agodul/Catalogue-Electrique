@@ -744,8 +744,22 @@
     // Exposé pour l'affichage (bandeau "résultats approximatifs", voir render()).
     window._lastSearchUsedFuzzy = usedFuzzy;
 
-    // Trier par pertinence (score calculé pour cette recherche uniquement)
-    matched.sort(function(a, b){ return scoreProductMatch(b, raw, terms, usedFuzzy) - scoreProductMatch(a, raw, terms, usedFuzzy); });
+    // Trier par pertinence (score calculé pour cette recherche uniquement).
+    // Retour terrain : "j'ai sa lorsque je fais un recherche" — violation
+    // Chrome DevTools "'setTimeout' handler took 68ms" en tapant, sur le vrai
+    // catalogue (594 produits). Cause : Array.sort() appelle son comparateur
+    // ~2×n×log(n) fois (pas juste n fois), et scoreProductMatch() renormalise
+    // 8 champs texte (accents/casse) à CHAQUE appel — donc plus d'un millier
+    // de renormalisations pour une centaine de résultats, au lieu d'une
+    // centaine. Score précalculé une seule fois par produit ci-dessous (motif
+    // de tri de Schwartz), puis le comparateur ne fait plus qu'une
+    // soustraction. Tableau {p, s} à part plutôt qu'un champ posé sur le
+    // produit lui-même : voir le commentaire au-dessus de scoreProductMatch
+    // sur l'ancien champ _score qui restait figé une fois écrit par erreur —
+    // même piège à éviter ici.
+    var scored = matched.map(function(p){ return { p: p, s: scoreProductMatch(p, raw, terms, usedFuzzy) }; });
+    scored.sort(function(a, b){ return b.s - a.s; });
+    matched = scored.map(function(x){ return x.p; });
 
     // Tri prix si actif (prioritaire sur la pertinence si demandé explicitement)
     if(window._priceSort === 'asc'){
