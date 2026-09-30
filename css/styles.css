@@ -473,9 +473,18 @@
      qu'il se réduit à 0. */
   .toolbar select, .toolbar .filter-toggle-chip, .toolbar #btnResetFilters, .toolbar #sortPriceBtn{
     overflow:hidden;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation", puis "c'est même sur l'interface mobile ?") — ce
+       sélecteur composé (.toolbar #sortPriceBtn, spécificité classe+ID) l'
+       emportait sur le "transition" ajouté sur .sort-price-btn plus haut
+       dans ce fichier (classe seule), annulant à nouveau l'animation de
+       clic pour #sortPriceBtn/#btnResetFilters spécifiquement — présent
+       partout où .toolbar existe dans le DOM, desktop et mobile compris,
+       cette règle n'étant elle-même liée à aucune media query. */
     transition:width .22s cubic-bezier(.32,.72,0,1), min-width .22s cubic-bezier(.32,.72,0,1),
                flex-grow .22s cubic-bezier(.32,.72,0,1), flex-basis .22s cubic-bezier(.32,.72,0,1),
-               opacity .18s ease, padding .22s ease, margin .22s ease, border-width .22s ease;
+               opacity .18s ease, padding .22s ease, margin .22s ease, border-width .22s ease,
+               transform .08s ease;
   }
   .toolbar:has(#searchInput:focus) select,
   .toolbar:has(#searchInput:focus) .filter-toggle-chip,
@@ -980,7 +989,14 @@
     color:#fff; padding:0;
     display:flex; align-items:center; justify-content:center;
     cursor:pointer; z-index:10;
-    transition:background .15s;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — cette règle redéfinit "transition" en ne listant que
+       "background", ce qui REMPLACE (et non complète) la liste de la règle
+       de base button{} plus haut dans ce fichier ; le clic gardait bien
+       transform:scale(.96) (button:active, jamais annulé ici), mais sans
+       transition dessus il s'appliquait instantanément au lieu de
+       s'animer, contrairement aux autres boutons. */
+    transition:background .15s, transform .08s ease;
     box-shadow:0 2px 8px rgba(0,0,0,.25);
   }
   .vm-close-btn{ top:12px; left:12px; display:none; }
@@ -1443,7 +1459,15 @@
   .modal-head button.close,
   button.close.sans{
     background:none; border:none; color:var(--ink-soft); font-size:22px; padding:2px 6px;
-    cursor:pointer; line-height:1; border-radius:4px; transition:color .12s;
+    cursor:pointer; line-height:1; border-radius:4px;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — voir le commentaire équivalent sur .vm-close-btn/
+       .vm-info-btn plus haut dans ce fichier : ce "transition" ne listait
+       que "color", remplaçant celui de la règle de base button{} au lieu
+       de s'y ajouter, donc button:active{transform:scale(.96)} s'appliquait
+       sans animation sur ce bouton fermer, réutilisé dans une dizaine de
+       fenêtres (compareClose, settingsClose, modalClose…). */
+    transition:color .12s, transform .08s ease;
   }
   button.close.sans:hover{ color:var(--ink); }
   .modal-body{
@@ -2296,7 +2320,7 @@
      (bandes tablette) n'ont pas besoin de ce correctif : leur borne basse
      est déjà généralement satisfaite par la largeur d'un téléphone en
      paysage. */
-  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:768px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .toolbar{ flex-wrap:wrap; gap:6px; margin-bottom:12px; }
     .search-field{ display:none; }
     /* 🔍 | Marques | Familles | Séries | ⊘ | ↕Prix */
@@ -2324,7 +2348,26 @@
     .filters-visible select#familyFilter{ display:flex; }
   }
 
-  @media (max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  /* Retour utilisateur : "sur android lorsque je clique sur la zone de
+     recherche je passe de 3 fiche produit a 2 fiche produit lorsque le
+     clavier sort" — le nombre de colonnes de la grille dépendait du bloc
+     ci-dessous, qui répond aussi à ", (max-height:500px) and
+     (orientation:landscape) and (pointer: coarse)" (pensé pour un téléphone
+     VRAIMENT tourné à l'horizontale). Piège connu : la feature CSS
+     "orientation" compare la largeur et la hauteur de la fenêtre VISIBLE,
+     pas l'orientation physique de l'écran — quand le clavier tactile
+     s'ouvre en mode portrait, il réduit la hauteur visible au point de la
+     faire passer sous la largeur, et "orientation:landscape" se met alors
+     à matcher à tort, sans que le téléphone ait bougé ni que sa largeur
+     réelle n'ait changé. Le nombre de colonnes ne devrait dépendre QUE de
+     la largeur (l'espace disponible pour les cartes ne change pas quand le
+     clavier apparaît) — sorti dans une règle séparée, sans ce piège, pour
+     ne plus réagir à ce faux "paysage". Gap laissé au même endroit,
+     puisqu'il varie avec cette même largeur. */
+  @media (max-width:640px) {
+    .grid{ grid-template-columns:repeat(3,1fr); gap:7px; }
+  }
+  @media (max-width:640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* ── Header compact ── */
     header{ padding:0 12px; height:50px; gap:8px; flex-wrap:nowrap; }
     .brandmark .logo-mark{ height:26px; }
@@ -2387,8 +2430,6 @@
     .brand-heading .tally{ font-size:11px; }
     .brand-group{ margin-bottom:18px; }
 
-    /* ── Grille : 3 colonnes compactes ── */
-    .grid{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .card{ border-radius:8px; }
     .card .photo{ aspect-ratio:1/1; position:relative; }
     .card .body{ padding:6px 5px 8px; gap:0; }
@@ -2522,7 +2563,13 @@
 
   
   
-  @media (max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  /* Même raison que le bloc équivalent 640px plus haut (retour utilisateur :
+     clavier Android déclenchant à tort "orientation:landscape") — colonnes
+     de grille séparées de ce bloc mixte. */
+  @media (max-width:380px) {
+    .grid{ grid-template-columns:repeat(2,1fr); gap:6px; }
+  }
+  @media (max-width:380px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* Header encore plus compact */
     header{ height:50px; padding:0 10px; gap:5px; }
     .brandmark .logo-mark{ height:24px; }
@@ -2555,9 +2602,6 @@
     }
     .sort-price-btn{ order:2; font-size:12px; padding:0 7px; height:36px; flex-shrink:0; }
 
-    /* Grille : 2 colonnes sur très petit écran */
-    .grid{ grid-template-columns:repeat(2,1fr); gap:6px; }
-
     /* Cartes compactes */
     .card .body{ padding:6px 7px 8px; }
     .card .ref{ font-size:9px; }
@@ -2573,7 +2617,13 @@
   }
 
   
-  @media (max-width:320px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  /* Même raison que les blocs équivalents 640px/380px plus haut (retour
+     utilisateur : clavier Android déclenchant à tort "orientation:
+     landscape") — colonnes de grille séparées de ce bloc mixte. */
+  @media (max-width:320px) {
+    .grid{ grid-template-columns:repeat(2,1fr); gap:5px; }
+  }
+  @media (max-width:320px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     header{ height:48px; padding:0 8px; gap:4px; }
     .brandmark .logo-mark{ height:20px; }
     .hdr-sep{ margin:0 6px; height:14px; }
@@ -2581,7 +2631,6 @@
     .hdr-count-chip{ display:inline-block; font-size:10px; padding:2px 6px; }
     .header-actions button#btnAdd{ display:none; }
     .hdr-menu-btn{ padding:4px 6px; font-size:14px; }
-    .grid{ grid-template-columns:repeat(2,1fr); gap:5px; }
     .card .body{ padding:5px 6px 7px; }
     .card .ref{ font-size:8.5px; }
     .card .name{ font-size:10px; }
@@ -2946,7 +2995,7 @@
     min-width:0;
     white-space:nowrap;
   }
-  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stats{ grid-template-columns:repeat(3,1fr); gap:7px; }
     .home-stat-val{ font-size:20px; }
@@ -2957,7 +3006,7 @@
     .home-family-count{ font-size:10px; }
     #homePage{ padding:16px 12px 32px; }
   }
-  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:380px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .home-families{ grid-template-columns:repeat(3,1fr); gap:5px; }
     .home-stats{ gap:5px; }
     .home-stat{ padding:10px 6px; }
@@ -3409,7 +3458,10 @@
     width:22px; height:22px; flex-shrink:0;
     background:none; border:none; cursor:pointer; padding:0; margin:0;
     color:var(--ink); font-size:18px; line-height:1;
-    border-radius:4px; transition:background .12s;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — même piège que .vm-close-btn/button.close.sans plus
+       haut : "transition" ne listait que "background". */
+    border-radius:4px; transition:background .12s, transform .08s ease;
   }
   /* Le "min-height" annoncé dans le commentaire ci-dessus n'avait en fait
      jamais été posé — seul le padding l'avait été. Conséquence mesurée en
@@ -3494,7 +3546,10 @@
     background:var(--paper-card); color:var(--ink-soft);
     font-size:13px; font-family:var(--font-sans);
     cursor:pointer; white-space:nowrap;
-    transition:background .12s, border-color .12s, color .12s;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — même piège que .win-back-btn/button.close.sans plus
+       haut. Concerne #btnResetFilters et #sortPriceBtn (toolbar). */
+    transition:background .12s, border-color .12s, color .12s, transform .08s ease;
   }
   .sort-price-btn:hover{ border-color:var(--copper); color:var(--copper); }
   .sort-price-btn.active-asc,
@@ -3553,19 +3608,19 @@
   .card .name, .card .ref, .card .price{ user-select:text; -webkit-user-select:text; }
 
   /* ── Touch targets min 44px mobile ──────────────────────────── */
-  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:768px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .tab-btn{ min-height:40px; }
   }
 
   /* ── PWA Banner petit écran ──────────────────────────────────── */
   #pwaInstallBanner{ max-width:min(340px, calc(100vw - 24px)); }
-  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:380px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #pwaInstallBanner{ border-radius:12px; padding:12px 14px 10px; }
     #pwaInstallBanner img{ width:36px; height:36px; }
   }
 
   /* ── Modales bottom sheet responsive ────────────────────────── */
-  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #overlay .modal{ border-radius:20px 20px 0 0; width:100%; max-width:100%; max-height:calc(92dvh - var(--nav-h, 0px)); }
   }
   /* Paramètres : bottom sheet sur mobile ET tablette — même seuil que
@@ -3573,7 +3628,7 @@
      panneaux se comportent pareil sur toute la plage mobile/tablette
      (retour utilisateur : Paramètres restait en modale centrée sur
      tablette alors que le Menu passait déjà en tiroir bas). */
-  @media(max-width:1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     #settingsOverlay{ padding:0; align-items:flex-end; justify-content:center; padding-bottom:var(--nav-h, 56px); }
     .settings-box{
       width:100%; max-width:100%;
@@ -3599,13 +3654,13 @@
   }
 
   /* ── Onglets : scroll horizontal 380px ──────────────────────── */
-  @media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:380px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
     .tab-btn{ flex-shrink:0; }
   }
 
   /* ── Grille tablette 641-1024px ──────────────────────────────── */
-  @media(min-width:769px) and (max-width:1024px) and (pointer: coarse) {
+  @media(min-width:769px) and (max-width:1024px) {
     /* Grande tablette (iPad, Galaxy Tab...) */
     .grid{ grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
     header{ padding:0 20px; height:64px; }
@@ -3627,7 +3682,7 @@
     #sortPriceBtn{ order:8; font-size:14px; padding:0 10px; height:38px; flex-shrink:0; box-sizing:border-box; }
   }
 
-  @media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
+  @media(min-width:641px) and (max-width:768px) {
     /* Petite tablette (641-768px) */
     .grid{ grid-template-columns:repeat(3,1fr); gap:10px; }
     header{ padding:0 16px; height:58px; }
@@ -3636,14 +3691,14 @@
   }
 
   /* ── Cartes très petit écran 320px ──────────────────────────── */
-  @media(max-width:320px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:320px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     .card .name{ font-size:11px; }
     .card .price{ font-size:12px; }
     .card .tags{ display:none; }
   }
 
   /* ── Éviter zoom iOS sur focus input (<16px) ─────────────────── */
-  @media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:768px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     input[type="text"], input[type="url"], input[type="number"],
     input[type="search"], input[type="password"], textarea, select{
       font-size:max(16px,1em) !important;
@@ -3825,7 +3880,10 @@
     border:none; border-radius:10px;
     font-size:15px; font-weight:600;
     cursor:pointer; font-family:inherit;
-    transition:background .15s;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — même piège que les autres boutons ci-dessus. Bouton
+       "Se connecter". */
+    transition:background .15s, transform .08s ease;
     -webkit-appearance:none; appearance:none;
     display:block; box-sizing:border-box;
   }
@@ -3852,7 +3910,10 @@
     border-radius:10px; padding:10px 28px;
     font-size:13px; font-weight:500; color:var(--ink);
     cursor:pointer; font-family:var(--font-sans);
-    transition:background .15s;
+    /* transform ajouté (retour utilisateur : "pas tous les bouton on
+       l'animation") — même piège que les autres boutons ci-dessus. Bouton
+       "Afficher plus". */
+    transition:background .15s, transform .08s ease;
   }
   .btn-load-more:hover{ background:var(--surface-2); }
   /* ── Modale conflits sync ─────────────────────────────────────── */
@@ -3882,7 +3943,7 @@
     font-weight:700;
   }
 
-  @media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+  @media(max-width:640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
     /* ── Modale conflit mobile ───────────────────── */
     #conflictOverlay{
       padding:8px;
@@ -4044,7 +4105,7 @@
 .filter-sheet {
   display: none;
 }
-@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media (max-width: 1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .filter-sheet {
     display: block;
     position: fixed;
@@ -4081,16 +4142,14 @@
   }
 }
 .filter-sheet.open { transform: translateY(0); }
-
-.filter-sheet-handle {
-  width: 40px; height: 4px;
-  background: var(--line); border-radius: 2px;
-  margin: 10px auto 0;
-  touch-action: none; /* glisser-pour-fermer (js/actions-mobile-chrome.js, _initSheetDragHandles) */
-}
 .filter-sheet-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px 10px;
+  /* Ombre plutôt qu'aucune séparation du tout — même traitement que
+     .modal-head/.settings-header/.menu-sheet-header (retour utilisateur :
+     "fenetre menu et filtre sur mobile [...] egalement l'ombre"). */
+  box-shadow:0 4px 10px -6px rgba(17,24,39,.16);
+  position: relative; z-index: 1;
 }
 .filter-sheet-title {
   font-size: 16px; font-weight: 700; color: var(--ink);
@@ -4208,7 +4267,7 @@
 }
 
 /* Fiche produit : animation slide-up sur mobile */
-@media (max-width: 640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media (max-width: 640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   #viewOverlay {
     top: 0 !important;
     align-items: flex-end !important;
@@ -4254,7 +4313,7 @@
   display: none;
 }
 
-@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media (max-width: 1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   :root { --nav-h: calc(56px + env(safe-area-inset-bottom)); }
   .fab-stack { bottom: calc(70px + env(safe-area-inset-bottom)) !important; z-index: var(--z-sheet-high) !important; }
   /* Masqué exactement au palier où la bottom-nav (juste en dessous) prend
@@ -4617,7 +4676,7 @@
 .menu-sheet {
   display: none;
 }
-@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media (max-width: 1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .menu-sheet {
     position: fixed;
     bottom: 0;
@@ -4648,7 +4707,11 @@
   padding: 18px 20px;
   position: sticky; top: 0;
   background: var(--paper-card);
-  border-bottom: 1px solid var(--line);
+  /* Ombre plutôt qu'un simple trait — même traitement que .modal-head/
+     .settings-header (retour utilisateur : "fenetre menu et filtre sur
+     mobile [...] egalement l'ombre"), pour un rendu identique entre toutes
+     les fenêtres de menu. */
+  box-shadow:0 4px 10px -6px rgba(17,24,39,.16);
   z-index: 1;
 }
 /* Copié terme à terme sur #settingsMainBody / les boutons de
@@ -4701,7 +4764,7 @@
   font-size: 16px; color: var(--ink-soft); flex-shrink: 0;
 }
 
-@media (max-width: 1024px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media (max-width: 1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   /* Masquer les 3 petits points header sur mobile */
   #hdrMenuWrap { display: none !important; }
 }
@@ -4785,31 +4848,27 @@
   #menuSheet, #menuSheetOverlay { display: none !important; }
   #bottomNav { display: none !important; }
 }
-/* Fenêtre desktop/laptop réduite sous le seuil ci-dessus (souris/trackpad,
-   pointer:fine) — TOUS les points d'accès à la recherche/aux filtres
-   étaient gérés en paire mutuellement exclusive selon la largeur SEULE
-   (.toolbar ci-dessus dès 1025px) OU selon pointer:coarse SEUL (bottom-nav/
-   tiroir filtres/recherche flottante, voir leurs règles @media plus haut,
-   toutes qualifiées "and (pointer:coarse)") : un vrai poste de bureau avec
-   souris, fenêtre réduite à moins de 1025px (fenêtre non maximisée, écran
-   côte à côte, petit portable), tombait entre les deux — pointer:fine donc
-   jamais éligible aux bascules tactiles, largeur < 1025px donc jamais
-   éligible à la bascule desktop ci-dessus. Résultat : .toolbar restait à
-   son display:none par défaut (voir plus haut dans ce fichier) ET aucun
-   des remplaçants tactiles ne prenait le relais (tous gardés hors de
-   propos ici, pointer:coarse absent) — recherche et filtres totalement
-   inaccessibles. Même bascule que le bloc ci-dessus, pour pointer:fine
-   cette fois, sans toucher aux règles pointer:coarce existantes (déjà
-   calées pour le tactile, pas de raison de les élargir). */
-@media (max-width: 1024px) and (pointer: fine) {
-  .toolbar { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
-  #floatingSearch, #floatingSearchOverlay { display: none !important; }
-  #btnFilterSheet { display: none !important; }
-  #filterSheet, #filterSheetOverlay { display: none !important; }
-  #menuSheet, #menuSheetOverlay { display: none !important; }
-  #bottomNav { display: none !important; }
-  #mobileSearchBar{ display: none !important; }
-}
+/* Historique : une fenêtre desktop/laptop réduite sous le seuil ci-dessus
+   (souris/trackpad, pointer:fine) gardait longtemps la barre d'outils
+   desktop (un bloc dédié la forçait ici, "and (pointer: fine)") pendant que
+   toutes les bascules tactiles (bottom-nav/tiroir filtres/recherche
+   flottante) restaient qualifiées "and (pointer:coarse)" un peu plus haut
+   dans ce fichier — un vrai poste de bureau avec souris, fenêtre réduite
+   sous 1024px, tombait alors entre les deux (aucune des deux bascules
+   n'était éligible). Retour utilisateur explicite : "en dessous d'un
+   certain seuil, TOUTE l'interface [doit basculer] sur l'affichage mobile
+   [...] même avec une souris/desktop" — la condition "and (pointer:
+   coarse)" a donc été retirée de TOUTES les requêtes de largeur ci-dessus
+   (bottom-nav, tiroir filtres, tiroir menu, Paramètres, etc. : elles ne
+   dépendent plus que de la largeur, jamais du type de pointeur), sauf pour
+   le cas très particulier "téléphone tenu en paysage" (le second membre
+   ", (max-height:500px) and (orientation:landscape) and (pointer: coarse)"
+   de chacune de ces requêtes, lui resté qualifié pointer:coarse à dessein —
+   une fenêtre desktop basse et large n'a aucune raison de basculer en
+   affichage téléphone). Ce bloc-ci (qui forçait l'inverse pour pointer:fine
+   spécifiquement) devient donc directement contradictoire avec les
+   nouvelles règles ci-dessus et a été supprimé plutôt que laissé à
+   entrer en conflit avec elles dans la cascade. */
 /* Même angle mort que ci-dessus, pour le header cette fois (retour
    utilisateur : "regarde le responsive desktop qui est bugger lorsqu'on
    réduit la taille de ma fenêtre") : `header{flex-wrap:nowrap}` et
@@ -4944,7 +5003,7 @@
 }
 
 /* Tablette grande 769-1024px */
-@media(min-width:769px) and (max-width:1024px) and (pointer: coarse) {
+@media(min-width:769px) and (max-width:1024px) {
   .essential-badge{
     font-size:10px;
     padding:0 10px;
@@ -4962,7 +5021,7 @@
 }
 
 /* Tablette petite 641-768px */
-@media(min-width:641px) and (max-width:768px) and (pointer: coarse) {
+@media(min-width:641px) and (max-width:768px) {
   .essential-badge{
     font-size:9px;
     padding:0 9px;
@@ -4980,7 +5039,7 @@
 }
 
 /* Mobile ≤640px : 3 colonnes (~110px/carte) — badge très compact */
-@media(max-width:640px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media(max-width:640px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .essential-badge{
     font-size:8px;
     padding:0 7px;
@@ -5001,7 +5060,7 @@
 }
 
 /* Mobile ≤380px : 2 colonnes (~160px/carte) — un peu plus de place */
-@media(max-width:380px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media(max-width:380px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   .essential-badge{
     font-size:8.5px;
     padding:0 7px;
@@ -5151,7 +5210,7 @@
 /* !important nécessaire : les éléments de cette modale sont stylés en
    inline (style="..."), qui prime toujours sur une règle externe sans
    !important — même convention que .fab-stack plus haut dans ce fichier. */
-@media(max-width:768px) and (pointer: coarse), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+@media(max-width:768px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
   /* La modale est calée en position:fixed avec top/bottom explicites au
      lieu d'une hauteur calculée en vh/dvh : sur iOS Safari, 100vh (et même
      100dvh sur certaines versions/contextes PWA) peut être plus grand que

@@ -8,6 +8,19 @@
     }
     _searchRenderDebounced();
   });
+  // Retour utilisateur : "lorsque je fais une recherche sur desktop et que
+  // je clique sur la touche entrée la barre de recherche reste afficher en
+  // grand" — .search-field s'agrandit en CSS pur tant que #searchInput a le
+  // focus (:has(#searchInput:focus), voir css/styles.css), qui masque au
+  // passage les selects/boutons de la toolbar pour lui faire de la place.
+  // #searchInput est un <input> isolé (pas dans un <form>) : Entrée n'y
+  // déclenche rien nativement et ne retire jamais le focus tout seul, donc
+  // la barre restait agrandie tant qu'on ne cliquait pas ailleurs. Même
+  // geste que _mobileSearchInput/floatInput (js/actions-mobile-chrome.js) :
+  // Entrée retire le focus, la CSS :focus reprend alors son état par défaut.
+  searchInputEl.addEventListener('keydown', function(e){
+    if(e.key === 'Enter') searchInputEl.blur();
+  });
   brandFilterEl.addEventListener('change', function(){ render(); });
   familyFilterEl.addEventListener('change', function(){ render(); });
   seriesFilterEl.addEventListener('change', function(){ render(); });

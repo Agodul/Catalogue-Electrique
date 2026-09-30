@@ -874,85 +874,12 @@
     }
   };
 
-  // ── Glisser-pour-fermer sur les poignées grises des tiroirs bas ──
-  // Retour utilisateur : la barre grise en haut de Filtres/Menu/Paramètres
-  // était purement décorative — faire en sorte qu'elle suive le doigt et
-  // permette de fermer le tiroir en glissant vers le bas, comme les
-  // tiroirs natifs iOS/Android. Générique plutôt que dupliqué 3 fois :
-  // chaque entrée fournit juste l'élément qui bouge (le tiroir) et le
-  // bouton de fermeture RÉEL à déclencher (btn.click()) — on ne
-  // réimplémente pas la logique de fermeture de chaque tiroir (déjà
-  // gérée par ces boutons dans _initFilterSheet/_initMenuSheet/
-  // openSettingsOverlay ci-dessus), on se contente de la déclencher, même
-  // technique que window._closeAllOverlays (js/init.js) pour rester
-  // cohérent avec un seul point de vérité par tiroir.
-  function _initDragHandle(handleEl, sheetEl, closeBtnId){
-    if(!handleEl || !sheetEl) return;
-    var startY = 0, startT = 0, dragging = false, currentDy = 0;
-    var SHEET_TRANSITION = 'transform .3s cubic-bezier(.32,.72,0,1)';
-
-    function onStart(e){
-      // Ignorer si le tiroir n'est pas visuellement ouvert (évite de capturer
-      // un toucher pendant l'animation d'entrée, avant que le tiroir soit
-      // réellement à l'écran).
-      var r = sheetEl.getBoundingClientRect();
-      if(r.top >= window.innerHeight) return;
-      dragging = true;
-      currentDy = 0;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      sheetEl.style.transition = 'none';
-    }
-    function onMove(e){
-      if(!dragging) return;
-      var dy = e.touches[0].clientY - startY;
-      if(dy < 0) dy = 0; // ne suit le doigt que vers le bas (fermeture)
-      currentDy = dy;
-      sheetEl.style.transform = 'translateY(' + dy + 'px)';
-      e.preventDefault();
-    }
-    function onEnd(){
-      if(!dragging) return;
-      dragging = false;
-      var dt = Math.max(1, Date.now() - startT);
-      var velocity = currentDy / dt; // px/ms
-      var sheetH = sheetEl.getBoundingClientRect().height || 1;
-      var shouldDismiss = currentDy > sheetH * 0.28 || (currentDy > 24 && velocity > 0.5);
-
-      sheetEl.style.transition = SHEET_TRANSITION;
-      if(shouldDismiss){
-        sheetEl.style.transform = 'translateY(100%)';
-        setTimeout(function(){
-          sheetEl.style.transform = '';
-          sheetEl.style.transition = '';
-          var btn = document.getElementById(closeBtnId);
-          if(btn) btn.click();
-        }, 300);
-      } else {
-        sheetEl.style.transform = 'translateY(0)';
-        setTimeout(function(){
-          sheetEl.style.transform = '';
-          sheetEl.style.transition = '';
-        }, 300);
-      }
-    }
-
-    handleEl.addEventListener('touchstart', onStart, {passive:true});
-    handleEl.addEventListener('touchmove', onMove, {passive:false});
-    handleEl.addEventListener('touchend', onEnd);
-    handleEl.addEventListener('touchcancel', onEnd);
-  }
-
-  // Retour utilisateur : "retire les poignées des fenetres de menu et
-  // parametre" — Menu (#menuSheet) et Paramètres (.settings-box) ont perdu
-  // leur poignée visuelle (index.html) ; ne reste donc que #filterSheet, la
-  // seule des trois à garder glisser-pour-fermer via une poignée dédiée.
-  window._initSheetDragHandles = function(){
-    try {
-      var filterSheet = document.getElementById('filterSheet');
-      if(filterSheet) _initDragHandle(filterSheet.querySelector('.filter-sheet-handle'), filterSheet, 'filterSheetClose');
-    } catch(e){ console.error('[SheetDragHandles]', e); }
-  };
+  // Retour utilisateur : "retire la poigné de le fenêtre filtre" — après le
+  // même retrait déjà fait pour Menu et Paramètres, plus aucune poignée
+  // grise n'existe nulle part dans l'app (index.html) ; toute la logique
+  // glisser-pour-fermer qui leur était attachée (_initDragHandle/
+  // window._initSheetDragHandles) est donc devenue du code mort et a été
+  // supprimée avec elles.
 
   // ── Verrou de défilement du body pendant qu'une fenêtre modale est ouverte ──
   // Retour utilisateur (test réel sur Simulateur iOS, clavier logiciel actif
