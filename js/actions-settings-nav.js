@@ -298,10 +298,12 @@
         // correctifs de ce type dans ce fichier).
         save(true, []);
         localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
-        // Fermer les paramètres et afficher la home proprement
+        // Fermer les paramètres et afficher la home proprement — le retrait
+        // de 'modal-open' est géré par closeSettingsOverlay() elle-même
+        // (js/actions-compare.js), pas ici (un retrait immédiat redondant
+        // court-circuitait son propre délai/garde-fou).
         showSettingsMain();
         if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
-        document.body.classList.remove('modal-open');
         var homePage = document.getElementById('homePage');
         var catalogueWrap = document.getElementById('catalogueWrap');
         var hdrCountChip = document.getElementById('hdrCountChip');
@@ -347,9 +349,9 @@
       // données DU serveur, rien à repousser.
       save(true, []);
       localStorage.setItem(SERVER_LAST_SYNC_KEY, Date.now().toString());
-      // Fermer les paramètres
+      // Fermer les paramètres — le retrait de 'modal-open' est géré par
+      // closeSettingsOverlay() elle-même (js/actions-compare.js).
       if(typeof window._closeSettingsOverlay === 'function') window._closeSettingsOverlay();
-      document.body.classList.remove('modal-open');
       // Réinitialiser et afficher la home
       var homePage = document.getElementById('homePage');
       var catalogueWrap = document.getElementById('catalogueWrap');

@@ -1030,7 +1030,14 @@
   // masquer complètement, sinon la prochaine ouverture réapparaîtrait
   // instantanément (classe déjà présente, rien à (re)déclencher).
   function _reqDetailClose(overlay){
-    document.body.classList.remove('modal-open');
+    // Retour utilisateur : "je peux faire scroller les éléments derrière une
+    // fenêtre ouverte" — #reqDetailOverlay s'ouvre toujours PAR-DESSUS le
+    // panneau "Demandes en attente" (#requestsOverlay) encore ouvert
+    // derrière ; retirer 'modal-open' sans condition déverrouillait le
+    // défilement de fond alors que ce panneau restait affiché à l'écran.
+    if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('reqDetailOverlay')){
+      document.body.classList.remove('modal-open');
+    }
     function hideNow(){
       overlay.classList.remove('open');
       overlay.style.display = 'none';
@@ -1419,7 +1426,12 @@
     } else {
       afterClose();
     }
-    document.body.classList.remove('modal-open');
+    // Retour utilisateur : "je peux faire scroller les éléments derrière une
+    // fenêtre ouverte" — si reopenMenu, le menu ne rouvre (et ne repose
+    // 'modal-open') qu'APRÈS l'animation de fermeture ci-dessus (afterClose) ;
+    // le retirer sans condition ici déverrouillait le défilement de fond
+    // pendant toute la durée de cette animation.
+    if(!reopenMenu) document.body.classList.remove('modal-open');
   }
 
   // ── Init listeners ────────────────────────────────────────────
@@ -1504,7 +1516,12 @@
       if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
     }
     if(!overlay){ afterClose(); return; }
-    document.body.classList.remove('modal-open');
+    // Retour utilisateur : "je peux faire scroller les éléments derrière une
+    // fenêtre ouverte" — si reopenMenu, le menu ne rouvre (et ne repose
+    // 'modal-open') qu'APRÈS l'animation de fermeture ci-dessous (afterClose) ;
+    // le retirer tout de suite ici déverrouillait le défilement de fond
+    // pendant toute la durée de cette animation.
+    if(!reopenMenu) document.body.classList.remove('modal-open');
     function hideNow(){
       overlay.classList.remove('open');
       overlay.style.display = 'none';

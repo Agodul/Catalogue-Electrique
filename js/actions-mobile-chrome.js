@@ -651,7 +651,15 @@
     function closeSheet(){
       sheet.classList.remove('open');
       if(overlay) overlay.style.display='none';
-      document.body.classList.remove('modal-open');
+      // Retour utilisateur : "je peux faire scroller les éléments derrière
+      // une fenêtre ouverte" — le Menu s'ouvre volontairement PAR-DESSUS la
+      // fiche produit sans la fermer (voir le commentaire sur bnMenu plus
+      // haut), donc retirer 'modal-open' sans condition à la fermeture du
+      // Menu déverrouillait le défilement de fond alors que la fiche
+      // restait affichée à l'écran.
+      if(typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('menuSheet')){
+        document.body.classList.remove('modal-open');
+      }
       setTimeout(function(){ if(!sheet.classList.contains('open')) sheet.style.display='none'; }, 300);
       // Retirer l'état actif du bouton Menu
       var bnMenu = document.getElementById('bnMenu');

@@ -235,7 +235,6 @@
     compareResult.style.display = 'none';
   });
   compareClose.addEventListener('click', function(){
-    document.body.classList.remove('modal-open');
     // Sur mobile, si le comparateur a été ouvert DEPUIS le tiroir menu (voir
     // msWithBack('msCompare', ...) plus haut), la croix doit "revenir" au
     // menu plutôt que de retomber sur la page du dessous — même principe
@@ -244,6 +243,12 @@
     // fermeture), sinon les deux fonds grisés se superposent un instant.
     var reopenMenu = !!window._compareOpenedFromMobileMenu;
     if(reopenMenu) window._compareOpenedFromMobileMenu = false;
+    // Retour utilisateur : "je peux faire scroller les éléments derrière une
+    // fenêtre ouverte" — si reopenMenu, le menu ne rouvre (et ne repose
+    // 'modal-open') qu'APRÈS l'animation de fermeture ci-dessous (afterClose) ;
+    // le retirer tout de suite ici déverrouillait le défilement de fond
+    // pendant toute la durée de cette animation.
+    if(!reopenMenu) document.body.classList.remove('modal-open');
     _setHeaderBackMode('compareClose', 'compareBackBtn', false);
     function afterClose(){
       if(reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
@@ -290,6 +295,12 @@
     settingsOverlay.style.display = 'flex';
     settingsOverlay.offsetHeight;
     settingsOverlay.classList.add('show');
+    // Retour utilisateur : "ça ne fonctionne pas avec les fenêtres de
+    // paramètre" — contrairement à toutes les autres fenêtres de l'appli,
+    // Paramètres ne posait jamais 'modal-open' sur le body : le fond
+    // (catalogue derrière) restait scrollable tant que cette fenêtre était
+    // ouverte.
+    document.body.classList.add('modal-open');
     if(typeof window._refreshAppVersionInfo === 'function') window._refreshAppVersionInfo();
   }
   function closeSettingsOverlay(){
@@ -303,6 +314,17 @@
     var reopenMenu = !!window._settingsOpenedFromMobileMenu;
     if(reopenMenu) window._settingsOpenedFromMobileMenu = false;
     _setHeaderBackMode('settingsClose', 'settingsBackBtn', false);
+    // Retour utilisateur : si on vient du menu mobile (reopenMenu), le menu
+    // ne rouvre (et ne repose 'modal-open') qu'APRÈS le délai ci-dessous ;
+    // le retirer tout de suite ici déverrouillait le défilement de fond
+    // pendant ce délai. "Mon compte"/"Ajouter un utilisateur"/"Modifier un
+    // utilisateur" (voir js/auth.js) s'ouvrent PAR-DESSUS Paramètres sans le
+    // fermer et ne gèrent pas 'modal-open' eux-mêmes (ils comptent sur
+    // Paramètres pour garder le verrou tant qu'ils sont affichés) — d'où le
+    // contrôle _isOtherOverlayOpen, au cas où l'un d'eux serait encore ouvert.
+    if(!reopenMenu && (typeof window._isOtherOverlayOpen !== 'function' || !window._isOtherOverlayOpen('settingsOverlay'))){
+      document.body.classList.remove('modal-open');
+    }
     setTimeout(function(){
       if(!settingsOverlay.classList.contains('show')) settingsOverlay.style.display = 'none';
       // Rouvrir le menu seulement une fois Paramètres réellement masqué —

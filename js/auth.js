@@ -1021,7 +1021,12 @@ function closeAuthModal() {
     if (reopenMenu && typeof window._openMenuSheet === 'function') window._openMenuSheet();
   }
   if (overlay) {
-    document.body.classList.remove('modal-open');
+    // Retour utilisateur : "je peux faire scroller les éléments derrière une
+    // fenêtre ouverte" — si on vient du menu mobile (reopenMenu), le menu ne
+    // rouvre (et ne repose 'modal-open') qu'APRÈS l'animation de fermeture
+    // ci-dessous (afterClose) ; le retirer tout de suite ici déverrouillait
+    // le défilement de fond pendant toute la durée de cette animation.
+    if (!reopenMenu) document.body.classList.remove('modal-open');
     if (typeof window._closeOverlayAnimated === 'function') {
       window._closeOverlayAnimated(overlay, function(){ overlay.classList.remove('show'); afterClose(); });
     } else {
