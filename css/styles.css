@@ -2949,6 +2949,21 @@
      pas toute la largeur"). */
   #supplierDiscountOverlay{
     padding:16px;
+    /* Retour utilisateur : "lorsque je clique sur la reference l'ouverture
+       [de la fiche produit] se fait derriere la fenetre Remises par
+       fournisseur" — z-index:10100 en dur (copié par erreur du modèle
+       #priceModalOverlay/#commentsModalOverlay, des fenêtres ENFANTS qui
+       s'ouvrent PAR-DESSUS #viewOverlay/#modalOverlay, d'où leur z-index
+       élevé) alors que cette fenêtre-ci est autonome (ouverte depuis
+       l'accueil), comme Paramètres/Comparateur — voir l'échelle de z-index
+       en tête de ce fichier : --z-panel (9999), pas --z-modal-top (10100),
+       très supérieur à --z-overlay (500) utilisé par #viewOverlay. Avec
+       10100, la fiche produit ouverte depuis un lien remise min/max
+       (js/modal-supplier-discounts.js) se retrouvait sous cette fenêtre
+       pendant son animation de fermeture. Voir aussi le close immédiat
+       (sans animation) dans ce même fichier JS pour éliminer complètement le
+       chevauchement, pas seulement le masquer avec un z-index plus bas. */
+    z-index:var(--z-panel);
   }
   /* Retour utilisateur : "fais en sorte que la fenetre ne s'agrandit plus
      mais que sa active le scroll" — avec juste un max-height, déplier

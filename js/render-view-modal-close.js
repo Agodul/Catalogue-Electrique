@@ -6,6 +6,35 @@
       return;
     }
     vmInfoMenu.classList.remove('open');
+    // Retour utilisateur : "lorsqu'on clique sur la ref qui est lister et
+    // qu'on ferme la fiche produit faudrait revenir sur la fenetre précédent"
+    // — posé par js/modal-supplier-discounts.js juste avant d'ouvrir cette
+    // fiche depuis un lien remise min/max ; remis à false par vmEditBtn/
+    // vmDeleteBtn plus bas (fermeture de transition — ouverture du
+    // formulaire d'édition ou suppression — pas une vraie fermeture par
+    // l'utilisateur, qui ne doit donc pas rouvrir cette fenêtre).
+    var returnToSupplierDiscount = !!window._viewReturnToSupplierDiscount;
+    window._viewReturnToSupplierDiscount = false;
+    if(returnToSupplierDiscount && typeof window._openSupplierDiscountModal === 'function'){
+      viewingId = null;
+      window._viewingId = null;
+      // Rouvre seulement une fois la fiche réellement masquée (même
+      // principe que reopenMenu ailleurs dans l'appli — voir js/auth.js,
+      // js/actions-compare.js, js/requests.js) — pas de
+      // document.body.classList.remove('modal-open') ici : la fenêtre
+      // "Remises par fournisseur" le repose de toute façon tout de suite
+      // après, sans jamais le retirer entre-temps.
+      if(typeof window._closeOverlayAnimated === 'function'){
+        window._closeOverlayAnimated(viewOverlay, function(){
+          viewOverlay.classList.remove('open');
+          window._openSupplierDiscountModal();
+        });
+      } else {
+        viewOverlay.classList.remove('open');
+        window._openSupplierDiscountModal();
+      }
+      return;
+    }
     document.body.classList.remove('modal-open');
     viewingId = null;
     window._viewingId = null;
@@ -113,6 +142,10 @@
         return; // ne ferme pas la vue, n'ouvre pas le formulaire
       }
     }
+    // Fermeture de transition vers le formulaire d'édition, pas une vraie
+    // fermeture par l'utilisateur — ne doit pas rouvrir "Remises par
+    // fournisseur" (voir le drapeau dans closeView() plus haut).
+    window._viewReturnToSupplierDiscount = false;
     closeView();
     openModal(id);
     // Mémorise qu'on vient de la fiche produit : si l'édition est annulée
@@ -133,6 +166,9 @@
   });
   document.getElementById('vmDeleteBtn').addEventListener('click', function(){
     var id = viewingId;
+    // Fermeture de transition (produit supprimé) — ne doit pas rouvrir
+    // "Remises par fournisseur" (voir le drapeau dans closeView() plus haut).
+    window._viewReturnToSupplierDiscount = false;
     closeView();
     deleteProduct(id);
   });
