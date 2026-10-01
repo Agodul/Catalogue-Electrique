@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20260930172024";
+const CACHE = "spi-catalogue-v20261001092905";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -49,6 +49,7 @@ const FILES = [
   "./assets/fonts/tabler-icons.woff2",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
+  "./assets/icons/families/svg-IOlink.png",
   "./assets/icons/families/svg-accessoire.png",
   "./assets/icons/families/svg-alimentation.png",
   "./assets/icons/families/svg-amplificateur.png",
@@ -61,6 +62,7 @@ const FILES = [
   "./assets/icons/families/svg-cable-de-liaison.png",
   "./assets/icons/families/svg-cable-de-raccordement.png",
   "./assets/icons/families/svg-cable-moteur-brushless.png",
+  "./assets/icons/families/svg-cable.png",
   "./assets/icons/families/svg-capteur-magnetique.png",
   "./assets/icons/families/svg-capteur-pneumatique.png",
   "./assets/icons/families/svg-capteur.png",
@@ -71,6 +73,7 @@ const FILES = [
   "./assets/icons/families/svg-carte-sortie-securite.png",
   "./assets/icons/families/svg-chemin-de-cable.png",
   "./assets/icons/families/svg-climatisation.png",
+  "./assets/icons/families/svg-collier.png",
   "./assets/icons/families/svg-colonne-lumineuse.png",
   "./assets/icons/families/svg-communication-reseau.png",
   "./assets/icons/families/svg-connecteur-confectionnables.png",
@@ -85,6 +88,7 @@ const FILES = [
   "./assets/icons/families/svg-ecran.png",
   "./assets/icons/families/svg-electrovanne.png",
   "./assets/icons/families/svg-fibre-optique.png",
+  "./assets/icons/families/svg-fils.png",
   "./assets/icons/families/svg-generique.png",
   "./assets/icons/families/svg-goulotte.png",
   "./assets/icons/families/svg-identification.png",
@@ -107,6 +111,7 @@ const FILES = [
   "./assets/icons/families/svg-switch.png",
   "./assets/icons/families/svg-variateur.png",
   "./assets/icons/families/svg-ventilateur.png",
+  "./assets/icons/families/svg-verin.png",
   "./assets/icons/families/svg-vision.png",
   "./assets/splash.mp4",
   "./assets/three-d-badge.png",
