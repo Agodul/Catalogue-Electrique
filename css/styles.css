@@ -3493,23 +3493,20 @@
   #_nuOverlay .modal-head, #_euOverlay .modal-head{ padding:18px 20px; }
   #bugReportOverlay .modal-head h3, #_cpOverlay .modal-head h3,
   #_nuOverlay .modal-head h3, #_euOverlay .modal-head h3{ font-size:16px; font-weight:700; }
-  /* overflow-y:auto sans barre visible : sur certains navigateurs
-     "scrollbar-gutter:stable" seul ne suffit pas à empêcher un décalage —
-     retour utilisateur avec captures à l'appui montrant la fenêtre
-     Paramètres plus étroite dès qu'une ligne supplémentaire (ex. "Nouvelle
-     version disponible") fait apparaître une vraie barre de défilement,
-     alors que .settings-header (jamais scrollable) reste, lui, toujours à
-     la pleine largeur — un décalage visible entre les deux. En supprimant
-     complètement l'affichage de la barre (le défilement tactile/molette/
-     clavier reste inchangé), la largeur de .settings-body ne dépend plus
-     jamais de la présence ou non d'une barre : elle est identique, qu'il y
-     ait 1 ligne ou 10. */
+  /* Retour utilisateur : "regarde pour ré afficher la barre de scroll la ou
+     elle est caché" — cette barre était masquée en entier (scrollbar-width:
+     none + ::-webkit-scrollbar{display:none}) pour éviter un décalage de
+     largeur avec .settings-header (jamais scrollable, toujours pleine
+     largeur) quand une ligne en plus faisait apparaître une vraie barre.
+     "scrollbar-gutter:stable" ci-dessous réserve déjà la place d'une barre
+     EN PERMANENCE (qu'elle soit affichée ou non) sur les navigateurs qui le
+     supportent — assez largement supporté aujourd'hui pour revenir sur le
+     masquage complet et garder la barre visible, plutôt que de sacrifier
+     l'affordance de défilement pour un risque de décalage devenu marginal. */
   .settings-body{
     overflow-y:auto; padding:16px 20px; flex:1;
     scrollbar-gutter:stable;
-    scrollbar-width:none; -ms-overflow-style:none;
   }
-  .settings-body::-webkit-scrollbar{ display:none; width:0; height:0; }
   .family-icon-row-settings{
     display:flex; align-items:center; gap:10px;
     padding:8px 0;
