@@ -313,7 +313,24 @@
     homeStats.innerHTML =
       '<div class="home-stat card-fade"><div class="home-stat-val">'+total+'</div><div class="home-stat-lbl">Produits</div></div>' +
       '<div class="home-stat card-fade" style="animation-delay:30ms"><div class="home-stat-val">'+brands+'</div><div class="home-stat-lbl">Marques</div></div>' +
-      '<div class="home-stat card-fade" style="animation-delay:60ms"'+discTitle+'><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
+      '<div class="home-stat home-stat-clickable card-fade" id="homeStatDiscount" style="animation-delay:60ms"'+discTitle+'><div class="home-stat-val">'+avgDisp+'</div><div class="home-stat-lbl">Remise moy.</div></div>';
+
+    // Retour utilisateur : "lorsqu'on clique sur remise moyen [...] une
+    // fenêtre qui s'ouvre avec la répartition des différentes remises
+    // fournisseur" — voir js/modal-supplier-discounts.js. Re-wiré à chaque
+    // appel (homeStats.innerHTML est reconstruit à chaque renderHome(), la
+    // tuile précédente n'existe plus), même principe que .home-family-card
+    // un peu plus bas dans cette fonction. Rien à afficher s'il n'y a aucun
+    // produit remisé (countWithDiscount===0, avgDisp==='--') — pas de clic
+    // dans le vide sur une fenêtre qui n'aurait rien à montrer.
+    if(countWithDiscount > 0){
+      var homeStatDiscountEl = document.getElementById('homeStatDiscount');
+      if(homeStatDiscountEl){
+        homeStatDiscountEl.addEventListener('click', function(){
+          if(typeof window._openSupplierDiscountModal === 'function') window._openSupplierDiscountModal();
+        });
+      }
+    }
 
     // Familles avec compteur
     var familyCounts = {};

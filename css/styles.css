@@ -2921,6 +2921,173 @@
     text-transform:uppercase; letter-spacing:.06em;
     margin-top:4px;
   }
+  /* Retour utilisateur : clic sur "Remise moy." ouvre la répartition par
+     fournisseur (voir window._openSupplierDiscountModal,
+     js/modal-supplier-discounts.js) — même traitement hover que
+     .home-family-card, pour signaler que CETTE tuile (contrairement aux
+     deux autres, "Produits"/"Marques") est cliquable. */
+  .home-stat-clickable{
+    cursor:pointer;
+    transition:border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .home-stat-clickable:hover{
+    border-color:var(--copper);
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-card-hover);
+  }
+  /* ── Fenêtre "Remises par fournisseur" ───────────────────────────────
+     Voir js/modal-supplier-discounts.js. Aucune autre fenêtre de l'appli
+     n'affiche de barre de progression — nouvelles classes dédiées, pas de
+     réutilisation possible.
+     max-width/padding en CSS plutôt qu'en style inline sur
+     #supplierDiscountOverlay/.modal (comme c'était le cas avant) : un style
+     inline prime toujours sur une règle de feuille de style, quelle que soit
+     sa spécificité — les règles mobiles #supplierDiscountOverlay{padding:0}
+     et #supplierDiscountOverlay .modal{max-width:100%} plus bas dans ce
+     fichier ne pouvaient donc jamais s'appliquer tant que les styles en
+     ligne restaient (retour utilisateur : "la fenetre sur mobile de prend
+     pas toute la largeur"). */
+  #supplierDiscountOverlay{
+    padding:16px;
+  }
+  /* Retour utilisateur : "fais en sorte que la fenetre ne s'agrandit plus
+     mais que sa active le scroll" — avec juste un max-height, déplier
+     l'accordéon d'une ligne (voir js/modal-supplier-discounts.js) faisait
+     grandir toute la fenêtre jusqu'à ce plafond (et la recentrait au passage,
+     vu le .overlay-scrim centré) au lieu de rester à taille fixe et de
+     laisser .modal-body défiler. "height" (pas "max-height") fige la boîte
+     à une taille stable dès l'ouverture, quel que soit le nombre de lignes
+     dépliées. */
+  #supplierDiscountOverlay .modal{
+    max-width:480px;
+    height:min(600px, calc(100vh - 48px));
+  }
+  .supplier-discount-row{
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .supplier-discount-row:last-child{
+    border-bottom:none;
+  }
+  .supplier-discount-row-top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:10px;
+    margin-bottom:6px;
+    cursor:pointer;
+  }
+  .supplier-discount-name{
+    font-size:13.5px; font-weight:600; color:var(--ink);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    display:flex; align-items:center; gap:5px;
+  }
+  /* Retour utilisateur : "lorsqu'on clique sur un des fournisseur on puisse
+     voir les remis min et max" — accordéon par ligne, voir
+     js/modal-supplier-discounts.js (classe .open posée/retirée au clic sur
+     .supplier-discount-row-top). */
+  .supplier-discount-chevron{
+    font-size:13px; color:var(--ink-soft); flex-shrink:0;
+    transition:transform .15s;
+  }
+  .supplier-discount-row.open .supplier-discount-chevron{
+    transform:rotate(90deg);
+  }
+  .supplier-discount-detail{
+    display:grid;
+    grid-template-rows:0fr;
+    transition:grid-template-rows .18s ease;
+  }
+  .supplier-discount-detail-inner{
+    /* astuce grid-template-rows:0fr/1fr pour une transition de hauteur
+       fluide sans connaître la hauteur réelle du contenu à l'avance — UN
+       SEUL enfant dans .supplier-discount-detail (sinon chaque ligne de
+       détail deviendrait sa propre rangée implicite, non animée). */
+    overflow:hidden;
+  }
+  .supplier-discount-row.open .supplier-discount-detail{
+    grid-template-rows:1fr;
+    margin-top:8px;
+  }
+  .supplier-discount-detail-item{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:10px;
+    padding:6px 8px;
+    font-size:12px; color:var(--ink-soft);
+    border-radius:6px;
+  }
+  .supplier-discount-detail-item-link{
+    cursor:pointer;
+  }
+  .supplier-discount-detail-item-link:hover{
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .supplier-discount-detail-ref{
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+  .supplier-discount-detail-pct{
+    font-weight:700; color:var(--ink);
+    flex-shrink:0;
+    white-space:nowrap;
+  }
+  .supplier-discount-pct{
+    font-size:14px; font-weight:700; color:var(--copper);
+    flex-shrink:0;
+  }
+  .supplier-discount-bar-track{
+    height:6px;
+    border-radius:3px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    overflow:hidden;
+  }
+  .supplier-discount-bar-fill{
+    height:100%;
+    border-radius:3px;
+    background:var(--copper);
+  }
+  .supplier-discount-count{
+    font-size:11.5px; color:var(--ink-soft);
+    margin-top:5px;
+  }
+  /* Retour utilisateur : "sa touche pas la barre de navigation" — sur
+     mobile/tablette, cette fenêtre restait un modal centré flottant
+     (.overlay-scrim, comme #docOverlay/#sugOverlay) au lieu de s'ancrer en
+     bas comme les tiroirs Paramètres/Filtres/Menu, laissant un vide visible
+     entre la fenêtre et la bottom nav. Même technique que .modal-overlay
+     .modal (#modalOverlay, plus haut dans ce fichier) : ancrée en bas,
+     pleine largeur, coins arrondis seulement en haut, dégagement interne
+     (padding, pas margin) pour ne pas flotter au-dessus de la nav.
+     Seuil 1024px (pas 768px) — retour utilisateur : "corrige le responcive
+     desktop avec cette nouvelle fenêtre" : entre 768 et 1024px, l'appli
+     bascule déjà en interface mobile (bottom nav, tiroirs Paramètres/
+     Filtres/Menu, voir le seuil utilisé partout ailleurs dans ce fichier),
+     alors que cette fenêtre restait sur son rendu desktop flottant jusqu'à
+     768px — angle mort entre les deux seuils. */
+  @media (max-width:1024px), (max-height:500px) and (orientation:landscape) and (pointer: coarse) {
+    #supplierDiscountOverlay{
+      padding:0;
+      align-items:flex-end;
+      justify-content:stretch;
+    }
+    #supplierDiscountOverlay .modal{
+      max-width:100%; width:100%;
+      border-radius:16px 16px 0 0;
+      /* "height" (pas "max-height") — même raison que la règle desktop plus
+         haut dans ce fichier : taille fixe dès l'ouverture, pas une fenêtre
+         qui grandit en dépliant l'accordéon. Plafonnée à 600px (pas
+         systématiquement 92vh) — retour utilisateur : "il y a un grand zone
+         blanche sur mobile" : avec peu de fournisseurs, 92vh de haut
+         laissait un grand vide sous la liste repliée ; 600px colle à peu
+         près à la hauteur naturelle du contenu replié tout en respectant un
+         petit écran via le min() avec 92vh. */
+      height:min(600px, calc(92vh - var(--nav-h, 56px)));
+      padding-bottom:var(--nav-h, 56px);
+    }
+    #supplierDiscountOverlay .modal-head{
+      border-radius:16px 16px 0 0;
+    }
+  }
   .home-section-title{
     font-size:11px; font-weight:700;
     text-transform:uppercase; letter-spacing:.08em;
@@ -3477,6 +3644,7 @@
   .compare-header, .settings-header,
   #bugReportOverlay .modal-head, #_cpOverlay .modal-head,
   #_nuOverlay .modal-head, #_euOverlay .modal-head,
+  #supplierDiscountOverlay .modal-head,
   #requestsPanel > div:first-child{
     min-height:59px;
   }
@@ -3488,11 +3656,18 @@
      bug, Mon compte #_cpOverlay, Ajouter/Modifier un utilisateur #_nuOverlay/
      #_euOverlay — retour utilisateur : "mettre le style de la fenêtre Mon
      compte sur les autres fenetre de menu") sont recalées ici sur le même
-     padding/min-height que les autres. */
+     padding/min-height que les autres. Idem pour #supplierDiscountOverlay
+     (retour utilisateur : "compart un fenetre parametre et remises par
+     founisseur pour corrigé" — ancrée en bas comme Paramètres sur mobile
+     [voir plus bas dans ce fichier], son en-tête doit avoir la même hauteur,
+     pas retomber sur le padding réduit que le .modal-head générique prend
+     sur mobile pour les popups centrées comme Documents/Suggestions). */
   #bugReportOverlay .modal-head, #_cpOverlay .modal-head,
-  #_nuOverlay .modal-head, #_euOverlay .modal-head{ padding:18px 20px; }
+  #_nuOverlay .modal-head, #_euOverlay .modal-head,
+  #supplierDiscountOverlay .modal-head{ padding:18px 20px; }
   #bugReportOverlay .modal-head h3, #_cpOverlay .modal-head h3,
-  #_nuOverlay .modal-head h3, #_euOverlay .modal-head h3{ font-size:16px; font-weight:700; }
+  #_nuOverlay .modal-head h3, #_euOverlay .modal-head h3,
+  #supplierDiscountOverlay .modal-head h3{ font-size:16px; font-weight:700; }
   /* Retour utilisateur : "regarde pour ré afficher la barre de scroll la ou
      elle est caché" — cette barre était masquée en entier (scrollbar-width:
      none + ::-webkit-scrollbar{display:none}) pour éviter un décalage de

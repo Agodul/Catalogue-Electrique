@@ -314,6 +314,7 @@
       { overlay: 'sugPickerOverlay',  close: 'sugPickerCloseBtn' },
       { overlay: 'armoireConfigOverlay', close: 'armoireConfigCloseBtn' },
       { overlay: 'priceModalOverlay', close: 'priceModalClose'  },
+      { overlay: 'supplierDiscountOverlay', close: 'supplierDiscountClose' },
       { overlay: 'commentsModalOverlay', close: 'commentsModalClose' },
       { overlay: 'commentsNewOverlay', close: 'commentsNewClose' },
       { overlay: 'specsOverlay',      close: 'specsCloseBtn'    },
@@ -423,7 +424,11 @@
     // sélectionnés (voir js/actions-productcompare.js) — même registre
     // générique, gratuit : _isOtherOverlayOpen et la remise à zéro du
     // défilement (juste plus bas) fonctionnent sans code supplémentaire.
-    'productCompareOverlay'
+    'productCompareOverlay',
+    // Retour utilisateur : répartition des remises par fournisseur, ouverte
+    // depuis la tuile "Remise moy." de l'accueil (voir
+    // js/modal-supplier-discounts.js) — même registre générique.
+    'supplierDiscountOverlay'
   ];
 
   // ── Une fenêtre encore ouverte derrière celle qu'on referme ? ───────────

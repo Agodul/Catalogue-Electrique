@@ -4,7 +4,7 @@
 // incrémenter à la main : lancer ./bump-sw-version.sh (à la racine du
 // projet) juste avant de déployer, qui calcule et écrit un nouveau numéro
 // automatiquement à partir de la date/heure courante.
-const CACHE = "spi-catalogue-v20261001101927";
+const CACHE = "spi-catalogue-v20261001120157";
 
 // Cache SÉPARÉ pour les bibliothèques auto-hébergées (FILES_DEFERRED plus
 // bas), et versionné par leur CONTENU et non par la date du déploiement :
@@ -156,6 +156,7 @@ const FILES = [
   "./js/modal-spareparts-suggestions-dnd.js",
   "./js/modal-specs-editor.js",
   "./js/modal-suggestions-autocomplete.js",
+  "./js/modal-supplier-discounts.js",
   "./js/modal-tabs-price-zone.js",
   "./js/modal-tag-suggestions.js",
   "./js/popup.js",
