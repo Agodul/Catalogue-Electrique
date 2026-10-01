@@ -60,6 +60,17 @@
   var priceDisplayVal = document.getElementById('priceDisplayVal');
   var priceCreateRow  = document.getElementById('priceCreateRow');
 
+  // Retour utilisateur : "afficher ci c'est un prix au metre a la piece ou x
+  // quantité" — voir js/render-price-helpers.js (getPriceUnitSuffix/Label)
+  // pour l'affichage, js/actions-save.js pour la lecture dans le payload.
+  var fPriceUnit = document.getElementById('fPriceUnit');
+  var fPriceUnitQty = document.getElementById('fPriceUnitQty');
+  var fPriceUnitQtyWrap = document.getElementById('fPriceUnitQtyWrap');
+  function _updatePriceUnitQtyVisibility(){
+    if(fPriceUnitQtyWrap) fPriceUnitQtyWrap.style.display = (fPriceUnit && fPriceUnit.value === 'lot') ? 'block' : 'none';
+  }
+  if(fPriceUnit) fPriceUnit.addEventListener('change', _updatePriceUnitQtyVisibility);
+
   function updatePriceDisplay(){
     var val = fPrice.value;
     if(priceDisplayVal) priceDisplayVal.textContent = val || '—';

@@ -112,6 +112,11 @@
       : [];
     _specsRenderRows();
     fPrice.value = p.price||''; fPhoto.value = p.photo||'';
+    if(fPriceUnit){
+      fPriceUnit.value = (p.priceUnit === 'metre' || p.priceUnit === 'lot') ? p.priceUnit : 'piece';
+      if(fPriceUnitQty) fPriceUnitQty.value = p.priceUnit === 'lot' && p.priceUnitQty ? p.priceUnitQty : '';
+      _updatePriceUnitQtyVisibility();
+    }
     updatePhotoPreview();
     renderPriceHistory(p);
     if(btnOpenPriceModal) btnOpenPriceModal.style.display = 'flex';

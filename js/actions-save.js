@@ -241,6 +241,12 @@
       specs: _specsObjForPayload,
       price: newPrice,
       priceCatalogue: cataloguePrice || '',
+      // Retour utilisateur : "afficher ci c'est un prix au metre a la piece
+      // ou x quantité" — 'piece' est la valeur par défaut d'un produit sans
+      // ce champ (voir js/render-price-helpers.js pour l'affichage), donc
+      // rétrocompatible avec tous les produits déjà enregistrés.
+      priceUnit: (fPriceUnit && (fPriceUnit.value === 'metre' || fPriceUnit.value === 'lot')) ? fPriceUnit.value : 'piece',
+      priceUnitQty: (fPriceUnit && fPriceUnit.value === 'lot' && fPriceUnitQty) ? (parseInt(fPriceUnitQty.value, 10) || 0) : 0,
       photo: fPhoto.value.trim()
     };
 

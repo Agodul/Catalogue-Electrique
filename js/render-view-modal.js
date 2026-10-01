@@ -391,14 +391,26 @@ function _productBadgesCompactHtml(p){
     var discBadgeVm = discPct !== null && discPct < 0
       ? '<span class="discount-badge discount-badge-lg">-'+Math.abs(discPct).toFixed(0)+' %</span>'
       : '';
+    // Retour utilisateur : "sur la fiche produit a coté du pris il n'y a de
+    // X€/P ou meme X€/M ou X€/Lot de X" — même suffixe compact que sur les
+    // cartes du catalogue (voir .price-unit-suffix, renderCard dans js/
+    // render-card-grid.js), directement à côté du prix, pas seulement dans
+    // la légende en dessous (voir vmPriceLabelEl plus bas, qui reste aussi).
+    // vmPriceUnitSuffix imbriqué DANS .vm-price-main (pas en frère) : .vm-price
+    // est en display:flex;flex-direction:column (voir css/styles.css) — un
+    // span frère deviendrait son propre élément empilé sur sa propre ligne
+    // au lieu de rester collé au prix sur la même ligne.
+    var vmPriceUnitSuffix = getPriceUnitSuffix(p);
     vmPrice.innerHTML = (orig ? '<span class="vm-price-original" title="Prix catalogue fabricant">'+escapeHtml(_displayPrice(orig))+'</span>' : '')+
-                        '<span class="vm-price-main">'+(escapeHtml(_displayPrice(p.price)||'—'))+'</span>'+
+                        '<span class="vm-price-main">'+(escapeHtml(_displayPrice(p.price)||'—'))+
+                          (vmPriceUnitSuffix ? '<span class="price-unit-suffix vm-price-unit-suffix">'+escapeHtml(vmPriceUnitSuffix)+'</span>' : '')+
+                        '</span>'+
                         ((discBadgeVm || badge) ? '<span class="vm-price-badges">'+discBadgeVm+badge+'</span>' : '');
     // Légende sous le prix (retour utilisateur : maquette avec "Prix
     // unitaire (HT)" sous le prix) — affichée seulement s'il y a bien un
     // prix, pas comme légende flottante sur un prix manquant ("—").
     var vmPriceLabelEl = document.getElementById('vmPriceLabel');
-    if(vmPriceLabelEl) vmPriceLabelEl.textContent = p.price ? 'Prix unitaire (HT)' : '';
+    if(vmPriceLabelEl) vmPriceLabelEl.textContent = p.price ? getPriceUnitLabel(p) : '';
 
     // Retour utilisateur : "fais attention lorsqu'il n'y a pas d'historique
     // de prix tu m'affiche une bulle vide" (capture à l'appui) —

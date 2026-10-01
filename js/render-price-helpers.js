@@ -58,3 +58,25 @@
     return pct; // négatif = remise, positif = hausse
   }
 
+  // Retour utilisateur : "est ce c'est possible d'ajouter la possibilité
+  // d'afficher ci c'est un prix au metre a la piece ou x quantité ?" puis
+  // "mais pour a la piece sa n'affiche rien ?" — les 3 unités affichent
+  // désormais toujours un suffixe, y compris "à la pièce" (valeur par
+  // défaut pour un produit sans ce champ — rétrocompatible : un produit
+  // jamais réenregistré depuis l'ajout de cette fonctionnalité tombe sur ce
+  // même repli "à la pièce"). Court suffixe pour accoler directement après
+  // le prix affiché (cartes catalogue, fiche produit…).
+  function getPriceUnitSuffix(p){
+    if(p.priceUnit === 'metre') return ' / mètre';
+    if(p.priceUnit === 'lot' && p.priceUnitQty > 0) return ' / lot de ' + p.priceUnitQty;
+    return ' / pièce';
+  }
+
+  // Variante plus longue pour la légende sous le prix de la fiche produit
+  // ("Prix à la pièce (HT)"/"Prix au mètre (HT)"/"Prix par lot de 10 (HT)").
+  function getPriceUnitLabel(p){
+    if(p.priceUnit === 'metre') return 'Prix au mètre (HT)';
+    if(p.priceUnit === 'lot' && p.priceUnitQty > 0) return 'Prix par lot de ' + p.priceUnitQty + ' (HT)';
+    return 'Prix à la pièce (HT)';
+  }
+

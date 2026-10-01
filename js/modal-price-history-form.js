@@ -317,6 +317,7 @@
     selectedFamilyIcon = 'svg-generique';
     _setFamilyIconPreview('svg-generique');
     fName.value=''; fDesc.value=''; fTags.value=''; fPrice.value=''; fPhoto.value='';
+    if(fPriceUnit){ fPriceUnit.value = 'piece'; if(fPriceUnitQty) fPriceUnitQty.value = ''; _updatePriceUnitQtyVisibility(); }
     renderTagSuggestions();
     if(priceDisplayRow) priceDisplayRow.style.display = 'none';
     if(priceCreateRow)  priceCreateRow.style.display  = 'block';

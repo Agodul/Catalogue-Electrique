@@ -861,6 +861,11 @@
     text-decoration:line-through; font-weight:400;
   }
   .price-badges{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  /* Retour utilisateur : "afficher ci c'est un prix au metre a la piece ou x
+     quantité" — suffixe discret à côté du prix, pour les 3 unités y compris
+     "à la pièce" (voir getPriceUnitSuffix(), js/render-price-helpers.js),
+     poids normal pour ne pas rivaliser avec .price-main en gras. */
+  .price-unit-suffix{ font-size:12px; font-weight:400; color:var(--ink-soft); }
   .vm-price-original{
     font-size:16px; color:var(--ink-soft);
     text-decoration:line-through; font-weight:400;
@@ -1207,6 +1212,11 @@
   .vm-price-row{ display:flex; align-items:baseline; gap:12px; }
   .vm-price{ font-size:26px; font-weight:700; display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .vm-price-main{ font-weight:700; }
+  /* Retour utilisateur : "sur la fiche produit a coté du pris il n'y a de
+     X€/P ou meme X€/M ou X€/Lot de X" — même suffixe que sur les cartes
+     catalogue (.price-unit-suffix), juste repris à l'échelle du prix plus
+     grand de cette fiche (26px au lieu de la taille des cartes). */
+  .vm-price-unit-suffix{ font-size:15px; }
   .vm-price-badges{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .vm-price-label{ font-size:12.5px; color:var(--ink-soft); margin:2px 0 14px; }
   /* Sélecteur de quantité + CTA "Ajouter à la configuration", même bloc que

@@ -55,8 +55,10 @@
     var discBadge = discPct !== null && discPct < 0
       ? '<span class="discount-badge badge-anim">-'+Math.abs(discPct).toFixed(0)+' %</span>'
       : '';
+    var priceUnitSuffix = getPriceUnitSuffix(p);
     var priceHtml = (origPrice ? '<span class="price-original" title="Prix catalogue fabricant">'+escapeHtml(_displayPrice(origPrice))+'</span>' : '')+
                     '<span class="price-main">'+escapeHtml(_displayPrice(p.price)||'—')+'</span>'+
+                    (priceUnitSuffix ? '<span class="price-unit-suffix">'+escapeHtml(priceUnitSuffix)+'</span>' : '')+
                     ((discBadge || priceJumpBadge) ? '<span class="price-badges">'+discBadge+priceJumpBadge+'</span>' : '');
     var supplierHtml = p.supplier
       ? '<div class="card-supplier">'+escapeHtml(p.supplier)+'</div>'
