@@ -324,8 +324,16 @@
     // Push vers le serveur si configuré — on avertit si l'envoi échoue
     // (sinon un changement, ex. icône de famille, peut rester local sans
     // que personne ne s'en aperçoive avant la prochaine synchro).
+    // Retour utilisateur : "corrige le fait d'enregistrer en local sans
+    // attendre la reponse du serveur" — save() RENVOIE maintenant ce
+    // Promise (au lieu de l'ignorer, fire-and-forget) pour que les appelants
+    // qui le souhaitent (voir btnSave dans js/actions-save.js) puissent
+    // attendre la vraie confirmation serveur avant de refermer leur fenêtre.
+    // N'importe quel appelant qui ignore cette valeur de retour (la grande
+    // majorité : suppression, sync réglages, heartbeat de verrou…) continue
+    // de fonctionner exactement comme avant — rien ne change pour eux.
     if(typeof pushToServer === 'function' && localStorage.getItem('cat_server_url')){
-      pushToServer(changedProducts).then(function(ok){
+      return pushToServer(changedProducts).then(function(ok){
         if(!ok && typeof showToast === 'function'){
           showToast('Échec de synchronisation avec le serveur — modification enregistrée localement uniquement', 'warn', 5000);
         } else if(ok && typeof window._syncCheckAllBaseline === 'function'){
@@ -334,8 +342,12 @@
           // pour rien quelques secondes après avoir soi-même sauvegardé.
           window._syncCheckAllBaseline();
         }
+        return ok;
       });
     }
+    // Pas de serveur configuré : rien à attendre, l'enregistrement local
+    // (déjà fait ci-dessus, de façon synchrone) est la seule source de vérité.
+    return Promise.resolve(true);
   }
 
   // ---------- Rendering ----------

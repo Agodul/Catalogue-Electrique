@@ -489,7 +489,6 @@ function _productBadgesCompactHtml(p){
     // configuration en cours sur cet appareil (voir js/armoireConfig.js).
     var vmAddToConfigWrap = document.getElementById('vmAddToConfigWrap');
     var vmAddToConfigBtn  = document.getElementById('vmAddToConfigBtn');
-    var vmAddToConfigIcon = document.getElementById('vmAddToConfigIcon');
     var vmQtyInput        = document.getElementById('vmQtyInput');
     var vmQtyMinus        = document.getElementById('vmQtyMinus');
     var vmQtyPlus         = document.getElementById('vmQtyPlus');
@@ -527,16 +526,6 @@ function _productBadgesCompactHtml(p){
         var existing = _armoireDraft.find(function(it){ return it.ref === p.ref; });
         var qty = existing ? existing.qty : qtyToAdd;
         if(typeof showToast === 'function') showToast('Ajouté à la configuration en cours (' + qty + ' ex.)', 'ok', 2500);
-        // Retour visuel bref (coche verte, 1,4s) en plus du toast ci-dessus
-        // — repris de l'ancienne version icône seule du bouton.
-        if(vmAddToConfigIcon){
-          vmAddToConfigIcon.className = 'ti ti-check';
-          vmAddToConfigIcon.style.color = '#4ADE80';
-          setTimeout(function(){
-            vmAddToConfigIcon.className = 'ti ti-plus';
-            vmAddToConfigIcon.style.color = '';
-          }, 1400);
-        }
       };
     }
     // ── Fin bouton Ajouter à la configuration ───────────────────────

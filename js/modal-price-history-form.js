@@ -135,16 +135,35 @@
         btn.title = 'Supprimer';
         btn.addEventListener('mouseover', function(){ this.style.color='var(--warn)'; this.style.background='#FEE2E2'; });
         btn.addEventListener('mouseout',  function(){ this.style.color='var(--ink-soft)'; this.style.background='none'; });
-        btn.addEventListener('click', function(){
+        btn.addEventListener('click', async function(){
           var prod = products.find(function(x){ return x.id === editingId; });
           if(!prod) return;
-          prod.priceHistory.splice(i, 1);
-          // [prod] : seul CE produit a été touché — save() sans filtre
-          // repoussait tout le catalogue local au serveur pour la suppression
-          // d'UNE seule ligne d'historique de prix (même risque que le bug
-          // corrigé dans syncFromServer/pushToServer : un catalogue local
-          // resté en retard écraserait les modifs récentes d'autrui).
-          save(false, [prod]);
+          // Retour utilisateur : "il faut que le serveur valide avant de
+          // l'ecrire en local" / "faut faire comme pour les autres fonction"
+          // — calcule d'abord ce que serait l'historique SANS cette ligne
+          // (copie, `prod` n'est pas encore touché), l'envoie au serveur, et
+          // n'applique vraiment la suppression que si le serveur confirme.
+          var draftHistory = prod.priceHistory.slice();
+          draftHistory.splice(i, 1);
+          var draft = Object.assign({}, prod, { priceHistory: draftHistory });
+
+          var serverConfigured = typeof pushToServer === 'function' && !!localStorage.getItem('cat_server_url');
+          var pushOk = true;
+          if(serverConfigured){
+            if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(btn, true);
+            pushOk = await pushToServer([draft]);
+            if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(btn, false);
+          }
+          if(!pushOk){
+            if(typeof showToast === 'function') showToast('Échec de synchronisation avec le serveur — suppression annulée', 'err', 4000);
+            return;
+          }
+
+          prod.priceHistory = draftHistory;
+          // [prod] déjà envoyé ci-dessus — [] évite un second aller-retour
+          // réseau inutile (voir le repli "rien à envoyer" dans pushToServer,
+          // js/actions-settings-sync.js).
+          await save(false, []);
           renderPriceModalTable(prod);
           renderPriceHistory(prod);
           document.getElementById('priceModalCurrent').textContent = prod.price || '—';
@@ -177,7 +196,7 @@
   // ce prix-là (les champs sont pré-remplis avec les valeurs actuelles par
   // openPriceModal, donc laisser un champ inchangé revient à ne rien lui
   // faire). Même logique que l'import Excel en masse (catChanged/sellingChanged).
-  document.getElementById('priceModalAddBtn').addEventListener('click', function(){
+  document.getElementById('priceModalAddBtn').addEventListener('click', async function(){
     var rawCat = document.getElementById('priceModalNewCatalogue').value.trim();
     var rawRem = document.getElementById('priceModalNewRemise').value.trim();
     var rawDate = document.getElementById('priceModalNewDate').value;
@@ -201,12 +220,18 @@
     var dateMs = rawDate ? new Date(rawDate).getTime() : Date.now();
     var history = Array.isArray(p.priceHistory) ? p.priceHistory.slice() : [];
     var changed = false;
+    // Retour utilisateur : "il faut que le serveur valide avant de l'ecrire
+    // en local" / "faut faire comme pour les autres fonction" — on calcule
+    // ici une COPIE (`draft`) du produit avec les nouveaux prix, `p` n'est
+    // pas encore touché. Appliqué pour de vrai uniquement après confirmation
+    // serveur, plus bas.
+    var draft = { priceCatalogue: p.priceCatalogue, price: p.price };
 
     if(rawCat){
       var newCat = formatPrice(rawCat);
       if(newCat !== (p.priceCatalogue || '')){
         if(p.priceCatalogue) history.push({price: p.priceCatalogue, date: dateMs, label: 'Prix catalogue'});
-        p.priceCatalogue = newCat;
+        draft.priceCatalogue = newCat;
         changed = true;
       }
     }
@@ -215,13 +240,13 @@
       var newRem = formatPrice(rawRem);
       if(newRem !== (p.price || '')){
         if(p.price) history.push({price: p.price, date: dateMs, label: 'Votre prix'});
-        p.price = newRem;
+        draft.price = newRem;
         changed = true;
       }
     } else if(rawCat && !hadDiscount && formatPrice(rawCat) !== (p.price || '')){
       // Pas de remise active : le prix affiché suit le prix catalogue
       if(p.price) history.push({price: p.price, date: dateMs, label: 'Votre prix'});
-      p.price = formatPrice(rawCat);
+      draft.price = formatPrice(rawCat);
       changed = true;
     }
 
@@ -231,13 +256,31 @@
       return;
     }
 
-    p.priceHistory = history;
+    draft.priceHistory = history;
+
+    var btnAdd = document.getElementById('priceModalAddBtn');
+    var serverConfigured = typeof pushToServer === 'function' && !!localStorage.getItem('cat_server_url');
+    var pushOk = true;
+    if(serverConfigured){
+      if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(btnAdd, true);
+      pushOk = await pushToServer([Object.assign({}, p, draft)]);
+      if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(btnAdd, false);
+    }
+    if(!pushOk){
+      errEl.textContent = 'Échec de synchronisation avec le serveur — réessayez.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    p.priceCatalogue = draft.priceCatalogue;
+    p.price = draft.price;
+    p.priceHistory = draft.priceHistory;
     fPrice.value = p.price || '';
     updatePriceDisplay();
 
-    // [p] : seul CE produit a été touché — voir commentaire équivalent sur
-    // la suppression d'une ligne d'historique de prix un peu plus haut.
-    save(false, [p]); render();
+    // [] : déjà envoyé au serveur ci-dessus — voir le repli "rien à envoyer"
+    // dans pushToServer (js/actions-settings-sync.js).
+    await save(false, []); render();
     renderPriceHistory(p);
     renderPriceModalTable(p);
 

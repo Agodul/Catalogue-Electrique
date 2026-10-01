@@ -2743,19 +2743,6 @@
   @keyframes badgeBounce{ 0%{ transform:scale(0); opacity:0; } 60%{ transform:scale(1.3); } 80%{ transform:scale(.9); } 100%{ transform:scale(1); opacity:1; } }
   .discount-badge.badge-anim{ animation:badgeBounce .45s cubic-bezier(.34,1.6,.64,1) forwards; }
 
-  /* 5 — Bouton enregistrer flash vert */
-  @keyframes saveFlash{
-    0%{   background:var(--copper); transform:scale(1); }
-    20%{  background:#16a34a;       transform:scale(1.04); }
-    55%{  background:#16a34a;       transform:scale(1.04); }
-    80%{  background:var(--copper); transform:scale(1); }
-    100%{ background:var(--copper); transform:scale(1); }
-  }
-  #btnSave.save-anim{
-    animation:saveFlash 1.2s ease forwards;
-    pointer-events:none;
-  }
-
   @media(prefers-reduced-motion:reduce){
     .card, .card.card-fade, #viewOverlay.open, #viewOverlay.open #viewModal,
     .modal-overlay.open, .modal-overlay.open .modal,
@@ -2776,7 +2763,6 @@
     .closing #viewModal, .closing .modal, .closing #reqDetailModal, .closing #requestsPanel,
     .closing .compare-box, .closing .icon-picker-box, .closing .auth-box,
     .discount-badge.badge-anim,
-    #btnSave.save-anim,
     .home-stat, .home-stat.card-fade, .home-family-card, .home-family-card.card-fade
     { animation:none !important; opacity:1 !important; transform:none !important; }
   }

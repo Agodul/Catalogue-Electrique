@@ -15,6 +15,38 @@
     return v + ' €';
   }
 
+  // Retour utilisateur : "est-ce qu'il y a un spinner ?" — remplace le
+  // contenu de #btnSave par une icône qui tourne (même technique que les
+  // autres chargements de l'appli, ex. js/requests.js/js/render-documents.js :
+  // ti-loader-2 + @keyframes spin, css/styles.css) pendant qu'un flux attend
+  // réellement une réponse serveur (proposition/révision de demande ci-
+  // dessous) — l'enregistrement direct admin, lui, n'attend jamais le
+  // serveur (voir save() dans js/storage.js) et n'a donc pas besoin de ceci.
+  // Le HTML d'origine du bouton (son libellé varie selon le mode — voir
+  // js/modal-autocomplete.js/js/modal-request-review.js/js/modal-specs-
+  // editor.js) est mémorisé le temps du chargement puis restauré tel quel.
+  function _setBtnSaveLoading(btnSave, loading){
+    if(!btnSave) return;
+    if(loading){
+      btnSave.dataset.origHtml = btnSave.innerHTML;
+      btnSave.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true" style="animation:spin 1s linear infinite;"></i>';
+      btnSave.disabled = true;
+    } else {
+      if(btnSave.dataset.origHtml !== undefined){
+        btnSave.innerHTML = btnSave.dataset.origHtml;
+        delete btnSave.dataset.origHtml;
+      }
+      btnSave.disabled = false;
+    }
+  }
+  // Retour utilisateur : "faut faire comme pour les autres fonction" —
+  // exposée globalement pour être réutilisée par les autres actions
+  // déclenchées par un clic direct (gestion des prix, compte utilisateur,
+  // paramètres…) qui attendent elles aussi désormais une vraie confirmation
+  // serveur avant d'écrire en local, au lieu de dupliquer cette fonction
+  // dans chaque fichier.
+  window._setBtnLoadingSpinner = _setBtnSaveLoading;
+
   // Extrait la valeur numérique d'un prix affiché (ex. "1 234,56 €" -> 1234.56)
   function parsePriceNumber(str){
     if(!str) return null;
@@ -111,7 +143,7 @@
   }
   window._isSafeHttpUrl = _isSafeHttpUrl;
 
-  document.getElementById('btnSave').addEventListener('click', function(){
+  document.getElementById('btnSave').addEventListener('click', async function(){
     // Garde-fou défensif : si le formulaire était déjà ouvert avant une
     // déconnexion (forcée ou manuelle), applyAuthUI() ne le referme pas tout
     // seul (voir _authCloseSensitiveUI dans js/auth.js, qui s'en charge côté
@@ -216,7 +248,12 @@
     if(window._proposeMode && typeof window.reqSubmit === 'function'){
       (async function(){
         var btnSave = document.getElementById('btnSave');
-        if(btnSave){ btnSave.disabled = true; btnSave.style.opacity = '0.5'; }
+        // Retour utilisateur : "est-ce qu'il y a un spinner ?" — ce flux
+        // attend réellement la réponse serveur (contrairement à
+        // l'enregistrement direct admin, fire-and-forget, voir save() dans
+        // js/storage.js), donc un vrai indicateur de chargement a du sens ici
+        // (avant : juste disabled + opacité réduite, sans rien qui bouge).
+        _setBtnSaveLoading(btnSave, true);
         var original = window._proposeOriginal || null;
         if(original) payload.ref = original.ref; // garder la ref originale pour la modif
         var ok = await window.reqSubmit(payload, original);
@@ -224,7 +261,7 @@
           await window.reqUploadAttachedFiles(payload.ref, window._proposeAttachedFiles);
         }
         window._proposeAttachedFiles = [];
-        if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
+        _setBtnSaveLoading(btnSave, false);
         if(ok === true){
           showToast('Demande envoyée ✓', 'ok', 3000);
           // Fermeture directe : la demande est déjà envoyée, il n'y a rien à
@@ -252,7 +289,7 @@
     if(window._reviewMode && window._reviewItem && typeof window.reqAccept === 'function'){
       (async function(){
         var btnSave = document.getElementById('btnSave');
-        if(btnSave){ btnSave.disabled = true; btnSave.style.opacity = '0.5'; }
+        _setBtnSaveLoading(btnSave, true); // voir le commentaire équivalent sur le mode proposition plus haut
         var item = window._reviewItem;
         var reviewUser = window._reviewUser;
         var base = window._reviewBase || {};
@@ -268,7 +305,7 @@
         payload.priceCatalogue = base.priceCatalogue || '';
 
         var ok = await window.reqAccept(item.ref, reviewUser, payload);
-        if(btnSave){ btnSave.disabled = false; btnSave.style.opacity = ''; }
+        _setBtnSaveLoading(btnSave, false);
         if(ok){
           showToast('Demande acceptée ✓', 'ok', 3000);
           if(typeof window._resetReviewModeUI === 'function') window._resetReviewModeUI();
@@ -283,17 +320,32 @@
       return;
     }
 
-    // Produits réellement touchés par cet enregistrement (le produit
-    // sauvegardé + les éventuels autres produits de la même famille dont
-    // l'icône est propagée ci-dessous) — transmis à save() pour n'envoyer
-    // que ceux-ci au serveur plutôt que tout le catalogue à chaque fois
-    // (retour utilisateur + dev : gros payload identifié comme cause d'échec
-    // de synchro pour les comptes non-admin).
-    var touchedForSync = [];
+    // Retour utilisateur : "il faut que le serveur valide avant de
+    // l'ecrire en local" — tout ce bloc calcule désormais ce qui SERAIT
+    // enregistré (produit édité/créé, propagation d'icône de famille, liens
+    // réciproques) dans des copies ("pendingXxx"), SANS toucher à `products`
+    // ni appeler save() tant que le serveur n'a pas confirmé. Rien n'est
+    // écrit localement avant la ligne "await pushToServer(...)" plus bas ;
+    // en cas d'échec, la fonction s'arrête avant d'avoir rien modifié et le
+    // formulaire reste ouvert avec la saisie intacte.
+    var idx = -1;
+    var existing;
+    var pendingMainProduct;
+    var oldRefBeforeEdit, refChangedOnEdit;
+    // id -> { product: référence live dans `products`, changes: {...} } —
+    // modifications en attente sur des produits AUTRES que celui édité/créé
+    // (propagation d'icône de famille, liens réciproques).
+    var pendingUpdates = {};
+    function _queuePendingUpdate(product, changes){
+      var entry = pendingUpdates[product.id];
+      if(!entry){ entry = { product: product, changes: {} }; pendingUpdates[product.id] = entry; }
+      Object.assign(entry.changes, changes);
+    }
+
     if(editingId){
-      var idx = products.findIndex(function(x){return x.id===editingId;});
+      idx = products.findIndex(function(x){return x.id===editingId;});
       if(idx !== -1){
-        var existing = products[idx];
+        existing = products[idx];
         // En mode édition, fPrice contient le prix de vente actuel (voir
         // fillFormFromProduct), pas le prix catalogue — la ligne "cataloguePrice
         // = formatPrice(fPrice.value)" plus haut ne reflète donc PAS le prix
@@ -314,17 +366,16 @@
         // (qui écrase existing.ref) — voir le nettoyage serveur après le
         // if/else (retour utilisateur : "quand je modifie la référence, ça
         // crée un nouveau produit").
-        var oldRefBeforeEdit = (existing.ref || '').trim();
-        var refChangedOnEdit = oldRefBeforeEdit && oldRefBeforeEdit !== payload.ref;
-        products[idx] = Object.assign({}, existing, payload);
+        oldRefBeforeEdit = (existing.ref || '').trim();
+        refChangedOnEdit = oldRefBeforeEdit && oldRefBeforeEdit !== payload.ref;
+        pendingMainProduct = Object.assign({}, existing, payload);
         // Retirer le verrou "en cours d'édition" (voir _tryLockProductForEdit
         // dans ce même fichier) — Object.assign ci-dessus aurait sinon
         // reconduit _editingBy/_editingAt/_editingSessionId de "existing" tel
         // quel, l'enregistrement ne les efface pas implicitement.
-        delete products[idx]._editingBy;
-        delete products[idx]._editingAt;
-        delete products[idx]._editingSessionId;
-        touchedForSync.push(products[idx]);
+        delete pendingMainProduct._editingBy;
+        delete pendingMainProduct._editingAt;
+        delete pendingMainProduct._editingSessionId;
         // Propager l'icône à tous les produits de la même famille — bump
         // updatedAt sur chacun, sinon le serveur ignore silencieusement leur
         // envoi (pas plus récent que sa version déjà enregistrée). Condition
@@ -335,10 +386,8 @@
         // produits à synchroniser.
         if(familyVal && payload.familyIcon){
           products.forEach(function(p){
-            if(p.family === familyVal && p.id !== products[idx].id && p.familyIcon !== payload.familyIcon){
-              p.familyIcon = payload.familyIcon;
-              p.updatedAt = Date.now();
-              touchedForSync.push(p);
+            if(p.family === familyVal && p.id !== editingId && p.familyIcon !== payload.familyIcon){
+              _queuePendingUpdate(p, { familyIcon: payload.familyIcon, updatedAt: Date.now() });
             }
           });
         }
@@ -351,18 +400,90 @@
       if(familyVal && payload.familyIcon){
         products.forEach(function(p){
           if(p.family === familyVal && !p.familyIcon){
-            p.familyIcon = payload.familyIcon;
-            p.updatedAt = Date.now();
-            touchedForSync.push(p);
+            _queuePendingUpdate(p, { familyIcon: payload.familyIcon, updatedAt: Date.now() });
           }
         });
       }
       payload.createdAt = Date.now();
       payload.updatedAt = Date.now();
       payload.priceHistory = initialHistory;
-      products.push(payload);
-      touchedForSync.push(payload);
+      pendingMainProduct = payload;
     }
+
+    // ── Liaison réciproque des suggestions ET des pièces de rechange ──────
+    // Ajouter B dans la liste de A crée automatiquement le lien A dans la
+    // liste de B — sans ça, il fallait aller l'ajouter à la main des deux
+    // côtés (retour utilisateur, étendu aux pièces de rechange : "une
+    // rubrique pièces de rechange comme pour les suggestions"). Uniquement
+    // dans le sens "nouvellement ajouté" : on ne touche jamais aux refs déjà
+    // présentes avant cet enregistrement, ni à celles retirées côté A
+    // (retirer un lien ou le masquer reste local à la fiche éditée — pour le
+    // masquer aussi côté B, il faut le décocher directement sur la fiche B,
+    // à la main, voir la case à cocher par puce dans js/modal-suggestions-autocomplete.js/
+    // js/modal-spareparts-suggestions-dnd.js). Si B a
+    // déjà A dans sa propre liste (retiré puis re-proposé, ou ajouté à la
+    // main des deux côtés), on ne le re-rajoute pas.
+    function _computeReciprocalLinks(field){
+      var previous = (existing && Array.isArray(existing[field])) ? existing[field] : [];
+      var final = Array.isArray(payload[field]) ? payload[field] : [];
+      var finalRef = payload.ref;
+      final.forEach(function(otherRef){
+        if(previous.indexOf(otherRef) !== -1) return; // déjà lié avant cet enregistrement
+        var other = products.find(function(p){ return p.ref === otherRef; });
+        if(!other || other.ref === finalRef) return;
+        // Repart de la liste déjà en attente (ex. ce même produit touché par
+        // la propagation d'icône ci-dessus) plutôt que de la valeur live, pour
+        // ne pas perdre un ajout déjà mis en file sur ce champ.
+        var already = pendingUpdates[other.id];
+        var otherList = (already && Array.isArray(already.changes[field])) ? already.changes[field] : (Array.isArray(other[field]) ? other[field] : []);
+        if(otherList.indexOf(finalRef) !== -1) return; // déjà lié côté B
+        var changes = {}; changes[field] = otherList.concat([finalRef]); changes.updatedAt = Date.now();
+        _queuePendingUpdate(other, changes);
+      });
+    }
+    _computeReciprocalLinks('suggestions');
+    _computeReciprocalLinks('spareParts');
+
+    // ── Construction de la liste à envoyer au serveur, à partir des copies
+    // calculées ci-dessus — rien de tout ça n'existe encore dans `products`.
+    var touchedForSync = [];
+    if(pendingMainProduct) touchedForSync.push(pendingMainProduct);
+    Object.keys(pendingUpdates).forEach(function(id){
+      var entry = pendingUpdates[id];
+      touchedForSync.push(Object.assign({}, entry.product, entry.changes));
+    });
+
+    // Retour utilisateur : "il faut que le serveur valide avant de l'ecrire
+    // en local" — on attend ici la vraie confirmation serveur, AVANT
+    // d'appliquer quoi que ce soit sur `products` ou en localStorage. Si le
+    // serveur n'est pas configuré (pas d'URL), rien à valider : on enregistre
+    // directement en local, comme avant.
+    var serverConfigured = typeof pushToServer === 'function' && !!localStorage.getItem('cat_server_url');
+    var btnSaveMain = document.getElementById('btnSave');
+    var pushOk = true;
+    if(serverConfigured && touchedForSync.length){
+      _setBtnSaveLoading(btnSaveMain, true);
+      pushOk = await pushToServer(touchedForSync);
+      _setBtnSaveLoading(btnSaveMain, false);
+    }
+    if(!pushOk){
+      // Rien n'a été écrit (ni products, ni localStorage) — formulaire
+      // laissé ouvert avec la saisie intacte, l'utilisateur peut réessayer.
+      showToast('Échec de synchronisation avec le serveur — rien n\'a été enregistré, réessayez.', 'err', 5000);
+      return;
+    }
+
+    // ── Le serveur a confirmé (ou n'est pas configuré) : on applique
+    // maintenant réellement tout ce qui a été calculé plus haut. ──
+    if(editingId){
+      if(idx !== -1) products[idx] = pendingMainProduct;
+    } else {
+      products.push(pendingMainProduct);
+    }
+    Object.keys(pendingUpdates).forEach(function(id){
+      var entry = pendingUpdates[id];
+      Object.assign(entry.product, entry.changes); // mutation en place, même référence que dans `products`
+    });
 
     // ── Nettoyage serveur en cas de changement de référence ────────────────
     // /pushDatas fait un upsert par "ref" côté serveur (voir catalogue_core.py,
@@ -377,7 +498,7 @@
     // utilisateur : "quand je modifie la référence, ça crée un nouveau
     // produit"). Supprimer explicitement l'ancienne ref côté serveur une fois
     // la nouvelle poussée — même API que deleteProduct() dans js/render-card-grid.js.
-    if(typeof refChangedOnEdit !== 'undefined' && refChangedOnEdit){
+    if(refChangedOnEdit){
       (function(oldRef){
         var sUrl = localStorage.getItem('cat_server_url');
         if(!sUrl) return;
@@ -396,47 +517,11 @@
       })(oldRefBeforeEdit);
     }
 
-    // ── Liaison réciproque des suggestions ET des pièces de rechange ──────
-    // Ajouter B dans la liste de A crée automatiquement le lien A dans la
-    // liste de B — sans ça, il fallait aller l'ajouter à la main des deux
-    // côtés (retour utilisateur, étendu aux pièces de rechange : "une
-    // rubrique pièces de rechange comme pour les suggestions"). Uniquement
-    // dans le sens "nouvellement ajouté" : on ne touche jamais aux refs déjà
-    // présentes avant cet enregistrement, ni à celles retirées côté A
-    // (retirer un lien ou le masquer reste local à la fiche éditée — pour le
-    // masquer aussi côté B, il faut le décocher directement sur la fiche B,
-    // à la main, voir la case à cocher par puce dans js/modal-suggestions-autocomplete.js/
-    // js/modal-spareparts-suggestions-dnd.js). Si B a
-    // déjà A dans sa propre liste (retiré puis re-proposé, ou ajouté à la
-    // main des deux côtés), on ne le re-rajoute pas.
-    function _linkReciprocal(field){
-      var previous = (typeof existing !== 'undefined' && existing && Array.isArray(existing[field]))
-        ? existing[field] : [];
-      var final = Array.isArray(payload[field]) ? payload[field] : [];
-      var finalRef = payload.ref;
-      final.forEach(function(otherRef){
-        if(previous.indexOf(otherRef) !== -1) return; // déjà lié avant cet enregistrement
-        var other = products.find(function(p){ return p.ref === otherRef; });
-        if(!other || other.ref === finalRef) return;
-        var otherList = Array.isArray(other[field]) ? other[field] : [];
-        if(otherList.indexOf(finalRef) !== -1) return; // déjà lié côté B
-        other[field] = otherList.concat([finalRef]);
-        other.updatedAt = Date.now();
-        // Éviter un doublon si ce produit a déjà été ajouté à touchedForSync
-        // plus haut (ex. propagation d'icône de famille sur ce même produit).
-        if(touchedForSync.indexOf(other) === -1) touchedForSync.push(other);
-      });
-    }
-    _linkReciprocal('suggestions');
-    _linkReciprocal('spareParts');
-
-    // Animation 5 — flash vert sur le bouton enregistrer
-    var btnSaveEl = document.getElementById('btnSave');
-    btnSaveEl.classList.remove('save-anim');
-    void btnSaveEl.offsetWidth;
-    btnSaveEl.classList.add('save-anim');
-
-    save(false, touchedForSync);
+    // Persistance locale uniquement (localStorage + fichier) — le serveur a
+    // déjà été synchronisé ci-dessus, [] évite un second aller-retour réseau
+    // inutile (voir le repli "rien à envoyer" dans pushToServer, js/actions-
+    // settings-sync.js).
+    await save(false, []);
     render();
     // render() ne met à jour que la grille catalogue — si on enregistre
     // depuis la page d'accueil (bouton + de la home), la fiche produit
@@ -476,12 +561,8 @@
     }
     window._directAttachedFiles = [];
 
-    // Fermer après le flash
-    setTimeout(function(){
-      btnSaveEl.classList.remove('save-anim');
-      closeModal();
-      openView(savedId);
-    }, 900);
+    closeModal();
+    openView(savedId);
 
   });
 

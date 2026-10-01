@@ -1315,6 +1315,11 @@ function openAddUserModal() {
       permsNew.canViewDocs = true;
     }
 
+    // Retour utilisateur : "faut faire comme pour les autres fonction" — ce
+    // flux attendait déjà la confirmation serveur avant toute écriture
+    // locale, juste un spinner en plus pendant l'appel.
+    var nuSubmitBtn = ov.querySelector('#_nuSubmit');
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(nuSubmitBtn, true);
     var ok = await authCreateUser({
       username:    username,
       displayName: displayName || username,
@@ -1322,6 +1327,7 @@ function openAddUserModal() {
       isAdmin:     isAdminNew,
       permissions: permsNew
     });
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(nuSubmitBtn, false);
 
     if (ok) {
       document.body.removeChild(ov);
@@ -1453,7 +1459,13 @@ function openEditUserModal(username, displayName, isAdminUser, currentPerms) {
     if (displayNew) data.displayName = displayNew;
     if (passwordNew) data.password = passwordNew;
 
+    // Retour utilisateur : "faut faire comme pour les autres fonction" — ce
+    // flux attendait déjà la confirmation serveur avant toute écriture
+    // locale, juste un spinner en plus pendant l'appel.
+    var euSubmitBtn = ov.querySelector('#_euSubmit');
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(euSubmitBtn, true);
     var ok = await authUpdateUser(username, data);
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(euSubmitBtn, false);
     if (ok) {
       document.body.removeChild(ov);
       showAuthToast('Utilisateur modifié ✓');
@@ -1643,6 +1655,12 @@ function openChangePasswordModal() {
     if (!met.len || !met.letter || !met.digit) { errEl.textContent = 'Le nouveau mot de passe ne respecte pas les exigences ci-dessus.'; cpNewEl.style.border = REQ_BORDER; return; }
     if (pw1 !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; cpNewEl.style.border = REQ_BORDER; cpConfirmEl.style.border = REQ_BORDER; return; }
 
+    // Retour utilisateur : "faut faire comme pour les autres fonction" —
+    // ce flux attendait déjà la confirmation serveur avant toute écriture
+    // locale (aucun changement de comportement nécessaire ici), juste un
+    // spinner en plus pendant les deux appels serveur qui suivent.
+    var cpSubmitBtn = ov.querySelector('#_cpSubmit');
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(cpSubmitBtn, true);
     try {
       var r = await fetch(sUrl + '/login', {
         method: 'POST',
@@ -1652,11 +1670,12 @@ function openChangePasswordModal() {
       // Même distinction que doLogin() plus bas dans ce fichier — un 429
       // (trop de tentatives, blocage 1 min côté serveur) n'a rien à voir
       // avec un mot de passe actuel erroné.
-      if (r.status === 429) { errEl.textContent = 'Trop de tentatives — réessayez dans 1 minute.'; return; }
-      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; cpCurrentEl.style.border = REQ_BORDER; return; }
-    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; return; }
+      if (r.status === 429) { errEl.textContent = 'Trop de tentatives — réessayez dans 1 minute.'; if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(cpSubmitBtn, false); return; }
+      if (!r.ok) { errEl.textContent = 'Mot de passe actuel incorrect.'; cpCurrentEl.style.border = REQ_BORDER; if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(cpSubmitBtn, false); return; }
+    } catch(e) { errEl.textContent = 'Impossible de joindre le serveur.'; if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(cpSubmitBtn, false); return; }
 
     var ok = await authChangeOwnPassword(user.username, pw1);
+    if(typeof window._setBtnLoadingSpinner === 'function') window._setBtnLoadingSpinner(cpSubmitBtn, false);
     if (ok) {
       _cpClose();
       showAuthToast('Mot de passe modifié ✓');
