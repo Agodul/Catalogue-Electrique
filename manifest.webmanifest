@@ -1,8 +1,8 @@
 {
   "name": "SPI Engineering",
   "short_name": "SPI | CE",
-  "start_url": "/Catalogue-Electrique/",
-  "scope": "/Catalogue-Electrique/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#194093",
   "theme_color": "#194093",
